@@ -7,7 +7,7 @@
     "newtab": "newtab.html"
   },
   "permissions": [
-    "storage", "downloads","fileSystem"
+    "storage", "downloads"
   ],
   "icons": {
     "128": "icons/icon-128.ico"

@@ -18,9 +18,7 @@
       <button id="theme-toggle" title="Prepnúť tému">🌓</button>
       <button id="export-btn">Export</button>
       <button id="import-btn">Import</button>
-      <img id="sync-toggle-icon" src="icons/sync-off.png" class="sync-icon" title="Synchronizácia vypnutá"></img>
-
-      <button id="choose-sync-folder" disabled>Vybrať priečinok</button>
+      <button id="webdav-settings-btn" title="Nastavenia WebDAV">⚙️ WebDAV</button>
       <label class="show-deleted-toggle">
         <input type="checkbox" id="show-deleted-toggle">
         Zobraziť zmazané
@@ -63,7 +61,36 @@
       </div>
     </div>
   </div>
+  <!-- Modal pre WebDAV nastavenia -->
+  <div id="webdav-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>WebDAV Synchronizácia</h2>
 
-  <script src="newtab.js"></script>
+      <label>WebDAV URL</label>
+      <input type="text" id="webdav-url" placeholder="https://server/dav/speeddial">
+
+      <label>Používateľské meno</label>
+      <input type="text" id="webdav-username" placeholder="username">
+
+      <label>Heslo</label>
+      <input type="password" id="webdav-password" placeholder="••••••••">
+
+      <button id="webdav-test" class="icon-btn">🔍 Testovať pripojenie</button>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="webdav-enable">
+        🔄 Zapnúť synchronizáciu
+      </label>
+
+      <div id="webdav-status" class="status"></div>
+
+      <div class="modal-buttons">
+        <button id="webdav-save" class="icon-btn primary">💾 Uložiť</button>
+        <button id="webdav-cancel" class="icon-btn danger">❌ Zavrieť</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="newtab/main.js"></script>
 </body>
 </html>

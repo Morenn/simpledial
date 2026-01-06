@@ -12,9 +12,9 @@ body.theme-dark {
 }
 
 body.theme-light {
-  --bg: #f5f5f5;
-  --bg2: #ffffff;
-  --bg3: #e8e8e8;
+  --bg: #f5f5f5; /* background stránky */
+  --bg2: #ffffff; /* background jednotlivých bookmarkou a top baru*/
+  --bg3: #e8e8e8; /* background kategorií*/
   --bg-hover: #dcdcdc;
   --text: #222;
   --accent: #4a6bff;
@@ -325,4 +325,54 @@ main {
   padding: 0.2rem 0.6rem;
   cursor: pointer;
   font-size: 0.9rem;
+}
+/* WebDAV modal */
+#webdav-modal .modal-content {
+  width: 420px;
+  padding: 20px;
+}
+
+#webdav-modal input {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: #ddd;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: #ccc;
+}
+
+.icon-btn.primary {
+  background: #4a8df6;
+  color: white;
+}
+
+.icon-btn.primary:hover {
+  background: #3a7be0;
+}
+
+.icon-btn.danger {
+  background: #e35a5a;
+  color: white;
+}
+
+.icon-btn.danger:hover {
+  background: #d14a4a;
+}
+
+#webdav-status {
+  margin-top: 10px;
+  font-size: 0.9em;
+  min-height: 20px;
 }
