@@ -1,0 +1,277 @@
+/* Témy */
+
+body.theme-dark {
+  --bg: #121212;
+  --bg2: #1b1b1b;
+  --bg3: #222;
+  --bg-hover: #333;
+  --text: #f0f0f0;
+  --accent: #4a6bff;
+  --accent-text: #ffffff;
+  --border: #333;
+}
+
+body.theme-light {
+  --bg: #f5f5f5;
+  --bg2: #ffffff;
+  --bg3: #e8e8e8;
+  --bg-hover: #dcdcdc;
+  --text: #222;
+  --accent: #4a6bff;
+  --accent-text: #ffffff;
+  --border: #ccc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Horná lišta */
+
+#top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+}
+
+#groups-header {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.group-tab {
+  padding: 0.35rem 0.8rem;
+  background: var(--bg3);
+  border-radius: 4px;
+  cursor: grab;
+  user-select: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.group-tab.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.group-tab.add-group {
+  background: transparent;
+  border: 1px dashed var(--border);
+  cursor: pointer;
+  font-weight: 700;
+  padding-inline: 0.6rem;
+}
+
+.group-tab.dragging {
+  opacity: 0.5;
+  border: 1px dashed var(--accent);
+}
+
+/* Prepínač témy */
+
+#theme-toggle {
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+#theme-toggle:hover {
+  background: var(--bg-hover);
+}
+
+/* Main a grid */
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+#bookmarks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  column-gap: 1rem;   /* medzera medzi stĺpcami (vodorovne) */
+  row-gap: 10px;       /* medzera medzi riadkami (zvisle) */
+  width: min(90%, 100%);
+  height: min(10%,100%);
+}
+
+/* Bookmark tile – výška ako address bar, kompaktné */
+.bookmark-tile {
+  background: var(--bg2);
+  padding: 0.4rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;     /* zarovnanie ikon + text vertikálne */
+  gap: 0.5rem;             /* medzera medzi ikonou a textom */
+  cursor: grab;
+  height: 40px;            /* ešte kompaktnejšie */
+  border: 1px solid transparent;
+  overflow: hidden;
+}
+
+.bookmark-tile:hover {
+  background: var(--bg-hover);
+}
+
+.bookmark-tile.dragging {
+  opacity: 0.5;
+  border: 1px dashed var(--accent);
+}
+
+.bookmark-tile.add-bookmark {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Obsah bookmarku */
+
+.bookmark-favicon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+
+.bookmark-title {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;                 /* text vyplní zvyšok riadku */
+}
+
+
+.bookmark-title:hover {
+  text-decoration: underline;
+}
+
+/* Kontextové menu */
+
+#context-menu {
+  position: fixed;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0;
+  z-index: 9999;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+#context-menu.hidden {
+  display: none;
+}
+
+#context-menu div {
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+#context-menu div:hover {
+  background: var(--bg-hover);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--bg2);
+  padding: 1.2rem;
+  border-radius: 8px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border: 1px solid var(--border);
+}
+
+.modal-content h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.modal-content label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.modal-content input {
+  padding: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.modal-buttons button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.modal-buttons button:hover {
+  background: var(--bg-hover);
+}
+
+#search-box {
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 0.85rem;
+  width: 220px;
+  margin-left: 1rem;
+}
+
+#search-box:focus {
+  outline: 1px solid var(--accent);
+}

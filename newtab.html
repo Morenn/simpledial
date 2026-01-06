@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <title>My SpeedDial</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="libs/jszip.min.js"></script>
+
+</head>
+
+<body class="theme-dark">
+
+  <!-- Horná lišta -->
+  <header id="top-bar">
+    <div id="groups-header"></div>
+
+    <input id="search-box" type="text" placeholder="Hľadať...">
+
+    <button id="theme-toggle" title="Prepnúť tému">🌓</button>
+    <button id="export-btn">Export</button>
+    <button id="import-btn">Import</button>
+
+  </header>
+
+  <!-- Hlavná časť -->
+  <main>
+    <div id="bookmarks-grid">
+      <!-- Bookmarky sa renderujú dynamicky -->
+    </div>
+  </main>
+
+  <!-- Kontextové menu -->
+  <div id="context-menu" class="hidden">
+    <div data-action="edit">Upraviť</div>
+    <div data-action="delete">Zmazať</div>
+    <div data-action="refresh-icon">Obnoviť ikonu</div>
+  </div>
+
+  <!-- Modal pre pridanie/upravu bookmarku -->
+  <div id="bookmark-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="modal-title">Nová záložka</h2>
+
+      <label for="bm-title">Názov</label>
+      <input type="text" id="bm-title">
+
+      <label for="bm-url">URL</label>
+      <input type="url" id="bm-url">
+
+      <label for="bm-icon">URL ikony (voliteľné)</label>
+      <input type="url" id="bm-icon">
+
+      <div class="modal-buttons">
+        <button id="bm-save">Uložiť</button>
+        <button id="bm-cancel">Zrušiť</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>
