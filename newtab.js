@@ -4,14 +4,24 @@ const api = typeof browser !== "undefined" ? browser : chrome;
 const STORAGE_KEY = "myspeeddial-data";
 const THEME_KEY = "myspeeddial-theme";
 
-let state = { groups: [] };
+// ---------- STATE (upravený) ----------
+let state = {
+  groups: [],
+  sync: {
+    enabled: false,
+    folderHandle: null,
+    fileHandle: null
+  }
+};
+
 let activeGroupId = null;
 
-// DOM referencie
+// ---------- DOM referencie ----------
 const groupsHeader = document.getElementById("groups-header");
 const bookmarksGrid = document.getElementById("bookmarks-grid");
 const contextMenu = document.getElementById("context-menu");
 const themeToggle = document.getElementById("theme-toggle");
+const syncToggleIcon = document.getElementById("sync-toggle-icon");
 
 // Modal
 const modal = document.getElementById("bookmark-modal");
@@ -24,8 +34,9 @@ const bmCancel = document.getElementById("bm-cancel");
 
 let editingBookmark = null;
 let searchQuery = "";
-
-// Search box
+let showDeletedGroups = false; // UI prepínač pridáme v bloku 7
+let showDeletedBookmarks = false; // UI prepínač pridáme v bloku 7
+// ---------- Search box ----------
 const searchBox = document.getElementById("search-box");
 
 searchBox.addEventListener("input", e => {
@@ -57,8 +68,52 @@ window.addEventListener(
   true
 );
 
-// ---------- Pomocné funkcie ----------
+// ---------- Synchronizácia ----------
+syncToggleIcon.addEventListener("click", async () => {
+  state.sync.enabled = !state.sync.enabled;
 
+  document.getElementById("choose-sync-folder").disabled = !state.sync.enabled;
+
+  updateSyncIcon();
+  await saveState();
+});
+
+document.getElementById("choose-sync-folder").addEventListener("click", async () => {
+  try {
+    const folder = await window.showDirectoryPicker();
+
+    state.sync.folderHandle = folder;
+    state.sync.enabled = true;
+
+    const fileHandle = await folder.getFileHandle("speeddial.json", { create: true });
+    state.sync.fileHandle = fileHandle;
+
+    await saveState();
+    alert("Synchronizačný priečinok nastavený.");
+  } catch (err) {
+    console.error("Výber priečinka zrušený alebo nepodporovaný:", err);
+  }
+});
+
+function updateSyncIcon() {
+  if (state.sync.enabled) {
+    syncToggleIcon.src = "icons/sync-on.png";
+    syncToggleIcon.title = "Synchronizácia zapnutá";
+  } else {
+    syncToggleIcon.src = "icons/sync-off.png";
+    syncToggleIcon.title = "Synchronizácia vypnutá";
+  }
+}
+
+// ------------- Zobraz zmazané ------------
+document.getElementById("show-deleted-toggle").addEventListener("change", (e) => {
+  const show = e.target.checked;
+  showDeletedGroups = show;
+  showDeletedBookmarks = show;
+  render();
+});
+
+// ---------- Pomocné funkcie ----------
 function generateId(prefix) {
   return prefix + "_" + Math.random().toString(36).slice(2, 10);
 }
@@ -78,7 +133,33 @@ async function saveState() {
 
 async function loadState() {
   const res = await api.storage.local.get(STORAGE_KEY);
-  state = res[STORAGE_KEY] || { groups: [] };
+  const stored = res[STORAGE_KEY];
+
+  if (stored) {
+    state = {
+      groups: [],
+      sync: {
+        enabled: false,
+        folderHandle: null,
+        fileHandle: null
+      },
+      ...stored,
+      sync: {
+        enabled: stored.sync?.enabled ?? false,
+        folderHandle: stored.sync?.folderHandle ?? null,
+        fileHandle: stored.sync?.fileHandle ?? null
+      }
+    };
+  } else {
+    state = {
+      groups: [],
+      sync: {
+        enabled: false,
+        folderHandle: null,
+        fileHandle: null
+      }
+    };
+  }
 }
 
 // ---------- Modal ----------
@@ -119,20 +200,29 @@ bmSave.addEventListener("click", async () => {
 
   const group = state.groups.find(g => g.id === activeGroupId);
 
+  // ---------- EDIT ----------
   if (editingBookmark) {
     editingBookmark.title = title || url;
     editingBookmark.url = url;
     editingBookmark.customIcon = icon || null;
+    editingBookmark.updatedAt = Date.now();
+
+  // ---------- CREATE ----------
   } else {
     group.items.push({
       id: generateId("b"),
       title: title || url,
       url,
-      customIcon: icon || null
+      customIcon: icon || null,
+      updatedAt: Date.now(),
+      deleted: false,
+      deletedAt: null
     });
   }
 
   await saveState();
+  await syncWrite(state);
+
   closeBookmarkModal();
   render();
 });
@@ -155,17 +245,25 @@ function renderGroups(show = true) {
   groupsHeader.innerHTML = "";
 
   state.groups.forEach(group => {
+    if (group.deleted && !showDeletedGroups) return;
+
     const tab = document.createElement("div");
     tab.className = "group-tab";
     tab.draggable = true;
-    tab.textContent = group.name;
     tab.dataset.groupId = group.id;
 
-    if (group.id === activeGroupId) {
+    if (group.deleted) {
+      tab.classList.add("deleted");
+    }
+
+    tab.textContent = group.name;
+
+    if (group.id === activeGroupId && !group.deleted) {
       tab.classList.add("active");
     }
 
     tab.addEventListener("click", () => {
+      if (group.deleted) return;
       activeGroupId = group.id;
       render();
     });
@@ -183,12 +281,16 @@ function renderGroups(show = true) {
     const g = {
       id: generateId("g"),
       name: name.trim(),
-      items: []
+      items: [],
+      updatedAt: Date.now(),
+      deleted: false,
+      deletedAt: null
     };
 
     state.groups.push(g);
     activeGroupId = g.id;
     await saveState();
+    await syncWrite(state);
     render();
   });
 
@@ -196,6 +298,110 @@ function renderGroups(show = true) {
 
   setupGroupDrag();
 }
+
+
+// ---------- Drag & drop skupiny ----------
+
+function setupGroupDrag() {
+  let dragged = null;
+
+  groupsHeader.querySelectorAll(".group-tab").forEach(tab => {
+    if (tab.classList.contains("add-group")) return;
+
+    tab.addEventListener("dragstart", e => {
+      dragged = tab;
+      tab.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+
+    tab.addEventListener("dragend", async () => {
+      if (!dragged) return;
+      dragged.classList.remove("dragging");
+      dragged = null;
+
+      const ids = [...groupsHeader.querySelectorAll(".group-tab")]
+        .filter(el => !el.classList.contains("add-group"))
+        .map(el => el.dataset.groupId);
+
+      state.groups.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+      await saveState();
+      await syncWrite(state);
+      render();
+    });
+  });
+
+  groupsHeader.addEventListener("dragover", e => {
+    e.preventDefault();
+    if (!dragged) return;
+
+    const after = getAfterElementHorizontal(groupsHeader, e.clientX);
+    const addBtn = groupsHeader.querySelector(".add-group");
+
+    if (!after) {
+      groupsHeader.insertBefore(dragged, addBtn);
+    } else {
+      groupsHeader.insertBefore(dragged, after);
+    }
+  });
+}
+
+function getAfterElementHorizontal(container, mouseX) {
+  const els = [...container.querySelectorAll(".group-tab:not(.dragging):not(.add-group)")];
+  let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+
+  els.forEach(el => {
+    const box = el.getBoundingClientRect();
+    const offset = mouseX - (box.left + box.width / 2);
+    if (offset < 0 && offset > closest.offset) {
+      closest = { offset, element: el };
+    }
+  });
+
+  return closest.element;
+}
+
+// ---------- Kontextové menu – skupiny ----------
+
+async function handleGroupContext(action, el) {
+  const id = el.dataset.groupId;
+  const group = state.groups.find(g => g.id === id);
+  if (!group) return;
+
+  if (action === "edit") {
+    const newName = prompt("Nový názov skupiny:", group.name);
+    if (newName && newName.trim()) {
+      group.name = newName.trim();
+      group.updatedAt = Date.now();
+      await saveState();
+      await syncWrite(state);
+      render();
+    }
+  }
+  if (action === "delete") {
+    if (!confirm(`Vymazať skupinu "${group.name}"?`)) return;
+    group.deleted = true;
+    group.deletedAt = Date.now();
+    group.updatedAt = Date.now();
+
+    if (activeGroupId === id) {
+      const firstActive = state.groups.find(g => !g.deleted);
+      activeGroupId = firstActive ? firstActive.id : null;
+    }
+
+    await saveState();
+    await syncWrite(state);
+    render();
+  }
+  if (action === "restore") {
+    group.deleted = false;
+    group.deletedAt = null;
+    group.updatedAt = Date.now();
+    await saveState();
+    await syncWrite(state);
+    render();
+  }
+}
+
 
 // ---------- Render bookmarkov ----------
 
@@ -236,11 +442,18 @@ function createBookmarkTile(item) {
 function renderBookmarks() {
   bookmarksGrid.innerHTML = "";
 
-  const group = state.groups.find(g => g.id === activeGroupId);
+  const group = state.groups.find(g => g.id === activeGroupId && !g.deleted);
   if (!group) return;
 
   group.items.forEach(item => {
+    if (item.deleted && !showDeletedBookmarks) return;
+
     const tile = createBookmarkTile(item);
+
+    if (item.deleted) {
+      tile.classList.add("deleted");
+    }
+
     bookmarksGrid.appendChild(tile);
   });
 
@@ -255,81 +468,25 @@ function renderBookmarks() {
   setupBookmarkDrag();
 }
 
+
 // ---------- Vyhľadávanie ----------
 
 function renderSearchResults() {
   bookmarksGrid.innerHTML = "";
 
-  const all = state.groups.flatMap(g => g.items);
+  const all = state.groups
+    .filter(g => !g.deleted)
+    .flatMap(g => g.items.filter(i => !i.deleted));
 
   const filtered = all.filter(item =>
-    item.title.toLowerCase().includes(searchQuery) ||
-    item.url.toLowerCase().includes(searchQuery)
+    (item.title || "").toLowerCase().includes(searchQuery) ||
+    (item.url || "").toLowerCase().includes(searchQuery)
   );
 
   filtered.forEach(item => {
     const tile = createBookmarkTile(item);
     bookmarksGrid.appendChild(tile);
   });
-}
-
-// ---------- Drag & drop skupiny ----------
-
-function setupGroupDrag() {
-  let dragged = null;
-
-  groupsHeader.querySelectorAll(".group-tab").forEach(tab => {
-    if (tab.classList.contains("add-group")) return;
-
-    tab.addEventListener("dragstart", e => {
-      dragged = tab;
-      tab.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-    });
-
-    tab.addEventListener("dragend", async () => {
-      if (!dragged) return;
-      dragged.classList.remove("dragging");
-      dragged = null;
-
-      const ids = [...groupsHeader.querySelectorAll(".group-tab")]
-        .filter(el => !el.classList.contains("add-group"))
-        .map(el => el.dataset.groupId);
-
-      state.groups.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-      await saveState();
-      render();
-    });
-  });
-
-  groupsHeader.addEventListener("dragover", e => {
-    e.preventDefault();
-    if (!dragged) return;
-
-    const after = getAfterElementHorizontal(groupsHeader, e.clientX);
-    const addBtn = groupsHeader.querySelector(".add-group");
-
-    if (!after) {
-      groupsHeader.insertBefore(dragged, addBtn);
-    } else {
-      groupsHeader.insertBefore(dragged, after);
-    }
-  });
-}
-
-function getAfterElementHorizontal(container, mouseX) {
-  const els = [...container.querySelectorAll(".group-tab:not(.dragging):not(.add-group)")];
-  let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
-
-  els.forEach(el => {
-    const box = el.getBoundingClientRect();
-    const offset = mouseX - (box.left + box.width / 2);
-    if (offset < 0 && offset > closest.offset) {
-      closest = { offset, element: el };
-    }
-  });
-
-  return closest.element;
 }
 
 // ---------- Drag & drop bookmarky ----------
@@ -351,7 +508,7 @@ function setupBookmarkDrag() {
       tile.classList.remove("dragging");
       dragged = null;
 
-      const group = state.groups.find(g => g.id === activeGroupId);
+      const group = state.groups.find(g => g.id === activeGroupId && !g.deleted);
       if (!group) return;
 
       const ids = [...bookmarksGrid.querySelectorAll(".bookmark-tile")]
@@ -360,6 +517,7 @@ function setupBookmarkDrag() {
 
       group.items.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
       await saveState();
+      await syncWrite(state);
       render();
     });
   });
@@ -394,7 +552,7 @@ function getAfterElementVertical(container, mouseY) {
   return closest.element;
 }
 
-// ---------- Kontextové menu ----------
+// ---------- Kontextové menu (globálne) ----------
 
 let contextTarget = null;
 
@@ -435,38 +593,11 @@ contextMenu.addEventListener("click", async e => {
   contextTarget = null;
 });
 
-// ---------- Kontextové menu – skupiny ----------
-
-async function handleGroupContext(action, el) {
-  const id = el.dataset.groupId;
-  const group = state.groups.find(g => g.id === id);
-  if (!group) return;
-
-  if (action === "edit") {
-    const newName = prompt("Nový názov skupiny:", group.name);
-    if (newName && newName.trim()) {
-      group.name = newName.trim();
-      await saveState();
-      render();
-    }
-  }
-
-  if (action === "delete") {
-    if (!confirm(`Vymazať skupinu "${group.name}"?`)) return;
-    state.groups = state.groups.filter(g => g.id !== id);
-    if (activeGroupId === id) {
-      activeGroupId = state.groups[0] ? state.groups[0].id : null;
-    }
-    await saveState();
-    render();
-  }
-}
-
 // ---------- Kontextové menu – bookmarky ----------
 
 async function handleBookmarkContext(action, el) {
   const bookmarkId = el.dataset.bookmarkId;
-  const group = state.groups.find(g => g.id === activeGroupId);
+  const group = state.groups.find(g => g.id === activeGroupId && !g.deleted);
   if (!group) return;
 
   const item = group.items.find(i => i.id === bookmarkId);
@@ -478,18 +609,31 @@ async function handleBookmarkContext(action, el) {
 
   if (action === "delete") {
     if (!confirm(`Vymazať záložku "${item.title}"?`)) return;
-    group.items = group.items.filter(i => i.id !== bookmarkId);
+    item.deleted = true;
+    item.deletedAt = Date.now();
+    item.updatedAt = Date.now();
     await saveState();
+    await syncWrite(state);
     render();
   }
 
   if (action === "refresh-icon") {
     item.customIcon = null;
+    item.updatedAt = Date.now();
     await saveState();
+    await syncWrite(state);
     render();
   }
-}
+  if (action === "restore") {
+    item.deleted = false;
+    item.deletedAt = null;
+    item.updatedAt = Date.now();
+    await saveState();
+    await syncWrite(state);
+    render();
+  }
 
+}
 // ---------- Téma (dark/light) ----------
 
 async function loadTheme() {
@@ -506,25 +650,10 @@ themeToggle.addEventListener("click", async () => {
   document.body.className = next;
   await api.storage.local.set({ [THEME_KEY]: next });
 });
-// ---------- Init ----------
-
-function render() {
-  if (searchQuery) {
-    // Režim globálneho vyhľadávania
-    renderGroups(false);      // skryjeme skupiny
-    renderSearchResults();    // zobrazíme všetky záložky
-  } else {
-    // Normálny režim
-    if (!activeGroupId && state.groups.length > 0) {
-      activeGroupId = state.groups[0].id;
-    }
-    renderGroups(true);
-    renderBookmarks();
-  }
-}
 
 
 // -------------- EXPORT / IMPORT ---------------------
+
 function sanitizeFilename(name) {
   return name
     .normalize("NFC")               // opraví Unicode
@@ -535,25 +664,29 @@ function sanitizeFilename(name) {
 document.getElementById("export-btn").addEventListener("click", async () => {
   const zip = new JSZip();
 
-  state.groups.forEach(group => {
-    const folder = zip.folder(sanitizeFilename(group.name));
+  state.groups
+    .filter(g => !g.deleted)
+    .forEach(group => {
+      const folder = zip.folder(sanitizeFilename(group.name));
 
-    group.items.forEach(item => {
-      const iconUrl = item.customIcon 
-        ? item.customIcon 
-        : getFaviconUrl(item.url);
+      group.items
+        .filter(i => !i.deleted)
+        .forEach(item => {
+          const iconUrl = item.customIcon 
+            ? item.customIcon 
+            : getFaviconUrl(item.url);
 
-      const safeName = sanitizeFilename(item.title);
+          const safeName = sanitizeFilename(item.title);
 
-      const content =
-        `[InternetShortcut]\n` +
-        `URL=${item.url}\n` +
-        `IconFile=${iconUrl}\n` +
-        `IconIndex=0\n`;
+          const content =
+            `[InternetShortcut]\n` +
+            `URL=${item.url}\n` +
+            `IconFile=${iconUrl}\n` +
+            `IconIndex=0\n`;
 
-      folder.file(safeName + ".url", content);
+          folder.file(safeName + ".url", content);
+        });
     });
-  });
 
   const blob = await zip.generateAsync({
     type: "blob",
@@ -572,13 +705,6 @@ document.getElementById("export-btn").addEventListener("click", async () => {
 });
 
 
-function sanitizeFilename(name) {
-  return name
-    .normalize("NFC")
-    .replace(/[<>:"/\\|?*]/g, "_")
-    .trim();
-}
-
 document.getElementById("import-btn").addEventListener("click", async () => {
   const input = document.createElement("input");
   input.type = "file";
@@ -592,14 +718,17 @@ document.getElementById("import-btn").addEventListener("click", async () => {
     // 1) Najprv vytvoríme skupiny
     Object.values(zip.files).forEach(entry => {
       if (entry.dir) {
-        const rawName = entry.name.replace(/\/$/, ""); // odstráni trailing slash
+        const rawName = entry.name.replace(/\/$/, "");
         const groupName = sanitizeFilename(rawName);
 
         if (!state.groups.some(g => g.name === groupName)) {
           state.groups.push({
             id: generateId("g"),
             name: groupName,
-            items: []
+            items: [],
+            updatedAt: Date.now(),
+            deleted: false,
+            deletedAt: null
           });
         }
       }
@@ -629,20 +758,94 @@ document.getElementById("import-btn").addEventListener("click", async () => {
           id: generateId("b"),
           title: fileName,
           url,
-          customIcon: icon || null
+          customIcon: icon || null,
+          updatedAt: Date.now(),
+          deleted: false,
+          deletedAt: null
         });
       }
     }
 
     await saveState();
+    await syncWrite(state);
     render();
   };
 
   input.click();
 });
 
+// ---------- Synchronizácia ----------
+async function syncWrite(state) {
+  if (!state.sync.enabled || !state.sync.fileHandle) return;
+
+  try {
+    const writable = await state.sync.fileHandle.createWritable();
+    await writable.write(JSON.stringify(state, null, 2));
+    await writable.close();
+  } catch (err) {
+    console.error("syncWrite error:", err);
+  }
+}
+async function syncRead(state) {
+  if (!state.sync.enabled || !state.sync.fileHandle) return null;
+
+  try {
+    const file = await state.sync.fileHandle.getFile();
+    const text = await file.text();
+    return JSON.parse(text);
+  } catch (err) {
+    console.error("syncRead error:", err);
+    return null;
+  }
+}
+
+
+// ---------- Init ----------
+
+function render() {
+  // bezpečnostná kontrola activeGroupId
+  if (!activeGroupId || !state.groups.some(g => g.id === activeGroupId && !g.deleted)) {
+    const firstActive = state.groups.find(g => !g.deleted);
+    activeGroupId = firstActive ? firstActive.id : null;
+  }
+
+  if (searchQuery) {
+    renderGroups(false);
+    renderSearchResults();
+  } else {
+    renderGroups(true);
+    renderBookmarks();
+  }
+}
+
 (async function init() {
   await loadState();
   await loadTheme();
+  updateSyncIcon();
+  document.getElementById("show-deleted-toggle").checked = showDeletedGroups;
+  
+  // Ak je sync zapnutý, načítame cloudový stav
+  if (state.sync.enabled && state.sync.fileHandle) {
+    const cloudState = await syncRead(state);
+    if (cloudState) {
+      state = cloudState;
+      await saveState();
+
+    }
+  }
+  
+  // Automatická synchronizácia každú minútu
+  setInterval(async () => {
+    if (state.sync.enabled && state.sync.fileHandle) {
+      const cloudState = await syncRead(state);
+      if (cloudState) {
+        state = cloudState;
+        await saveState();
+        render();
+      }
+    }
+  }, 60000); // 60 000 ms = 1 minúta
+
   render();
 })();
+

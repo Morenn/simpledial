@@ -275,3 +275,54 @@ main {
 #search-box:focus {
   outline: 1px solid var(--accent);
 }
+
+.deleted {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  pointer-events: auto; /* aby fungoval pravý klik */
+}
+
+.deleted a {
+  pointer-events: none; /* ale nie klik na URL */
+}
+
+.show-deleted-toggle {
+  margin-left: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+}
+
+.show-deleted-toggle input {
+  margin-right: 4px;
+}
+
+.sync-icon {
+  height: 32px;
+  aspect-ratio: 1 / 1;
+  vertical-align: middle;
+  cursor: pointer;
+  margin-right: 8px;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+#manage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.sync-icon:hover {
+  opacity: 1;
+}
+
+#sync-icon {
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}

@@ -13,13 +13,19 @@
   <!-- Horná lišta -->
   <header id="top-bar">
     <div id="groups-header"></div>
+    <div id="manage">
+      <input id="search-box" type="text" placeholder="Hľadať...">
+      <button id="theme-toggle" title="Prepnúť tému">🌓</button>
+      <button id="export-btn">Export</button>
+      <button id="import-btn">Import</button>
+      <img id="sync-toggle-icon" src="icons/sync-off.png" class="sync-icon" title="Synchronizácia vypnutá"></img>
 
-    <input id="search-box" type="text" placeholder="Hľadať...">
-
-    <button id="theme-toggle" title="Prepnúť tému">🌓</button>
-    <button id="export-btn">Export</button>
-    <button id="import-btn">Import</button>
-
+      <button id="choose-sync-folder" disabled>Vybrať priečinok</button>
+      <label class="show-deleted-toggle">
+        <input type="checkbox" id="show-deleted-toggle">
+        Zobraziť zmazané
+      </label>
+    </div>
   </header>
 
   <!-- Hlavná časť -->
@@ -33,6 +39,7 @@
   <div id="context-menu" class="hidden">
     <div data-action="edit">Upraviť</div>
     <div data-action="delete">Zmazať</div>
+    <div data-action="restore">Obnoviť</div>
     <div data-action="refresh-icon">Obnoviť ikonu</div>
   </div>
 
