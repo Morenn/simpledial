@@ -1,5 +1,6 @@
 import { state, saveState, generateId } from "./state.js";
 import { render } from "./render.js";
+import { syncWrite } from "./sync.js";
 
 // ---------- Render skupín ----------
 export function renderGroups(show = true) {
@@ -58,6 +59,7 @@ export function renderGroups(show = true) {
     window.activeGroupId = g.id;
 
     await saveState();
+    await syncWrite();
     render();
   });
 
@@ -92,6 +94,7 @@ function setupGroupDrag() {
       state.groups.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 
       await saveState();
+      await syncWrite();
       render();
     });
   });
@@ -138,6 +141,7 @@ export async function handleGroupContext(action, el) {
       group.name = newName.trim();
       group.updatedAt = Date.now();
       await saveState();
+      await syncWrite();
       render();
     }
   }
@@ -155,6 +159,7 @@ export async function handleGroupContext(action, el) {
     }
 
     await saveState();
+    await syncWrite();
     render();
   }
 
@@ -164,6 +169,7 @@ export async function handleGroupContext(action, el) {
     group.updatedAt = Date.now();
 
     await saveState();
+    await syncWrite();
     render();
   }
 }

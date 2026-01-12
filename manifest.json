@@ -7,7 +7,12 @@
     "newtab": "newtab.html"
   },
   "permissions": [
-    "storage", "downloads"
+    "storage",
+    "downloads",
+    "webRequestAuthProvider"
+  ],
+  "host_permissions": [
+    "https://sync.local/*"
   ],
   "icons": {
     "128": "icons/icon-128.ico"

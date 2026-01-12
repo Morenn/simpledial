@@ -12,17 +12,24 @@
 
   <!-- Horná lišta -->
   <header id="top-bar">
-    <div id="groups-header"></div>
+    <div id="groups-header">
+    </div>
     <div id="manage">
       <input id="search-box" type="text" placeholder="Hľadať...">
       <button id="theme-toggle" title="Prepnúť tému">🌓</button>
-      <button id="export-btn">Export</button>
-      <button id="import-btn">Import</button>
-      <button id="webdav-settings-btn" title="Nastavenia WebDAV">⚙️ WebDAV</button>
-      <label class="show-deleted-toggle">
-        <input type="checkbox" id="show-deleted-toggle">
-        Zobraziť zmazané
-      </label>
+
+      <details id="advanced-controls">
+        <summary>⚙️ Rozšírené možnosti</summary>
+        <div class="advanced-content">
+          <button id="export-btn">Export</button>
+          <button id="import-btn">Import</button>
+          <button id="sync-settings-btn" class="icon-btn">⚙️ Sync nastavenia</button>
+          <label class="show-deleted-toggle">
+            <input type="checkbox" id="show-deleted-toggle">
+            Zobraziť zmazané
+          </label>
+        </div>
+      </details>
     </div>
   </header>
 
@@ -62,35 +69,29 @@
     </div>
   </div>
   <!-- Modal pre WebDAV nastavenia -->
-  <div id="webdav-modal" class="modal hidden">
+  <div id="sync-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>WebDAV Synchronizácia</h2>
+      <h2>Sync Server</h2>
 
-      <label>WebDAV URL</label>
-      <input type="text" id="webdav-url" placeholder="https://server/dav/speeddial">
+      <label>Server URL</label>
+      <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json">
 
-      <label>Používateľské meno</label>
-      <input type="text" id="webdav-username" placeholder="username">
-
-      <label>Heslo</label>
-      <input type="password" id="webdav-password" placeholder="••••••••">
-
-      <button id="webdav-test" class="icon-btn">🔍 Testovať pripojenie</button>
+      <button id="sync-test" class="icon-btn">🔍 Testovať pripojenie</button>
 
       <label class="checkbox-row">
-        <input type="checkbox" id="webdav-enable">
+        <input type="checkbox" id="sync-enable">
         🔄 Zapnúť synchronizáciu
       </label>
 
-      <div id="webdav-status" class="status"></div>
+      <div id="sync-status" class="status"></div>
 
       <div class="modal-buttons">
-        <button id="webdav-save" class="icon-btn primary">💾 Uložiť</button>
-        <button id="webdav-cancel" class="icon-btn danger">❌ Zavrieť</button>
+        <button id="sync-save" class="icon-btn primary">💾 Uložiť</button>
+        <button id="sync-cancel" class="icon-btn danger">❌ Zavrieť</button>
       </div>
     </div>
   </div>
-
+  <script type="module" src="newtab/sync.js"></script>
   <script type="module" src="newtab/main.js"></script>
 </body>
 </html>

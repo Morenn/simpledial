@@ -22,18 +22,22 @@ export async function loadState() {
   const stored = res[STORAGE_KEY];
 
   if (stored) {
-    state = {
-      groups: [],
-      sync: { enabled: false, lastSync: 0 },
-      ...stored,
-      sync: {
-        enabled: stored.sync?.enabled ?? false,
-        lastSync: stored.sync?.lastSync ?? 0
+    // 🔥 Zachovať referenciu — žiadne state = {...}
+    // Mutujeme existujúci objekt
+    state.groups = stored.groups ?? [];
+
+    state.sync.enabled = stored.sync?.enabled ?? false;
+    state.sync.lastSync = stored.sync?.lastSync ?? 0;
+
+    // Ak v budúcnosti pribudnú ďalšie polia, doplníme ich sem
+    for (const key of Object.keys(stored)) {
+      if (key !== "groups" && key !== "sync") {
+        state[key] = stored[key];
       }
-    };
+    }
   }
 
-  // 🔥 DOPLNENÉ: nastavenie window.activeGroupId
+  // 🔥 Inicializácia activeGroupId
   if (!window.activeGroupId) {
     const first = state.groups.find(g => !g.deleted);
     if (first) {

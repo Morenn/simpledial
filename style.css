@@ -1,4 +1,6 @@
-/* Témy */
+/* ─────────────────────────────────────────────
+   TÉMY – DARK + LIGHT
+───────────────────────────────────────────── */
 
 body.theme-dark {
   --bg: #121212;
@@ -9,18 +11,57 @@ body.theme-dark {
   --accent: #4a6bff;
   --accent-text: #ffffff;
   --border: #333;
+
+  /* Bookmark tile farby */
+  --tile-bg: #2c2c2c;
+  --tile-bg-hover: #353535;
+  --tile-bg-active: #2a2a2a;
+  --tile-text: #e6e6e6;
+  --tile-border: #3a3a3a;
+
+  /* Pulse farby */
+  --tile-pulse-color: var(--accent);
+  --tile-pulse-shadow: 0 0 0 0 var(--accent);
+  --tile-pulse-shadow-hover: 0 0 10px 6px var(--accent);
+
+  /* Tieňovanie */
+  --tile-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+  --tile-shadow-hover: inset 0 0 6px rgba(0,0,0,0.55),
+                       0 0 4px rgba(255,255,255,0.05);
+  --tile-shadow-active: inset 0 0 8px rgba(0,0,0,0.7);
 }
 
 body.theme-light {
-  --bg: #f5f5f5; /* background stránky */
-  --bg2: #ffffff; /* background jednotlivých bookmarkou a top baru*/
-  --bg3: #e8e8e8; /* background kategorií*/
+  --bg: #f5f5f5;
+  --bg2: #ffffff;
+  --bg3: #e8e8e8;
   --bg-hover: #dcdcdc;
   --text: #222;
   --accent: #4a6bff;
   --accent-text: #ffffff;
   --border: #ccc;
+
+  /* Bookmark tile farby */
+  --tile-bg: #ffffff;
+  --tile-bg-hover: #f0f0f0;
+  --tile-bg-active: #e6e6e6;
+  --tile-text: #222;
+  --tile-border: #ccc;
+
+  /* Pulse farby */
+  --tile-pulse-color: var(--accent);
+  --tile-pulse-shadow: 0 0 0 0 var(--accent);
+  --tile-pulse-shadow-hover: 0 0 10px 6px var(--accent);
+
+  /* Tieňovanie */
+  --tile-shadow: inset 0 0 3px rgba(0,0,0,0.08);
+  --tile-shadow-hover: inset 0 0 4px rgba(0,0,0,0.12);
+  --tile-shadow-active: inset 0 0 6px rgba(0,0,0,0.18);
 }
+
+/* ─────────────────────────────────────────────
+   ZÁKLADNÉ NASTAVENIA
+───────────────────────────────────────────── */
 
 * {
   box-sizing: border-box;
@@ -37,7 +78,9 @@ body {
   flex-direction: column;
 }
 
-/* Horná lišta */
+/* ─────────────────────────────────────────────
+   HORNÝ PANEL
+───────────────────────────────────────────── */
 
 #top-bar {
   display: flex;
@@ -48,11 +91,16 @@ body {
   padding: 0.5rem 0.75rem;
 }
 
+/* ─────────────────────────────────────────────
+   SKUPINY
+───────────────────────────────────────────── */
+
 #groups-header {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
-  overflow-x: auto;
   padding-bottom: 0.2rem;
+  overflow-x: visible;
 }
 
 .group-tab {
@@ -84,7 +132,9 @@ body {
   border: 1px dashed var(--accent);
 }
 
-/* Prepínač témy */
+/* ─────────────────────────────────────────────
+   PREPÍNAČ TÉMY
+───────────────────────────────────────────── */
 
 #theme-toggle {
   border: 1px solid var(--border);
@@ -100,7 +150,9 @@ body {
   background: var(--bg-hover);
 }
 
-/* Main a grid */
+/* ─────────────────────────────────────────────
+   HLAVNÝ OBSAH + GRID
+───────────────────────────────────────────── */
 
 main {
   flex: 1;
@@ -113,28 +165,46 @@ main {
 #bookmarks-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  column-gap: 1rem;   /* medzera medzi stĺpcami (vodorovne) */
-  row-gap: 10px;       /* medzera medzi riadkami (zvisle) */
+  column-gap: 1rem;
+  row-gap: 10px;
   width: min(90%, 100%);
-  height: min(10%,100%);
+  height: min(10%, 100%);
 }
 
-/* Bookmark tile – výška ako address bar, kompaktné */
+/* ─────────────────────────────────────────────
+   BOOKMARK TILE – používa premenné z témy
+───────────────────────────────────────────── */
+
 .bookmark-tile {
-  background: var(--bg2);
+  background: var(--tile-bg);
+  color: var(--tile-text);
+  border: 1px solid var(--tile-border);
+  box-shadow: var(--tile-shadow);
   padding: 0.4rem;
   border-radius: 6px;
   display: flex;
-  align-items: center;     /* zarovnanie ikon + text vertikálne */
-  gap: 0.5rem;             /* medzera medzi ikonou a textom */
+  align-items: center;
+  gap: 0.5rem;
   cursor: grab;
-  height: 40px;            /* ešte kompaktnejšie */
-  border: 1px solid transparent;
+  height: 40px;
   overflow: hidden;
+  transition: background 0.15s ease,
+              box-shadow 0.15s ease,
+              transform 0.1s ease;
 }
 
+/* Hover + pulse */
 .bookmark-tile:hover {
-  background: var(--bg-hover);
+  background: var(--tile-bg-hover);
+  box-shadow: var(--tile-shadow-hover),
+    0 0 10px 6px var(--tile-pulse-color); /* trvalý glow */
+}
+
+/* Active (kliknutie) */
+.bookmark-tile:active {
+  background: var(--tile-bg-active);
+  box-shadow: var(--tile-shadow-active);
+  transform: scale(0.97);
 }
 
 .bookmark-tile.dragging {
@@ -147,7 +217,9 @@ main {
   font-weight: 600;
 }
 
-/* Obsah bookmarku */
+/* ─────────────────────────────────────────────
+   BOOKMARK OBSAH
+───────────────────────────────────────────── */
 
 .bookmark-favicon {
   width: 18px;
@@ -155,23 +227,32 @@ main {
   flex-shrink: 0;
 }
 
-
 .bookmark-title {
   font-size: 0.85rem;
-  color: var(--accent);
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;                 /* text vyplní zvyšok riadku */
+  flex: 1;
+  color: var(--accent);
 }
-
 
 .bookmark-title:hover {
   text-decoration: underline;
 }
 
-/* Kontextové menu */
+/* Dark theme override pre text odkazu */
+body.theme-dark .bookmark-title {
+  color: #a8c0ff;
+}
+
+body.theme-dark .bookmark-title:hover {
+  color: #c7d6ff;
+}
+
+/* ─────────────────────────────────────────────
+   KONTEXTOVÉ MENU
+───────────────────────────────────────────── */
 
 #context-menu {
   position: fixed;
@@ -197,6 +278,10 @@ main {
 #context-menu div:hover {
   background: var(--bg-hover);
 }
+
+/* ─────────────────────────────────────────────
+   MODAL OKNÁ
+───────────────────────────────────────────── */
 
 .modal {
   position: fixed;
@@ -261,6 +346,10 @@ main {
   background: var(--bg-hover);
 }
 
+/* ─────────────────────────────────────────────
+   VYHĽADÁVANIE
+───────────────────────────────────────────── */
+
 #search-box {
   padding: 0.35rem 0.6rem;
   border-radius: 4px;
@@ -276,14 +365,35 @@ main {
   outline: 1px solid var(--accent);
 }
 
+/* Pulse efekt pre search box */
+@keyframes pulse-highlight {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent);
+  }
+  70% {
+    box-shadow: 0 0 10px 6px var(--accent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 var(--accent);
+  }
+}
+
+.search-pulse {
+  animation: pulse-highlight 0.6s ease-out;
+}
+
+/* ─────────────────────────────────────────────
+   ZMAZANÉ POLOŽKY
+───────────────────────────────────────────── */
+
 .deleted {
   opacity: 0.4;
   filter: grayscale(100%);
-  pointer-events: auto; /* aby fungoval pravý klik */
+  pointer-events: auto; /* pravý klik stále funguje */
 }
 
 .deleted a {
-  pointer-events: none; /* ale nie klik na URL */
+  pointer-events: none; /* ale klik na URL nie */
 }
 
 .show-deleted-toggle {
@@ -297,6 +407,10 @@ main {
   margin-right: 4px;
 }
 
+/* ─────────────────────────────────────────────
+   SYNC IKONY A OVLÁDANIE
+───────────────────────────────────────────── */
+
 .sync-icon {
   height: 32px;
   aspect-ratio: 1 / 1;
@@ -306,12 +420,6 @@ main {
   opacity: 0.9;
   transition: opacity 0.2s;
 }
-#manage {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 
 .sync-icon:hover {
   opacity: 1;
@@ -326,16 +434,17 @@ main {
   cursor: pointer;
   font-size: 0.9rem;
 }
-/* WebDAV modal */
-#webdav-modal .modal-content {
-  width: 420px;
-  padding: 20px;
+
+/* Kontajner pre ovládacie prvky */
+#manage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-#webdav-modal input {
-  width: 100%;
-  margin-bottom: 10px;
-}
+/* ─────────────────────────────────────────────
+   ICON BUTTONS (Export / Import / Sync)
+───────────────────────────────────────────── */
 
 .icon-btn {
   display: inline-flex;
@@ -353,26 +462,54 @@ main {
   background: #ccc;
 }
 
-.icon-btn.primary {
-  background: #4a8df6;
-  color: white;
+/* Zosúladenie tlačidiel v manage sekcii */
+#manage button,
+#manage .icon-btn {
+  min-width: 100px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  text-align: center;
 }
 
-.icon-btn.primary:hover {
-  background: #3a7be0;
+/* ─────────────────────────────────────────────
+   ROZŠÍRENÉ OVLÁDANIE (DETAILS)
+───────────────────────────────────────────── */
+
+#advanced-controls summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  user-select: none;
 }
 
-.icon-btn.danger {
-  background: #e35a5a;
-  color: white;
+#advanced-controls[open] summary {
+  background: var(--bg-hover);
 }
 
-.icon-btn.danger:hover {
-  background: #d14a4a;
+.advanced-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  padding-left: 4px;
 }
 
-#webdav-status {
-  margin-top: 10px;
-  font-size: 0.9em;
-  min-height: 20px;
+/* ─────────────────────────────────────────────
+   ANIMÁCIE – pulse pre bookmark tile
+───────────────────────────────────────────── */
+
+@keyframes tile-pulse {
+  0% {
+    box-shadow: var(--tile-pulse-shadow);
+  }
+  70% {
+    box-shadow: var(--tile-pulse-shadow-hover);
+  }
+  100% {
+    box-shadow: var(--tile-pulse-shadow);
+  }
 }

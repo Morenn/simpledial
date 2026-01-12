@@ -1,5 +1,6 @@
 import { state, saveState, generateId } from "./state.js";
 import { render } from "./render.js";
+import { syncWrite } from "./sync.js";
 
 // ---------- Vytvorenie bookmark tile ----------
 export function createBookmarkTile(item) {
@@ -121,6 +122,7 @@ bmSave.addEventListener("click", async () => {
   }
 
   await saveState();
+  await syncWrite();
   closeBookmarkModal();
   render();
 });
@@ -146,6 +148,7 @@ export async function handleBookmarkContext(action, el) {
     item.updatedAt = Date.now();
 
     await saveState();
+    await syncWrite();
     render();
   }
 
@@ -155,6 +158,7 @@ export async function handleBookmarkContext(action, el) {
     item.updatedAt = Date.now();
 
     await saveState();
+    await syncWrite();
     render();
   }
 
@@ -163,6 +167,7 @@ export async function handleBookmarkContext(action, el) {
     item.updatedAt = Date.now();
 
     await saveState();
+    await syncWrite();
     render();
   }
 }
