@@ -2,6 +2,7 @@ import { state } from "./state.js";
 import { renderGroups } from "./groups.js";
 import { createBookmarkTile, openBookmarkModal } from "./bookmarks.js";
 import { setupBookmarkDrag } from "./dragdrop.js";
+import { t } from "./i18n.js";
 
 // ======================================================
 // HLAVNÁ RENDER FUNKCIA
@@ -60,7 +61,7 @@ function renderBookmarks() {
     const group = state.groups.find(g => g.id === window.activeGroupId);
 
     if (!group) {
-      grid.innerHTML = `<div class="empty-info">Žiadna skupina nie je aktívna.</div>`;
+      grid.innerHTML = `<div class="empty-info">${t("noActiveGroup")}</div>`;
       return;
     }
 

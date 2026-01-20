@@ -2,6 +2,10 @@ import { loadState, saveState, state } from "./state.js";
 import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
 import { syncRead, startSyncLoop } from "./sync.js";
+import { initLanguage, setLanguage, getCurrentLanguage, t } from "./i18n.js";
+
+// Make t global for modules that don't import it
+window.t = t;
 
 // Aktivácia event listenerov
 import "./groups.js";
@@ -33,13 +37,16 @@ window.addEventListener("keydown", e => {
 
 
 (async function init() {
-  // 1) Načítanie uloženého stavu
+  // 1) Initialize language
+  initLanguage();
+
+  // 2) Načítanie uloženého stavu
   await loadState();
 
-  // 2) Načítanie témy
+  // 3) Načítanie témy
   await loadTheme();
 
-  // 3) Prvotný sync (ak je zapnutý)
+  // 4) Prvotný sync (ak je zapnutý)
   if (state.sync.enabled) {
     const cloud = await syncRead();
 
@@ -51,9 +58,126 @@ window.addEventListener("keydown", e => {
     }
   }
 
-  // 4) Spustiť periodický sync
+  // 5) Spustiť periodický sync
   startSyncLoop();
 
-  // 5) Render UI
+  // 6) Setup language selector
+  setupLanguageSelector();
+
+  // 7) Update initial UI text
+  updateUIText();
+
+  // 8) Render UI
   render();
 })();
+
+// Language selector setup
+function setupLanguageSelector() {
+  const langSelect = document.getElementById("language-select");
+  if (langSelect) {
+    // Set current language
+    langSelect.value = getCurrentLanguage();
+
+    // Handle language change
+    langSelect.addEventListener("change", (e) => {
+      const newLang = e.target.value;
+      if (setLanguage(newLang)) {
+        // Re-render UI with new language
+        render();
+        // Update all UI text
+        updateUIText();
+      }
+    });
+  }
+}
+
+// Update all UI text elements
+function updateUIText() {
+  // Search box
+  const searchBox = document.getElementById("search-box");
+  if (searchBox) searchBox.placeholder = t("searchPlaceholder");
+
+  // Theme toggle
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) themeToggle.title = t("themeToggle");
+
+  // Advanced controls
+  const exportBtn = document.getElementById("export-btn");
+  if (exportBtn) exportBtn.textContent = t("export");
+
+  const importBtn = document.getElementById("import-btn");
+  if (importBtn) importBtn.textContent = t("import");
+
+  const syncBtn = document.getElementById("sync-settings-btn");
+  if (syncBtn) syncBtn.textContent = t("syncSettings");
+
+  const showDeletedLabel = document.querySelector(".show-deleted-toggle");
+  if (showDeletedLabel && showDeletedLabel.lastChild) {
+    showDeletedLabel.lastChild.textContent = t("showDeleted");
+  }
+
+  // Context menu
+  const contextMenu = document.getElementById("context-menu");
+  if (contextMenu) {
+    const editItem = contextMenu.querySelector('[data-action="edit"]');
+    if (editItem) editItem.textContent = t("edit");
+
+    const deleteItem = contextMenu.querySelector('[data-action="delete"]');
+    if (deleteItem) deleteItem.textContent = t("delete");
+
+    const restoreItem = contextMenu.querySelector('[data-action="restore"]');
+    if (restoreItem) restoreItem.textContent = t("restore");
+
+    const refreshItem = contextMenu.querySelector('[data-action="refresh-icon"]');
+    if (refreshItem) refreshItem.textContent = t("refreshIcon");
+  }
+
+  // Bookmark modal
+  const modalTitle = document.getElementById("modal-title");
+  if (modalTitle) {
+    // Title is set dynamically in bookmarks.js, but we can update labels
+    const titleLabel = document.querySelector('label[for="bm-title"]');
+    if (titleLabel) titleLabel.textContent = t("bookmarkTitle");
+
+    const urlLabel = document.querySelector('label[for="bm-url"]');
+    if (urlLabel) urlLabel.textContent = t("bookmarkUrl");
+
+    const iconLabel = document.querySelector('label[for="bm-icon"]');
+    if (iconLabel) iconLabel.textContent = t("bookmarkIcon");
+
+    const saveBtn = document.getElementById("bm-save");
+    if (saveBtn) saveBtn.textContent = t("save");
+
+    const cancelBtn = document.getElementById("bm-cancel");
+    if (cancelBtn) cancelBtn.textContent = t("cancel");
+  }
+
+  // Sync modal
+  const syncModal = document.getElementById("sync-modal");
+  if (syncModal) {
+    const syncTitle = syncModal.querySelector("h2");
+    if (syncTitle) syncTitle.textContent = t("syncServer");
+
+    const serverLabel = syncModal.querySelector("label");
+    if (serverLabel && serverLabel.textContent.includes("Server URL")) {
+      serverLabel.textContent = t("serverUrl");
+    }
+
+    const syncUrl = document.getElementById("sync-url");
+    if (syncUrl) syncUrl.placeholder = "https://sync.local/speeddial.json"; // Keep placeholder as-is for now
+
+    const testBtn = document.getElementById("sync-test");
+    if (testBtn) testBtn.textContent = t("testConnection");
+
+    const enableLabel = syncModal.querySelector(".checkbox-row");
+    if (enableLabel && enableLabel.lastElementChild) {
+      enableLabel.lastElementChild.textContent = t("enableSync");
+    }
+
+    const saveSyncBtn = document.getElementById("sync-save");
+    if (saveSyncBtn) saveSyncBtn.textContent = t("saveSettings");
+
+    const closeBtn = document.getElementById("sync-cancel");
+    if (closeBtn) closeBtn.textContent = t("close");
+  }
+}

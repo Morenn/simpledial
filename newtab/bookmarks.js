@@ -1,6 +1,7 @@
 import { state, saveState, generateId } from "./state.js";
 import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
+import { t } from "./i18n.js";
 
 // ---------- Vytvorenie bookmark tile ----------
 export function createBookmarkTile(item) {
@@ -62,12 +63,12 @@ export function openBookmarkModal(data = null) {
   editingBookmark = data;
 
   if (data) {
-    modalTitle.textContent = "Upraviť záložku";
+    modalTitle.textContent = t("editBookmark");
     bmTitle.value = data.title;
     bmUrl.value = data.url;
     bmIcon.value = data.customIcon || "";
   } else {
-    modalTitle.textContent = "Nová záložka";
+    modalTitle.textContent = t("newBookmark");
     bmTitle.value = "";
     bmUrl.value = "";
     bmIcon.value = "";

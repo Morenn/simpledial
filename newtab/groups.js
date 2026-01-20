@@ -43,7 +43,7 @@ export function renderGroups(show = true) {
   addTab.className = "group-tab add-group";
   addTab.textContent = "+";
   addTab.addEventListener("click", async () => {
-    const name = prompt("Názov novej skupiny:");
+    const name = prompt(window.t("newGroupName"));
     if (!name) return;
 
     const g = {

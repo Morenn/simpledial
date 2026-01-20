@@ -220,16 +220,27 @@ main {
   transform: scale(1.01);
 }
 
-.drop-indicator {
-  position: absolute;
-  border: 3px solid var(--accent);
-  border-radius: 2px;
-  box-shadow: 0 0 12px var(--accent), 0 0 24px var(--accent);
-  z-index: 999;
-  pointer-events: none;
-  transition: all 0.15s ease;
-  opacity: 0.9;
-  background: rgba(74, 106, 255, 0.1);
+.language-selector {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.language-selector label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.language-selector select {
+  width: 100%;
+  padding: 0.25rem;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
 }
 
 .bookmark-tile.add-bookmark {

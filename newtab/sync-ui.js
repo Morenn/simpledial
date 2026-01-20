@@ -1,5 +1,6 @@
 import { state, saveState } from "./state.js";
 import { loadSyncConfig, saveSyncConfig, testSyncConnection, requestHostPermission } from "./sync.js";
+import { t } from "./i18n.js";
 
 // ---------- DOM prvky ----------
 const syncModal = document.getElementById("sync-modal");
@@ -37,7 +38,7 @@ syncTest.addEventListener("click", async () => {
   const url = syncUrl.value.trim();
 
   if (!url) {
-    syncStatus.textContent = "❌ Vyplň URL.";
+    syncStatus.textContent = t("fillUrl");
     return;
   }
 
@@ -45,19 +46,19 @@ syncTest.addEventListener("click", async () => {
   const granted = await requestHostPermission(url);
 
   if (!granted) {
-    syncStatus.textContent = "❌ Povolenie odmietnuté. Nie je možné otestovať spojenie.";
+    syncStatus.textContent = t("permissionDenied");
     return;
   }
 
   // 2) Test spojenia
-  syncStatus.textContent = "🔍 Testujem pripojenie...";
+  syncStatus.textContent = t("testingConnection");
 
   const ok = await testSyncConnection(url);
 
   if (ok) {
-    syncStatus.textContent = "✅ Sync server odpovedá.";
+    syncStatus.textContent = t("serverResponds");
   } else {
-    syncStatus.textContent = "❌ Sync server neodpovedá.";
+    syncStatus.textContent = t("serverNotResponds");
   }
 });
 
