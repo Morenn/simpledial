@@ -1,5 +1,5 @@
 import { state, saveState } from "./state.js";
-import { loadSyncConfig, saveSyncConfig, testSyncConnection } from "./sync.js";
+import { loadSyncConfig, saveSyncConfig, testSyncConnection, requestHostPermission } from "./sync.js";
 
 // ---------- DOM prvky ----------
 const syncModal = document.getElementById("sync-modal");
@@ -41,6 +41,15 @@ syncTest.addEventListener("click", async () => {
     return;
   }
 
+  // 1) Požiadať o povolenie
+  const granted = await requestHostPermission(url);
+
+  if (!granted) {
+    syncStatus.textContent = "❌ Povolenie odmietnuté. Nie je možné otestovať spojenie.";
+    return;
+  }
+
+  // 2) Test spojenia
   syncStatus.textContent = "🔍 Testujem pripojenie...";
 
   const ok = await testSyncConnection(url);

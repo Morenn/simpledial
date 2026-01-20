@@ -11,9 +11,8 @@
     "downloads",
     "webRequestAuthProvider"
   ],
-  "host_permissions": [
-    "https://sync.local/*"
-  ],
+  "host_permissions": [],
+  "optional_host_permissions": [ "*://*/*" ],
   "icons": {
     "128": "icons/icon-128.ico"
   }

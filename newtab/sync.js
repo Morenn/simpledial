@@ -40,6 +40,16 @@ export async function testSyncConnection(url) {
   }
 }
 
+export async function requestHostPermission(url) {
+  const origin = url.replace(/\/+$/, "") + "/*";
+
+  const granted = await chrome.permissions.request({
+    origins: [origin]
+  });
+
+  return granted;
+}
+
 // ─────────────────────────────────────────────────────────────
 //  INITIALIZE REMOTE FILE
 // ─────────────────────────────────────────────────────────────
