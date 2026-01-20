@@ -169,6 +169,7 @@ main {
   row-gap: 10px;
   width: min(90%, 100%);
   height: min(10%, 100%);
+  position: relative;
 }
 
 /* ─────────────────────────────────────────────
@@ -208,8 +209,27 @@ main {
 }
 
 .bookmark-tile.dragging {
-  opacity: 0.5;
-  border: 1px dashed var(--accent);
+  opacity: 0.9;
+  transform: rotate(1deg) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  border: 2px solid var(--accent);
+}
+.bookmark-tile.drop-target {
+  box-shadow: var(--tile-shadow-hover),
+              0 0 15px var(--accent);
+  transform: scale(1.01);
+}
+
+.drop-indicator {
+  position: absolute;
+  border: 3px solid var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 12px var(--accent), 0 0 24px var(--accent);
+  z-index: 999;
+  pointer-events: none;
+  transition: all 0.15s ease;
+  opacity: 0.9;
+  background: rgba(74, 106, 255, 0.1);
 }
 
 .bookmark-tile.add-bookmark {
