@@ -12,6 +12,7 @@ export function setupBookmarkDrag() {
   let dropIndicator = null;
   let dragPlaceholder = null;
   let autoScrollInterval = null;
+  let lastTargetIndex = -1;
 
   // Create drop indicator element
   function createDropIndicator() {
@@ -28,7 +29,7 @@ export function setupBookmarkDrag() {
     dragPlaceholder.classList.add("drag-placeholder");
     dragPlaceholder.classList.remove("dragging");
     dragPlaceholder.style.pointerEvents = "none";
-    bookmarksGrid.insertBefore(dragPlaceholder, element.nextSibling);
+    dragPlaceholder.style.opacity = "0.4";
   }
 
   // Remove drag placeholder
@@ -70,70 +71,50 @@ export function setupBookmarkDrag() {
   }
 
   // Update drop indicator position
-  function updateDropIndicator(afterElement, mouseX, mouseY) {
-    if (!dropIndicator) return;
-
-    // Clear previous highlights
-    bookmarksGrid.querySelectorAll(".bookmark-tile").forEach(tile => {
-      tile.classList.remove("drop-target");
-    });
-
-    if (!afterElement) {
-      // No valid drop position - hide indicator
+  function updateDropIndicator(targetIndex) {
+    if (!dropIndicator || targetIndex === -1) {
       dropIndicator.style.display = "none";
       return;
     }
 
+    const allTiles = [...bookmarksGrid.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark)")];
+    if (targetIndex >= allTiles.length) {
+      dropIndicator.style.display = "none";
+      return;
+    }
+
+    const targetElement = allTiles[targetIndex];
     const gridRect = bookmarksGrid.getBoundingClientRect();
-    const rect = afterElement.getBoundingClientRect();
+    const rect = targetElement.getBoundingClientRect();
 
-    // Find which element we're hovering over to determine indicator position
-    let hoveredElement = null;
-    const allTiles = [...bookmarksGrid.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark):not(.drag-placeholder)")];
-    for (const el of allTiles) {
-      const box = el.getBoundingClientRect();
-      if (mouseX >= box.left && mouseX <= box.right &&
-          mouseY >= box.top && mouseY <= box.bottom) {
-        hoveredElement = el;
-        break;
-      }
-    }
-
-    if (hoveredElement) {
-      const box = hoveredElement.getBoundingClientRect();
-      const centerX = box.left + box.width / 2;
-
-      if (mouseX < centerX) {
-        // Show indicator on the left side
-        dropIndicator.style.left = (box.left - gridRect.left - 6) + "px";
-        dropIndicator.style.top = (box.top - gridRect.top - 4) + "px";
-        dropIndicator.style.width = "4px";
-        dropIndicator.style.height = box.height + 8 + "px";
-      } else {
-        // Show indicator on the right side
-        dropIndicator.style.left = (box.right - gridRect.left + 2) + "px";
-        dropIndicator.style.top = (box.top - gridRect.top - 4) + "px";
-        dropIndicator.style.width = "4px";
-        dropIndicator.style.height = box.height + 8 + "px";
-      }
-      dropIndicator.style.display = "block";
-    } else {
-      // Fallback: show around the target element
-      dropIndicator.style.left = (rect.left - gridRect.left - 4) + "px";
-      dropIndicator.style.top = (rect.top - gridRect.top - 4) + "px";
-      dropIndicator.style.width = rect.width + 8 + "px";
-      dropIndicator.style.height = rect.height + 8 + "px";
-      dropIndicator.style.display = "block";
-    }
-
-    // Highlight the target tile
-    afterElement.classList.add("drop-target");
+    // Show indicator before the target element
+    dropIndicator.style.left = (rect.left - gridRect.left - 2) + "px";
+    dropIndicator.style.top = (rect.top - gridRect.top - 4) + "px";
+    dropIndicator.style.width = "3px";
+    dropIndicator.style.height = rect.height + 8 + "px";
+    dropIndicator.style.display = "block";
   }
 
   // Hide drop indicator
   function hideDropIndicator() {
     if (dropIndicator) {
       dropIndicator.style.display = "none";
+    }
+  }
+
+  // Move placeholder to target position
+  function movePlaceholder(targetIndex) {
+    if (!dragPlaceholder) return;
+
+    const allTiles = [...bookmarksGrid.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark)")];
+    const addTile = bookmarksGrid.querySelector(".add-bookmark");
+
+    if (targetIndex === -1 || targetIndex >= allTiles.length) {
+      // Move to end (before add-bookmark)
+      bookmarksGrid.insertBefore(dragPlaceholder, addTile);
+    } else {
+      // Move before target element
+      bookmarksGrid.insertBefore(dragPlaceholder, allTiles[targetIndex]);
     }
   }
 
@@ -154,13 +135,15 @@ export function setupBookmarkDrag() {
 
       stopAutoScroll();
       hideDropIndicator();
-      removeDragPlaceholder();
       
-      // Clear all highlights
-      bookmarksGrid.querySelectorAll(".bookmark-tile").forEach(tile => {
-        tile.classList.remove("drop-target");
-      });
-
+      // Move dragged item to placeholder's position before removing it
+      if (dragPlaceholder && dragPlaceholder.parentNode) {
+        bookmarksGrid.insertBefore(dragged, dragPlaceholder);
+      }
+      
+      removeDragPlaceholder();
+      lastTargetIndex = -1;
+      
       tile.classList.remove("dragging");
       dragged = null;
 
@@ -168,7 +151,7 @@ export function setupBookmarkDrag() {
       if (!group) return;
 
       const ids = [...bookmarksGrid.querySelectorAll(".bookmark-tile")]
-        .filter(el => !el.classList.contains("add-bookmark") && !el.classList.contains("drag-placeholder"))
+        .filter(el => !el.classList.contains("add-bookmark"))
         .map(el => el.dataset.bookmarkId);
 
       group.items.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
@@ -190,27 +173,13 @@ export function setupBookmarkDrag() {
     if (now - lastDragOverTime < 16) return; // ~60fps
     lastDragOverTime = now;
 
-    const after = getAfterElementGrid(bookmarksGrid, e.clientX, e.clientY);
-    updateDropIndicator(after, e.clientX, e.clientY);
-
-    const addTile = bookmarksGrid.querySelector(".add-bookmark");
-
-    if (!after) {
-      // Move dragged item to before add-bookmark
-      if (dragPlaceholder) {
-        bookmarksGrid.insertBefore(dragPlaceholder, addTile);
-        bookmarksGrid.insertBefore(dragged, dragPlaceholder);
-      } else {
-        bookmarksGrid.insertBefore(dragged, addTile);
-      }
-    } else if (after !== dragPlaceholder) {
-      // Move dragged item before the target
-      if (dragPlaceholder) {
-        bookmarksGrid.insertBefore(dragPlaceholder, after);
-        bookmarksGrid.insertBefore(dragged, dragPlaceholder);
-      } else {
-        bookmarksGrid.insertBefore(dragged, after);
-      }
+    const targetIndex = getDropIndex(bookmarksGrid, e.clientX, e.clientY);
+    
+    // Only move placeholder if target changed
+    if (targetIndex !== lastTargetIndex) {
+      lastTargetIndex = targetIndex;
+      movePlaceholder(targetIndex);
+      updateDropIndicator(targetIndex);
     }
   });
 
@@ -220,12 +189,56 @@ export function setupBookmarkDrag() {
     if (!bookmarksGrid.contains(e.relatedTarget)) {
       stopAutoScroll();
       hideDropIndicator();
-      // Clear all highlights
-      bookmarksGrid.querySelectorAll(".bookmark-tile").forEach(tile => {
-        tile.classList.remove("drop-target");
-      });
     }
   });
+}
+
+function getDropIndex(container, mouseX, mouseY) {
+  const allTiles = [...container.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark)")];
+
+  if (allTiles.length === 0) return -1;
+
+  // Find which element the mouse is over
+  let hoveredElement = null;
+  for (const el of allTiles) {
+    const box = el.getBoundingClientRect();
+    if (mouseX >= box.left && mouseX <= box.right &&
+        mouseY >= box.top && mouseY <= box.bottom) {
+      hoveredElement = el;
+      break;
+    }
+  }
+
+  if (hoveredElement) {
+    const box = hoveredElement.getBoundingClientRect();
+    const centerX = box.left + box.width / 2;
+
+    // Simple left/right detection
+    if (mouseX < centerX) {
+      // Insert before this element
+      return allTiles.indexOf(hoveredElement);
+    } else {
+      // Insert after this element
+      return allTiles.indexOf(hoveredElement) + 1;
+    }
+  }
+
+  // Mouse not over any element - find closest
+  let closest = { distance: Number.MAX_VALUE, index: -1 };
+
+  allTiles.forEach((el, index) => {
+    const box = el.getBoundingClientRect();
+    const centerX = box.left + box.width / 2;
+    const centerY = box.top + box.height / 2;
+
+    const distance = Math.sqrt(Math.pow(mouseX - centerX, 2) + Math.pow(mouseY - centerY, 2));
+
+    if (distance < closest.distance) {
+      closest = { distance, index };
+    }
+  });
+
+  return closest.index;
 }
 
 function getAfterElementVertical(container, mouseY) {
@@ -241,71 +254,6 @@ function getAfterElementVertical(container, mouseY) {
     }
   });
 
-  return closest.element;
-}
-
-function getAfterElementGrid(container, mouseX, mouseY) {
-  const els = [...container.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark):not(.drag-placeholder)")];
-
-  if (els.length === 0) return null;
-
-  // Find which element the mouse is over (if any)
-  let hoveredElement = null;
-  for (const el of els) {
-    const box = el.getBoundingClientRect();
-    if (mouseX >= box.left && mouseX <= box.right &&
-        mouseY >= box.top && mouseY <= box.bottom) {
-      hoveredElement = el;
-      break;
-    }
-  }
-
-  if (hoveredElement) {
-    // Mouse is over an element - determine left/right half for precise positioning
-    const box = hoveredElement.getBoundingClientRect();
-    const centerX = box.left + box.width / 2;
-    const centerY = box.top + box.height / 2;
-
-    // Use a smaller region in the center to avoid accidental drops
-    const deadZone = 20; // pixels from center where no drop is allowed
-
-    if (Math.abs(mouseX - centerX) < deadZone && Math.abs(mouseY - centerY) < deadZone) {
-      // Mouse is in the center dead zone - no drop allowed
-      return null;
-    }
-
-    // Determine drop position based on quadrants
-    const inLeftHalf = mouseX < centerX;
-    const inTopHalf = mouseY < centerY;
-
-    if (inLeftHalf) {
-      // Left side - insert before this element
-      return hoveredElement;
-    } else {
-      // Right side - insert after this element
-      const nextSibling = hoveredElement.nextElementSibling;
-      return nextSibling && !nextSibling.classList.contains('add-bookmark') ? nextSibling : null;
-    }
-  }
-
-  // Mouse is not over any element - find closest element for drop
-  let closest = { distance: Number.MAX_VALUE, element: null };
-
-  els.forEach(el => {
-    const box = el.getBoundingClientRect();
-    const centerX = box.left + box.width / 2;
-    const centerY = box.top + box.height / 2;
-
-    const distance = Math.sqrt(Math.pow(mouseX - centerX, 2) + Math.pow(mouseY - centerY, 2));
-
-    if (distance < closest.distance) {
-      closest = { distance, element: el };
-    }
-  });
-
-  if (!closest.element) return null;
-
-  // For elements not directly hovered, default to inserting before
   return closest.element;
 }
 
