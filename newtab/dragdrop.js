@@ -10,6 +10,8 @@ export function setupBookmarkDrag() {
   let dragged = null;
   let lastDragOverTime = 0;
   let dropIndicator = null;
+  let dragPlaceholder = null;
+  let autoScrollInterval = null;
 
   // Create drop indicator element
   function createDropIndicator() {
@@ -18,6 +20,53 @@ export function setupBookmarkDrag() {
     dropIndicator.className = "drop-indicator";
     dropIndicator.style.display = "none";
     bookmarksGrid.appendChild(dropIndicator);
+  }
+
+  // Create drag placeholder (ghost element)
+  function createDragPlaceholder(element) {
+    dragPlaceholder = element.cloneNode(true);
+    dragPlaceholder.classList.add("drag-placeholder");
+    dragPlaceholder.classList.remove("dragging");
+    dragPlaceholder.style.pointerEvents = "none";
+    bookmarksGrid.insertBefore(dragPlaceholder, element.nextSibling);
+  }
+
+  // Remove drag placeholder
+  function removeDragPlaceholder() {
+    if (dragPlaceholder && dragPlaceholder.parentNode) {
+      dragPlaceholder.remove();
+      dragPlaceholder = null;
+    }
+  }
+
+  // Auto-scroll function
+  function startAutoScroll(e) {
+    stopAutoScroll();
+    
+    const main = document.querySelector("main");
+    if (!main) return;
+
+    const SCROLL_THRESHOLD = 80; // pixels from edge
+    const SCROLL_SPEED = 5; // pixels per frame
+
+    autoScrollInterval = setInterval(() => {
+      const mainRect = main.getBoundingClientRect();
+      const distanceFromBottom = mainRect.bottom - e.clientY;
+      const distanceFromTop = e.clientY - mainRect.top;
+
+      if (distanceFromBottom < SCROLL_THRESHOLD && main.scrollHeight > main.clientHeight) {
+        main.scrollBy(0, SCROLL_SPEED);
+      } else if (distanceFromTop < SCROLL_THRESHOLD && main.scrollTop > 0) {
+        main.scrollBy(0, -SCROLL_SPEED);
+      }
+    }, 16); // ~60fps
+  }
+
+  function stopAutoScroll() {
+    if (autoScrollInterval) {
+      clearInterval(autoScrollInterval);
+      autoScrollInterval = null;
+    }
   }
 
   // Update drop indicator position
@@ -93,15 +142,20 @@ export function setupBookmarkDrag() {
 
     tile.addEventListener("dragstart", e => {
       createDropIndicator();
+      createDragPlaceholder(tile);
       dragged = tile;
       tile.classList.add("dragging");
       e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setDragImage(new Image(), 0, 0); // Hide default ghost image
     });
 
     tile.addEventListener("dragend", async () => {
       if (!dragged) return;
 
+      stopAutoScroll();
       hideDropIndicator();
+      removeDragPlaceholder();
+      
       // Clear all highlights
       bookmarksGrid.querySelectorAll(".bookmark-tile").forEach(tile => {
         tile.classList.remove("drop-target");
@@ -114,7 +168,7 @@ export function setupBookmarkDrag() {
       if (!group) return;
 
       const ids = [...bookmarksGrid.querySelectorAll(".bookmark-tile")]
-        .filter(el => !el.classList.contains("add-bookmark"))
+        .filter(el => !el.classList.contains("add-bookmark") && !el.classList.contains("drag-placeholder"))
         .map(el => el.dataset.bookmarkId);
 
       group.items.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
@@ -128,6 +182,9 @@ export function setupBookmarkDrag() {
     e.preventDefault();
     if (!dragged) return;
 
+    // Start auto-scroll
+    startAutoScroll(e);
+
     // Throttle dragover events to reduce DOM operations
     const now = Date.now();
     if (now - lastDragOverTime < 16) return; // ~60fps
@@ -139,9 +196,21 @@ export function setupBookmarkDrag() {
     const addTile = bookmarksGrid.querySelector(".add-bookmark");
 
     if (!after) {
-      bookmarksGrid.insertBefore(dragged, addTile);
-    } else {
-      bookmarksGrid.insertBefore(dragged, after);
+      // Move dragged item to before add-bookmark
+      if (dragPlaceholder) {
+        bookmarksGrid.insertBefore(dragPlaceholder, addTile);
+        bookmarksGrid.insertBefore(dragged, dragPlaceholder);
+      } else {
+        bookmarksGrid.insertBefore(dragged, addTile);
+      }
+    } else if (after !== dragPlaceholder) {
+      // Move dragged item before the target
+      if (dragPlaceholder) {
+        bookmarksGrid.insertBefore(dragPlaceholder, after);
+        bookmarksGrid.insertBefore(dragged, dragPlaceholder);
+      } else {
+        bookmarksGrid.insertBefore(dragged, after);
+      }
     }
   });
 
@@ -149,6 +218,7 @@ export function setupBookmarkDrag() {
   bookmarksGrid.addEventListener("dragleave", e => {
     // Only hide if we're actually leaving the grid (not just moving over children)
     if (!bookmarksGrid.contains(e.relatedTarget)) {
+      stopAutoScroll();
       hideDropIndicator();
       // Clear all highlights
       bookmarksGrid.querySelectorAll(".bookmark-tile").forEach(tile => {

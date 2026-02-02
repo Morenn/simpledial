@@ -191,7 +191,9 @@ main {
   overflow: hidden;
   transition: background 0.15s ease,
               box-shadow 0.15s ease,
-              transform 0.1s ease;
+              transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.2s ease,
+              filter 0.2s ease;
 }
 
 /* Hover + pulse */
@@ -209,15 +211,38 @@ main {
 }
 
 .bookmark-tile.dragging {
-  opacity: 0.9;
-  transform: rotate(1deg) scale(1.02);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  opacity: 0.7;
+  transform: rotate(2deg) scale(1.05);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5);
   border: 2px solid var(--accent);
+  cursor: grabbing;
+  filter: drop-shadow(0 0 8px var(--accent));
 }
+
+.bookmark-tile.drag-placeholder {
+  background: transparent;
+  border: 2px dashed var(--accent);
+  box-shadow: none;
+  opacity: 0.4;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 .bookmark-tile.drop-target {
   box-shadow: var(--tile-shadow-hover),
               0 0 15px var(--accent);
-  transform: scale(1.01);
+  transform: scale(1.02);
+}
+
+.drop-indicator {
+  position: absolute;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: all 0.15s ease;
+  box-shadow: 0 0 8px var(--accent),
+              0 0 16px rgba(74, 107, 255, 0.4);
+  z-index: 1000;
 }
 
 .language-selector {
