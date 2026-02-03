@@ -101,6 +101,7 @@ body {
   gap: 0.4rem;
   padding-bottom: 0.2rem;
   overflow-x: visible;
+  align-items: center;
 }
 
 .group-tab {
@@ -130,6 +131,121 @@ body {
 .group-tab.dragging {
   opacity: 0.5;
   border: 1px dashed var(--accent);
+}
+
+/* ─────────────────────────────────────────────
+   GROUPS DROPDOWN MENU
+───────────────────────────────────────────── */
+
+.groups-dropdown-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.groups-dropdown-btn {
+  padding: 0.35rem 0.8rem;
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.groups-dropdown-btn:hover {
+  background: var(--bg-hover);
+}
+
+.groups-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  display: none;
+}
+
+.groups-dropdown-menu.show {
+  display: block;
+}
+
+.groups-dropdown-option {
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.85rem;
+  transition: background 0.1s ease;
+  border-left: 3px solid transparent;
+}
+
+.groups-dropdown-option:hover {
+  background: var(--bg-hover);
+}
+
+.groups-dropdown-option.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  border-left-color: var(--accent-text);
+}
+
+.groups-dropdown-option.deleted {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.add-group-option {
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 0.25rem;
+}
+
+.add-group-option:hover {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* ─────────────────────────────────────────────
+   CONTEXT MENU
+───────────────────────────────────────────── */
+
+.context-menu {
+  position: fixed;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 10000;
+  min-width: 120px;
+}
+
+.context-menu div {
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.85rem;
+  transition: background 0.1s ease;
+  border-bottom: 1px solid var(--border);
+}
+
+.context-menu div:last-child {
+  border-bottom: none;
+}
+
+.context-menu div:hover {
+  background: var(--bg-hover);
 }
 
 /* ─────────────────────────────────────────────

@@ -220,6 +220,9 @@ let resizeTimeout;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimeout);
   resizeTimeout = setTimeout(() => {
+    // Re-render groups to check if dropdown is needed
+    renderGroups(true);
+    // Recalculate grid layout
     calculateGridLayout();
   }, 250); // Debounce to avoid excessive recalculations
 });
