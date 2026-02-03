@@ -157,7 +157,7 @@ export function setupBookmarkDrag() {
       group.items.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 
       await saveState();
-      render();
+      await render();
     });
   });
 
@@ -287,7 +287,7 @@ export function setupGroupDrag() {
       state.groups.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 
       await saveState();
-      render();
+      await render();
     });
   });
 
