@@ -19,17 +19,17 @@ export function createBookmarkTile(item) {
   link.className = "bookmark-title";
   link.href = item.url;
   link.textContent = item.title || item.url;
-  link.target = "_blank";
+  link.removeAttribute("target");
 
   link.addEventListener("click", e => {
     e.preventDefault();
-    window.open(item.url, "_blank");
+    window.location.href = item.url;
   });
 
   tile.addEventListener("click", e => {
     if (e.target.tagName.toLowerCase() === "a") return;
     if (e.button === 2) return;
-    window.open(item.url, "_blank");
+    window.location.href = item.url;
   });
 
   tile.appendChild(icon);
