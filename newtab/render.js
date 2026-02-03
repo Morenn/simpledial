@@ -7,10 +7,10 @@ import { t } from "./i18n.js";
 // ======================================================
 // GRID LAYOUT CONSTANTS
 // ======================================================
-const TILE_HEIGHT = 50; // tile height + row gap (40px + 10px)
-const COLUMN_WIDTH = 300; // column width in pixels
-const INITIAL_HEIGHT_RATIO = 0.5; // Start with 50% of browser height
-const MAX_HEIGHT_RATIO = 0.9; // Extend to 90% if needed
+const TILE_HEIGHT = 43; // tile height + row gap (40px + 3px)
+const COLUMN_WIDTH = 360; // column width in pixels (20% wider)
+const INITIAL_HEIGHT_RATIO = 0.75; // Start with 70% of browser height
+const MAX_HEIGHT_RATIO = 0.95; // Extend to 90% if needed
 
 // ======================================================
 // CALCULATE AND APPLY DYNAMIC GRID LAYOUT
@@ -27,7 +27,7 @@ function calculateGridLayout() {
   const tiles = grid.querySelectorAll(".bookmark-tile").length;
   
   if (tiles === 0) {
-    grid.style.gridTemplateRows = `repeat(1, 50px)`;
+    grid.style.gridTemplateRows = `repeat(1, ${TILE_HEIGHT}px)`;
     return;
   }
   
@@ -48,28 +48,37 @@ function calculateGridLayout() {
   }
   
   // Calculate tiles per column to fit within max columns
-  let tilesPerColumn = Math.ceil(tiles / maxColumnsForWidth);
+  // Prefer filling columns up to INITIAL_HEIGHT_RATIO before adding columns
+  const tilesPerColumnFromHeight = Math.max(1, Math.floor((availableHeight * INITIAL_HEIGHT_RATIO) / TILE_HEIGHT));
+
+  let tilesPerColumn;
+  // If using the height-limited tiles per column would require no more columns
+  // than fit in the available width, prefer that; otherwise fall back to width-driven split.
+  const requiredColumnsIfUsingHeight = Math.ceil(tiles / tilesPerColumnFromHeight);
+  if (requiredColumnsIfUsingHeight <= maxColumnsForWidth) {
+    tilesPerColumn = tilesPerColumnFromHeight;
+  } else {
+    tilesPerColumn = Math.ceil(tiles / maxColumnsForWidth);
+  }
   
   // Adjust if height exceeds viewport, extending height limits gradually
   const requiredHeight = tilesPerColumn * TILE_HEIGHT;
   
   if (requiredHeight > availableHeight) {
-    // Try to optimize for viewport: try 70% and 90% height ratios
-    const heightRatio70 = Math.max(1, Math.floor((availableHeight * 0.7) / TILE_HEIGHT));
-    const heightRatio90 = Math.max(1, Math.floor((availableHeight * 0.9) / TILE_HEIGHT));
-    
-    if (heightRatio70 >= tilesPerColumn) {
-      // Can fit within 70% height
-      tilesPerColumn = heightRatio70;
-    } else if (heightRatio90 >= tilesPerColumn) {
-      // Can fit within 90% height
-      tilesPerColumn = heightRatio90;
+    // Try to optimize for viewport: try INITIAL_HEIGHT_RATIO and MAX_HEIGHT_RATIO
+    const heightRatioInitial = Math.max(1, Math.floor((availableHeight * INITIAL_HEIGHT_RATIO) / TILE_HEIGHT));
+    const heightRatioMax = Math.max(1, Math.floor((availableHeight * MAX_HEIGHT_RATIO) / TILE_HEIGHT));
+
+    if (heightRatioInitial >= tilesPerColumn) {
+      tilesPerColumn = heightRatioInitial;
+    } else if (heightRatioMax >= tilesPerColumn) {
+      tilesPerColumn = heightRatioMax;
     }
     // Otherwise allow scrolling beyond viewport
   }
 
   // Set grid template rows based on calculated tiles per column
-  grid.style.gridTemplateRows = `repeat(${tilesPerColumn}, 50px)`;
+  grid.style.gridTemplateRows = `repeat(${tilesPerColumn}, ${TILE_HEIGHT}px)`;
 }
 
 // ======================================================
