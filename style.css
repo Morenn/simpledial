@@ -260,6 +260,8 @@ body {
   padding: 0.2rem 0.6rem;
   cursor: pointer;
   font-size: 0.9rem;
+  min-width: 0 !important;
+  width: auto !important;
 }
 
 #theme-toggle:hover {
