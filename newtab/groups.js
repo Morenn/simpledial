@@ -1,6 +1,7 @@
 import { state, saveState, generateId } from "./state.js";
 import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
+import { t } from "./i18n.js";
 
 // ---------- Render skupín ----------
 export function renderGroups(show = true) {
@@ -15,7 +16,9 @@ export function renderGroups(show = true) {
   groupsHeader.innerHTML = "";
 
   // Get visible groups count
-  const visibleGroups = state.groups.filter(g => !(g.deleted && !window.showDeletedGroups));
+  const showDeletedToggle = document.getElementById("show-deleted-toggle");
+  const showDeleted = showDeletedToggle ? showDeletedToggle.checked : false;
+  const visibleGroups = state.groups.filter(g => !(g.deleted && !showDeleted));
   
   // Check if we need dropdown by simulating layout
   const needsDropdown = shouldUseDropdown(visibleGroups.length + 1); // +1 for add button
@@ -199,9 +202,9 @@ function showGroupContextMenu(e, group, optionElement) {
   menu.style.top = e.clientY + "px";
 
   const editBtn = document.createElement("div");
-  editBtn.textContent = "Edit";
+  editBtn.textContent = t("edit");
   editBtn.addEventListener("click", async () => {
-    const newName = prompt("New group name:", group.name);
+    const newName = prompt(t("editGroup"), group.name);
     if (newName && newName.trim()) {
       group.name = newName.trim();
       group.updatedAt = Date.now();
@@ -213,10 +216,8 @@ function showGroupContextMenu(e, group, optionElement) {
   });
 
   const deleteBtn = document.createElement("div");
-  deleteBtn.textContent = "Delete";
+  deleteBtn.textContent = t("delete");
   deleteBtn.addEventListener("click", async () => {
-    if (!confirm(`Delete group "${group.name}"?`)) return;
-
     group.deleted = true;
     group.deletedAt = Date.now();
     group.updatedAt = Date.now();
@@ -232,12 +233,56 @@ function showGroupContextMenu(e, group, optionElement) {
     document.body.removeChild(menu);
   });
 
-  menu.appendChild(editBtn);
-  menu.appendChild(deleteBtn);
+  const restoreBtn = document.createElement("div");
+  restoreBtn.textContent = t("restore");
+  restoreBtn.addEventListener("click", async () => {
+    group.deleted = false;
+    group.deletedAt = null;
+    group.updatedAt = Date.now();
+
+    await saveState();
+    await syncWrite();
+    render();
+    document.body.removeChild(menu);
+  });
+
+  const deletePermanentBtn = document.createElement("div");
+  deletePermanentBtn.textContent = t("deletePermanent");
+  deletePermanentBtn.addEventListener("click", async () => {
+    const confirmMsg = t("confirmDeletePermanentGroup").replace("{0}", group.name);
+    if (!confirm(confirmMsg)) return;
+
+    const groupIndex = state.groups.findIndex(g => g.id === group.id);
+    if (groupIndex > -1) {
+      state.groups.splice(groupIndex, 1);
+    }
+
+    if (window.activeGroupId === group.id) {
+      const firstActive = state.groups.find(g => !g.deleted);
+      window.activeGroupId = firstActive ? firstActive.id : null;
+    }
+
+    await saveState();
+    await syncWrite();
+    render();
+    document.body.removeChild(menu);
+  });
+
+  // Show/hide buttons based on deleted status
+  if (group.deleted) {
+    menu.appendChild(restoreBtn);
+    menu.appendChild(deletePermanentBtn);
+  } else {
+    menu.appendChild(editBtn);
+    menu.appendChild(deleteBtn);
+  }
+
   document.body.appendChild(menu);
 
   setTimeout(() => {
-    document.body.removeChild(menu);
+    if (document.body.contains(menu)) {
+      document.body.removeChild(menu);
+    }
   }, 5000);
 }
 
@@ -320,8 +365,6 @@ export async function handleGroupContext(action, el) {
   }
 
   if (action === "delete") {
-    if (!confirm(`Vymazať skupinu "${group.name}"?`)) return;
-
     group.deleted = true;
     group.deletedAt = Date.now();
     group.updatedAt = Date.now();
@@ -340,6 +383,24 @@ export async function handleGroupContext(action, el) {
     group.deleted = false;
     group.deletedAt = null;
     group.updatedAt = Date.now();
+
+    await saveState();
+    await syncWrite();
+    render();
+  }
+
+  if (action === "delete-permanent") {
+    if (!confirm(`Vymazať skupinu "${group.name}" natrvalo? Túto operáciu nie je možné vrátiť.`)) return;
+
+    const groupIndex = state.groups.findIndex(g => g.id === id);
+    if (groupIndex > -1) {
+      state.groups.splice(groupIndex, 1);
+    }
+
+    if (window.activeGroupId === id) {
+      const firstActive = state.groups.find(g => !g.deleted);
+      window.activeGroupId = firstActive ? firstActive.id : null;
+    }
 
     await saveState();
     await syncWrite();

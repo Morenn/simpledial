@@ -1,10 +1,10 @@
 import { state, saveState, generateId } from "./state.js";
 import { render } from "./render.js";
-import { syncWrite } from "./sync.js";
+import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
 
 // ---------- Vytvorenie bookmark tile ----------
-export function createBookmarkTile(item) {
+export function createBookmarkTile(item, config = null) {
   const tile = document.createElement("div");
   tile.className = "bookmark-tile";
   tile.draggable = true;
@@ -34,6 +34,17 @@ export function createBookmarkTile(item) {
 
   tile.appendChild(icon);
   tile.appendChild(link);
+
+  // Add dead link indicator only if:
+  // 1. Link has errors (hasError flag is true)
+  // 2. Dead link highlighting is enabled in config
+  if (item.hasError && config?.housekeeper?.highlightDeadLinks !== false) {
+    const errorIndicator = document.createElement("div");
+    errorIndicator.className = "bookmark-error-indicator";
+    errorIndicator.textContent = "✗";
+    errorIndicator.title = "This link is not responding";
+    tile.appendChild(errorIndicator);
+  }
 
   return tile;
 }
@@ -125,6 +136,24 @@ bmSave.addEventListener("click", async () => {
   await saveState();
   await syncWrite();
   closeBookmarkModal();
+  
+  // Check link health asynchronously and update timestamp only on change
+  const itemToCheck = editingBookmark || group.items[group.items.length - 1];
+  if (itemToCheck && itemToCheck.url) {
+    try {
+      const isValid = await validateSingleLink(itemToCheck.url);
+      const newHasError = !isValid;
+      if (itemToCheck.hasError !== newHasError) {
+        itemToCheck.hasError = newHasError;
+        itemToCheck.updatedAt = Date.now();
+        await saveState();
+        await syncWrite();
+      }
+    } catch (e) {
+      console.error('Link validation failed:', e);
+    }
+  }
+
   render();
 });
 
@@ -142,8 +171,6 @@ export async function handleBookmarkContext(action, el) {
   }
 
   if (action === "delete") {
-    if (!confirm(`Vymazať záložku "${item.title}"?`)) return;
-
     item.deleted = true;
     item.deletedAt = Date.now();
     item.updatedAt = Date.now();
@@ -166,6 +193,22 @@ export async function handleBookmarkContext(action, el) {
   if (action === "refresh-icon") {
     item.customIcon = null;
     item.updatedAt = Date.now();
+
+    await saveState();
+    await syncWrite();
+    render();
+  }
+
+  if (action === "delete-permanent") {
+    const confirmMsg = t("confirmDeletePermanentBookmark").replace("{0}", item.title);
+    if (!confirm(confirmMsg)) return;
+
+    // Permanently remove from array
+    const index = group.items.indexOf(item);
+    if (index > -1) {
+      group.items.splice(index, 1);
+    }
+    group.updatedAt = Date.now();
 
     await saveState();
     await syncWrite();

@@ -30,10 +30,11 @@
 
   <!-- Kontextové menu -->
   <div id="context-menu" class="hidden">
-    <div data-action="edit">Upraviť</div>
-    <div data-action="delete">Zmazať</div>
-    <div data-action="restore">Obnoviť</div>
-    <div data-action="refresh-icon">Obnoviť ikonu</div>
+    <div data-action="edit">Edit</div>
+    <div data-action="delete">Delete</div>
+    <div data-action="restore" class="hidden">Restore</div>
+    <div data-action="delete-permanent" class="hidden">Delete permanently</div>
+    <div data-action="refresh-icon">Refresh icon</div>
   </div>
 
   <!-- Modal pre pridanie/upravu bookmarku -->
@@ -60,80 +61,80 @@
   <!-- Modal pre nastavenia -->
   <div id="settings-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>Settings</h2>
-      
+     
       <!-- Tabs -->
       <div class="settings-tabs">
-        <button class="settings-tab-btn active" data-tab="sync">🔄 Synchronization</button>
-        <button class="settings-tab-btn" data-tab="export">📤 Export/Import</button>
-        <button class="settings-tab-btn" data-tab="appearance">🎨 Appearance</button>
+        <button class="settings-tab-btn active" data-tab="sync" data-i18n="synchronization">🔄 Synchronization</button>
+        <button class="settings-tab-btn" data-tab="export" data-i18n="exportImport">📤 Export/Import</button>
+        <button class="settings-tab-btn" data-tab="appearance" data-i18n="appearance">🎨 Appearance</button>
+        <button class="settings-tab-btn" data-tab="housekeeper" data-i18n="housekeeper">🏠 HouseKeeper</button>
       </div>
 
       <!-- Synchronization Tab -->
       <div id="sync-tab" class="settings-tab-content active">
-        <h3>Sync Configuration</h3>
-        
-        <label>Server URL</label>
-        <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json">
-
-        <button id="sync-test" class="icon-btn primary">🔍 Test connection</button>
+        <h3 id="sync-config-title" data-i18n="syncConfiguration">Sync Configuration</h3>
+        <div>
+        <label id="sync-url-label" data-i18n="serverUrl">Server URL</label>
+        <input  type="text" id="sync-url" placeholder="https://sync.local/speeddial.json" size="60">
+        </div>
+        <button id="sync-test" class="icon-btn primary" data-i18n="testConnection">🔍 Test connection</button>
 
         <label class="checkbox-row">
           <input type="checkbox" id="sync-enable">
-          🔄 Enable synchronization
+          <span data-i18n="enableSync">🔄 Enable synchronization</span>
         </label>
 
         <div id="sync-status" class="status"></div>
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
 
-        <h3>Sync Interval</h3>
+        <h3 id="sync-interval-title" data-i18n="syncInterval">Sync Interval</h3>
         
         <label class="radio-row">
           <input type="radio" name="sync-interval" value="immediate" id="sync-immediate">
-          Immediate sync (on every change)
+          <span data-i18n="immediateSyncWarning">Immediate sync (on every change)</span>
         </label>
 
         <label class="radio-row">
           <input type="radio" name="sync-interval" value="custom" id="sync-custom">
-          Custom interval (minutes):
+          <span data-i18n="customInterval">Custom interval (minutes):</span>
           <input type="number" id="sync-interval-value" min="1" max="1440" placeholder="60">
         </label>
 
         <label class="radio-row">
           <input type="radio" name="sync-interval" value="manual" id="sync-manual">
-          Manual sync only
+          <span data-i18n="manualSyncOnly">Manual sync only</span>
         </label>
 
-        <button id="sync-now-btn" class="icon-btn primary">⬆️ Sync now</button>
+        <button id="sync-now-btn" class="icon-btn primary" data-i18n="syncNow">⬆️ Sync now</button>
 
         <div id="last-sync-info" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
       </div>
 
       <!-- Export/Import Tab -->
       <div id="export-tab" class="settings-tab-content">
-        <h3>Export</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;">Export bookmarks as JSON file</p>
-        <button id="export-btn" class="icon-btn primary">📥 Export</button>
+        <h3 id="export-title" data-i18n="exportImport">Export</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="export-desc" data-i18n="exportDescription">Export bookmarks as JSON file</p>
+        <button id="export-btn" class="icon-btn primary" data-i18n="exportImport">📥 Export</button>
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
 
-        <h3>Import</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;">Import bookmarks from JSON file</p>
+        <h3 id="import-title" data-i18n="exportImport">Import</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="import-desc" data-i18n="importDescription">Import bookmarks from JSON file</p>
         <input type="file" id="import-file" accept=".json" style="display: none;">
-        <button id="import-btn" class="icon-btn primary">📤 Import</button>
+        <button id="import-btn" class="icon-btn primary" data-i18n="exportImport">📤 Import</button>
       </div>
 
       <!-- Appearance Tab -->
       <div id="appearance-tab" class="settings-tab-content">
-        <h3>Theme</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;">Coming soon</p>
+        <h3 id="theme-title" data-i18n="themeSettings">🎨 Theme</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="theme-desc" data-i18n="themeComingSoon">Coming soon</p>
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
 
-        <h3>Language</h3>
+        <h3 id="language-title" data-i18n="language">🅰️ Language</h3>
         <div class="language-selector">
-          <label for="language-select">Language:</label>
+          <label for="language-select" id="language-label" data-i18n="languageSelect">Language:</label>
           <select id="language-select">
             <option value="sk">Slovenčina</option>
             <option value="en">English</option>
@@ -142,16 +143,55 @@
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
 
-        <h3>Display Options</h3>
+        <h3 id="display-options-title" data-i18n="displayOptions">Display Options</h3>
         <label class="checkbox-row">
           <input type="checkbox" id="show-deleted-toggle">
-          👁️ Show deleted bookmarks
+          <span data-i18n="showDeletedBookmarks">👁️ Show deleted bookmarks</span>
         </label>
       </div>
 
+      <!-- HouseKeeper Tab -->
+      <div id="housekeeper-tab" class="settings-tab-content">
+        <h3 id="cleanup-title" data-i18n="cleanupDeletedRecords">Cleanup Deleted Records</h3>
+        
+        <label id="retention-label" data-i18n="retentionPeriodDays">Retention period (days):</label>
+        <input type="number" id="hk-retention-days" min="1" max="365" value="30">
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="hk-auto-cleanup">
+          <span data-i18n="enableAutomaticCleanup">🔄 Enable automatic cleanup</span>
+        </label>
+
+        <button id="hk-manual-cleanup" class="icon-btn primary" data-i18n="manualCleanupNow">🗑️ Manual cleanup now</button>
+
+        <div id="hk-cleanup-status" class="status"></div>
+        <div id="hk-last-cleanup" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
+        <h3 id="link-validation-title" data-i18n="linkValidation">Link Validation</h3>
+        
+        <label class="checkbox-row">
+          <input type="checkbox" id="hk-enable-link-check">
+          <span data-i18n="enableDeadLinkDetection">✅ Enable dead link detection</span>
+        </label>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="hk-highlight-dead-links">
+          <span data-i18n="highlightDeadLinks">🔔 Highlight dead links on tiles</span>
+        </label>
+
+        <button id="hk-check-links" class="icon-btn primary" data-i18n="checkLinksNow">🔗 Check links now</button>
+
+        <button id="hk-clear-errors" class="icon-btn" data-i18n="clearDeadLinkFlags">✖️ Clear dead-link flags</button>
+
+        <div id="hk-link-check-status" class="status"></div>
+        <div id="hk-dead-links-count" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
+      </div>
+
       <div class="modal-buttons">
-        <button id="settings-save" class="icon-btn primary">💾 Save</button>
-        <button id="settings-cancel" class="icon-btn danger">❌ Close</button>
+        <button id="settings-save" class="icon-btn primary" data-i18n="save">💾 Save</button>
+        <button id="settings-cancel" class="icon-btn danger" data-i18n="close">❌ Close</button>
       </div>
     </div>
   </div>

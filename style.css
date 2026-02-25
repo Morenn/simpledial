@@ -398,6 +398,29 @@ main {
 }
 
 /* ─────────────────────────────────────────────
+   BOOKMARK ERROR INDICATOR (DEAD LINK)
+───────────────────────────────────────────── */
+
+.bookmark-tile {
+  position: relative;
+}
+
+.bookmark-error-indicator {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #f44336;
+  font-weight: bold;
+  z-index: 10;
+  text-shadow: 0 0 2px rgba(0,0,0,0.3);
+  min-width: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────
    BOOKMARK OBSAH
 ───────────────────────────────────────────── */
 
@@ -413,7 +436,8 @@ main {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
   color: var(--accent);
 }
 
@@ -757,8 +781,9 @@ body.theme-dark .bookmark-title:hover {
 }
 
 #settings-modal .modal-content {
-  width: 420px;
-  max-height: 80vh;
+  width: auto;
+  height: 70%;
+  max-height: 90%;
   overflow-y: auto;
 }
 

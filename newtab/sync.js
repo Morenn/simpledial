@@ -308,3 +308,128 @@ export async function syncNow() {
   return true;
 }
 
+// ─────────────────────────────────────────────────────────────
+//  HOUSEKEEPING - CLEANUP DELETED ITEMS
+// ─────────────────────────────────────────────────────────────
+
+export async function cleanupDeletedItems(retentionDays) {
+  let deletedCount = 0;
+  const cutoffTime = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
+
+  for (const group of state.groups) {
+    // Filter out permanently deleted items
+    const originalLength = group.items.length;
+    group.items = group.items.filter(item => {
+      if (item.deleted && item.deletedAt && item.deletedAt < cutoffTime) {
+        deletedCount++;
+        return false; // Remove this item
+      }
+      return true;
+    });
+
+    if (group.items.length < originalLength) {
+      group.updatedAt = Date.now();
+    }
+  }
+
+  if (deletedCount > 0) {
+    await saveState();
+    await syncWrite();
+  }
+
+  return deletedCount;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HOUSEKEEPING - LINK VALIDATION
+// ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  HOUSEKEEPING - LINK VALIDATION
+// ─────────────────────────────────────────────────────────────
+
+async function validateLink(url, timeoutMs = 2000) {
+  try {
+    const response = await fetchWithTimeout(url, {
+      method: "HEAD",
+      cache: "no-cache"
+      // Removed mode: "no-cors" to allow proper status code checking
+    }, timeoutMs);
+
+    // Mark as dead if status code is 400-599 (client/server errors)
+    // Accept 2xx and 3xx (success and redirects)
+    if (response.status >= 400 && response.status < 600) {
+      return false; // Dead link
+    }
+
+    return true; // Link is working
+  } catch (error) {
+    // Network error, timeout, or CORS error
+    // Only mark as dead if it's a real network error, not CORS
+    if (error.name === "AbortError") {
+      return false; // Timeout = dead link
+    }
+    // For other errors (CORS, etc), assume link is working to avoid false positives
+    return true;
+  }
+}
+
+export async function validateSingleLink(url) {
+  return await validateLink(url);
+}
+
+export async function checkDeadLinks() {
+  let newlyDetectedDead = 0;
+  let changed = false;
+  const urlsToCheck = [];
+
+  // Collect all items with URLs to check
+  for (const group of state.groups) {
+    for (const item of group.items) {
+      if (!item.deleted && item.url) {
+        urlsToCheck.push({ item, url: item.url });
+      }
+    }
+  }
+
+  // Check links with reasonable parallelism (max 5 concurrent)
+  for (let i = 0; i < urlsToCheck.length; i += 5) {
+    const batch = urlsToCheck.slice(i, i + 5);
+    const results = await Promise.all(
+      batch.map(({ item, url }) => validateLink(url))
+    );
+
+    results.forEach((isValid, index) => {
+      const itemData = batch[index].item;
+      const hasError = !isValid;
+
+      if (itemData.hasError !== hasError) {
+        itemData.hasError = hasError;
+        itemData.updatedAt = Date.now();
+        changed = true;
+        if (hasError) newlyDetectedDead++;
+      }
+    });
+  }
+
+  // Compute total dead links now (after applying changes)
+  const totalDead = state.groups.reduce((sum, g) => {
+    return sum + (g.items ? g.items.filter(i => i.hasError).length : 0);
+  }, 0);
+
+  if (changed) {
+    // Update groups timestamp
+    for (const group of state.groups) {
+      if (group.items && group.items.some(item => item.hasError)) {
+        group.updatedAt = Date.now();
+      }
+    }
+
+    await saveState();
+    await syncWrite();
+  }
+
+  // Return the total number of dead links (consistent with stored state)
+  return totalDead;
+}
+

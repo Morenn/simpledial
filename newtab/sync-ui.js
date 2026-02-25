@@ -46,19 +46,19 @@ syncTest.addEventListener("click", async () => {
   const granted = await requestHostPermission(url);
 
   if (!granted) {
-    syncStatus.textContent = t("permissionDenied");
+    syncStatus.textContent = "❌ " + t("permissionDenied");
     return;
   }
 
   // 2) Test spojenia
-  syncStatus.textContent = t("testingConnection");
+  syncStatus.textContent = "🔍 " + t("testingConnection");
 
   const ok = await testSyncConnection(url);
 
   if (ok) {
-    syncStatus.textContent = t("serverResponds");
+    syncStatus.textContent = "✅ " + t("serverResponds");
   } else {
-    syncStatus.textContent = t("serverNotResponds");
+    syncStatus.textContent = "❌ " + t("serverNotResponds");
   }
 });
 

@@ -38,7 +38,7 @@ window.addEventListener("keydown", e => {
 
 (async function init() {
   // 1) Initialize language
-  initLanguage();
+  await initLanguage();
 
   // 2) Načítanie uloženého stavu
   await loadState();
@@ -130,6 +130,9 @@ function updateUIText() {
     const restoreItem = contextMenu.querySelector('[data-action="restore"]');
     if (restoreItem) restoreItem.textContent = t("restore");
 
+    const deletePermanentItem = contextMenu.querySelector('[data-action="delete-permanent"]');
+    if (deletePermanentItem) deletePermanentItem.textContent = t("deletePermanent");
+
     const refreshItem = contextMenu.querySelector('[data-action="refresh-icon"]');
     if (refreshItem) refreshItem.textContent = t("refreshIcon");
   }
@@ -182,6 +185,81 @@ function updateUIText() {
     const closeBtn = document.getElementById("sync-cancel");
     if (closeBtn) closeBtn.textContent = t("close");
   }
+
+  // Update settings modal text
+  updateSettingsModalText();
+}
+
+// Update settings modal text based on language
+function updateSettingsModalText() {
+  // Get all elements with data-i18n attribute
+  const elementsWithI18n = document.querySelectorAll('[data-i18n]');
+  elementsWithI18n.forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const text = t(key);
+    
+    // Preserve emoji/icon if present
+    const content = el.textContent.trim();
+    const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
+    const emoji = emojiMatch ? emojiMatch[0] : '';
+    
+    if (emoji) {
+      el.textContent = emoji + text;
+    } else {
+      el.textContent = text;
+    }
+  });
+
+  // Update specific paragraphs with data-i18n
+  const paragraphs = document.querySelectorAll('p[data-i18n]');
+  paragraphs.forEach(p => {
+    const key = p.getAttribute('data-i18n');
+    p.textContent = t(key);
+  });
+
+  // Update button text content
+  const allButtons = document.querySelectorAll('button[data-i18n]');
+  allButtons.forEach(btn => {
+    const key = btn.getAttribute('data-i18n');
+    const text = t(key);
+    
+    // Preserve emoji/icon if present
+    const content = btn.textContent.trim();
+    const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
+    const emoji = emojiMatch ? emojiMatch[0] : '';
+    
+    if (emoji) {
+      btn.textContent = emoji + text;
+    } else {
+      btn.textContent = text;
+    }
+  });
+
+  // Update labels with spans inside them (checkboxes and radio buttons)
+  const labelsWithSpans = document.querySelectorAll('label[class*="row"] span[data-i18n]');
+  labelsWithSpans.forEach(span => {
+    const key = span.getAttribute('data-i18n');
+    const text = t(key);
+    
+    // Preserve emoji/icon if present
+    const content = span.textContent.trim();
+    const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
+    const emoji = emojiMatch ? emojiMatch[0] : '';
+    
+    if (emoji) {
+      span.textContent = emoji + text;
+    } else {
+      span.textContent = text;
+    }
+  });
+
+  // Update labels without child spans
+  const allLabels = document.querySelectorAll('label[data-i18n]');
+  allLabels.forEach(label => {
+    const key = label.getAttribute('data-i18n');
+    const text = t(key);
+    label.textContent = text;
+  });
 }
 
 // Show notification when sync server is unavailable

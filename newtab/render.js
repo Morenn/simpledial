@@ -2,6 +2,7 @@ import { state } from "./state.js";
 import { renderGroups } from "./groups.js";
 import { createBookmarkTile, openBookmarkModal } from "./bookmarks.js";
 import { setupBookmarkDrag } from "./dragdrop.js";
+import { loadConfig } from "./config.js";
 import { t } from "./i18n.js";
 
 // ======================================================
@@ -85,10 +86,10 @@ function calculateGridLayout() {
 // HLAVNÁ RENDER FUNKCIA
 // ======================================================
 
-export function render() {
+export async function render() {
   renderGroups(true);
-  renderBookmarks();
-  
+  await renderBookmarks();
+
   // Apply grid layout after rendering
   calculateGridLayout();
 }
@@ -96,7 +97,8 @@ export function render() {
 // ======================================================
 // RENDER BOOKMARKOV
 // ======================================================
-function renderBookmarks() {
+async function renderBookmarks() {
+  const config = await loadConfig();
   const grid = document.getElementById("bookmarks-grid");
   grid.innerHTML = "";
 
@@ -156,7 +158,7 @@ function renderBookmarks() {
   // ============================================
 
   items.forEach(item => {
-    const tile = createBookmarkTile(item);
+    const tile = createBookmarkTile(item, config);
     if (item.deleted) tile.classList.add("deleted");
 
     // Pri globálnom vyhľadávaní zobrazíme názov skupiny

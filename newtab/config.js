@@ -13,6 +13,14 @@ export const defaultConfig = {
     interval: DEFAULT_SYNC_INTERVAL, // milliseconds
     intervalMode: "default", // "immediate", "custom", "manual", "default"
     lastSync: 0
+  },
+  housekeeper: {
+    retentionDays: 30,
+    autoCleanupEnabled: false,
+    lastCleanup: 0,
+    enableLinkCheck: false,
+    highlightDeadLinks: true,
+    lastLinkCheck: 0
   }
 };
 
@@ -29,6 +37,10 @@ export async function loadConfig() {
       sync: {
         ...defaultConfig.sync,
         ...(stored.sync || {})
+      },
+      housekeeper: {
+        ...defaultConfig.housekeeper,
+        ...(stored.housekeeper || {})
       }
     };
   }
