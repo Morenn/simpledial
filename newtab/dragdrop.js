@@ -280,7 +280,7 @@ function getAfterElementVertical(container, mouseY) {
 }
 
 // ======================================================
-// DRAG & DROP PRE SKUPINY
+// DRAG & DROP FOR GROUPS IS IN groups.js
 // ======================================================
 
 export function setupGroupDrag() {

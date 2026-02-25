@@ -1,6 +1,6 @@
 import { THEME_KEY } from "./state.js";
 
-// ---------- Načítanie témy ----------
+// ---------- Load theme ----------
 export async function loadTheme() {
   const res = await chrome.storage.local.get(THEME_KEY);
   const saved = res && res[THEME_KEY];
@@ -10,7 +10,7 @@ export async function loadTheme() {
   }
 }
 
-// ---------- Prepínanie témy ----------
+// ---------- Toggle theme ----------
 const themeToggle = document.getElementById("theme-toggle");
 
 themeToggle.addEventListener("click", async () => {

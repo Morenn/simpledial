@@ -3,17 +3,16 @@ import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
 import { loadConfig } from "./config.js";
 import { syncRead, startSyncLoop } from "./sync.js";
-import { initLanguage, setLanguage, getCurrentLanguage, t } from "./i18n.js";
+import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 
 // Make t global for modules that don't import it
 window.t = t;
 
-// Aktivácia event listenerov
+// Listener activation
 import "./groups.js";
 import "./bookmarks.js";
 import "./contextmenu.js";
 import "./dragdrop.js";
-import "./importexport.js";
 
 window.addEventListener("keydown", e => {
   const isMac = navigator.platform.toUpperCase().includes("MAC");
@@ -35,25 +34,24 @@ window.addEventListener("keydown", e => {
   }
 });
 
-
 (async function init() {
   // 1) Initialize language
   await initLanguage();
 
-  // 2) Načítanie uloženého stavu
+  // 2) Load saved state (groups, bookmarks, deleted items)
   await loadState();
 
-  // 3) Načítanie témy
+  // 3) Load and apply theme
   await loadTheme();
 
-  // 4) Prvotný sync (ak je zapnutý)
+  // 4) Initialize sync if enabled
   const config = await loadConfig();
   
   if (config.sync.enabled && config.sync.serverUrl) {
     const cloud = await syncRead();
 
     if (cloud && cloud.groups) {
-      // 🔥 Syncujeme iba groups, nie celý state
+      // 🔥 We sync only groups, not whole state
       state.groups = cloud.groups;
       await saveState();
     } else if (config.sync.enabled) {
@@ -63,7 +61,7 @@ window.addEventListener("keydown", e => {
     }
   }
 
-  // 5) Spustiť periodický sync
+  // 5) Start sync loop to keep data updated across tabs and with server
   startSyncLoop();
 
   // 6) Setup language selector
@@ -80,6 +78,21 @@ window.addEventListener("keydown", e => {
 function setupLanguageSelector() {
   const langSelect = document.getElementById("language-select");
   if (langSelect) {
+    // Populate options from LANG_FILES (via i18n.getAvailableLanguages)
+    try {
+      const langs = getAvailableLanguages();
+      // Clear any existing options
+      langSelect.innerHTML = "";
+      langs.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.code;
+        opt.textContent = l.name;
+        langSelect.appendChild(opt);
+      });
+    } catch (err) {
+      console.warn('Failed to populate language selector', err);
+    }
+
     // Set current language
     langSelect.value = getCurrentLanguage();
 

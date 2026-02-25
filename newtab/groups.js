@@ -3,7 +3,7 @@ import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
 
-// ---------- Render skupín ----------
+// ---------- Render groups ----------
 export function renderGroups(show = true) {
   const groupsHeader = document.getElementById("groups-header");
 
@@ -76,7 +76,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups) {
     groupsHeader.appendChild(tab);
   });
 
-  // + Pridať skupinu
+  // + Add group button
   const addTab = document.createElement("div");
   addTab.className = "group-tab add-group";
   addTab.textContent = "+";
@@ -286,7 +286,7 @@ function showGroupContextMenu(e, group, optionElement) {
   }, 5000);
 }
 
-// ---------- Drag & drop skupiny ----------
+// ---------- Group Drag & drop ----------
 function setupGroupDrag() {
   const groupsHeader = document.getElementById("groups-header");
   let dragged = null;
@@ -347,7 +347,7 @@ function getAfterElementHorizontal(container, mouseX) {
   return closest.element;
 }
 
-// ---------- Kontextové menu – skupiny ----------
+// ---------- Context menu – Groups ----------
 export async function handleGroupContext(action, el) {
   const id = el.dataset.groupId;
   const group = state.groups.find(g => g.id === id);

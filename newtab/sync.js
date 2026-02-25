@@ -344,10 +344,6 @@ export async function cleanupDeletedItems(retentionDays) {
 //  HOUSEKEEPING - LINK VALIDATION
 // ─────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────
-//  HOUSEKEEPING - LINK VALIDATION
-// ─────────────────────────────────────────────────────────────
-
 async function validateLink(url, timeoutMs = 2000) {
   try {
     const response = await fetchWithTimeout(url, {

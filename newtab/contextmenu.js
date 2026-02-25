@@ -1,11 +1,11 @@
 import { handleGroupContext } from "./groups.js";
 import { handleBookmarkContext } from "./bookmarks.js";
 
-// ---------- Kontextové menu ----------
+// ---------- Context menu ----------
 const contextMenu = document.getElementById("context-menu");
 let contextTarget = null;
 
-// Otvorenie kontextového menu
+// Open context menu on right-click
 document.addEventListener("contextmenu", e => {
   const groupTab = e.target.closest(".group-tab");
   const bookmarkTile = e.target.closest(".bookmark-tile");
@@ -99,7 +99,7 @@ async function updateContextMenuForGroup(groupTab) {
   }
 }
 
-// Klik mimo menu → zatvoriť
+// Clik outside to close menu
 document.addEventListener("click", e => {
   if (!e.target.closest("#context-menu")) {
     contextMenu.classList.add("hidden");
@@ -107,7 +107,7 @@ document.addEventListener("click", e => {
   }
 });
 
-// Kliknutie na položku menu
+// Click on menu item
 contextMenu.addEventListener("click", async e => {
   const action = e.target.dataset.action;
   if (!action || !contextTarget) return;

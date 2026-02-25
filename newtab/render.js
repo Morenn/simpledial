@@ -83,7 +83,7 @@ function calculateGridLayout() {
 }
 
 // ======================================================
-// HLAVNÁ RENDER FUNKCIA
+// MAIN RENDER FUNCTION
 // ======================================================
 
 export async function render() {
@@ -95,7 +95,7 @@ export async function render() {
 }
 
 // ======================================================
-// RENDER BOOKMARKOV
+// RENDER BOOKMARKS
 // ======================================================
 async function renderBookmarks() {
   const config = await loadConfig();
@@ -108,7 +108,7 @@ async function renderBookmarks() {
   let items = [];
 
   // ============================================
-  // 1) Globálne vyhľadávanie
+  // 1) Global search across all groups if there's search text
   // ============================================
   if (searchText) {
     // Zoberieme všetky položky zo všetkých skupín
@@ -116,12 +116,12 @@ async function renderBookmarks() {
       group.items.forEach(item => {
         items.push({
           ...item,
-          _groupName: group.name   // aby sme vedeli, odkiaľ pochádza
+          _groupName: group.name   // to display group name in search results
         });
       });
     });
 
-    // Filtrovanie podľa textu
+    // Filter based on search text and deleted status
     items = items.filter(i => {
       if (i.deleted && !showDeleted) return false;
 
@@ -138,7 +138,7 @@ async function renderBookmarks() {
 
   } else {
     // ============================================
-    // 2) Normálne zobrazenie aktívnej skupiny
+    // 2) Display items from active group if no search text
     // ============================================
     const group = state.groups.find(g => g.id === window.activeGroupId);
 
@@ -154,14 +154,14 @@ async function renderBookmarks() {
   }
 
   // ============================================
-  // Renderovanie výsledkov
+  // Render results (either search results or active group items)
   // ============================================
 
   items.forEach(item => {
     const tile = createBookmarkTile(item, config);
     if (item.deleted) tile.classList.add("deleted");
 
-    // Pri globálnom vyhľadávaní zobrazíme názov skupiny
+    // Display group name in search results
     if (searchText) {
       tile.classList.add("search-result");
       tile.setAttribute("data-group", item._groupName);
@@ -170,7 +170,7 @@ async function renderBookmarks() {
     grid.appendChild(tile);
   });
 
-  // Tlačidlo + len keď nie je aktívne vyhľadávanie
+  // Button to add new bookmark (only if not searching, to avoid confusion)
   if (!searchText) {
     const addTile = document.createElement("div");
     addTile.className = "bookmark-tile add-bookmark";
@@ -184,7 +184,7 @@ async function renderBookmarks() {
     grid.appendChild(addTile);
   }
 
-  // umožni presúvať len ak nie je definovaný search text
+  // Allow drag-and-drop only when not searching, to avoid confusion
   if (!searchText) {
     setupBookmarkDrag();
   }
@@ -192,7 +192,7 @@ async function renderBookmarks() {
 }
 
 // ======================================================
-// REAKCIA NA ZOBRAZENIE ZMAZANÝCH
+// REACTION TO SHOW DELETED TOGGLE CHANGE
 // ======================================================
 
 document.getElementById("show-deleted-toggle").addEventListener("change", () => {
@@ -200,7 +200,7 @@ document.getElementById("show-deleted-toggle").addEventListener("change", () => 
 });
 
 // ======================================================
-// REAKCIA NA VYHĽADÁVANIE
+// REACTION TO MANUAL SYNC BUTTON
 // ======================================================
 
 const searchInput = document.getElementById("search-box");
@@ -211,7 +211,7 @@ if (searchInput) {
 }
 
 // ======================================================
-// VYMAZANIE SEARCH BOXU PO STLAČENÍ ESC
+// DELETE SEARCH TEXT ON ESCAPE KEY
 // ======================================================
 
 document.addEventListener("keydown", e => {

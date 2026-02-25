@@ -49,7 +49,7 @@ export function createBookmarkTile(item, config = null) {
   return tile;
 }
 
-// ---------- Pomocná funkcia ----------
+// ---------- Helper function ----------
 function getFaviconUrl(url) {
   try {
     const u = new URL(url);
@@ -103,7 +103,7 @@ modal.addEventListener("keydown", e => {
   }
 });
 
-// ---------- Uloženie bookmarku ----------
+// ---------- Save bookmark ----------
 bmSave.addEventListener("click", async () => {
   const title = bmTitle.value.trim();
   const url = bmUrl.value.trim();
@@ -160,7 +160,7 @@ bmSave.addEventListener("click", async () => {
   render();
 });
 
-// ---------- Kontextové menu – bookmarky ----------
+// ---------- Context menu – bookmarks ----------
 export async function handleBookmarkContext(action, el) {
   const bookmarkId = el.dataset.bookmarkId;
   const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
