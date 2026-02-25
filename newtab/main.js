@@ -55,6 +55,10 @@ window.addEventListener("keydown", e => {
       state.groups = cloud.groups;
       state.sync.lastSync = Date.now();
       await saveState();
+    } else if (state.sync.enabled) {
+      // Sync is enabled but server is unavailable - notify user
+      console.warn("Sync server is unavailable, using local data");
+      showSyncUnavailableNotification();
     }
   }
 
@@ -180,4 +184,31 @@ function updateUIText() {
     const closeBtn = document.getElementById("sync-cancel");
     if (closeBtn) closeBtn.textContent = t("close");
   }
+}
+
+// Show notification when sync server is unavailable
+function showSyncUnavailableNotification() {
+  const notification = document.createElement("div");
+  notification.className = "notification notification-warning";
+  notification.style.position = "fixed";
+  notification.style.top = "20px";
+  notification.style.right = "20px";
+  notification.style.padding = "12px 16px";
+  notification.style.backgroundColor = "#ff9800";
+  notification.style.color = "white";
+  notification.style.borderRadius = "4px";
+  notification.style.zIndex = "9999";
+  notification.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+  notification.style.fontFamily = "system-ui, -apple-system, sans-serif";
+  notification.style.fontSize = "14px";
+  notification.textContent = t("syncServerUnavailable") || "Sync server is unavailable. Using local data.";
+
+  document.body.appendChild(notification);
+
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    notification.style.opacity = "0";
+    notification.style.transition = "opacity 0.3s ease";
+    setTimeout(() => notification.remove(), 300);
+  }, 5000);
 }

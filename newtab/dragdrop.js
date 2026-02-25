@@ -1,5 +1,6 @@
 import { state, saveState } from "./state.js";
 import { render } from "./render.js";
+import { syncWrite } from "./sync.js";
 
 // ======================================================
 // DRAG & DROP PRE BOOKMARKY
@@ -148,16 +149,37 @@ export function setupBookmarkDrag() {
       dragged = null;
 
       const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
-      if (!group) return;
+      if (!group) {
+        console.warn("dragend: group not found", window.activeGroupId);
+        return;
+      }
 
+      // Get IDs of bookmark elements in their current DOM order
       const ids = [...bookmarksGrid.querySelectorAll(".bookmark-tile")]
         .filter(el => !el.classList.contains("add-bookmark"))
         .map(el => el.dataset.bookmarkId);
 
-      group.items.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+      // Reorder items array to match DOM order
+      group.items.sort((a, b) => {
+        const indexA = ids.indexOf(a.id);
+        const indexB = ids.indexOf(b.id);
+        
+        // Handle items that might not be in the DOM
+        if (indexA === -1) return 1;  // Move to end
+        if (indexB === -1) return -1; // Move to end
+        
+        return indexA - indexB;
+      });
 
+      // Update the updatedAt timestamp for the group when items are reordered
+      group.updatedAt = Date.now();
+
+      // Save state immediately to local storage
       await saveState();
+      // Re-render UI
       await render();
+      // Sync to remote server (non-blocking)
+      syncWrite();
     });
   });
 
@@ -284,10 +306,23 @@ export function setupGroupDrag() {
         .filter(el => !el.classList.contains("add-group"))
         .map(el => el.dataset.groupId);
 
-      state.groups.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+      state.groups.sort((a, b) => {
+        const indexA = ids.indexOf(a.id);
+        const indexB = ids.indexOf(b.id);
+        
+        // Handle groups that might not be in the DOM
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        
+        return indexA - indexB;
+      });
 
+      // Save state immediately to local storage
       await saveState();
+      // Re-render UI
       await render();
+      // Sync to remote server (non-blocking)
+      syncWrite();
     });
   });
 

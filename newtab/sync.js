@@ -5,6 +5,27 @@ function ensureNoTrailingSlash(url) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  FETCH WITH TIMEOUT
+// ─────────────────────────────────────────────────────────────
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  CONFIG STORAGE
 // ─────────────────────────────────────────────────────────────
 
@@ -27,7 +48,7 @@ export async function testSyncConnection(url) {
   try {
     const endpoint = ensureNoTrailingSlash(url);
 
-    const res = await fetch(endpoint, {
+    const res = await fetchWithTimeout(endpoint, {
       method: "GET",
       cache: "no-cache"
     });
@@ -58,7 +79,7 @@ async function initializeRemote(url) {
   const defaultData = { groups: [] };
 
   try {
-    await fetch(url, {
+    await fetchWithTimeout(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(defaultData, null, 2)
@@ -81,7 +102,7 @@ export async function syncRead() {
   const url = cfg.url;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "GET",
       cache: "no-cache"
     });
@@ -130,7 +151,7 @@ export async function syncWrite() {
   const url = cfg.url;
 
   try {
-    await fetch(url, {
+    await fetchWithTimeout(url, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json"

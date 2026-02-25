@@ -42,6 +42,7 @@ const languages = {
     testingConnection: "🔍 Testujem pripojenie...",
     serverResponds: "✅ Sync server odpovedá.",
     serverNotResponds: "❌ Sync server neodpovedá.",
+    syncServerUnavailable: "⚠️ Sync server nie je dostupný. Používam lokálne údaje.",
 
     // Empty States
     noActiveGroup: "Žiadna skupina nie je aktívna.",
@@ -91,6 +92,7 @@ const languages = {
     testingConnection: "🔍 Testing connection...",
     serverResponds: "✅ Sync server responds.",
     serverNotResponds: "❌ Sync server does not respond.",
+    syncServerUnavailable: "⚠️ Sync server is unavailable. Using local data.",
 
     // Empty States
     noActiveGroup: "No group is active.",
