@@ -113,6 +113,11 @@ settingsBtn.addEventListener("click", async () => {
 settingsCancelBtn.addEventListener("click", () => {
   settingsModal.classList.add("hidden");
 });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    settingsModal.classList.add("hidden");
+  }
+});
 
 // ---------- Sync Interval Radio Buttons ----------
 syncImmediate.addEventListener("change", () => {

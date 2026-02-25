@@ -96,8 +96,11 @@ function closeBookmarkModal() {
 
 bmCancel.addEventListener("click", closeBookmarkModal);
 
-modal.addEventListener("click", e => {
-  if (e.target === modal) closeBookmarkModal();
+// Close modal on Escape key
+modal.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeBookmarkModal();
+  }
 });
 
 // ---------- Uloženie bookmarku ----------
