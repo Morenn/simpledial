@@ -7,9 +7,7 @@ const languages = {
     // UI Elements
     searchPlaceholder: "Hľadať...",
     themeToggle: "Prepnúť tému",
-    export: "Export",
-    import: "Import",
-    syncSettings: "⚙️ Sync nastavenia",
+    settings: "⚙️ Nastavenia",
     showDeleted: "Zobraziť zmazané",
     newGroupName: "Názov novej skupiny:",
 
@@ -44,6 +42,24 @@ const languages = {
     serverNotResponds: "❌ Sync server neodpovedá.",
     syncServerUnavailable: "⚠️ Sync server nie je dostupný. Používam lokálne údaje.",
 
+    // Settings Modal
+    synchronization: "🔄 Synchronizácia",
+    exportImport: "📤 Export/Import",
+    syncConfiguration: "Nastavenie synchronizácie",
+    syncInterval: "Interval synchronizácie",
+    immediateSyncWarning: "Okamžitá synchronizácia (po každej zmene)",
+    customInterval: "Vlastný interval (minúty):",
+    manualSyncOnly: "Iba manuálna synchronizácia",
+    syncNow: "⬆️ Syncovať teraz",
+    lastSync: "Posledná synchronizácia:",
+    syncSuccessful: "✅ Synchronizované úspešne!",
+    syncFailed: "❌ Synchronizácia zlyhala",
+    exportDescription: "Exportovať záložky ako JSON súbor",
+    importDescription: "Importovať záložky z JSON súboru",
+    importedSuccessfully: "Údaje boli importované úspešne!",
+    invalidFileFormat: "Neplatný formát súboru",
+    failedToParse: "Nepodarilo sa spracovať súbor:",
+
     // Empty States
     noActiveGroup: "Žiadna skupina nie je aktívna.",
 
@@ -57,9 +73,7 @@ const languages = {
     // UI Elements
     searchPlaceholder: "Search...",
     themeToggle: "Toggle theme",
-    export: "Export",
-    import: "Import",
-    syncSettings: "⚙️ Sync settings",
+    settings: "⚙️ Settings",
     showDeleted: "Show deleted",
     newGroupName: "New group name:",
 
@@ -93,6 +107,24 @@ const languages = {
     serverResponds: "✅ Sync server responds.",
     serverNotResponds: "❌ Sync server does not respond.",
     syncServerUnavailable: "⚠️ Sync server is unavailable. Using local data.",
+
+    // Settings Modal
+    synchronization: "🔄 Synchronization",
+    exportImport: "📤 Export/Import",
+    syncConfiguration: "Sync Configuration",
+    syncInterval: "Sync Interval",
+    immediateSyncWarning: "Immediate sync (not recommended - can wear out SSD)",
+    customInterval: "Custom interval (minutes):",
+    manualSyncOnly: "Manual sync only",
+    syncNow: "⬆️ Sync now",
+    lastSync: "Last sync:",
+    syncSuccessful: "✅ Synced successfully!",
+    syncFailed: "❌ Sync failed",
+    exportDescription: "Export bookmarks as JSON file",
+    importDescription: "Import bookmarks from JSON file",
+    importedSuccessfully: "Data imported successfully!",
+    invalidFileFormat: "Invalid file format",
+    failedToParse: "Failed to parse file:",
 
     // Empty States
     noActiveGroup: "No group is active.",

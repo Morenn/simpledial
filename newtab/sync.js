@@ -1,4 +1,5 @@
 import { state, saveState } from "./state.js";
+import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
 
 function ensureNoTrailingSlash(url) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -26,18 +27,19 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  CONFIG STORAGE
+//  CONFIG STORAGE (DEPRECATED - use config.js)
 // ─────────────────────────────────────────────────────────────
 
 export async function saveSyncConfig({ url }) {
-  const normalized = ensureNoTrailingSlash(url.trim());
-  await chrome.storage.local.set({ syncConfig: { url: normalized } });
+  const config = await loadConfig();
+  config.sync.serverUrl = ensureNoTrailingSlash(url.trim());
+  await saveConfig(config);
 }
 
 export async function loadSyncConfig() {
-  const { syncConfig } = await chrome.storage.local.get("syncConfig");
-  if (!syncConfig) return null;
-  return { url: ensureNoTrailingSlash(syncConfig.url) };
+  const config = await loadConfig();
+  if (!config.sync.serverUrl) return null;
+  return { url: config.sync.serverUrl };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -216,8 +218,24 @@ function mergeItems(localItems, cloudItems) {
 // ─────────────────────────────────────────────────────────────
 
 export function startSyncLoop() {
-  setInterval(async () => {
-    if (!state.sync.enabled) return;
+  let syncLoopInterval = null;
+
+  const runSyncLoop = async () => {
+    const config = await loadConfig();
+
+    if (!config.sync.enabled) {
+      // Stop sync loop if disabled
+      if (syncLoopInterval) {
+        clearInterval(syncLoopInterval);
+        syncLoopInterval = null;
+      }
+      return;
+    }
+
+    // Check if we should sync based on interval configuration
+    if (!shouldSync(config)) {
+      return;
+    }
 
     const cloud = await syncRead();
     if (!cloud) return;
@@ -234,10 +252,59 @@ export function startSyncLoop() {
     });
 
     state.groups = mergedGroups;
-    state.sync.lastSync = Date.now();
     await saveState();
 
-    await syncWrite();
+    // Update last sync time in config
+    await updateLastSyncTime(config);
 
-  }, 60000);
+    await syncWrite();
+  };
+
+  // Run sync loop every 10 seconds to check if sync is needed
+  // This allows for flexible interval configuration without restarting the interval
+  syncLoopInterval = setInterval(runSyncLoop, 10000);
+  
+  // Run once immediately on startup
+  runSyncLoop();
 }
+
+// ─────────────────────────────────────────────────────────────
+//  MANUAL SYNC
+// ─────────────────────────────────────────────────────────────
+
+export async function syncNow() {
+  const config = await loadConfig();
+
+  if (!config.sync.enabled || !config.sync.serverUrl) {
+    console.warn("Sync not configured or disabled");
+    return false;
+  }
+
+  const cloud = await syncRead();
+  if (!cloud) {
+    console.warn("Failed to read from sync server");
+    return false;
+  }
+
+  const mergedGroups = state.groups.map(localGroup => {
+    const cloudGroup = cloud.groups.find(g => g.id === localGroup.id);
+
+    if (!cloudGroup) return localGroup;
+
+    return {
+      ...localGroup,
+      items: mergeItems(localGroup.items, cloudGroup.items)
+    };
+  });
+
+  state.groups = mergedGroups;
+  await saveState();
+
+  // Update last sync time in config
+  await updateLastSyncTime(config);
+
+  await syncWrite();
+
+  return true;
+}
+

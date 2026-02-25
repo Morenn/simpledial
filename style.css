@@ -449,6 +449,10 @@ body.theme-dark .bookmark-title:hover {
   display: none;
 }
 
+.hidden {
+  display: none !important;
+}
+
 #context-menu div {
   padding: 0.4rem 0.7rem;
   cursor: pointer;
@@ -576,17 +580,6 @@ body.theme-dark .bookmark-title:hover {
   pointer-events: none; /* ale klik na URL nie */
 }
 
-.show-deleted-toggle {
-  margin-left: 12px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 14px;
-}
-
-.show-deleted-toggle input {
-  margin-right: 4px;
-}
-
 /* ─────────────────────────────────────────────
    SYNC IKONY A OVLÁDANIE
 ───────────────────────────────────────────── */
@@ -615,65 +608,173 @@ body.theme-dark .bookmark-title:hover {
   font-size: 0.9rem;
 }
 
-/* Kontajner pre ovládacie prvky */
+/* ─────────────────────────────────────────────
+   MANAGE SECTION
+───────────────────────────────────────────── */
+
 #manage {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 /* ─────────────────────────────────────────────
-   ICON BUTTONS (Export / Import / Sync)
+   ICON BUTTONS
 ───────────────────────────────────────────── */
 
 .icon-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: none;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
   cursor: pointer;
-  background: #ddd;
-  transition: background 0.2s;
+  font-size: 0.9rem;
+  min-width: 0 !important;
+  width: auto !important;
 }
 
 .icon-btn:hover {
-  background: #ccc;
+  opacity: 0.8;
 }
 
-/* Zosúladenie tlačidiel v manage sekcii */
-#manage button,
+/* Icon buttons in top bar are compact */
 #manage .icon-btn {
-  min-width: 100px;
-  padding: 6px 12px;
+  padding: 6px 8px;
+  font-size: 1rem;
+  min-width: auto;
+}
+
+/* Icon buttons in modals can be larger */
+.modal-content .icon-btn {
+  padding: 8px 12px;
   font-size: 0.85rem;
-  text-align: center;
+}
+
+.icon-btn.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.icon-btn.danger {
+  background: #d32f2f;
+  color: white;
 }
 
 /* ─────────────────────────────────────────────
-   ROZŠÍRENÉ OVLÁDANIE (DETAILS)
+   SETTINGS MODAL TABS
 ───────────────────────────────────────────── */
 
-#advanced-controls summary {
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 -1.2rem 1rem -1.2rem;
+  padding: 0 1.2rem 0.8rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-tab-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
-  font-weight: 600;
   font-size: 0.9rem;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
+  border-bottom: 2px solid transparent;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.settings-tab-btn:hover {
+  opacity: 0.9;
+}
+
+.settings-tab-btn.active {
+  opacity: 1;
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.settings-tab-content {
+  display: none;
+}
+
+.settings-tab-content.active {
+  display: block;
+}
+
+.settings-tab-content h3 {
+  margin: 0.8rem 0 0.4rem 0;
+  font-size: 0.95rem;
+}
+
+.settings-tab-content p {
+  margin: 0;
+  padding: 0;
+}
+
+/* ─────────────────────────────────────────────
+   RADIO AND CHECKBOX ROWS
+───────────────────────────────────────────── */
+
+.radio-row,
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  cursor: pointer;
   user-select: none;
 }
 
-#advanced-controls[open] summary {
-  background: var(--bg-hover);
+.radio-row input[type="radio"],
+.radio-row input[type="checkbox"],
+.checkbox-row input[type="radio"],
+.checkbox-row input[type="checkbox"] {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  margin: 0;
 }
 
-.advanced-content {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-  padding-left: 4px;
+.radio-row input[type="number"] {
+  width: 60px;
+  padding: 0.3rem;
+  margin-left: 0.5rem;
+}
+
+.status {
+  font-size: 0.8rem;
+  min-height: 1.2rem;
+  padding: 0.4rem 0;
+}
+
+#last-sync-info {
+  font-size: 0.75rem;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+#settings-modal .modal-content {
+  width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 500px) {
+  #settings-modal .modal-content {
+    width: 95%;
+  }
+  
+  .settings-tabs {
+    flex-wrap: wrap;
+    margin: 0 -1rem 1rem -1rem;
+    padding: 0 1rem 0.8rem 1rem;
+  }
+  
+  .settings-tab-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
 }

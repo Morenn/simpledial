@@ -1,6 +1,7 @@
 import { loadState, saveState, state } from "./state.js";
 import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
+import { loadConfig } from "./config.js";
 import { syncRead, startSyncLoop } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t } from "./i18n.js";
 
@@ -13,7 +14,6 @@ import "./bookmarks.js";
 import "./contextmenu.js";
 import "./dragdrop.js";
 import "./importexport.js";
-import "./sync-ui.js";
 
 window.addEventListener("keydown", e => {
   const isMac = navigator.platform.toUpperCase().includes("MAC");
@@ -47,15 +47,16 @@ window.addEventListener("keydown", e => {
   await loadTheme();
 
   // 4) Prvotný sync (ak je zapnutý)
-  if (state.sync.enabled) {
+  const config = await loadConfig();
+  
+  if (config.sync.enabled && config.sync.serverUrl) {
     const cloud = await syncRead();
 
     if (cloud && cloud.groups) {
       // 🔥 Syncujeme iba groups, nie celý state
       state.groups = cloud.groups;
-      state.sync.lastSync = Date.now();
       await saveState();
-    } else if (state.sync.enabled) {
+    } else if (config.sync.enabled) {
       // Sync is enabled but server is unavailable - notify user
       console.warn("Sync server is unavailable, using local data");
       showSyncUnavailableNotification();
@@ -105,20 +106,17 @@ function updateUIText() {
   const themeToggle = document.getElementById("theme-toggle");
   if (themeToggle) themeToggle.title = t("themeToggle");
 
-  // Advanced controls
-  const exportBtn = document.getElementById("export-btn");
-  if (exportBtn) exportBtn.textContent = t("export");
+  // Settings button (moved to modal)
+  const settingsBtn = document.getElementById("settings-btn");
+  if (settingsBtn) settingsBtn.title = t("settings") || "Settings";
 
-  const importBtn = document.getElementById("import-btn");
-  if (importBtn) importBtn.textContent = t("import");
+  // Show deleted button
+  const showDeletedBtn = document.getElementById("show-deleted-btn");
+  if (showDeletedBtn) showDeletedBtn.title = t("showDeleted");
 
-  const syncBtn = document.getElementById("sync-settings-btn");
-  if (syncBtn) syncBtn.textContent = t("syncSettings");
-
-  const showDeletedLabel = document.querySelector(".show-deleted-toggle");
-  if (showDeletedLabel && showDeletedLabel.lastChild) {
-    showDeletedLabel.lastChild.textContent = t("showDeleted");
-  }
+  // Manual sync button
+  const manualSyncBtn = document.getElementById("manual-sync-btn");
+  if (manualSyncBtn) manualSyncBtn.title = t("syncNow");
 
   // Context menu
   const contextMenu = document.getElementById("context-menu");

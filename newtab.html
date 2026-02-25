@@ -4,8 +4,6 @@
   <meta charset="utf-8">
   <title>My SpeedDial</title>
   <link rel="stylesheet" href="style.css">
-  <script src="libs/jszip.min.js"></script>
-
 </head>
 
 <body class="theme-dark">
@@ -17,26 +15,9 @@
     <div id="manage">
       <input id="search-box" type="text" placeholder="Hľadať...">
       <button id="theme-toggle" title="Prepnúť tému">🌓</button>
-
-      <details id="advanced-controls">
-        <summary>⚙️</summary>
-        <div class="advanced-content">
-          <button id="export-btn">Export</button>
-          <button id="import-btn">Import</button>
-          <button id="sync-settings-btn" class="icon-btn">⚙️ Sync nastavenia</button>
-          <label class="show-deleted-toggle">
-            <input type="checkbox" id="show-deleted-toggle">
-            Zobraziť zmazané
-          </label>
-          <div class="language-selector">
-            <label for="language-select" data-i18n="language">Jazyk:</label>
-            <select id="language-select">
-              <option value="sk" data-i18n="slovak">Slovenčina</option>
-              <option value="en" data-i18n="english">English</option>
-            </select>
-          </div>
-        </div>
-      </details>
+      <button id="show-deleted-btn" class="icon-btn" title="Show deleted">👁️</button>
+      <button id="manual-sync-btn" class="icon-btn hidden" title="Sync now">⬆️</button>
+      <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
     </div>
   </header>
 
@@ -76,30 +57,106 @@
     </div>
   </div>
 
-  <!-- Modal pre Sync nastavenia -->
-  <div id="sync-modal" class="modal hidden">
+  <!-- Modal pre nastavenia -->
+  <div id="settings-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>Sync Server</h2>
+      <h2>Settings</h2>
+      
+      <!-- Tabs -->
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" data-tab="sync">🔄 Synchronization</button>
+        <button class="settings-tab-btn" data-tab="export">📤 Export/Import</button>
+        <button class="settings-tab-btn" data-tab="appearance">🎨 Appearance</button>
+      </div>
 
-      <label>Server URL</label>
-      <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json">
+      <!-- Synchronization Tab -->
+      <div id="sync-tab" class="settings-tab-content active">
+        <h3>Sync Configuration</h3>
+        
+        <label>Server URL</label>
+        <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json">
 
-      <button id="sync-test" class="icon-btn">🔍 Testovať pripojenie</button>
+        <button id="sync-test" class="icon-btn primary">🔍 Test connection</button>
 
-      <label class="checkbox-row">
-        <input type="checkbox" id="sync-enable">
-        🔄 Zapnúť synchronizáciu
-      </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="sync-enable">
+          🔄 Enable synchronization
+        </label>
 
-      <div id="sync-status" class="status"></div>
+        <div id="sync-status" class="status"></div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
+        <h3>Sync Interval</h3>
+        
+        <label class="radio-row">
+          <input type="radio" name="sync-interval" value="immediate" id="sync-immediate">
+          Immediate sync (on every change)
+        </label>
+
+        <label class="radio-row">
+          <input type="radio" name="sync-interval" value="custom" id="sync-custom">
+          Custom interval (minutes):
+          <input type="number" id="sync-interval-value" min="1" max="1440" placeholder="60">
+        </label>
+
+        <label class="radio-row">
+          <input type="radio" name="sync-interval" value="manual" id="sync-manual">
+          Manual sync only
+        </label>
+
+        <button id="sync-now-btn" class="icon-btn primary">⬆️ Sync now</button>
+
+        <div id="last-sync-info" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
+      </div>
+
+      <!-- Export/Import Tab -->
+      <div id="export-tab" class="settings-tab-content">
+        <h3>Export</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;">Export bookmarks as JSON file</p>
+        <button id="export-btn" class="icon-btn primary">📥 Export</button>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
+        <h3>Import</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;">Import bookmarks from JSON file</p>
+        <input type="file" id="import-file" accept=".json" style="display: none;">
+        <button id="import-btn" class="icon-btn primary">📤 Import</button>
+      </div>
+
+      <!-- Appearance Tab -->
+      <div id="appearance-tab" class="settings-tab-content">
+        <h3>Theme</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;">Coming soon</p>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
+        <h3>Language</h3>
+        <div class="language-selector">
+          <label for="language-select">Language:</label>
+          <select id="language-select">
+            <option value="sk">Slovenčina</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
+        <h3>Display Options</h3>
+        <label class="checkbox-row">
+          <input type="checkbox" id="show-deleted-toggle">
+          👁️ Show deleted bookmarks
+        </label>
+      </div>
 
       <div class="modal-buttons">
-        <button id="sync-save" class="icon-btn primary">💾 Uložiť</button>
-        <button id="sync-cancel" class="icon-btn danger">❌ Zavrieť</button>
+        <button id="settings-save" class="icon-btn primary">💾 Save</button>
+        <button id="settings-cancel" class="icon-btn danger">❌ Close</button>
       </div>
     </div>
   </div>
-  <script type="module" src="newtab/sync.js"></script>
+  <script type="module" src="newtab/config.js"></script>
+  <script type="module" src="newtab/settings-ui.js"></script>
   <script type="module" src="newtab/main.js"></script>
 </body>
 </html>
