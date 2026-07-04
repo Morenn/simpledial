@@ -47,11 +47,24 @@ export function getBookmarkChildren(parentId) {
   });
 }
 
+function normalizeBookmarkUrl(url) {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 export function createBookmarkNode(createData) {
   const bookmarksApi = ensureBookmarksApi();
+  const normalized = { ...createData };
+  if (normalized.url) {
+    normalized.url = normalizeBookmarkUrl(normalized.url);
+  }
   return new Promise((resolve, reject) => {
     try {
-      bookmarksApi.create(createData, (node) => {
+      bookmarksApi.create(normalized, (node) => {
         resolve(node);
       });
     } catch (err) {

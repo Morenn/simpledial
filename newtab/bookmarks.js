@@ -49,7 +49,7 @@ export function createBookmarkTile(item, config = null) {
   return tile;
 }
 
-// ---------- Helper function ----------
+// ---------- Helper functions ----------
 function getFaviconUrl(url) {
   try {
     const u = new URL(url);
@@ -57,6 +57,18 @@ function getFaviconUrl(url) {
   } catch {
     return "";
   }
+}
+
+function normalizeBookmarkUrl(url) {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  // Preserve any URL with a valid protocol/scheme like http://, https://, ftp://, mailto:, etc.
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
 }
 
 // ---------- Modal ----------
@@ -106,8 +118,9 @@ modal.addEventListener("keydown", e => {
 // ---------- Save bookmark ----------
 bmSave.addEventListener("click", async () => {
   const title = bmTitle.value.trim();
-  const url = bmUrl.value.trim();
+  const rawUrl = bmUrl.value.trim();
   const icon = bmIcon.value.trim();
+  const url = normalizeBookmarkUrl(rawUrl);
 
   if (!url) {
     alert("Musíš zadať URL.");
