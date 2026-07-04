@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Simple SpeedDial",
   "version": "1.0",
-  "description": "Simple SpeedDial in list/grid format as newtab.",
+  "description": "Simple SpeedDial in list/grid format as newtab with support of own sync target (JSON, WebDAV, Browser native sync).",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
