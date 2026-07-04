@@ -839,6 +839,97 @@ body.theme-dark .bookmark-title:hover {
   font-size: 0.95rem;
 }
 
+.sync-section-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.9rem;
+  margin-bottom: 0.8rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg2) 92%, var(--accent) 8%), var(--bg2));
+}
+
+.sync-section-header {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+
+.sync-section-subtitle {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  margin: 0 0 0.6rem 0;
+}
+
+.sync-inline-note {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--bg3) 85%, var(--accent) 15%);
+}
+
+.choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.choice-group-inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.choice-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg3);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.choice-option-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.choice-option input[type="radio"] {
+  margin: 0;
+}
+
+.choice-option-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.choice-option-subtitle {
+  font-size: 0.76rem;
+  opacity: 0.75;
+}
+
+.choice-option.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--bg3) 82%, var(--accent) 18%);
+}
+
+.settings-unsaved-indicator {
+  align-self: center;
+  font-size: 0.76rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-right: auto;
+  padding-left: 0.2rem;
+}
+
+.settings-unsaved-indicator::before {
+  content: "●";
+  margin-right: 0.3rem;
+}
+
 .settings-tab-content p {
   margin: 0;
   padding: 0;
@@ -912,7 +1003,7 @@ body.theme-dark .bookmark-title:hover {
 .radio-row input[type="number"] {
   width: 60px;
   padding: 0.3rem;
-  margin-left: 0.5rem;
+  margin-left: 0.25rem;
 }
 
 .status {
@@ -948,5 +1039,9 @@ body.theme-dark .bookmark-title:hover {
   .settings-tab-btn {
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
+  }
+
+  .choice-group-inline {
+    flex-direction: column;
   }
 }

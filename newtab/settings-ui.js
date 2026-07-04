@@ -16,6 +16,7 @@ const settingsBtn = document.getElementById("settings-btn");
 const showDeletedBtn = document.getElementById("show-deleted-btn");
 const manualSyncBtn = document.getElementById("manual-sync-btn");
 const settingsSaveBtn = document.getElementById("settings-save");
+const settingsSaveCloseBtn = document.getElementById("settings-save-close");
 const settingsCancelBtn = document.getElementById("settings-cancel");
 
 // Sync Tab Elements
@@ -36,7 +37,20 @@ const syncCustom = document.getElementById("sync-custom");
 const syncCustomValue = document.getElementById("sync-interval-value");
 const syncManual = document.getElementById("sync-manual");
 const syncNowBtn = document.getElementById("sync-now-btn");
+const syncTestStatus = document.getElementById("sync-test-status");
+const syncNowStatus = document.getElementById("sync-now-status");
 const lastSyncInfo = document.getElementById("last-sync-info");
+const syncTypeChoices = document.querySelectorAll('input[name="sync-type-choice"]');
+const syncAuthChoices = document.querySelectorAll('input[name="sync-auth-choice"]');
+const syncEncryptChoices = document.querySelectorAll('input[name="sync-encrypt-choice"]');
+const syncBrowserHint = document.getElementById("sync-browser-hint");
+const syncAuthCard = document.getElementById("sync-auth-card");
+const syncCredentialsCard = document.getElementById("sync-credentials-card");
+const syncEncryptSection = document.getElementById("sync-encrypt-section");
+const syncUsernameRow = document.getElementById("sync-username-row");
+const syncPasswordRow = document.getElementById("sync-password-row");
+const syncAuthResetNote = document.getElementById("sync-auth-reset-note");
+const settingsUnsavedIndicator = document.getElementById("settings-unsaved-indicator");
 
 // Export/Import Elements
 const exportBtn = document.getElementById("export-btn");
@@ -69,6 +83,64 @@ const hkClearErrors = document.getElementById("hk-clear-errors");
 const tabButtons = document.querySelectorAll(".settings-tab-btn");
 const tabContents = document.querySelectorAll(".settings-tab-content");
 
+let isInitializingSettingsForm = false;
+let settingsDirty = false;
+
+function updateChoiceOptionStates() {
+  document.querySelectorAll('.choice-option').forEach(option => {
+    const input = option.querySelector('input[type="radio"]');
+    option.classList.toggle('active', !!(input && input.checked));
+  });
+}
+
+function syncRadioGroupFromModel(hiddenInput, radioInputs) {
+  if (!hiddenInput || !radioInputs || !radioInputs.length) return;
+  radioInputs.forEach(radio => {
+    radio.checked = (radio.value === hiddenInput.value);
+  });
+  updateChoiceOptionStates();
+}
+
+function bindRadioGroupToModel(hiddenInput, radioInputs) {
+  if (!hiddenInput || !radioInputs || !radioInputs.length) return;
+  radioInputs.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      hiddenInput.value = radio.value;
+      hiddenInput.dispatchEvent(new Event('change'));
+      updateChoiceOptionStates();
+      markSettingsDirty();
+    });
+  });
+}
+
+function setSettingsDirty(isDirty) {
+  settingsDirty = !!isDirty;
+  if (settingsUnsavedIndicator) {
+    settingsUnsavedIndicator.classList.toggle('hidden', !settingsDirty);
+  }
+}
+
+function markSettingsDirty() {
+  if (isInitializingSettingsForm) return;
+  setSettingsDirty(true);
+}
+
+function initializeSettingsDirtyTracking() {
+  const trackedElements = document.querySelectorAll('#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input');
+  trackedElements.forEach(el => {
+    if (el.type === 'hidden') return;
+    el.addEventListener('input', markSettingsDirty);
+    el.addEventListener('change', markSettingsDirty);
+  });
+}
+
+bindRadioGroupToModel(syncType, syncTypeChoices);
+bindRadioGroupToModel(syncAuthMode, syncAuthChoices);
+bindRadioGroupToModel(document.getElementById('sync-encrypt-mode'), syncEncryptChoices);
+initializeSettingsDirtyTracking();
+updateChoiceOptionStates();
+
 // ---------- Tab Switching ----------
 tabButtons.forEach(btn => {
   btn.addEventListener("click", () => {
@@ -86,7 +158,9 @@ tabButtons.forEach(btn => {
 
 // ---------- Open Settings Modal ----------
 settingsBtn.addEventListener("click", async () => {
-  const config = await loadConfig();
+  isInitializingSettingsForm = true;
+  try {
+    const config = await loadConfig();
 
   // Load sync settings
   syncUrl.value = config.sync.serverUrl || "";
@@ -94,10 +168,15 @@ settingsBtn.addEventListener("click", async () => {
   if (syncType) syncType.value = config.sync.type || 'direct';
   if (syncWebdavType) syncWebdavType.value = config.sync.webdavType || 'generic';
   if (syncAuthMode) syncAuthMode.value = config.sync.authMode || (config.sync.password ? 'basic' : 'none');
+  syncRadioGroupFromModel(syncType, syncTypeChoices);
+  syncRadioGroupFromModel(syncAuthMode, syncAuthChoices);
 
   // Load encryption mode
   const syncEncryptMode = document.getElementById('sync-encrypt-mode');
-  if (syncEncryptMode) syncEncryptMode.value = config.sync.encryptionMode || 'none';
+  if (syncEncryptMode) {
+    syncEncryptMode.value = config.sync.encryptionMode || 'none';
+    syncRadioGroupFromModel(syncEncryptMode, syncEncryptChoices);
+  }
 
   // Try to populate credentials depending on encryption mode
   try {
@@ -168,6 +247,7 @@ settingsBtn.addEventListener("click", async () => {
     syncManual.checked = true;
     syncCustomValue.disabled = true;
   }
+  updateChoiceOptionStates();
 
   // Update last sync info
   updateLastSyncInfo(config);
@@ -183,14 +263,23 @@ settingsBtn.addEventListener("click", async () => {
     languageSelect.value = getCurrentLanguage();
   }
 
-  syncStatus.textContent = "";
-  settingsModal.classList.remove("hidden");
+    syncStatus.textContent = "";
+    if (syncTestStatus) syncTestStatus.textContent = "";
+    if (syncNowStatus) syncNowStatus.textContent = "";
+    settingsModal.classList.remove("hidden");
+    setSettingsDirty(false);
+  } finally {
+    isInitializingSettingsForm = false;
+  }
 });
 
 // ---------- Close Settings Modal ----------
-settingsCancelBtn.addEventListener("click", () => {
-  settingsModal.classList.add("hidden");
-});
+if (settingsCancelBtn) {
+  settingsCancelBtn.addEventListener("click", () => {
+    settingsModal.classList.add("hidden");
+  });
+}
+
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     settingsModal.classList.add("hidden");
@@ -200,36 +289,62 @@ document.addEventListener("keydown", e => {
 // ---------- Sync Interval Radio Buttons ----------
 syncImmediate.addEventListener("change", () => {
   syncCustomValue.disabled = true;
+  updateChoiceOptionStates();
 });
 
 syncCustom.addEventListener("change", () => {
   syncCustomValue.disabled = false;
   syncCustomValue.focus();
+  updateChoiceOptionStates();
 });
 
 syncManual.addEventListener("change", () => {
   syncCustomValue.disabled = true;
+  updateChoiceOptionStates();
 });
 
 // ---------- Auth fields handling ----------
 let credentialsTouched = false;
 
+function clearSyncCredentialsInConfig(config) {
+  if (!config || !config.sync) return;
+  config.sync.username = '';
+  config.sync.password = '';
+  delete config.sync.enc;
+  delete config.sync.localKey;
+  config.sync.encryptionMode = 'none';
+}
+
+function clearSyncCredentialsInUi() {
+  if (syncUsername) syncUsername.value = '';
+  if (syncPassword) syncPassword.value = '';
+  const syncEncryptMode = document.getElementById('sync-encrypt-mode');
+  if (syncEncryptMode) {
+    syncEncryptMode.value = 'none';
+    syncRadioGroupFromModel(syncEncryptMode, syncEncryptChoices);
+  }
+  credentialsTouched = false;
+  updateCredentialsSaveButton();
+}
+
 function updateSyncFields() {
   const isBrowserSync = syncType && syncType.value === 'browser';
   const isDirect = syncType && syncType.value === 'direct';
   const isWebdav = syncType && syncType.value === 'webdav';
-  const syncUrlDiv = syncUrl ? syncUrl.parentElement : null;
-  const authDiv = syncAuthMode ? syncAuthMode.parentElement : null;
-  const encryptDiv = document.getElementById('sync-encrypt-mode') ? document.getElementById('sync-encrypt-mode').parentElement : null;
-  const userDiv = syncUsername ? syncUsername.parentElement : null;
-  const passDiv = syncPassword ? syncPassword.parentElement : null;
+  const syncUrlDiv = document.getElementById('sync-url-row');
+  const authDiv = syncAuthCard;
+  const encryptDiv = syncEncryptSection;
+  const userDiv = syncUsernameRow;
+  const passDiv = syncPasswordRow;
 
   if (syncUrlDiv) syncUrlDiv.style.display = isBrowserSync ? 'none' : '';
   if (syncTest) syncTest.style.display = isBrowserSync ? 'none' : '';
   if (authDiv) authDiv.style.display = isBrowserSync ? 'none' : '';
   if (syncWebdavTypeRow) syncWebdavTypeRow.style.display = isWebdav ? '' : 'none';
+  if (syncBrowserHint) syncBrowserHint.classList.toggle('hidden', !isBrowserSync);
 
   const usingBasic = (isDirect || isWebdav) && syncAuthMode && syncAuthMode.value === 'basic';
+  if (syncCredentialsCard) syncCredentialsCard.style.display = usingBasic ? '' : 'none';
   if (userDiv) userDiv.style.display = usingBasic ? '' : 'none';
   if (passDiv) passDiv.style.display = usingBasic ? '' : 'none';
 
@@ -246,6 +361,9 @@ function updateSyncFields() {
 
   if (syncCredentialsRow) {
     syncCredentialsRow.style.display = usingBasic ? '' : 'none';
+  }
+  if (syncAuthResetNote) {
+    syncAuthResetNote.classList.toggle('hidden', !!usingBasic || isBrowserSync);
   }
   updateCredentialsSaveButton();
 }
@@ -285,11 +403,7 @@ if (syncCredentialsSaveBtn) {
     if (syncType && syncType.value === 'browser') {
       config.sync.serverUrl = '';
       config.sync.authMode = 'none';
-      config.sync.username = '';
-      config.sync.password = '';
-      delete config.sync.enc;
-      delete config.sync.localKey;
-      config.sync.encryptionMode = 'none';
+      clearSyncCredentialsInConfig(config);
     } else if (syncUrl.value.trim()) {
       config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, "");
     }
@@ -372,7 +486,7 @@ if (syncTest) {
     const url = syncUrl ? syncUrl.value.trim() : '';
 
     if (!url) {
-      syncStatus.textContent = "❌ " + t('fillUrl');
+      if (syncTestStatus) syncTestStatus.textContent = "❌ " + t('fillUrl');
       return;
     }
 
@@ -380,12 +494,12 @@ if (syncTest) {
     const granted = await requestHostPermission(url, syncType && syncType.value ? syncType.value : 'direct');
 
     if (!granted) {
-      syncStatus.textContent = "❌ " + t("permissionDenied");
+      if (syncTestStatus) syncTestStatus.textContent = "❌ " + t("permissionDenied");
       return;
     }
 
     // Test connection using the URL from input field
-    syncStatus.textContent = "🔍 " + t("testingConnection");
+    if (syncTestStatus) syncTestStatus.textContent = "🔍 " + t("testingConnection");
 
     const useBasic = syncAuthMode && syncAuthMode.value === 'basic';
     const ok = await testSyncConnection(
@@ -396,9 +510,9 @@ if (syncTest) {
     );
 
     if (ok) {
-      syncStatus.textContent = "✅ " + t("serverResponds");
+      if (syncTestStatus) syncTestStatus.textContent = "✅ " + t("serverResponds");
     } else {
-      syncStatus.textContent = "❌ " + t("serverNotResponds");
+      if (syncTestStatus) syncTestStatus.textContent = "❌ " + t("serverNotResponds");
     }
   });
 }
@@ -411,9 +525,9 @@ syncNowBtn.addEventListener("click", async () => {
   const success = await syncNow();
 
   if (success) {
-    syncStatus.textContent = "✅ " + t("syncSuccessful");
+    if (syncNowStatus) syncNowStatus.textContent = "✅ " + t("syncSuccessful");
   } else {
-    syncStatus.textContent = "❌ " + t("syncFailed");
+    if (syncNowStatus) syncNowStatus.textContent = "❌ " + t("syncFailed");
   }
 
   // Re-enable button after 2 seconds
@@ -779,7 +893,7 @@ importBookmarksBtn?.addEventListener("click", async () => {
 });
 
 // ---------- Save Settings ----------
-settingsSaveBtn.addEventListener("click", async () => {
+async function persistSettings(closeAfterSave = false) {
   const config = await loadConfig();
 
   // Save sync type and URL directly to config
@@ -801,6 +915,16 @@ settingsSaveBtn.addEventListener("click", async () => {
 
   if (syncWebdavType) {
     config.sync.webdavType = syncWebdavType.value || 'generic';
+  }
+
+  // Persist selected auth mode for direct/webdav sync types.
+  if (syncType && (syncType.value === 'direct' || syncType.value === 'webdav') && syncAuthMode) {
+    config.sync.authMode = syncAuthMode.value || 'none';
+
+    if (config.sync.authMode === 'none') {
+      clearSyncCredentialsInConfig(config);
+      clearSyncCredentialsInUi();
+    }
   }
 
   // Preserve auth and credential storage unless the credentials form was explicitly modified
@@ -839,8 +963,26 @@ settingsSaveBtn.addEventListener("click", async () => {
     render();
   } catch (e) {}
 
-  settingsModal.classList.add("hidden");
+  setSettingsDirty(false);
+
+  if (!closeAfterSave && syncStatus) {
+    syncStatus.textContent = "✅ " + t('settingsSaved');
+  }
+
+  if (closeAfterSave) {
+    settingsModal.classList.add("hidden");
+  }
+}
+
+settingsSaveBtn.addEventListener("click", async () => {
+  await persistSettings(false);
 });
+
+if (settingsSaveCloseBtn) {
+  settingsSaveCloseBtn.addEventListener("click", async () => {
+    await persistSettings(true);
+  });
+}
 
 // ---------- Show Deleted Button ----------
 showDeletedBtn.addEventListener("click", () => {

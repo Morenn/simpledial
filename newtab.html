@@ -15,8 +15,8 @@
     <div id="groups-header">
     </div>
     <div id="manage">
-      <input id="search-box" type="text" placeholder="Hľadať...">
-      <button id="theme-toggle" title="Prepnúť tému">🌓</button>
+      <input id="search-box" type="text" placeholder="Search...">
+      <button id="theme-toggle" title="Switch theme">🌓</button>
       <button id="show-deleted-btn" class="icon-btn" title="Show deleted">👁️</button>
       <button id="manual-sync-btn" class="icon-btn hidden" title="Sync now">⬆️</button>
       <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
@@ -75,88 +75,141 @@
       <!-- Synchronization Tab -->
       <div id="sync-tab" class="settings-tab-content active">
         <h3 id="sync-config-title" data-i18n="syncConfiguration">Sync Configuration</h3>
-        <div id="sync-url-row">
-          <label id="sync-url-label" data-i18n="serverUrl">Server URL</label>
-          <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json" size="60">
-        </div>
-        <div style="margin-top:8px;">
-          <label id="sync-type-label" data-i18n="syncType">Sync type</label>
-          <select id="sync-type">
-            <option value="direct" data-i18n="syncTypeDirect">Direct JSON</option>
-            <option value="webdav" data-i18n="syncTypeWebdav">WebDAV</option>
-            <option value="browser" data-i18n="syncTypeBrowserNative">Browser native sync</option>
-          </select>
-        </div>
 
-        <div style="margin-top:8px; display:none;" id="sync-webdav-type-row">
-          <label id="sync-webdav-type-label" data-i18n="webdavServerType">WebDAV server type</label>
-          <select id="sync-webdav-type">
-            <option value="nextcloud" data-i18n="webdavTypeNextcloud">Nextcloud</option>
-            <!-- <option value="generic" data-i18n="webdavTypeGeneric">Generic</option> -->
-          </select>
-        </div>
+        <input type="hidden" id="sync-type" value="direct">
+        <input type="hidden" id="sync-auth-mode" value="none">
+        <input type="hidden" id="sync-encrypt-mode" value="none">
 
-        <div style="margin-top:8px;">
-          <label id="sync-auth-label" data-i18n="syncAuthMode">Authentication</label>
-          <select id="sync-auth-mode">
-            <option value="none" data-i18n="syncAuthNone">Don't use authentication</option>
-            <option value="basic" data-i18n="syncAuthBasic">Use Basic auth</option>
-          </select>
-        </div>
+        <section class="sync-section-card" id="sync-provider-card">
+          <div class="sync-section-header" data-i18n="syncProvider">Sync provider</div>
+          <p class="sync-section-subtitle" data-i18n="syncProviderHint">Choose where bookmark data is synchronized.</p>
+          <div class="choice-group" id="sync-type-choice-group">
+            <label class="choice-option">
+              <input type="radio" name="sync-type-choice" value="direct" checked>
+              <span class="choice-option-title" data-i18n="syncTypeDirect">Direct JSON</span>
+              <span class="choice-option-subtitle" data-i18n="syncProviderDirectDesc">Use a direct JSON endpoint URL.</span>
+            </label>
+            <label class="choice-option">
+              <input type="radio" name="sync-type-choice" value="webdav">
+              <span class="choice-option-title" data-i18n="syncTypeWebdav">WebDAV</span>
+              <span class="choice-option-subtitle" data-i18n="syncProviderWebdavDesc">Use a WebDAV-compatible server.</span>
+            </label>
+            <label class="choice-option">
+              <input type="radio" name="sync-type-choice" value="browser">
+              <span class="choice-option-title" data-i18n="syncTypeBrowserNative">Browser native sync</span>
+              <span class="choice-option-subtitle" data-i18n="syncProviderBrowserDesc">Use browser-managed sync storage.</span>
+            </label>
+          </div>
+        </section>
 
-        <div style="margin-top:8px;">
-          <label id="sync-encrypt-label" data-i18n="syncEncryptMode">Credentials encryption</label>
-          <select id="sync-encrypt-mode">
-            <option value="none" data-i18n="syncEncryptNone">Do not encrypt</option>
-            <option value="master" data-i18n="syncEncryptMaster">Encrypt with master password</option>
-            <option value="local" data-i18n="syncEncryptLocal">Encrypt with local key</option>
-          </select>
-        </div>
+        <section class="sync-section-card" id="sync-connection-card">
+          <div class="sync-section-header" data-i18n="syncConnection">Connection</div>
+          <p class="sync-section-subtitle" data-i18n="syncConnectionHint">Set endpoint details and verify the connection.</p>
 
-        <div style="margin-top:8px;">
-          <label id="sync-username-label" data-i18n="syncUsername">Username (optional)</label>
-          <input type="text" id="sync-username" placeholder="">
-        </div>
+          <div id="sync-url-row">
+            <label id="sync-url-label" data-i18n="serverUrl">Server URL</label>
+            <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json" size="60">
+          </div>
 
-        <div style="margin-top:8px;">
-          <label id="sync-password-label" data-i18n="syncPassword">Password (optional)</label>
-          <input type="password" id="sync-password" placeholder="">
-        </div>
-        <div style="margin-top:8px; display:none;" id="sync-credentials-row">
-          <button id="sync-credentials-save" class="icon-btn primary" data-i18n="saveCredentials">💾 Save credentials</button>
-        </div>
-        <button id="sync-test" class="icon-btn primary" data-i18n="testConnection">🔍 Test connection</button>
+          <div style="margin-top:8px; display:none;" id="sync-webdav-type-row">
+            <label id="sync-webdav-type-label" data-i18n="webdavServerType">WebDAV server type</label>
+            <select id="sync-webdav-type">
+              <option value="nextcloud" data-i18n="webdavTypeNextcloud">Nextcloud</option>
+            </select>
+          </div>
 
-        <label class="checkbox-row">
-          <input type="checkbox" id="sync-enable">
-          <span data-i18n="enableSync">🔄 Enable synchronization</span>
-        </label>
+          <div id="sync-browser-hint" class="sync-inline-note hidden" data-i18n="syncBrowserNativeHint">Browser native sync uses your browser account. URL and authentication are not required.</div>
+
+          <button id="sync-test" class="icon-btn primary" data-i18n="testConnection">🔍 Test connection</button>
+          <div id="sync-test-status" class="status"></div>
+        </section>
+
+        <section class="sync-section-card" id="sync-auth-card">
+          <div class="sync-section-header" data-i18n="syncAuthMode">Authentication</div>
+          <p class="sync-section-subtitle" data-i18n="syncAuthenticationHint">Pick how the server authenticates requests.</p>
+          <div class="choice-group choice-group-inline" id="sync-auth-choice-group">
+            <label class="choice-option choice-option-inline">
+              <input type="radio" name="sync-auth-choice" value="none" checked>
+              <span class="choice-option-title" data-i18n="syncAuthNone">Don't use authentication</span>
+            </label>
+            <label class="choice-option choice-option-inline">
+              <input type="radio" name="sync-auth-choice" value="basic">
+              <span class="choice-option-title" data-i18n="syncAuthBasic">Use Basic auth</span>
+            </label>
+          </div>
+          <div id="sync-auth-reset-note" class="sync-inline-note hidden" data-i18n="syncAuthResetNotice">Saved credentials will be cleared when you save with no authentication.</div>
+        </section>
+
+        <section class="sync-section-card" id="sync-credentials-card">
+          <div class="sync-section-header" data-i18n="syncCredentialsProtection">Credentials protection</div>
+          <p class="sync-section-subtitle" data-i18n="syncCredentialsProtectionHint">Choose how saved credentials should be protected.</p>
+
+          <div id="sync-username-row" style="margin-top:8px;">
+            <label id="sync-username-label" data-i18n="syncUsername">Username</label>
+            <input type="text" id="sync-username" placeholder="">
+          </div>
+
+          <div id="sync-password-row" style="margin-top:8px;">
+            <label id="sync-password-label" data-i18n="syncPassword">Password</label>
+            <input type="password" id="sync-password" placeholder="">
+          </div>
+
+          <div id="sync-encrypt-section" style="margin-top:8px;">
+            <label id="sync-encrypt-label" data-i18n="syncEncryptMode">Credentials encryption</label>
+            <div class="choice-group choice-group-inline" id="sync-encrypt-choice-group">
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-encrypt-choice" value="none" checked>
+                <span class="choice-option-title" data-i18n="syncEncryptNone">Do not encrypt</span>
+              </label>
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-encrypt-choice" value="master">
+                <span class="choice-option-title" data-i18n="syncEncryptMaster">Encrypt with master password</span>
+              </label>
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-encrypt-choice" value="local">
+                <span class="choice-option-title" data-i18n="syncEncryptLocal">Encrypt with local key</span>
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-top:8px; display:none;" id="sync-credentials-row">
+            <button id="sync-credentials-save" class="icon-btn primary" data-i18n="saveCredentials">💾 Save credentials</button>
+          </div>
+        </section>
+
+        <section class="sync-section-card" id="sync-behavior-card">
+          <div class="sync-section-header" data-i18n="syncBehavior">Sync behavior</div>
+          <p class="sync-section-subtitle" data-i18n="syncBehaviorHint">Control when synchronization is triggered.</p>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="sync-enable">
+            <span data-i18n="enableSync">🔄 Enable synchronization</span>
+          </label>
+
+          <div class="choice-group" id="sync-interval-choice-group">
+            <label class="choice-option choice-option-inline">
+              <input type="radio" name="sync-interval" value="immediate" id="sync-immediate">
+              <span class="choice-option-title" data-i18n="immediateSyncWarning">Immediate sync (on every change)</span>
+            </label>
+
+            <label class="choice-option choice-option-inline">
+              <input type="radio" name="sync-interval" value="custom" id="sync-custom">
+              <span class="choice-option-title" data-i18n="customInterval">Custom interval (minutes):</span>
+              <input type="number" id="sync-interval-value" min="1" max="1440" placeholder="60">
+            </label>
+
+            <label class="choice-option choice-option-inline">
+              <input type="radio" name="sync-interval" value="manual" id="sync-manual">
+              <span class="choice-option-title" data-i18n="manualSyncOnly">Manual sync only</span>
+            </label>
+          </div>
+
+          <button id="sync-now-btn" class="icon-btn primary" data-i18n="syncNow">⬆️ Sync now</button>
+          <div id="sync-now-status" class="status"></div>
+          <div id="last-sync-info" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
+        </section>
 
         <div id="sync-status" class="status"></div>
-
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
-
-        <h3 id="sync-interval-title" data-i18n="syncInterval">Sync Interval</h3>
-        
-        <label class="radio-row">
-          <input type="radio" name="sync-interval" value="immediate" id="sync-immediate">
-          <span data-i18n="immediateSyncWarning">Immediate sync (on every change)</span>
-        </label>
-
-        <label class="radio-row">
-          <input type="radio" name="sync-interval" value="custom" id="sync-custom">
-          <span data-i18n="customInterval">Custom interval (minutes):</span>
-          <input type="number" id="sync-interval-value" min="1" max="1440" placeholder="60">
-        </label>
-
-        <label class="radio-row">
-          <input type="radio" name="sync-interval" value="manual" id="sync-manual">
-          <span data-i18n="manualSyncOnly">Manual sync only</span>
-        </label>
-
-        <button id="sync-now-btn" class="icon-btn primary" data-i18n="syncNow">⬆️ Sync now</button>
-
-        <div id="last-sync-info" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
       </div>
 
       <!-- Export/Import Tab -->
@@ -265,8 +318,10 @@
       </div>
 
       <div class="modal-buttons">
+        <button id="settings-save-close" class="icon-btn primary" data-i18n="saveAndClose">✅ Save and Close</button>
         <button id="settings-save" class="icon-btn primary" data-i18n="save">💾 Save</button>
-        <button id="settings-cancel" class="icon-btn danger" data-i18n="close">❌ Close</button>
+        <span id="settings-unsaved-indicator" class="settings-unsaved-indicator hidden" data-i18n="syncUnsavedChanges">Unsaved changes</span>
+        <button id="settings-cancel" class="icon-btn danger" data-i18n="cancel">❌ Cancel</button>
       </div>
     </div>
   </div>
