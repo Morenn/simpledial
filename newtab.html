@@ -2,13 +2,15 @@
 <html lang="sk">
 <head>
   <meta charset="utf-8">
-  <title>My SpeedDial</title>
+  <title>Simple SpeedDial</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="shortcut icon" href="icons/icon-48.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/icon-48.png">
 </head>
 
 <body class="theme-dark">
 
-  <!-- Horná lišta -->
+  <!-- Top bar -->
   <header id="top-bar">
     <div id="groups-header">
     </div>
@@ -21,14 +23,14 @@
     </div>
   </header>
 
-  <!-- Hlavná časť -->
+  <!-- Main section -->
   <main>
     <div id="bookmarks-grid">
-      <!-- Bookmarky sa renderujú dynamicky -->
+      <!-- Bookmarks are rendered dynamically -->
     </div>
   </main>
 
-  <!-- Kontextové menu -->
+  <!-- Context menu -->
   <div id="context-menu" class="hidden">
     <div data-action="edit">Edit</div>
     <div data-action="delete">Delete</div>
@@ -37,28 +39,28 @@
     <div data-action="refresh-icon">Refresh icon</div>
   </div>
 
-  <!-- Modal pre pridanie/upravu bookmarku -->
+  <!-- Modal for adding/editing bookmark -->
   <div id="bookmark-modal" class="modal hidden">
     <div class="modal-content">
-      <h2 id="modal-title">Nová záložka</h2>
+      <h2 id="modal-title">New bookmark</h2>
 
-      <label for="bm-title">Názov</label>
+      <label for="bm-title">Name</label>
       <input type="text" id="bm-title">
 
       <label for="bm-url">URL</label>
       <input type="url" id="bm-url">
 
-      <label for="bm-icon">URL ikony (voliteľné)</label>
+      <label for="bm-icon">Icon URL (optional)</label>
       <input type="url" id="bm-icon">
 
       <div class="modal-buttons">
-        <button id="bm-save">Uložiť</button>
-        <button id="bm-cancel">Zrušiť</button>
+        <button id="bm-save">Save</button>
+        <button id="bm-cancel">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal pre nastavenia -->
+  <!-- Settings modal -->
   <div id="settings-modal" class="modal hidden">
     <div class="modal-content">
      

@@ -111,7 +111,7 @@ async function renderBookmarks() {
   // 1) Global search across all groups if there's search text
   // ============================================
   if (searchText) {
-    // Zoberieme všetky položky zo všetkých skupín
+    // Collect all items from all groups
     state.groups.forEach(group => {
       group.items.forEach(item => {
         items.push({

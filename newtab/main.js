@@ -26,8 +26,8 @@ window.addEventListener("keydown", e => {
       search.focus();
       search.select();
 
-      // Pulse efekt
-      search.classList.remove("search-pulse"); // reset ak bol efekt nedávno
+      // Pulse effect
+      search.classList.remove("search-pulse"); // reset if the effect was recently active
       void search.offsetWidth;                // force reflow
       search.classList.add("search-pulse");
     }

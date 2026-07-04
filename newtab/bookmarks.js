@@ -3,7 +3,7 @@ import { render } from "./render.js";
 import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
 
-// ---------- Vytvorenie bookmark tile ----------
+// ---------- Create bookmark tile ----------
 export function createBookmarkTile(item, config = null) {
   const tile = document.createElement("div");
   tile.className = "bookmark-tile";

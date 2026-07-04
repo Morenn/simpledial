@@ -10,7 +10,8 @@
     "storage",
     "downloads",
     "webRequestAuthProvider",
-    "bookmarks"
+    "bookmarks",
+    "favicon"
   ],
   "host_permissions": [],
   "optional_host_permissions": [ "*://*/*" ],
