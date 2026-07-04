@@ -77,6 +77,40 @@
         <label id="sync-url-label" data-i18n="serverUrl">Server URL</label>
         <input  type="text" id="sync-url" placeholder="https://sync.local/speeddial.json" size="60">
         </div>
+        <div style="margin-top:8px;">
+          <label id="sync-type-label" data-i18n="syncType">Sync type</label>
+          <select id="sync-type">
+            <option value="direct" data-i18n="syncTypeDirect">Direct JSON</option>
+            <option value="webdav" data-i18n="syncTypeWebdav">WebDAV</option>
+          </select>
+        </div>
+
+        <div style="margin-top:8px;">
+          <label id="sync-auth-label" data-i18n="syncAuthMode">Authentication</label>
+          <select id="sync-auth-mode">
+            <option value="none" data-i18n="syncAuthNone">Don't use authentication</option>
+            <option value="basic" data-i18n="syncAuthBasic">Use Basic auth</option>
+          </select>
+        </div>
+
+        <div style="margin-top:8px;">
+          <label id="sync-encrypt-label" data-i18n="syncEncryptMode">Credentials encryption</label>
+          <select id="sync-encrypt-mode">
+            <option value="none" data-i18n="syncEncryptNone">Do not encrypt</option>
+            <option value="master" data-i18n="syncEncryptMaster">Encrypt with master password</option>
+            <option value="local" data-i18n="syncEncryptLocal">Encrypt with local key</option>
+          </select>
+        </div>
+
+        <div style="margin-top:8px;">
+          <label id="sync-username-label" data-i18n="syncUsername">Username (optional)</label>
+          <input type="text" id="sync-username" placeholder="">
+        </div>
+
+        <div style="margin-top:8px;">
+          <label id="sync-password-label" data-i18n="syncPassword">Password (optional)</label>
+          <input type="password" id="sync-password" placeholder="">
+        </div>
         <button id="sync-test" class="icon-btn primary" data-i18n="testConnection">🔍 Test connection</button>
 
         <label class="checkbox-row">
@@ -123,6 +157,13 @@
         <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="import-desc" data-i18n="importDescription">Import bookmarks from JSON file</p>
         <input type="file" id="import-file" accept=".json" style="display: none;">
         <button id="import-btn" class="icon-btn primary" data-i18n="import">📤 Import</button>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
+        <h3 id="browser-bookmarks-title" data-i18n="browserBookmarks">Browser bookmarks</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="browser-bookmarks-desc" data-i18n="browserBookmarksDesc">Export and import groups to a browser bookmarks folder named SimpleDial.</p>
+        <button id="export-bookmarks-btn" class="icon-btn primary" data-i18n="exportBrowserBookmarks">📁 Export to bookmarks</button>
+        <button id="import-bookmarks-btn" class="icon-btn primary" data-i18n="importBrowserBookmarks">📂 Import from bookmarks</button>
       </div>
 
       <!-- Appearance Tab -->

@@ -1,7 +1,9 @@
-import { state, saveState } from "./state.js";
+import { state, saveState, generateId } from "./state.js";
 import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite } from "./sync.js";
 import { t, getCurrentLanguage } from "./i18n.js";
+import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
+import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
 import { render } from "./render.js";
 
 // ======================================================
@@ -20,6 +22,10 @@ const settingsCancelBtn = document.getElementById("settings-cancel");
 const syncUrl = document.getElementById("sync-url");
 const syncTest = document.getElementById("sync-test");
 const syncEnable = document.getElementById("sync-enable");
+const syncType = document.getElementById("sync-type");
+const syncAuthMode = document.getElementById("sync-auth-mode");
+const syncUsername = document.getElementById("sync-username");
+const syncPassword = document.getElementById("sync-password");
 const syncStatus = document.getElementById("sync-status");
 const syncImmediate = document.getElementById("sync-immediate");
 const syncCustom = document.getElementById("sync-custom");
@@ -32,6 +38,8 @@ const lastSyncInfo = document.getElementById("last-sync-info");
 const exportBtn = document.getElementById("export-btn");
 const importBtn = document.getElementById("import-btn");
 const importFile = document.getElementById("import-file");
+const exportBookmarksBtn = document.getElementById("export-bookmarks-btn");
+const importBookmarksBtn = document.getElementById("import-bookmarks-btn");
 
 // Appearance Elements
 const showDeletedToggle = document.getElementById("show-deleted-toggle");
@@ -76,6 +84,67 @@ settingsBtn.addEventListener("click", async () => {
   // Load sync settings
   syncUrl.value = config.sync.serverUrl || "";
   syncEnable.checked = config.sync.enabled;
+  if (syncType) syncType.value = config.sync.type || 'direct';
+  if (syncAuthMode) syncAuthMode.value = config.sync.authMode || (config.sync.password ? 'basic' : 'none');
+
+  // Load encryption mode
+  const syncEncryptMode = document.getElementById('sync-encrypt-mode');
+  if (syncEncryptMode) syncEncryptMode.value = config.sync.encryptionMode || 'none';
+
+  // Try to populate credentials depending on encryption mode
+  try {
+    if (config.sync.authMode === 'basic') {
+      if (config.sync.encryptionMode === 'none') {
+        if (syncUsername) syncUsername.value = config.sync.username || '';
+        if (syncPassword) syncPassword.value = config.sync.password || '';
+      } else if (config.sync.encryptionMode === 'local' && config.sync.localKey && config.sync.enc) {
+        // decrypt using stored local key
+        try {
+          const key = await importRawKey(config.sync.localKey);
+          const plain = await decryptWithKey(key, config.sync.enc.ciphertext, config.sync.enc.iv);
+          const obj = JSON.parse(plain);
+          if (syncUsername) syncUsername.value = obj.username || '';
+          if (syncPassword) syncPassword.value = obj.password || '';
+        } catch (e) {
+          console.warn('Failed to decrypt local credentials', e);
+        }
+      } else if (config.sync.encryptionMode === 'master' && config.sync.enc) {
+        // If we have a cached master key in window, try to decrypt
+        if (window._speeddial_masterKey) {
+          try {
+            const plain = await decryptWithKey(window._speeddial_masterKey, config.sync.enc.ciphertext, config.sync.enc.iv);
+            const obj = JSON.parse(plain);
+            if (syncUsername) syncUsername.value = obj.username || '';
+            if (syncPassword) syncPassword.value = obj.password || '';
+          } catch (e) {
+            console.warn('Failed to decrypt with cached master key', e);
+            syncStatus.textContent = "❌ " + t('enterMasterPasswordPrompt');
+          }
+        } else {
+          // Prompt user to unlock credentials now
+          const pw = prompt(t('enterMasterPasswordPrompt') + " (leave empty to skip)");
+          if (pw) {
+            try {
+              const derived = await deriveKeyFromPassword(pw, config.sync.enc.salt);
+              const plain = await decryptWithKey(derived.key, config.sync.enc.ciphertext, config.sync.enc.iv);
+              window._speeddial_masterKey = derived.key; // cache for session
+              const obj = JSON.parse(plain);
+              if (syncUsername) syncUsername.value = obj.username || '';
+              if (syncPassword) syncPassword.value = obj.password || '';
+            } catch (e) {
+              console.warn('Master password failed', e);
+              syncStatus.textContent = "❌ " + t('enterMasterPasswordPrompt');
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Error while loading encrypted credentials', e);
+  }
+
+  // Update auth fields visibility based on current type/mode
+  updateAuthFields();
 
   // Load sync interval settings
   const intervalMode = config.sync.intervalMode || "default";
@@ -133,6 +202,37 @@ syncManual.addEventListener("change", () => {
   syncCustomValue.disabled = true;
 });
 
+// ---------- Auth fields handling ----------
+function updateAuthFields() {
+  const isDirect = syncType && syncType.value === 'direct';
+  const authDiv = syncAuthMode ? syncAuthMode.parentElement : null;
+  const encryptDiv = document.getElementById('sync-encrypt-mode') ? document.getElementById('sync-encrypt-mode').parentElement : null;
+  const userDiv = syncUsername ? syncUsername.parentElement : null;
+  const passDiv = syncPassword ? syncPassword.parentElement : null;
+
+  if (authDiv) authDiv.style.display = isDirect ? '' : 'none';
+
+  const usingBasic = isDirect && syncAuthMode && syncAuthMode.value === 'basic';
+  if (userDiv) userDiv.style.display = usingBasic ? '' : 'none';
+  if (passDiv) passDiv.style.display = usingBasic ? '' : 'none';
+
+  // Show encryption mode selector when credentials are relevant (direct+basic or webdav)
+  const showEncrypt = (isDirect && usingBasic) || (syncType && syncType.value === 'webdav');
+  if (encryptDiv) encryptDiv.style.display = showEncrypt ? '' : 'none';
+
+  if (syncUsername) syncUsername.required = usingBasic;
+  if (syncPassword) syncPassword.required = usingBasic;
+
+  // Update label marker
+  const userLabel = document.getElementById('sync-username-label');
+  const passLabel = document.getElementById('sync-password-label');
+  if (userLabel) userLabel.textContent = (userLabel.textContent || '').replace(' *', '') + (usingBasic ? ' *' : '');
+  if (passLabel) passLabel.textContent = (passLabel.textContent || '').replace(' *', '') + (usingBasic ? ' *' : '');
+}
+
+if (syncAuthMode) syncAuthMode.addEventListener('change', updateAuthFields);
+if (syncType) syncType.addEventListener('change', updateAuthFields);
+
 // ---------- Test Connection ----------
 syncTest.addEventListener("click", async () => {
   const url = syncUrl.value.trim();
@@ -153,7 +253,8 @@ syncTest.addEventListener("click", async () => {
   // Test connection using the URL from input field
   syncStatus.textContent = "🔍 " + t("testingConnection");
 
-  const ok = await testSyncConnection(url);
+  const useBasic = syncAuthMode && syncAuthMode.value === 'basic';
+  const ok = await testSyncConnection(url, useBasic ? (syncUsername ? syncUsername.value : '') : '', useBasic ? (syncPassword ? syncPassword.value : '') : '');
 
   if (ok) {
     syncStatus.textContent = "✅ " + t("serverResponds");
@@ -254,6 +355,123 @@ importFile.addEventListener("change", async (e) => {
   reader.readAsText(file);
 });
 
+exportBookmarksBtn?.addEventListener("click", async () => {
+  try {
+    const folder = await findOrCreateSimpleDialFolder();
+    const existingChildren = await getBookmarkChildren(folder.id);
+
+    for (const child of existingChildren) {
+      await removeBookmarkNode(child.id);
+    }
+
+    const groupsToExport = state.groups.filter(g => !g.deleted);
+    for (const group of groupsToExport) {
+      const groupFolder = await createBookmarkNode({ parentId: folder.id, title: group.name || 'Group' });
+      const itemsToExport = (group.items || []).filter(item => !item.deleted && item.url);
+      for (const item of itemsToExport) {
+        await createBookmarkNode({
+          parentId: groupFolder.id,
+          title: item.title || item.url,
+          url: item.url
+        });
+      }
+    }
+
+    syncStatus.textContent = "✅ " + t('bookmarksExportSuccessful');
+    alert(t('bookmarksExportSuccessful'));
+  } catch (error) {
+    console.error('Export to browser bookmarks failed', error);
+    syncStatus.textContent = "❌ " + t('syncFailed');
+    alert(t('syncFailed'));
+  }
+});
+
+importBookmarksBtn?.addEventListener("click", async () => {
+  if (!confirm(t('browserBookmarksImportWarning'))) {
+    return;
+  }
+
+  try {
+    const folder = await findOrCreateSimpleDialFolder();
+    const children = await getBookmarkChildren(folder.id);
+    if (!children || children.length === 0) {
+      alert(t('browserBookmarksEmpty'));
+      return;
+    }
+
+    const importedGroups = [];
+    const orphanItems = [];
+
+    for (const child of children) {
+      if (child.url) {
+        orphanItems.push(child);
+        continue;
+      }
+
+      const items = [];
+      const groupChildren = await getBookmarkChildren(child.id);
+      for (const item of groupChildren || []) {
+        if (!item.url) continue;
+        items.push({
+          id: generateId('b'),
+          title: item.title || item.url,
+          url: item.url,
+          customIcon: null,
+          updatedAt: Date.now(),
+          deleted: false,
+          deletedAt: null,
+          hasError: false
+        });
+      }
+
+      importedGroups.push({
+        id: generateId('g'),
+        name: child.title || 'Group',
+        items,
+        updatedAt: Date.now(),
+        deleted: false,
+        deletedAt: null
+      });
+    }
+
+    if (orphanItems.length > 0) {
+      importedGroups.unshift({
+        id: generateId('g'),
+        name: 'Imported bookmarks',
+        items: orphanItems.map(item => ({
+          id: generateId('b'),
+          title: item.title || item.url,
+          url: item.url,
+          customIcon: null,
+          updatedAt: Date.now(),
+          deleted: false,
+          deletedAt: null,
+          hasError: false
+        })),
+        updatedAt: Date.now(),
+        deleted: false,
+        deletedAt: null
+      });
+    }
+
+    if (importedGroups.length === 0) {
+      alert(t('browserBookmarksEmpty'));
+      return;
+    }
+
+    state.groups = importedGroups;
+    await saveState();
+
+    alert(t('bookmarksImportSuccessful'));
+    settingsModal.classList.add("hidden");
+    window.location.reload();
+  } catch (error) {
+    console.error('Import from browser bookmarks failed', error);
+    syncStatus.textContent = "❌ " + t('syncFailed');
+    alert(t('syncFailed'));
+  }
+});
+
 // ---------- Save Settings ----------
 settingsSaveBtn.addEventListener("click", async () => {
   const config = await loadConfig();
@@ -261,6 +479,85 @@ settingsSaveBtn.addEventListener("click", async () => {
   // Save sync URL directly to config
   if (syncUrl.value.trim()) {
     config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, ""); // Remove trailing slash
+  }
+  if (syncType) config.sync.type = syncType.value || 'direct';
+
+  // Auth handling and optional encryption: only store creds when Basic auth selected
+  if (syncAuthMode && syncAuthMode.value === 'basic' && syncType && syncType.value === 'direct') {
+    // Validate credentials
+    if (!syncUsername || !syncUsername.value.trim() || !syncPassword || !syncPassword.value) {
+      syncStatus.textContent = "❌ " + t('syncAuthCredentialsRequired');
+      return;
+    }
+
+    config.sync.authMode = 'basic';
+
+    // Encryption mode handling
+    const syncEncryptModeEl = document.getElementById('sync-encrypt-mode');
+    const encryptMode = syncEncryptModeEl ? syncEncryptModeEl.value : (config.sync.encryptionMode || 'none');
+    config.sync.encryptionMode = encryptMode || 'none';
+
+    if (encryptMode === 'none') {
+      config.sync.username = syncUsername.value;
+      config.sync.password = syncPassword.value;
+      delete config.sync.enc;
+      delete config.sync.localKey;
+    } else if (encryptMode === 'local') {
+      // generate local key if missing
+      if (!config.sync.localKey) {
+        config.sync.localKey = await generateLocalKeyRaw();
+      }
+      // import and encrypt
+      try {
+        const key = await importRawKey(config.sync.localKey);
+        const payload = JSON.stringify({ username: syncUsername.value, password: syncPassword.value });
+        const enc = await encryptWithKey(key, payload);
+        config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv };
+        config.sync.username = '';
+        config.sync.password = '';
+      } catch (e) {
+        console.error('Failed to encrypt with local key', e);
+        syncStatus.textContent = '❌ Encryption failed';
+        return;
+      }
+    } else if (encryptMode === 'master') {
+      // Ask for master password to derive key and encrypt
+      const pw = prompt(t('enterMasterPasswordPrompt'));
+      if (!pw) {
+        syncStatus.textContent = "❌ " + t('enterMasterPasswordPrompt');
+        return;
+      }
+
+      // Confirm if not previously cached
+      const confirm = prompt(t('confirmMasterPasswordPrompt'));
+      if (pw !== confirm) {
+        syncStatus.textContent = "❌ " + t('confirmMasterPasswordPrompt');
+        return;
+      }
+
+      try {
+        const derived = await deriveKeyFromPassword(pw, null);
+        const payload = JSON.stringify({ username: syncUsername.value, password: syncPassword.value });
+        const enc = await encryptWithKey(derived.key, payload);
+        config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv, salt: derived.salt };
+        config.sync.encryptionMode = 'master';
+        // cache derived key for session use
+        window._speeddial_masterKey = derived.key;
+        config.sync.username = '';
+        config.sync.password = '';
+      } catch (e) {
+        console.error('Failed to encrypt with master password', e);
+        syncStatus.textContent = '❌ Encryption failed';
+        return;
+      }
+    }
+  } else {
+    config.sync.authMode = 'none';
+    config.sync.username = '';
+    config.sync.password = '';
+    delete config.sync.enc;
+    delete config.sync.localKey;
+    config.sync.encryptionMode = 'none';
   }
 
   // Save enable/disable state

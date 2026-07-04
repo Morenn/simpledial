@@ -1,5 +1,6 @@
 import { state, saveState } from "./state.js";
 import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
+import { importRawKey, deriveKeyFromPassword, decryptWithKey } from './crypto.js';
 
 function ensureNoTrailingSlash(url) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -30,33 +31,47 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
 //  CONFIG STORAGE (DEPRECATED - use config.js)
 // ─────────────────────────────────────────────────────────────
 
-export async function saveSyncConfig({ url }) {
+export async function saveSyncConfig({ url, type, username, password }) {
   const config = await loadConfig();
-  config.sync.serverUrl = ensureNoTrailingSlash(url.trim());
+  config.sync.serverUrl = ensureNoTrailingSlash((url || "").trim());
+  if (type) config.sync.type = type;
+  if (typeof username !== 'undefined') config.sync.username = username;
+  if (typeof password !== 'undefined') config.sync.password = password;
   await saveConfig(config);
 }
 
 export async function loadSyncConfig() {
   const config = await loadConfig();
   if (!config.sync.serverUrl) return null;
-  return { url: config.sync.serverUrl };
+  return {
+    url: config.sync.serverUrl,
+    type: config.sync.type || 'direct',
+    username: config.sync.username || '',
+    password: config.sync.password || '',
+    authMode: config.sync.authMode || (config.sync.password ? 'basic' : 'none'),
+    encryptionMode: config.sync.encryptionMode || 'none',
+    enc: config.sync.enc || null,
+    localKey: config.sync.localKey || null
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
 //  TEST CONNECTION
 // ─────────────────────────────────────────────────────────────
 
-export async function testSyncConnection(url) {
+export async function testSyncConnection(url, username = '', password = '') {
   try {
     const endpoint = ensureNoTrailingSlash(url);
 
+    const headers = {};
+    if (password) headers['Authorization'] = 'Basic ' + btoa(`${username}:${password}`);
+
     const res = await fetchWithTimeout(endpoint, {
       method: "GET",
-      cache: "no-cache"
+      cache: "no-cache",
+      headers
     });
 
-    // 200 OK → OK
-    // 404 → OK (prázdny súbor)
     return res.ok || res.status === 404;
   } catch (e) {
     return false;
@@ -77,13 +92,13 @@ export async function requestHostPermission(url) {
 //  INITIALIZE REMOTE FILE
 // ─────────────────────────────────────────────────────────────
 
-async function initializeRemote(url) {
+async function initializeRemote(url, headers = {}) {
   const defaultData = { groups: [] };
 
   try {
     await fetchWithTimeout(url, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify(defaultData, null, 2)
     });
   } catch (e) {
@@ -102,16 +117,51 @@ export async function syncRead() {
   if (!cfg) return null;
 
   const url = cfg.url;
+  // Attempt to obtain credentials depending on encryption mode
+  let username = cfg.username || '';
+  let password = cfg.password || '';
+  try {
+    if (cfg.authMode === 'basic') {
+      if (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) {
+        const key = await importRawKey(cfg.localKey);
+        const plain = await decryptWithKey(key, cfg.enc.ciphertext, cfg.enc.iv);
+        const obj = JSON.parse(plain);
+        username = obj.username || '';
+        password = obj.password || '';
+      } else if (cfg.encryptionMode === 'master' && cfg.enc) {
+        if (window._speeddial_masterKey) {
+          try {
+            const plain = await decryptWithKey(window._speeddial_masterKey, cfg.enc.ciphertext, cfg.enc.iv);
+            const obj = JSON.parse(plain);
+            username = obj.username || '';
+            password = obj.password || '';
+          } catch (e) {
+            console.warn('Cannot decrypt master-encrypted credentials without master key');
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Error while decrypting credentials for syncRead', e);
+  }
+  const auth = cfg.password ? { username: cfg.username || '', password: cfg.password } : null;
 
   try {
+    const headers = {};
+    const credUser = username || (auth ? auth.username : '');
+    const credPass = password || (auth ? auth.password : '');
+    if (credPass) headers['Authorization'] = 'Basic ' + btoa(`${credUser}:${credPass}`);
+
+
     const res = await fetchWithTimeout(url, {
       method: "GET",
-      cache: "no-cache"
+      cache: "no-cache",
+      headers
     });
 
     if (res.status === 404) {
       console.warn("syncRead: 404 → initializing remote file");
-      return await initializeRemote(url);
+      return await initializeRemote(url, headers);
     }
 
     if (!res.ok) {
@@ -123,7 +173,7 @@ export async function syncRead() {
 
     if (!text.trim()) {
       console.warn("syncRead: empty file → initializing");
-      return await initializeRemote(url);
+      return await initializeRemote(url, headers);
     }
 
     try {
@@ -133,7 +183,7 @@ export async function syncRead() {
       };
     } catch (e) {
       console.warn("syncRead: invalid JSON → initializing");
-      return await initializeRemote(url);
+      return await initializeRemote(url, headers);
     }
 
   } catch (e) {
@@ -152,12 +202,44 @@ export async function syncWrite() {
 
   const url = cfg.url;
 
+  // Attempt to obtain credentials depending on encryption mode
+  let username = cfg.username || '';
+  let password = cfg.password || '';
   try {
+    if (cfg.authMode === 'basic') {
+      if (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) {
+        const key = await importRawKey(cfg.localKey);
+        const plain = await decryptWithKey(key, cfg.enc.ciphertext, cfg.enc.iv);
+        const obj = JSON.parse(plain);
+        username = obj.username || '';
+        password = obj.password || '';
+      } else if (cfg.encryptionMode === 'master' && cfg.enc) {
+        if (window._speeddial_masterKey) {
+          try {
+            const plain = await decryptWithKey(window._speeddial_masterKey, cfg.enc.ciphertext, cfg.enc.iv);
+            const obj = JSON.parse(plain);
+            username = obj.username || '';
+            password = obj.password || '';
+          } catch (e) {
+            console.warn('Cannot decrypt master-encrypted credentials without master key');
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Error while decrypting credentials for syncWrite', e);
+  }
+
+  const credUser = username || (cfg.username || '');
+  const credPass = password || (cfg.password || '');
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (credPass) headers['Authorization'] = 'Basic ' + btoa(`${credUser}:${credPass}`);
+
     await fetchWithTimeout(url, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify({ groups: state.groups }, null, 2)
     });
   } catch (e) {

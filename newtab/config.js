@@ -10,6 +10,13 @@ export const defaultConfig = {
   sync: {
     enabled: false,
     serverUrl: "",
+    type: "direct", // "direct" or "webdav"
+    authMode: "none", // "none" or "basic"
+    username: "",
+    password: "",
+    encryptionMode: "none", // "none","master","local"
+    localKey: "",
+    enc: null,
     interval: DEFAULT_SYNC_INTERVAL, // milliseconds
     intervalMode: "default", // "immediate", "custom", "manual", "default"
     lastSync: 0

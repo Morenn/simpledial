@@ -392,6 +392,90 @@ main {
   font-size: 0.85rem;
 }
 
+/* Custom scrollbar styling for modern browsers */
+/* Target key scrollable areas: modal content, settings tab panes, context menu, bookmarks grid */
+.modal-content, .settings-tab-content, #context-menu, #bookmarks-grid {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--accent) var(--bg2);
+}
+
+/* WebKit-based browsers */
+.modal-content::-webkit-scrollbar,
+.settings-tab-content::-webkit-scrollbar,
+#context-menu::-webkit-scrollbar,
+#bookmarks-grid::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.modal-content::-webkit-scrollbar-track,
+.settings-tab-content::-webkit-scrollbar-track,
+#context-menu::-webkit-scrollbar-track,
+#bookmarks-grid::-webkit-scrollbar-track {
+  background: var(--bg2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.modal-content::-webkit-scrollbar-thumb,
+.settings-tab-content::-webkit-scrollbar-thumb,
+#context-menu::-webkit-scrollbar-thumb,
+#bookmarks-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover,
+.settings-tab-content::-webkit-scrollbar-thumb:hover,
+#context-menu::-webkit-scrollbar-thumb:hover,
+#bookmarks-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Small visual tweak for very small content areas */
+#context-menu {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+/* Sync dropdowns: style like language selector */
+#sync-type, #sync-auth-mode {
+  width: 100%;
+  padding: 0.25rem;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+#sync-type-label, #sync-auth-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+#sync-encrypt-mode {
+  width: 100%;
+  padding: 0.25rem;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+#sync-encrypt-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
 .bookmark-tile.add-bookmark {
   cursor: pointer;
   font-weight: 600;
