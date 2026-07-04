@@ -502,18 +502,46 @@ if (syncTest) {
     if (syncTestStatus) syncTestStatus.textContent = "🔍 " + t("testingConnection");
 
     const useBasic = syncAuthMode && syncAuthMode.value === 'basic';
-    const ok = await testSyncConnection(
+    const result = await testSyncConnection(
       url,
       useBasic ? (syncUsername ? syncUsername.value : '') : '',
       useBasic ? (syncPassword ? syncPassword.value : '') : '',
       syncType && syncType.value ? syncType.value : 'direct'
     );
 
-    if (ok) {
-      if (syncTestStatus) syncTestStatus.textContent = "✅ " + t("serverResponds");
+    // Map detailed status reasons to user-friendly messages
+    let message = '';
+    if (result.ok) {
+      if (result.reason === 'not-found-will-create') {
+        message = "✅ " + t("serverResponds") + " " + t("fileWillBeCreated");
+      } else {
+        message = "✅ " + t("serverResponds");
+      }
     } else {
-      if (syncTestStatus) syncTestStatus.textContent = "❌ " + t("serverNotResponds");
+      switch (result.reason) {
+        case 'auth':
+          message = "❌ " + t("wrongCredentials");
+          break;
+        case 'timeout':
+          message = "❌ " + t("connectionTimeout");
+          break;
+        case 'network-or-cors':
+          message = "❌ " + t("unreachableServer");
+          break;
+        case 'auth-encoding-failed':
+          message = "❌ " + t("invalidCredentialsEncoding");
+          break;
+        case 'invalid-url':
+          message = "❌ " + t("invalidUrl");
+          break;
+        case 'http-error':
+          message = "❌ " + t("serverError") + ` (${result.status})`;
+          break;
+        default:
+          message = "❌ " + t("serverNotResponds");
+      }
     }
+    if (syncTestStatus) syncTestStatus.textContent = message;
   });
 }
 

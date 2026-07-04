@@ -80,15 +80,60 @@ export async function loadSyncConfig() {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  SAFE BASIC AUTH HEADER
+// ─────────────────────────────────────────────────────────────
+
+function safeBasicAuthHeader(username, password) {
+  // btoa() only handles Latin1 — encode UTF-8 bytes first so accented
+  // characters in credentials don't throw.
+  try {
+    const bytes = new TextEncoder().encode(`${username}:${password}`);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    return 'Basic ' + btoa(binary);
+  } catch (e) {
+    console.error('Failed to create Basic auth header:', e);
+    throw new Error('auth-encoding-failed');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  TEST CONNECTION
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Test sync server connection with detailed status information.
+ * Returns { ok: boolean, reason: string, status?: number }
+ *
+ * Reasons:
+ * - 'ok': Server responded successfully
+ * - 'not-found-will-create': Got 404 (server exists, file will be created)
+ * - 'auth': Got 401/403 (bad credentials)
+ * - 'http-error': Got other non-2xx status
+ * - 'timeout': Request timed out
+ * - 'network-or-cors': Network error or CORS blocked
+ * - 'auth-encoding-failed': Failed to encode credentials (non-ASCII issue)
+ * - 'invalid-url': URL is invalid
+ */
 export async function testSyncConnection(url, username = '', password = '', type = 'direct') {
   try {
     const endpoint = getSyncFetchUrl(url, type);
 
+    // Validate URL format
+    try {
+      new URL(endpoint);
+    } catch (e) {
+      return { ok: false, reason: 'invalid-url' };
+    }
+
     const headers = {};
-    if (password) headers['Authorization'] = 'Basic ' + btoa(`${username}:${password}`);
+    if (password) {
+      try {
+        headers['Authorization'] = safeBasicAuthHeader(username, password);
+      } catch (e) {
+        return { ok: false, reason: 'auth-encoding-failed' };
+      }
+    }
 
     const res = await fetchWithTimeout(endpoint, {
       method: "GET",
@@ -96,9 +141,22 @@ export async function testSyncConnection(url, username = '', password = '', type
       headers
     });
 
-    return res.ok || res.status === 404;
+    if (res.ok) return { ok: true, reason: 'ok' };
+    if (res.status === 404) return { ok: true, reason: 'not-found-will-create' };
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, reason: 'auth', status: res.status };
+    }
+    return { ok: false, reason: 'http-error', status: res.status };
   } catch (e) {
-    return false;
+    if (e.message === 'auth-encoding-failed') {
+      return { ok: false, reason: 'auth-encoding-failed' };
+    }
+    if (e.name === 'AbortError') {
+      return { ok: false, reason: 'timeout' };
+    }
+    // A CORS block and a real DNS/network failure both throw a generic
+    // TypeError here — the browser doesn't expose which one happened.
+    return { ok: false, reason: 'network-or-cors' };
   }
 }
 

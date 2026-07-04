@@ -74,6 +74,13 @@
     "testingConnection": "Testujem pripojenie...",
     "serverResponds": "Sync server odpovedá.",
     "serverNotResponds": "Sync server neodpovedá.",
+    "fileWillBeCreated": "(súbor bude vytvorený)",
+    "wrongCredentials": "Nesprávne užívateľské meno alebo heslo.",
+    "connectionTimeout": "Časový limit pripojenia vypršal. Server je príliš pomalý alebo nedostupný.",
+    "unreachableServer": "Nie je možné dosiahnuť server. Skontrolujte URL alebo nastavenia CORS servera.",
+    "invalidCredentialsEncoding": "Neplatné znaky v užívateľskom mene/hesle (znaky mimo ASCII nie sú podporované).",
+    "invalidUrl": "Neplatná URL servera.",
+    "serverError": "Chyba servera",
     "syncServerUnavailable": "Sync server nie je dostupný. Používam lokálne údaje.",
 
     "synchronization": "Synchronizácia",

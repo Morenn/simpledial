@@ -74,6 +74,13 @@
     "testingConnection": "Testing connection...",
     "serverResponds": "Sync server responds.",
     "serverNotResponds": "Sync server does not respond.",
+    "fileWillBeCreated": "(file will be created)",
+    "wrongCredentials": "Wrong username or password.",
+    "connectionTimeout": "Connection timed out. Server is too slow or unreachable.",
+    "unreachableServer": "Cannot reach server. Check URL, or server's CORS settings.",
+    "invalidCredentialsEncoding": "Invalid characters in username/password (non-ASCII not supported).",
+    "invalidUrl": "Invalid server URL.",
+    "serverError": "Server error",
     "syncServerUnavailable": "Sync server is unavailable. Using local data.",
 
     "synchronization": "Synchronization",
