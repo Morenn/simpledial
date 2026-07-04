@@ -393,8 +393,8 @@ main {
 }
 
 /* Custom scrollbar styling for modern browsers */
-/* Target key scrollable areas: modal content, settings tab panes, context menu, bookmarks grid */
-.modal-content, .settings-tab-content, #context-menu, #bookmarks-grid {
+/* Target key scrollable areas: modal content, settings tab panes, context menu, page main content, bookmarks grid */
+.modal-content, .settings-tab-content, #context-menu, main, #bookmarks-grid {
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: var(--accent) var(--bg2);
 }
@@ -403,6 +403,7 @@ main {
 .modal-content::-webkit-scrollbar,
 .settings-tab-content::-webkit-scrollbar,
 #context-menu::-webkit-scrollbar,
+main::-webkit-scrollbar,
 #bookmarks-grid::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -411,6 +412,7 @@ main {
 .modal-content::-webkit-scrollbar-track,
 .settings-tab-content::-webkit-scrollbar-track,
 #context-menu::-webkit-scrollbar-track,
+main::-webkit-scrollbar-track,
 #bookmarks-grid::-webkit-scrollbar-track {
   background: var(--bg2);
   border-radius: 8px;
@@ -420,6 +422,7 @@ main {
 .modal-content::-webkit-scrollbar-thumb,
 .settings-tab-content::-webkit-scrollbar-thumb,
 #context-menu::-webkit-scrollbar-thumb,
+main::-webkit-scrollbar-thumb,
 #bookmarks-grid::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
   border-radius: 8px;
@@ -431,6 +434,7 @@ main {
 .modal-content::-webkit-scrollbar-thumb:hover,
 .settings-tab-content::-webkit-scrollbar-thumb:hover,
 #context-menu::-webkit-scrollbar-thumb:hover,
+main::-webkit-scrollbar-thumb:hover,
 #bookmarks-grid::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
