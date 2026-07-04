@@ -10,7 +10,8 @@ export const defaultConfig = {
   sync: {
     enabled: false,
     serverUrl: "",
-    type: "direct", // "direct" or "webdav"
+    type: "direct", // "direct", "webdav" or "browser"
+    webdavType: "generic", // "generic" or "nextcloud"
     authMode: "none", // "none" or "basic"
     username: "",
     password: "",

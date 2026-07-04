@@ -6,6 +6,27 @@ function ensureNoTrailingSlash(url) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 }
 
+function normalizeWebdavUrl(url) {
+  if (typeof url !== 'string') {
+    return url;
+  }
+
+  if (url.startsWith('davs://')) {
+    return 'https://' + url.slice(7);
+  }
+
+  if (url.startsWith('dav://')) {
+    return 'http://' + url.slice(6);
+  }
+
+  return url;
+}
+
+function getSyncFetchUrl(url, type) {
+  const normalized = ensureNoTrailingSlash((url || "").trim());
+  return type === 'webdav' ? normalizeWebdavUrl(normalized) : normalized;
+}
+
 // ─────────────────────────────────────────────────────────────
 //  FETCH WITH TIMEOUT
 // ─────────────────────────────────────────────────────────────
@@ -48,6 +69,7 @@ export async function loadSyncConfig() {
   return {
     url: config.sync.serverUrl,
     type: config.sync.type || 'direct',
+    webdavType: config.sync.webdavType || 'generic',
     username: config.sync.username || '',
     password: config.sync.password || '',
     authMode: config.sync.authMode || (config.sync.password ? 'basic' : 'none'),
@@ -61,9 +83,9 @@ export async function loadSyncConfig() {
 //  TEST CONNECTION
 // ─────────────────────────────────────────────────────────────
 
-export async function testSyncConnection(url, username = '', password = '') {
+export async function testSyncConnection(url, username = '', password = '', type = 'direct') {
   try {
-    const endpoint = ensureNoTrailingSlash(url);
+    const endpoint = getSyncFetchUrl(url, type);
 
     const headers = {};
     if (password) headers['Authorization'] = 'Basic ' + btoa(`${username}:${password}`);
@@ -80,14 +102,20 @@ export async function testSyncConnection(url, username = '', password = '') {
   }
 }
 
-export async function requestHostPermission(url) {
-  const origin = url.replace(/\/+$/, "") + "/*";
+export async function requestHostPermission(url, type = 'direct') {
+  const normalizedUrl = getSyncFetchUrl(url, type);
 
-  const granted = await chrome.permissions.request({
-    origins: [origin]
-  });
-
-  return granted;
+  try {
+    const parsed = new URL(normalizedUrl);
+    const origin = `${parsed.protocol}//${parsed.host}/*`;
+    const granted = await chrome.permissions.request({
+      origins: [origin]
+    });
+    return granted;
+  } catch (e) {
+    console.warn('requestHostPermission: invalid URL', normalizedUrl, e);
+    return false;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -98,11 +126,15 @@ async function initializeRemote(url, headers = {}) {
   const defaultData = { groups: [] };
 
   try {
-    await fetchWithTimeout(url, {
+    const res = await fetchWithTimeout(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify(defaultData, null, 2)
     });
+
+    if (!res.ok) {
+      console.warn(`initializeRemote failed: ${res.status} ${res.statusText} for ${url}`);
+    }
   } catch (e) {
     console.log("initializeRemote failed", e);
   }
@@ -132,6 +164,7 @@ export async function syncRead() {
   }
 
   const url = cfg.url;
+  const fetchUrl = getSyncFetchUrl(url, cfg.type);
   // Attempt to obtain credentials depending on encryption mode
   let username = cfg.username || '';
   let password = cfg.password || '';
@@ -168,7 +201,7 @@ export async function syncRead() {
     if (credPass) headers['Authorization'] = 'Basic ' + btoa(`${credUser}:${credPass}`);
 
 
-    const res = await fetchWithTimeout(url, {
+    const res = await fetchWithTimeout(fetchUrl, {
       method: "GET",
       cache: "no-cache",
       headers
@@ -176,7 +209,7 @@ export async function syncRead() {
 
     if (res.status === 404) {
       console.warn("syncRead: 404 → initializing remote file");
-      return await initializeRemote(url, headers);
+      return await initializeRemote(fetchUrl, headers);
     }
 
     if (!res.ok) {
@@ -188,7 +221,7 @@ export async function syncRead() {
 
     if (!text.trim()) {
       console.warn("syncRead: empty file → initializing");
-      return await initializeRemote(url, headers);
+      return await initializeRemote(fetchUrl, headers);
     }
 
     try {
@@ -225,6 +258,7 @@ export async function syncWrite() {
   }
 
   const url = cfg.url;
+  const fetchUrl = getSyncFetchUrl(url, cfg.type);
 
   // Attempt to obtain credentials depending on encryption mode
   let username = cfg.username || '';
@@ -261,11 +295,15 @@ export async function syncWrite() {
     const headers = { "Content-Type": "application/json" };
     if (credPass) headers['Authorization'] = 'Basic ' + btoa(`${credUser}:${credPass}`);
 
-    await fetchWithTimeout(url, {
+    const res = await fetchWithTimeout(fetchUrl, {
       method: "PUT",
       headers,
       body: JSON.stringify({ groups: state.groups }, null, 2)
     });
+
+    if (!res.ok) {
+      console.warn(`syncWrite failed: ${res.status} ${res.statusText} for ${fetchUrl}`);
+    }
   } catch (e) {
     console.log("fetch failed (syncWrite)", e);
   }

@@ -2,7 +2,7 @@ import { loadState, saveState, state } from "./state.js";
 import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
 import { loadConfig } from "./config.js";
-import { syncRead, startSyncLoop } from "./sync.js";
+import { syncRead, syncWrite, startSyncLoop } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 
 // Make t global for modules that don't import it
@@ -51,9 +51,14 @@ window.addEventListener("keydown", e => {
     const cloud = await syncRead();
 
     if (cloud && cloud.groups) {
-      // 🔥 We sync only groups, not whole state
-      state.groups = cloud.groups;
-      await saveState();
+      if (cloud.groups.length === 0 && state.groups.length > 0) {
+        // Remote is empty, preserve local entries and push them to remote first
+        await syncWrite();
+      } else {
+        // 🔥 We sync only groups, not whole state
+        state.groups = cloud.groups;
+        await saveState();
+      }
     } else if (config.sync.enabled) {
       // Sync is enabled but server is unavailable - notify user
       console.warn("Sync server is unavailable, using local data");

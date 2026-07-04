@@ -23,10 +23,14 @@ const syncUrl = document.getElementById("sync-url");
 const syncTest = document.getElementById("sync-test");
 const syncEnable = document.getElementById("sync-enable");
 const syncType = document.getElementById("sync-type");
+const syncWebdavType = document.getElementById("sync-webdav-type");
 const syncAuthMode = document.getElementById("sync-auth-mode");
 const syncUsername = document.getElementById("sync-username");
 const syncPassword = document.getElementById("sync-password");
 const syncStatus = document.getElementById("sync-status");
+const syncWebdavTypeRow = document.getElementById("sync-webdav-type-row");
+const syncCredentialsSaveBtn = document.getElementById("sync-credentials-save");
+const syncCredentialsRow = document.getElementById("sync-credentials-row");
 const syncImmediate = document.getElementById("sync-immediate");
 const syncCustom = document.getElementById("sync-custom");
 const syncCustomValue = document.getElementById("sync-interval-value");
@@ -88,6 +92,7 @@ settingsBtn.addEventListener("click", async () => {
   syncUrl.value = config.sync.serverUrl || "";
   syncEnable.checked = config.sync.enabled;
   if (syncType) syncType.value = config.sync.type || 'direct';
+  if (syncWebdavType) syncWebdavType.value = config.sync.webdavType || 'generic';
   if (syncAuthMode) syncAuthMode.value = config.sync.authMode || (config.sync.password ? 'basic' : 'none');
 
   // Load encryption mode
@@ -146,8 +151,9 @@ settingsBtn.addEventListener("click", async () => {
     console.warn('Error while loading encrypted credentials', e);
   }
 
-  // Update auth fields visibility based on current type/mode
-  updateAuthFields();
+  // Reset credentials changed state and update UI visibility
+  credentialsTouched = false;
+  updateSyncFields();
 
   // Load sync interval settings
   const intervalMode = config.sync.intervalMode || "default";
@@ -206,9 +212,12 @@ syncManual.addEventListener("change", () => {
 });
 
 // ---------- Auth fields handling ----------
-function updateAuthFields() {
+let credentialsTouched = false;
+
+function updateSyncFields() {
   const isBrowserSync = syncType && syncType.value === 'browser';
   const isDirect = syncType && syncType.value === 'direct';
+  const isWebdav = syncType && syncType.value === 'webdav';
   const syncUrlDiv = syncUrl ? syncUrl.parentElement : null;
   const authDiv = syncAuthMode ? syncAuthMode.parentElement : null;
   const encryptDiv = document.getElementById('sync-encrypt-mode') ? document.getElementById('sync-encrypt-mode').parentElement : null;
@@ -217,58 +226,182 @@ function updateAuthFields() {
 
   if (syncUrlDiv) syncUrlDiv.style.display = isBrowserSync ? 'none' : '';
   if (syncTest) syncTest.style.display = isBrowserSync ? 'none' : '';
-  if (authDiv) authDiv.style.display = isDirect ? '' : 'none';
+  if (authDiv) authDiv.style.display = isBrowserSync ? 'none' : '';
+  if (syncWebdavTypeRow) syncWebdavTypeRow.style.display = isWebdav ? '' : 'none';
 
-  const usingBasic = isDirect && syncAuthMode && syncAuthMode.value === 'basic';
+  const usingBasic = (isDirect || isWebdav) && syncAuthMode && syncAuthMode.value === 'basic';
   if (userDiv) userDiv.style.display = usingBasic ? '' : 'none';
   if (passDiv) passDiv.style.display = usingBasic ? '' : 'none';
 
-  // Show encryption mode selector when credentials are relevant (direct+basic or webdav)
-  const showEncrypt = (isDirect && usingBasic) || (syncType && syncType.value === 'webdav');
+  const showEncrypt = usingBasic;
   if (encryptDiv) encryptDiv.style.display = showEncrypt ? '' : 'none';
 
   if (syncUsername) syncUsername.required = usingBasic;
   if (syncPassword) syncPassword.required = usingBasic;
 
-  // Update label marker
   const userLabel = document.getElementById('sync-username-label');
   const passLabel = document.getElementById('sync-password-label');
   if (userLabel) userLabel.textContent = (userLabel.textContent || '').replace(' *', '') + (usingBasic ? ' *' : '');
   if (passLabel) passLabel.textContent = (passLabel.textContent || '').replace(' *', '') + (usingBasic ? ' *' : '');
+
+  if (syncCredentialsRow) {
+    syncCredentialsRow.style.display = usingBasic ? '' : 'none';
+  }
+  updateCredentialsSaveButton();
 }
 
-if (syncAuthMode) syncAuthMode.addEventListener('change', updateAuthFields);
-if (syncType) syncType.addEventListener('change', updateAuthFields);
+function updateCredentialsSaveButton() {
+  if (!syncCredentialsSaveBtn) return;
+  const isBasic = syncAuthMode && syncAuthMode.value === 'basic';
+  syncCredentialsSaveBtn.disabled = !credentialsTouched || !isBasic;
+}
 
-// ---------- Test Connection ----------
-syncTest.addEventListener("click", async () => {
-  const url = syncUrl.value.trim();
+function markCredentialsTouched() {
+  credentialsTouched = true;
+  updateCredentialsSaveButton();
+}
 
-  if (!url) {
-    syncStatus.textContent = t("fillUrl");
-    return;
-  }
-
-  // Request host permission for the URL being tested
-  const granted = await requestHostPermission(url);
-
-  if (!granted) {
-    syncStatus.textContent = "❌ " + t("permissionDenied");
-    return;
-  }
-
-  // Test connection using the URL from input field
-  syncStatus.textContent = "🔍 " + t("testingConnection");
-
-  const useBasic = syncAuthMode && syncAuthMode.value === 'basic';
-  const ok = await testSyncConnection(url, useBasic ? (syncUsername ? syncUsername.value : '') : '', useBasic ? (syncPassword ? syncPassword.value : '') : '');
-
-  if (ok) {
-    syncStatus.textContent = "✅ " + t("serverResponds");
-  } else {
-    syncStatus.textContent = "❌ " + t("serverNotResponds");
-  }
+if (syncAuthMode) syncAuthMode.addEventListener('change', () => {
+  updateSyncFields();
+  markCredentialsTouched();
 });
+if (syncType) syncType.addEventListener('change', updateSyncFields);
+if (syncWebdavType) syncWebdavType.addEventListener('change', updateSyncFields);
+if (syncUsername) syncUsername.addEventListener('input', markCredentialsTouched);
+if (syncPassword) syncPassword.addEventListener('input', markCredentialsTouched);
+const syncEncryptModeEl = document.getElementById('sync-encrypt-mode');
+if (syncEncryptModeEl) syncEncryptModeEl.addEventListener('change', markCredentialsTouched);
+
+if (syncCredentialsSaveBtn) {
+  syncCredentialsSaveBtn.addEventListener('click', async () => {
+    const config = await loadConfig();
+
+    if (!(syncType && (syncType.value === 'direct' || syncType.value === 'webdav') && syncAuthMode && syncAuthMode.value === 'basic')) {
+      syncStatus.textContent = "❌ " + t('syncAuthCredentialsRequired');
+      return;
+    }
+
+    config.sync.type = syncType.value || 'direct';
+    if (syncType && syncType.value === 'browser') {
+      config.sync.serverUrl = '';
+      config.sync.authMode = 'none';
+      config.sync.username = '';
+      config.sync.password = '';
+      delete config.sync.enc;
+      delete config.sync.localKey;
+      config.sync.encryptionMode = 'none';
+    } else if (syncUrl.value.trim()) {
+      config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, "");
+    }
+
+    if (syncWebdavType) {
+      config.sync.webdavType = syncWebdavType.value || 'generic';
+    }
+
+    config.sync.authMode = 'basic';
+
+    const formUsername = syncUsername ? syncUsername.value.trim() : '';
+    const formPassword = syncPassword ? syncPassword.value : '';
+    if (!formUsername || !formPassword) {
+      syncStatus.textContent = "❌ " + t('syncAuthCredentialsRequired');
+      return;
+    }
+
+    const syncEncryptModeEl = document.getElementById('sync-encrypt-mode');
+    const encryptMode = syncEncryptModeEl ? syncEncryptModeEl.value : 'none';
+    config.sync.encryptionMode = encryptMode || 'none';
+
+    if (encryptMode === 'none') {
+      config.sync.username = formUsername;
+      config.sync.password = formPassword;
+      delete config.sync.enc;
+      delete config.sync.localKey;
+    } else if (encryptMode === 'local') {
+      if (!config.sync.localKey) {
+        config.sync.localKey = await generateLocalKeyRaw();
+      }
+      try {
+        const key = await importRawKey(config.sync.localKey);
+        const payload = JSON.stringify({ username: formUsername, password: formPassword });
+        const enc = await encryptWithKey(key, payload);
+        config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv };
+        config.sync.username = '';
+        config.sync.password = '';
+      } catch (e) {
+        console.error('Failed to encrypt with local key', e);
+        syncStatus.textContent = '❌ Encryption failed';
+        return;
+      }
+    } else if (encryptMode === 'master') {
+      const pw = prompt(t('enterMasterPasswordPrompt'));
+      if (!pw) {
+        syncStatus.textContent = "❌ " + t('enterMasterPasswordPrompt');
+        return;
+      }
+
+      const confirm = prompt(t('confirmMasterPasswordPrompt'));
+      if (pw !== confirm) {
+        syncStatus.textContent = "❌ " + t('confirmMasterPasswordPrompt');
+        return;
+      }
+
+      try {
+        const derived = await deriveKeyFromPassword(pw, null);
+        const payload = JSON.stringify({ username: formUsername, password: formPassword });
+        const enc = await encryptWithKey(derived.key, payload);
+        config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv, salt: derived.salt };
+        config.sync.username = '';
+        config.sync.password = '';
+        window._speeddial_masterKey = derived.key;
+      } catch (e) {
+        console.error('Failed to encrypt with master password', e);
+        syncStatus.textContent = '❌ Encryption failed';
+        return;
+      }
+    }
+
+    await saveConfig(config);
+    credentialsTouched = false;
+    updateCredentialsSaveButton();
+    syncStatus.textContent = "✅ " + t('credentialsSaved');
+  });
+}
+
+if (syncTest) {
+  syncTest.addEventListener("click", async () => {
+    const url = syncUrl ? syncUrl.value.trim() : '';
+
+    if (!url) {
+      syncStatus.textContent = "❌ " + t('fillUrl');
+      return;
+    }
+
+    // Request host permission for the URL being tested
+    const granted = await requestHostPermission(url, syncType && syncType.value ? syncType.value : 'direct');
+
+    if (!granted) {
+      syncStatus.textContent = "❌ " + t("permissionDenied");
+      return;
+    }
+
+    // Test connection using the URL from input field
+    syncStatus.textContent = "🔍 " + t("testingConnection");
+
+    const useBasic = syncAuthMode && syncAuthMode.value === 'basic';
+    const ok = await testSyncConnection(
+      url,
+      useBasic ? (syncUsername ? syncUsername.value : '') : '',
+      useBasic ? (syncPassword ? syncPassword.value : '') : '',
+      syncType && syncType.value ? syncType.value : 'direct'
+    );
+
+    if (ok) {
+      syncStatus.textContent = "✅ " + t("serverResponds");
+    } else {
+      syncStatus.textContent = "❌ " + t("serverNotResponds");
+    }
+  });
+}
 
 // ---------- Sync Now Button ----------
 syncNowBtn.addEventListener("click", async () => {
@@ -656,86 +789,24 @@ settingsSaveBtn.addEventListener("click", async () => {
 
   if (syncType && syncType.value === 'browser') {
     config.sync.serverUrl = '';
-  } else if (syncUrl.value.trim()) {
-    config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, ""); // Remove trailing slash
-  }
-
-  // Auth handling and optional encryption: only store creds when Basic auth selected
-  if (syncAuthMode && syncAuthMode.value === 'basic' && syncType && syncType.value === 'direct') {
-    // Validate credentials
-    if (!syncUsername || !syncUsername.value.trim() || !syncPassword || !syncPassword.value) {
-      syncStatus.textContent = "❌ " + t('syncAuthCredentialsRequired');
-      return;
-    }
-
-    config.sync.authMode = 'basic';
-
-    // Encryption mode handling
-    const syncEncryptModeEl = document.getElementById('sync-encrypt-mode');
-    const encryptMode = syncEncryptModeEl ? syncEncryptModeEl.value : (config.sync.encryptionMode || 'none');
-    config.sync.encryptionMode = encryptMode || 'none';
-
-    if (encryptMode === 'none') {
-      config.sync.username = syncUsername.value;
-      config.sync.password = syncPassword.value;
-      delete config.sync.enc;
-      delete config.sync.localKey;
-    } else if (encryptMode === 'local') {
-      // generate local key if missing
-      if (!config.sync.localKey) {
-        config.sync.localKey = await generateLocalKeyRaw();
-      }
-      // import and encrypt
-      try {
-        const key = await importRawKey(config.sync.localKey);
-        const payload = JSON.stringify({ username: syncUsername.value, password: syncPassword.value });
-        const enc = await encryptWithKey(key, payload);
-        config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv };
-        config.sync.username = '';
-        config.sync.password = '';
-      } catch (e) {
-        console.error('Failed to encrypt with local key', e);
-        syncStatus.textContent = '❌ Encryption failed';
-        return;
-      }
-    } else if (encryptMode === 'master') {
-      // Ask for master password to derive key and encrypt
-      const pw = prompt(t('enterMasterPasswordPrompt'));
-      if (!pw) {
-        syncStatus.textContent = "❌ " + t('enterMasterPasswordPrompt');
-        return;
-      }
-
-      // Confirm if not previously cached
-      const confirm = prompt(t('confirmMasterPasswordPrompt'));
-      if (pw !== confirm) {
-        syncStatus.textContent = "❌ " + t('confirmMasterPasswordPrompt');
-        return;
-      }
-
-      try {
-        const derived = await deriveKeyFromPassword(pw, null);
-        const payload = JSON.stringify({ username: syncUsername.value, password: syncPassword.value });
-        const enc = await encryptWithKey(derived.key, payload);
-        config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv, salt: derived.salt };
-        config.sync.encryptionMode = 'master';
-        // cache derived key for session use
-        window._speeddial_masterKey = derived.key;
-        config.sync.username = '';
-        config.sync.password = '';
-      } catch (e) {
-        console.error('Failed to encrypt with master password', e);
-        syncStatus.textContent = '❌ Encryption failed';
-        return;
-      }
-    }
-  } else {
     config.sync.authMode = 'none';
     config.sync.username = '';
     config.sync.password = '';
     delete config.sync.enc;
     delete config.sync.localKey;
     config.sync.encryptionMode = 'none';
+  } else if (syncUrl.value.trim()) {
+    config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, ""); // Remove trailing slash
+  }
+
+  if (syncWebdavType) {
+    config.sync.webdavType = syncWebdavType.value || 'generic';
+  }
+
+  // Preserve auth and credential storage unless the credentials form was explicitly modified
+  if (credentialsTouched && syncAuthMode && syncAuthMode.value === 'basic') {
+    syncStatus.textContent = "❌ " + t('saveCredentialsFirst');
+    return;
   }
 
   // Save enable/disable state

@@ -88,6 +88,14 @@
           </select>
         </div>
 
+        <div style="margin-top:8px; display:none;" id="sync-webdav-type-row">
+          <label id="sync-webdav-type-label" data-i18n="webdavServerType">WebDAV server type</label>
+          <select id="sync-webdav-type">
+            <option value="nextcloud" data-i18n="webdavTypeNextcloud">Nextcloud</option>
+            <!-- <option value="generic" data-i18n="webdavTypeGeneric">Generic</option> -->
+          </select>
+        </div>
+
         <div style="margin-top:8px;">
           <label id="sync-auth-label" data-i18n="syncAuthMode">Authentication</label>
           <select id="sync-auth-mode">
@@ -113,6 +121,9 @@
         <div style="margin-top:8px;">
           <label id="sync-password-label" data-i18n="syncPassword">Password (optional)</label>
           <input type="password" id="sync-password" placeholder="">
+        </div>
+        <div style="margin-top:8px; display:none;" id="sync-credentials-row">
+          <button id="sync-credentials-save" class="icon-btn primary" data-i18n="saveCredentials">💾 Save credentials</button>
         </div>
         <button id="sync-test" class="icon-btn primary" data-i18n="testConnection">🔍 Test connection</button>
 
