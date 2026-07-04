@@ -95,6 +95,7 @@
     "enableAutomaticCleanup": "Zapnúť automatické čistenie",
     "manualCleanupNow": "Manuálne čistenie teraz",
     "linkValidation": "Validácia odkazov",
+    "linkValidationDesc": "Experimentálne - momentálne nefunguje",
     "enableDeadLinkDetection": "Zapnúť zisťovanie nefunkčných odkazov",
     "highlightDeadLinks": "Zvýrazniť nefunkčné odkazy",
     "checkLinksNow": "Skontrolovať odkazy teraz",

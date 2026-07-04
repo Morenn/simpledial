@@ -95,6 +95,7 @@
     "enableAutomaticCleanup": "Enable automatic cleanup",
     "manualCleanupNow": "Manual cleanup now",
     "linkValidation": "Link Validation",
+    "linkValidationDesc": "Experimental - currently not working",
     "enableDeadLinkDetection": "Enable dead link detection",
     "highlightDeadLinks": "Highlight dead links on tiles",
     "checkLinksNow": "Check links now",
