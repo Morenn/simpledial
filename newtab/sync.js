@@ -40,9 +40,11 @@ export async function saveSyncConfig({ url, type, username, password }) {
   await saveConfig(config);
 }
 
+const CLOUD_STORAGE_KEY = "myspeeddial-data";
+
 export async function loadSyncConfig() {
   const config = await loadConfig();
-  if (!config.sync.serverUrl) return null;
+  if (!config.sync.serverUrl && config.sync.type !== 'browser') return null;
   return {
     url: config.sync.serverUrl,
     type: config.sync.type || 'direct',
@@ -115,6 +117,19 @@ async function initializeRemote(url, headers = {}) {
 export async function syncRead() {
   const cfg = await loadSyncConfig();
   if (!cfg) return null;
+
+  if (cfg.type === 'browser') {
+    try {
+      const result = await chrome.storage.sync.get(CLOUD_STORAGE_KEY);
+      const stored = result[CLOUD_STORAGE_KEY];
+      return {
+        groups: (stored && stored.groups) ? stored.groups : []
+      };
+    } catch (e) {
+      console.error('syncRead(browser) failed', e);
+      return null;
+    }
+  }
 
   const url = cfg.url;
   // Attempt to obtain credentials depending on encryption mode
@@ -199,6 +214,15 @@ export async function syncRead() {
 export async function syncWrite() {
   const cfg = await loadSyncConfig();
   if (!cfg) return;
+
+  if (cfg.type === 'browser') {
+    try {
+      await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: { groups: state.groups } });
+    } catch (e) {
+      console.error('syncWrite(browser) failed', e);
+    }
+    return;
+  }
 
   const url = cfg.url;
 
@@ -357,7 +381,7 @@ export function startSyncLoop() {
 export async function syncNow() {
   const config = await loadConfig();
 
-  if (!config.sync.enabled || !config.sync.serverUrl) {
+  if (!config.sync.enabled || (!config.sync.serverUrl && config.sync.type !== 'browser')) {
     console.warn("Sync not configured or disabled");
     return false;
   }

@@ -47,7 +47,7 @@ window.addEventListener("keydown", e => {
   // 4) Initialize sync if enabled
   const config = await loadConfig();
   
-  if (config.sync.enabled && config.sync.serverUrl) {
+  if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
     const cloud = await syncRead();
 
     if (cloud && cloud.groups) {

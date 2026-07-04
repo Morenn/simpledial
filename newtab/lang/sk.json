@@ -30,6 +30,7 @@
     "syncType": "Typ synchronizácie",
     "syncTypeDirect": "Priame JSON",
     "syncTypeWebdav": "WebDAV",
+    "syncTypeBrowserNative": "Natívna synchronizácia prehliadača",
     "syncUsername": "Používateľ",
     "syncPassword": "Heslo",
     "syncAuthMode": "Autentifikácia",

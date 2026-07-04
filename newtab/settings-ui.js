@@ -204,12 +204,16 @@ syncManual.addEventListener("change", () => {
 
 // ---------- Auth fields handling ----------
 function updateAuthFields() {
+  const isBrowserSync = syncType && syncType.value === 'browser';
   const isDirect = syncType && syncType.value === 'direct';
+  const syncUrlDiv = syncUrl ? syncUrl.parentElement : null;
   const authDiv = syncAuthMode ? syncAuthMode.parentElement : null;
   const encryptDiv = document.getElementById('sync-encrypt-mode') ? document.getElementById('sync-encrypt-mode').parentElement : null;
   const userDiv = syncUsername ? syncUsername.parentElement : null;
   const passDiv = syncPassword ? syncPassword.parentElement : null;
 
+  if (syncUrlDiv) syncUrlDiv.style.display = isBrowserSync ? 'none' : '';
+  if (syncTest) syncTest.style.display = isBrowserSync ? 'none' : '';
   if (authDiv) authDiv.style.display = isDirect ? '' : 'none';
 
   const usingBasic = isDirect && syncAuthMode && syncAuthMode.value === 'basic';
@@ -476,11 +480,16 @@ importBookmarksBtn?.addEventListener("click", async () => {
 settingsSaveBtn.addEventListener("click", async () => {
   const config = await loadConfig();
 
-  // Save sync URL directly to config
-  if (syncUrl.value.trim()) {
+  // Save sync type and URL directly to config
+  if (syncType) {
+    config.sync.type = syncType.value || 'direct';
+  }
+
+  if (syncType && syncType.value === 'browser') {
+    config.sync.serverUrl = '';
+  } else if (syncUrl.value.trim()) {
     config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, ""); // Remove trailing slash
   }
-  if (syncType) config.sync.type = syncType.value || 'direct';
 
   // Auth handling and optional encryption: only store creds when Basic auth selected
   if (syncAuthMode && syncAuthMode.value === 'basic' && syncType && syncType.value === 'direct') {

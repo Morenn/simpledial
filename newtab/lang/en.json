@@ -30,6 +30,7 @@
     "syncType": "Sync type",
     "syncTypeDirect": "Direct JSON",
     "syncTypeWebdav": "WebDAV",
+    "syncTypeBrowserNative": "Browser native sync",
     "syncUsername": "Username",
     "syncPassword": "Password",
     "syncAuthMode": "Authentication",
