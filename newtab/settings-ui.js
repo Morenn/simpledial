@@ -40,6 +40,9 @@ const importBtn = document.getElementById("import-btn");
 const importFile = document.getElementById("import-file");
 const exportBookmarksBtn = document.getElementById("export-bookmarks-btn");
 const importBookmarksBtn = document.getElementById("import-bookmarks-btn");
+const exportNetscapeBtn = document.getElementById("export-netscape-btn");
+const importNetscapeBtn = document.getElementById("import-netscape-btn");
+const importNetscapeFile = document.getElementById("import-netscape-file");
 
 // Appearance Elements
 const showDeletedToggle = document.getElementById("show-deleted-toggle");
@@ -357,6 +360,172 @@ importFile.addEventListener("change", async (e) => {
   };
 
   reader.readAsText(file);
+});
+
+importNetscapeBtn?.addEventListener("click", () => {
+  importNetscapeFile?.click();
+});
+
+importNetscapeFile?.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    try {
+      const content = event.target.result;
+      const importedGroups = parseNetscapeBookmarks(content);
+
+      if (!importedGroups || importedGroups.length === 0) {
+        alert("Invalid file format");
+        return;
+      }
+
+      state.groups = importedGroups;
+      await saveState();
+
+      alert("Data imported successfully!");
+      settingsModal.classList.add("hidden");
+      window.location.reload();
+    } catch (error) {
+      alert("Failed to parse file: " + error.message);
+    }
+  };
+
+  reader.readAsText(file);
+});
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function serializeNetscapeBookmarks(groups) {
+  const formatDate = ts => Math.floor((ts || Date.now()) / 1000);
+  const lines = [
+    "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
+    "<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">",
+    "<TITLE>Bookmarks</TITLE>",
+    "<H1>Bookmarks</H1>",
+    "<DL><p>"
+  ];
+
+  for (const group of groups) {
+    const groupName = escapeHtml(group.name || "Group");
+    const groupDate = formatDate(group.updatedAt);
+    lines.push(`<DT><H3 ADD_DATE=\"${groupDate}\">${groupName}</H3>`);
+    lines.push("<DL><p>");
+
+    for (const item of (group.items || []).filter(i => !i.deleted && i.url)) {
+      const title = escapeHtml(item.title || item.url);
+      const href = escapeHtml(item.url);
+      const itemDate = formatDate(item.updatedAt);
+      lines.push(`<DT><A HREF=\"${href}\" ADD_DATE=\"${itemDate}\">${title}</A>`);
+    }
+
+    lines.push("</DL><p>");
+  }
+
+  lines.push("</DL><p>");
+  return lines.join("\n");
+}
+
+function parseNetscapeBookmarks(content) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, "text/html");
+  const dl = doc.querySelector("body > dl");
+  if (!dl) {
+    throw new Error("Invalid NETSCAPE bookmarks file");
+  }
+
+  const groups = [];
+  const orphanItems = [];
+  const children = Array.from(dl.children);
+
+  for (let i = 0; i < children.length; i++) {
+    const node = children[i];
+    if (node.tagName !== "DT") {
+      continue;
+    }
+
+    const heading = node.querySelector("h3");
+    if (heading) {
+      const groupName = heading.textContent || "Group";
+      const next = children[i + 1];
+      const items = [];
+
+      if (next && next.tagName === "DL") {
+        for (const itemLink of Array.from(next.querySelectorAll("dt > a"))) {
+          const href = itemLink.getAttribute("href");
+          if (!href) continue;
+          items.push({
+            id: generateId("b"),
+            title: itemLink.textContent || href,
+            url: href,
+            customIcon: null,
+            updatedAt: Date.now(),
+            deleted: false,
+            deletedAt: null,
+            hasError: false
+          });
+        }
+        i += 1;
+      }
+
+      groups.push({
+        id: generateId("g"),
+        name: groupName,
+        items,
+        updatedAt: Date.now(),
+        deleted: false,
+        deletedAt: null
+      });
+      continue;
+    }
+
+    const link = node.querySelector("a");
+    if (link) {
+      orphanItems.push({
+        id: generateId("b"),
+        title: link.textContent || link.getAttribute("href") || "",
+        url: link.getAttribute("href") || "",
+        customIcon: null,
+        updatedAt: Date.now(),
+        deleted: false,
+        deletedAt: null,
+        hasError: false
+      });
+    }
+  }
+
+  if (orphanItems.length > 0) {
+    groups.unshift({
+      id: generateId("g"),
+      name: "Imported bookmarks",
+      items: orphanItems,
+      updatedAt: Date.now(),
+      deleted: false,
+      deletedAt: null
+    });
+  }
+
+  return groups;
+}
+
+exportNetscapeBtn?.addEventListener("click", async () => {
+  const html = serializeNetscapeBookmarks(state.groups.filter(g => !g.deleted));
+  const dataBlob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(dataBlob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `speeddial-bookmarks-${Date.now()}.html`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 });
 
 exportBookmarksBtn?.addEventListener("click", async () => {

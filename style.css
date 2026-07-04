@@ -390,6 +390,20 @@ main {
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.85rem;
+  font-family: inherit;
+}
+
+/* Language selector dropdown options text styling */
+.language-selector select option {
+  background: var(--bg2);
+  color: var(--text);
+  padding: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.language-selector select option:checked {
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Custom scrollbar styling for modern browsers */
@@ -446,7 +460,7 @@ main::-webkit-scrollbar-thumb:hover,
 }
 
 /* Sync dropdowns: style like language selector */
-#sync-type, #sync-auth-mode {
+#sync-type, #sync-auth-mode, #sync-encrypt-mode {
   width: 100%;
   padding: 0.25rem;
   background: var(--bg2);
@@ -454,30 +468,35 @@ main::-webkit-scrollbar-thumb:hover,
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.85rem;
+  font-family: inherit;
 }
 
-#sync-type-label, #sync-auth-label {
+#sync-type-label, #sync-auth-label, #sync-encrypt-label {
   display: block;
   margin-bottom: 0.25rem;
   font-size: 0.85rem;
   color: var(--text);
 }
 
-#sync-encrypt-mode {
-  width: 100%;
-  padding: 0.25rem;
+/* Sync dropdown options text styling */
+#sync-type option,
+#sync-auth-mode option,
+#sync-encrypt-mode option {
   background: var(--bg2);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  padding: 0.35rem;
   font-size: 0.85rem;
 }
 
-#sync-encrypt-label {
-  display: block;
-  margin-bottom: 0.25rem;
-  font-size: 0.85rem;
-  color: var(--text);
+#sync-type option:checked,
+#sync-auth-mode option:checked,
+#sync-encrypt-mode option:checked {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+#sync-test {
+  margin-top: 0.5rem;
 }
 
 .bookmark-tile.add-bookmark {
@@ -823,6 +842,46 @@ body.theme-dark .bookmark-title:hover {
 .settings-tab-content p {
   margin: 0;
   padding: 0;
+}
+
+.export-import-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.export-import-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--bg2);
+}
+
+.export-import-card h4 {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.95rem;
+}
+
+.export-import-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #bbb;
+  max-width: 38rem;
+}
+
+.export-import-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.export-import-actions .icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ─────────────────────────────────────────────
