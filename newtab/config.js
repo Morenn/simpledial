@@ -29,6 +29,11 @@ export const defaultConfig = {
     enableLinkCheck: false,
     highlightDeadLinks: true,
     lastLinkCheck: 0
+  },
+  appearance: {
+    backgroundImage: null, // Base64 encoded image or null
+    backgroundSize: "stretched", // "stretched", "fill", "fit", "tile", "center", "span"
+    tileOpacity: 1 // Bookmark tile opacity: 0 (transparent) to 1 (opaque)
   }
 };
 
@@ -49,6 +54,10 @@ export async function loadConfig() {
       housekeeper: {
         ...defaultConfig.housekeeper,
         ...(stored.housekeeper || {})
+      },
+      appearance: {
+        ...defaultConfig.appearance,
+        ...(stored.appearance || {})
       }
     };
   }

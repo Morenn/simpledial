@@ -260,6 +260,39 @@
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
 
+        <h3 id="background-title" data-i18n="backgroundSettings">🖼️ Background Picture</h3>
+        <div style="margin: 12px 0;">
+          <label for="bg-image-input" id="bg-upload-label" data-i18n="uploadBackgroundImage" style="display: block; margin-bottom: 8px;">Upload background image:</label>
+          <input type="file" id="bg-image-input" accept="image/*" style="margin-bottom: 12px;">
+          
+          <div id="bg-preview" style="width: 100%; height: 120px; background: #333; border-radius: 4px; margin-bottom: 12px; display: none; background-size: contain; background-position: center; background-repeat: no-repeat;"></div>
+          
+          <label id="bg-size-label" data-i18n="backgroundSize" style="display: block; margin-bottom: 8px;">Background size:</label>
+          <select id="bg-size-select" style="width: 100%; padding: 6px; margin-bottom: 8px;">
+            <option value="stretched" data-i18n="bgStretch">Stretched (fill entire screen)</option>
+            <option value="fill" data-i18n="bgFill">Fill (cover screen, may crop)</option>
+            <option value="fit" data-i18n="bgFit">Fit (entire image visible, black bars)</option>
+            <option value="tile" data-i18n="bgTile">Tile (repeat pattern)</option>
+            <option value="center" data-i18n="bgCenter">Center (original size, border)</option>
+            <option value="span" data-i18n="bgSpan">Span (across multiple monitors)</option>
+          </select>
+          
+          <button id="bg-remove-btn" data-i18n="removeBackgroundImage" style="width: 100%; padding: 8px; background: #cc3333; border: none; color: #fff; border-radius: 4px; cursor: pointer;">Remove background</button>
+        </div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
+        <h3 id="tiles-title" data-i18n="tileSettings">🎯 Bookmark Tiles</h3>
+        <div style="margin: 12px 0;">
+          <label id="tile-opacity-label" data-i18n="tileOpacity" style="display: block; margin-bottom: 8px;">Tile transparency:</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="range" id="tile-opacity-slider" min="0" max="100" value="100" style="flex: 1; cursor: pointer;">
+            <span id="tile-opacity-value" style="width: 40px; text-align: right;">100%</span>
+          </div>
+        </div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
         <h3 id="language-title" data-i18n="language">🅰️ Language</h3>
         <div class="language-selector">
           <label for="language-select" id="language-label" data-i18n="languageSelect">Language:</label>

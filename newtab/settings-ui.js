@@ -5,6 +5,7 @@ import { t, getCurrentLanguage } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
 import { render } from "./render.js";
+import { applyBackground, applyTileOpacity } from "./theme.js";
 
 // ======================================================
 // SETTINGS MODAL UI
@@ -65,6 +66,12 @@ const importNetscapeFile = document.getElementById("import-netscape-file");
 // Appearance Elements
 const showDeletedToggle = document.getElementById("show-deleted-toggle");
 const languageSelect = document.getElementById("language-select");
+const bgImageInput = document.getElementById("bg-image-input");
+const bgSizeSelect = document.getElementById("bg-size-select");
+const bgPreview = document.getElementById("bg-preview");
+const bgRemoveBtn = document.getElementById("bg-remove-btn");
+const tileOpacitySlider = document.getElementById("tile-opacity-slider");
+const tileOpacityValue = document.getElementById("tile-opacity-value");
 
 // HouseKeeper Elements
 const hkRetentionDays = document.getElementById("hk-retention-days");
@@ -261,6 +268,26 @@ settingsBtn.addEventListener("click", async () => {
   // Set current language in language select
   if (languageSelect) {
     languageSelect.value = getCurrentLanguage();
+  }
+
+  // Load background settings
+  if (bgSizeSelect) {
+    bgSizeSelect.value = config.appearance?.backgroundSize || 'stretched';
+  }
+  if (config.appearance?.backgroundImage && bgPreview) {
+    bgPreview.style.backgroundImage = `url('${config.appearance.backgroundImage}')`;
+    bgPreview.style.display = 'block';
+  } else if (bgPreview) {
+    bgPreview.style.display = 'none';
+  }
+
+  // Load tile opacity settings
+  if (tileOpacitySlider) {
+    const opacityPercent = Math.round((config.appearance?.tileOpacity ?? 1) * 100);
+    tileOpacitySlider.value = opacityPercent;
+    if (tileOpacityValue) {
+      tileOpacityValue.textContent = `${opacityPercent}%`;
+    }
   }
 
     syncStatus.textContent = "";
@@ -927,6 +954,107 @@ importBookmarksBtn?.addEventListener("click", async () => {
   }
 });
 
+// ---------- Background Image Settings ----------
+if (bgImageInput) {
+  bgImageInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Check file size (limit to 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image file is too large. Please use an image smaller than 2MB.");
+      bgImageInput.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const base64Data = event.target.result;
+        
+        // Show preview
+        if (bgPreview) {
+          bgPreview.style.backgroundImage = `url('${base64Data}')`;
+          bgPreview.style.display = 'block';
+        }
+
+        // Save to config
+        const config = await loadConfig();
+        config.appearance.backgroundImage = base64Data;
+        await saveConfig(config);
+
+        // Apply background immediately
+        await applyBackground(config);
+
+        setSettingsDirty(false);
+      } catch (error) {
+        alert("Failed to load image: " + error.message);
+        console.error("Image load error", error);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+if (bgRemoveBtn) {
+  bgRemoveBtn.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to remove the background image?")) {
+      return;
+    }
+
+    const config = await loadConfig();
+    config.appearance.backgroundImage = null;
+    await saveConfig(config);
+
+    if (bgPreview) {
+      bgPreview.style.backgroundImage = "";
+      bgPreview.style.display = "none";
+    }
+    if (bgImageInput) {
+      bgImageInput.value = "";
+    }
+
+    // Apply background immediately
+    await applyBackground(config);
+
+    setSettingsDirty(false);
+  });
+}
+
+if (bgSizeSelect) {
+  bgSizeSelect.addEventListener("change", async () => {
+    const config = await loadConfig();
+    config.appearance.backgroundSize = bgSizeSelect.value;
+    await saveConfig(config);
+
+    // Apply background immediately
+    await applyBackground(config);
+
+    setSettingsDirty(false);
+  });
+}
+
+// ---------- Tile Opacity Settings ----------
+if (tileOpacitySlider) {
+  tileOpacitySlider.addEventListener("input", (e) => {
+    const value = e.target.value;
+    if (tileOpacityValue) {
+      tileOpacityValue.textContent = `${value}%`;
+    }
+    // Apply opacity immediately
+    const opacityValue = value / 100;
+    document.body.style.setProperty('--tile-opacity', opacityValue);
+  });
+
+  tileOpacitySlider.addEventListener("change", async () => {
+    const config = await loadConfig();
+    config.appearance.tileOpacity = tileOpacitySlider.value / 100;
+    await saveConfig(config);
+    setSettingsDirty(false);
+  });
+}
+
 // ---------- Save Settings ----------
 async function persistSettings(closeAfterSave = false) {
   const config = await loadConfig();
@@ -986,6 +1114,15 @@ async function persistSettings(closeAfterSave = false) {
   config.housekeeper.autoCleanupEnabled = hkAutoCleanup.checked;
   config.housekeeper.enableLinkCheck = hkEnableLinkCheck.checked;
   config.housekeeper.highlightDeadLinks = hkHighlightDeadLinks ? !!hkHighlightDeadLinks.checked : true;
+
+  // Save appearance settings
+  if (bgSizeSelect) {
+    config.appearance.backgroundSize = bgSizeSelect.value || 'stretched';
+  }
+  if (tileOpacitySlider) {
+    config.appearance.tileOpacity = tileOpacitySlider.value / 100;
+  }
+  // Note: backgroundImage is saved separately when user uploads a file
 
   // Single save operation
   await saveConfig(config);
