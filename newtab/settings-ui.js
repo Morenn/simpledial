@@ -847,10 +847,13 @@ importBookmarksBtn?.addEventListener("click", async () => {
       return;
     }
 
+    // Sort children by index to ensure consistent ordering across all platforms
+    const sortedChildren = (children || []).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+
     const importedGroups = [];
     const orphanItems = [];
 
-    for (const child of children) {
+    for (const child of sortedChildren) {
       if (child.url) {
         orphanItems.push(child);
         continue;
@@ -858,7 +861,9 @@ importBookmarksBtn?.addEventListener("click", async () => {
 
       const items = [];
       const groupChildren = await getBookmarkChildren(child.id);
-      for (const item of groupChildren || []) {
+      // Sort group children by index to ensure consistent ordering across all platforms
+      const sortedGroupChildren = (groupChildren || []).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+      for (const item of sortedGroupChildren) {
         if (!item.url) continue;
         items.push({
           id: generateId('b'),
@@ -883,10 +888,12 @@ importBookmarksBtn?.addEventListener("click", async () => {
     }
 
     if (orphanItems.length > 0) {
+      // Sort orphan items by index to ensure consistent ordering across all platforms
+      const sortedOrphanItems = orphanItems.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
       importedGroups.unshift({
         id: generateId('g'),
         name: 'Imported bookmarks',
-        items: orphanItems.map(item => ({
+        items: sortedOrphanItems.map(item => ({
           id: generateId('b'),
           title: item.title || item.url,
           url: item.url,
