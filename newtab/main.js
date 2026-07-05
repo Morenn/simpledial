@@ -2,7 +2,7 @@ import { loadState, saveState, state } from "./state.js";
 import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
 import { loadConfig } from "./config.js";
-import { syncRead, syncWrite, startSyncLoop } from "./sync.js";
+import { syncRead, syncWrite, startSyncLoop, cleanupDeletedItems } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 
 // Make t global for modules that don't import it
@@ -69,13 +69,24 @@ window.addEventListener("keydown", e => {
   // 5) Start sync loop to keep data updated across tabs and with server
   startSyncLoop();
 
-  // 6) Setup language selector
+  // 6) Run automatic housekeeping to cleanup deleted items older than retention period
+  // Only if automatic cleanup is enabled in config
+  if (config.housekeeper?.autoCleanupEnabled) {
+    try {
+      const retentionDays = config.housekeeper?.retentionDays || 30;
+      await cleanupDeletedItems(retentionDays);
+    } catch (err) {
+      console.error("Housekeeping cleanup failed", err);
+    }
+  }
+
+  // 7) Setup language selector
   setupLanguageSelector();
 
-  // 7) Update initial UI text
+  // 8) Update initial UI text
   updateUIText();
 
-  // 8) Render UI
+  // 9) Render UI
   render();
 })();
 
