@@ -1,6 +1,6 @@
 import { state, saveState, generateId } from "./state.js";
 import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
-import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite } from "./sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncReadTest, syncWriteTest } from "./sync.js";
 import { t, getCurrentLanguage } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
@@ -23,6 +23,8 @@ const settingsCancelBtn = document.getElementById("settings-cancel");
 // Sync Tab Elements
 const syncUrl = document.getElementById("sync-url");
 const syncTest = document.getElementById("sync-test");
+const syncReadTestBtn = document.getElementById("sync-read-test");
+const syncWriteTestBtn = document.getElementById("sync-write-test");
 const syncEnable = document.getElementById("sync-enable");
 const syncType = document.getElementById("sync-type");
 const syncWebdavType = document.getElementById("sync-webdav-type");
@@ -572,17 +574,113 @@ if (syncTest) {
   });
 }
 
+if (syncReadTestBtn) {
+  syncReadTestBtn.addEventListener("click", async () => {
+    syncReadTestBtn.disabled = true;
+    if (syncTestStatus) syncTestStatus.textContent = "🔍 " + t("readingFromServer");
+
+    try {
+      if (settingsDirty) {
+        const saved = await persistSettings(false);
+        if (!saved) {
+          if (syncTestStatus) syncTestStatus.textContent = "❌ " + t('saveCredentialsFirst');
+          return;
+        }
+      }
+
+      const result = await syncReadTest();
+      if (result.ok) {
+        const groupCount = Array.isArray(result.data?.groups) ? result.data.groups.length : 0;
+        if (syncTestStatus) syncTestStatus.textContent = "✅ " + t("readTestSuccessful") + ` (${groupCount})`;
+      } else {
+        if (syncTestStatus) syncTestStatus.textContent = "❌ " + getSyncFailureMessage(result);
+      }
+    } finally {
+      syncReadTestBtn.disabled = false;
+    }
+  });
+}
+
+if (syncWriteTestBtn) {
+  syncWriteTestBtn.addEventListener("click", async () => {
+    syncWriteTestBtn.disabled = true;
+    if (syncTestStatus) syncTestStatus.textContent = "🔍 " + t("writingToServer");
+
+    try {
+      if (settingsDirty) {
+        const saved = await persistSettings(false);
+        if (!saved) {
+          if (syncTestStatus) syncTestStatus.textContent = "❌ " + t('saveCredentialsFirst');
+          return;
+        }
+      }
+
+      const result = await syncWriteTest();
+      if (result.ok) {
+        if (syncTestStatus) syncTestStatus.textContent = "✅ " + t("writeTestSuccessful");
+      } else {
+        if (syncTestStatus) syncTestStatus.textContent = "❌ " + getSyncFailureMessage(result);
+      }
+    } finally {
+      syncWriteTestBtn.disabled = false;
+    }
+  });
+}
+
 // ---------- Sync Now Button ----------
+function getSyncFailureMessage(result) {
+  switch (result?.reason) {
+    case 'not-configured':
+      return t('syncNotConfigured');
+    case 'credentials-missing':
+      return t('syncCredentialsMissing');
+    case 'credentials-locked':
+      return t('syncCredentialsLocked');
+    case 'credentials-decrypt-failed':
+      return t('syncCredentialsDecryptFailed');
+    case 'unexpected-html-response':
+      return t('syncUnexpectedHtmlResponse');
+    case 'locked':
+      return t('syncRemoteLocked');
+    case 'auth':
+      return t('wrongCredentials');
+    case 'timeout':
+      return t('connectionTimeout');
+    case 'network-or-cors':
+      return t('unreachableServer');
+    case 'auth-encoding-failed':
+      return t('invalidCredentialsEncoding');
+    case 'invalid-url':
+      return t('invalidUrl');
+    case 'http-error':
+      return `${t('serverError')} (${result.status ?? '?'})`;
+    case 'browser-sync-error':
+      return t('browserSyncUnavailable');
+    default:
+      return t('syncFailed');
+  }
+}
+
 syncNowBtn.addEventListener("click", async () => {
   syncNowBtn.disabled = true;
   syncNowBtn.textContent = "⬆️ " + t("syncing");
 
-  const success = await syncNow();
+  if (settingsDirty) {
+    const saved = await persistSettings(false);
+    if (!saved) {
+      if (syncNowStatus) syncNowStatus.textContent = "❌ " + t('saveCredentialsFirst');
+      syncNowBtn.disabled = false;
+      syncNowBtn.textContent = "⬆️ " + t("syncNow");
+      return;
+    }
+  }
 
-  if (success) {
+  const result = await syncNow();
+
+  if (result.ok) {
     if (syncNowStatus) syncNowStatus.textContent = "✅ " + t("syncSuccessful");
   } else {
-    if (syncNowStatus) syncNowStatus.textContent = "❌ " + t("syncFailed");
+    if (syncNowStatus) syncNowStatus.textContent = "❌ " + getSyncFailureMessage(result);
   }
 
   // Re-enable button after 2 seconds
@@ -1093,7 +1191,7 @@ async function persistSettings(closeAfterSave = false) {
   // Preserve auth and credential storage unless the credentials form was explicitly modified
   if (credentialsTouched && syncAuthMode && syncAuthMode.value === 'basic') {
     syncStatus.textContent = "❌ " + t('saveCredentialsFirst');
-    return;
+    return false;
   }
 
   // Save enable/disable state
@@ -1144,6 +1242,8 @@ async function persistSettings(closeAfterSave = false) {
   if (closeAfterSave) {
     settingsModal.classList.add("hidden");
   }
+
+  return true;
 }
 
 settingsSaveBtn.addEventListener("click", async () => {
@@ -1288,10 +1388,23 @@ manualSyncBtn.addEventListener("click", async () => {
   manualSyncBtn.textContent = "⬆️";
   manualSyncBtn.style.opacity = "0.5";
 
-  const success = await syncNow();
+  if (settingsDirty) {
+    const saved = await persistSettings(false);
+    if (!saved) {
+      if (syncStatus) syncStatus.textContent = "❌ " + t('saveCredentialsFirst');
+      manualSyncBtn.disabled = false;
+      manualSyncBtn.style.opacity = "1";
+      return;
+    }
+  }
 
-  if (success) {
+  const result = await syncNow();
+
+  if (result.ok) {
     manualSyncBtn.style.opacity = "1";
+    if (syncStatus) syncStatus.textContent = "✅ " + t('syncSuccessful');
+  } else {
+    if (syncStatus) syncStatus.textContent = "❌ " + getSyncFailureMessage(result);
   }
 
   // Re-enable button after 2 seconds

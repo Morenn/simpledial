@@ -48,6 +48,37 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
   }
 }
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function xhrPutWithBasicAuth(url, body, username, password, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true, username, password);
+    xhr.timeout = timeoutMs;
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('OCS-APIRequest', 'true');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+    xhr.onload = () => {
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, statusText: xhr.statusText });
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('xhr-network-error'));
+    };
+
+    xhr.ontimeout = () => {
+      const err = new Error('xhr-timeout');
+      err.name = 'AbortError';
+      reject(err);
+    };
+
+    xhr.send(body);
+  });
+}
+
 // ─────────────────────────────────────────────────────────────
 //  CONFIG STORAGE (DEPRECATED - use config.js)
 // ─────────────────────────────────────────────────────────────
@@ -75,7 +106,8 @@ export async function loadSyncConfig() {
     authMode: config.sync.authMode || (config.sync.password ? 'basic' : 'none'),
     encryptionMode: config.sync.encryptionMode || 'none',
     enc: config.sync.enc || null,
-    localKey: config.sync.localKey || null
+    localKey: config.sync.localKey || null,
+    lastSync: config.sync.lastSync || 0
   };
 }
 
@@ -84,10 +116,19 @@ export async function loadSyncConfig() {
 // ─────────────────────────────────────────────────────────────
 
 function safeBasicAuthHeader(username, password) {
-  // btoa() only handles Latin1 — encode UTF-8 bytes first so accented
-  // characters in credentials don't throw.
+  const credentials = `${username}:${password}`;
+
+  // Prefer the browser's native Latin1-compatible encoding path first,
+  // because that matches how Basic auth prompts are typically encoded.
   try {
-    const bytes = new TextEncoder().encode(`${username}:${password}`);
+    return 'Basic ' + btoa(credentials);
+  } catch (latin1Error) {
+    // Fall back to explicit UTF-8 encoding only when the credentials
+    // contain characters that btoa cannot encode directly.
+  }
+
+  try {
+    const bytes = new TextEncoder().encode(credentials);
     let binary = '';
     bytes.forEach(b => binary += String.fromCharCode(b));
     return 'Basic ' + btoa(binary);
@@ -95,6 +136,13 @@ function safeBasicAuthHeader(username, password) {
     console.error('Failed to create Basic auth header:', e);
     throw new Error('auth-encoding-failed');
   }
+}
+
+function applyWebdavCompatibilityHeaders(headers, cfg) {
+  if (!cfg || cfg.type !== 'webdav') return;
+
+  headers['OCS-APIRequest'] = 'true';
+  headers['X-Requested-With'] = 'XMLHttpRequest';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -127,6 +175,7 @@ export async function testSyncConnection(url, username = '', password = '', type
     }
 
     const headers = {};
+    applyWebdavCompatibilityHeaders(headers, { type });
     if (password) {
       try {
         headers['Authorization'] = safeBasicAuthHeader(username, password);
@@ -200,64 +249,145 @@ async function initializeRemote(url, headers = {}) {
   return defaultData;
 }
 
-// ─────────────────────────────────────────────────────────────
-//  READ
-// ─────────────────────────────────────────────────────────────
+async function initializeRemoteDetailed(url, headers = {}) {
+  const defaultData = { groups: [] };
 
-export async function syncRead() {
-  const cfg = await loadSyncConfig();
-  if (!cfg) return null;
+  try {
+    const res = await fetchWithTimeout(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify(defaultData, null, 2)
+    });
 
-  if (cfg.type === 'browser') {
+    if (!res.ok) {
+      console.warn(`initializeRemote failed: ${res.status} ${res.statusText} for ${url}`);
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, reason: 'auth', status: res.status };
+      }
+      return { ok: false, reason: 'http-error', status: res.status };
+    }
+  } catch (e) {
+    console.log("initializeRemote failed", e);
+    if (e.name === 'AbortError') {
+      return { ok: false, reason: 'timeout' };
+    }
+    return { ok: false, reason: 'network-or-cors' };
+  }
+
+  return { ok: true, reason: 'initialized-remote', data: defaultData };
+}
+
+async function resolveSyncCredentials(cfg, operation) {
+  let username = cfg.username || '';
+  let password = cfg.password || '';
+
+  try {
+    const hasEncryptedCreds =
+      (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) ||
+      (cfg.encryptionMode === 'master' && cfg.enc);
+    const hasPlainCreds = !!(cfg.username || cfg.password);
+    const effectiveAuthMode = (cfg.authMode === 'basic' || hasEncryptedCreds || hasPlainCreds) ? 'basic' : 'none';
+
+    if (effectiveAuthMode !== 'basic') {
+      return { ok: true, username, password };
+    }
+
+    if (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) {
+      const key = await importRawKey(cfg.localKey);
+      const plain = await decryptWithKey(key, cfg.enc.ciphertext, cfg.enc.iv);
+      const obj = JSON.parse(plain);
+      username = obj.username || '';
+      password = obj.password || '';
+      return {
+        ok: true,
+        username: username.trim(),
+        password: password.replace(/[\r\n]/g, '')
+      };
+    }
+
+    if (cfg.encryptionMode === 'master' && cfg.enc) {
+      if (!window._speeddial_masterKey) {
+        console.warn(`${operation}: master-encrypted credentials are locked`);
+        return { ok: false, reason: 'credentials-locked' };
+      }
+
+      try {
+        const plain = await decryptWithKey(window._speeddial_masterKey, cfg.enc.ciphertext, cfg.enc.iv);
+        const obj = JSON.parse(plain);
+        username = obj.username || '';
+        password = obj.password || '';
+        return {
+          ok: true,
+          username: username.trim(),
+          password: password.replace(/[\r\n]/g, '')
+        };
+      } catch (e) {
+        console.warn(`${operation}: failed to decrypt master-encrypted credentials`, e);
+        return { ok: false, reason: 'credentials-locked' };
+      }
+    }
+
+    if (!username || !password) {
+      console.warn(`${operation}: basic auth is enabled but credentials are missing`);
+      return { ok: false, reason: 'credentials-missing' };
+    }
+
+    return {
+      ok: true,
+      username: username.trim(),
+      password: password.replace(/[\r\n]/g, '')
+    };
+  } catch (e) {
+    console.warn(`Error while decrypting credentials for ${operation}`, e);
+    return { ok: false, reason: 'credentials-decrypt-failed' };
+  }
+}
+
+async function syncReadDetailed(cfg = null) {
+  const resolvedCfg = cfg || await loadSyncConfig();
+  if (!resolvedCfg) {
+    return { ok: false, reason: 'not-configured' };
+  }
+
+  if (resolvedCfg.type === 'browser') {
     try {
       const result = await chrome.storage.sync.get(CLOUD_STORAGE_KEY);
       const stored = result[CLOUD_STORAGE_KEY];
       return {
-        groups: (stored && stored.groups) ? stored.groups : []
+        ok: true,
+        reason: 'ok',
+        data: {
+          groups: (stored && stored.groups) ? stored.groups : []
+        }
       };
     } catch (e) {
       console.error('syncRead(browser) failed', e);
-      return null;
+      return { ok: false, reason: 'browser-sync-error' };
     }
   }
 
-  const url = cfg.url;
-  const fetchUrl = getSyncFetchUrl(url, cfg.type);
-  // Attempt to obtain credentials depending on encryption mode
-  let username = cfg.username || '';
-  let password = cfg.password || '';
+  const url = resolvedCfg.url;
+  const fetchUrl = getSyncFetchUrl(url, resolvedCfg.type);
+
   try {
-    if (cfg.authMode === 'basic') {
-      if (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) {
-        const key = await importRawKey(cfg.localKey);
-        const plain = await decryptWithKey(key, cfg.enc.ciphertext, cfg.enc.iv);
-        const obj = JSON.parse(plain);
-        username = obj.username || '';
-        password = obj.password || '';
-      } else if (cfg.encryptionMode === 'master' && cfg.enc) {
-        if (window._speeddial_masterKey) {
-          try {
-            const plain = await decryptWithKey(window._speeddial_masterKey, cfg.enc.ciphertext, cfg.enc.iv);
-            const obj = JSON.parse(plain);
-            username = obj.username || '';
-            password = obj.password || '';
-          } catch (e) {
-            console.warn('Cannot decrypt master-encrypted credentials without master key');
-          }
-        }
-      }
-    }
+    new URL(fetchUrl);
   } catch (e) {
-    console.warn('Error while decrypting credentials for syncRead', e);
+    return { ok: false, reason: 'invalid-url' };
   }
-  const auth = cfg.password ? { username: cfg.username || '', password: cfg.password } : null;
+
+  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
+  if (!credentials.ok) {
+    return credentials;
+  }
 
   try {
     const headers = {};
-    const credUser = username || (auth ? auth.username : '');
-    const credPass = password || (auth ? auth.password : '');
-    if (credPass) headers['Authorization'] = 'Basic ' + btoa(`${credUser}:${credPass}`);
-
+    applyWebdavCompatibilityHeaders(headers, resolvedCfg);
+    const credUser = credentials.username || '';
+    const credPass = credentials.password || '';
+    if (credPass) {
+      headers['Authorization'] = safeBasicAuthHeader(credUser, credPass);
+    }
 
     const res = await fetchWithTimeout(fetchUrl, {
       method: "GET",
@@ -267,35 +397,200 @@ export async function syncRead() {
 
     if (res.status === 404) {
       console.warn("syncRead: 404 → initializing remote file");
-      return await initializeRemote(fetchUrl, headers);
+      return await initializeRemoteDetailed(fetchUrl, headers);
     }
 
     if (!res.ok) {
       console.warn("syncRead: server returned", res.status);
-      return null;
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, reason: 'auth', status: res.status };
+      }
+      return { ok: false, reason: 'http-error', status: res.status };
     }
 
     const text = await res.text();
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
 
     if (!text.trim()) {
       console.warn("syncRead: empty file → initializing");
-      return await initializeRemote(fetchUrl, headers);
+      return await initializeRemoteDetailed(fetchUrl, headers);
+    }
+
+    if (contentType.includes('text/html') || /^\s*</.test(text)) {
+      console.warn("syncRead: received HTML instead of JSON", {
+        status: res.status,
+        contentType,
+        redirected: res.redirected,
+        responseUrl: res.url
+      });
+      return {
+        ok: false,
+        reason: 'unexpected-html-response',
+        status: res.status,
+        redirected: !!res.redirected
+      };
     }
 
     try {
       const parsed = JSON.parse(text);
       return {
-        groups: parsed.groups ?? []
+        ok: true,
+        reason: 'ok',
+        data: {
+          groups: parsed.groups ?? []
+        }
       };
     } catch (e) {
       console.warn("syncRead: invalid JSON → initializing");
-      return await initializeRemote(url, headers);
+      return await initializeRemoteDetailed(fetchUrl, headers);
     }
 
   } catch (e) {
     console.log("fetch failed (syncRead)", e);
-    return null;
+    if (e.message === 'auth-encoding-failed') {
+      return { ok: false, reason: 'auth-encoding-failed' };
+    }
+    if (e.name === 'AbortError') {
+      return { ok: false, reason: 'timeout' };
+    }
+    return { ok: false, reason: 'network-or-cors' };
   }
+}
+
+async function syncWriteDetailed(cfg = null) {
+  const resolvedCfg = cfg || await loadSyncConfig();
+  if (!resolvedCfg) {
+    return { ok: false, reason: 'not-configured' };
+  }
+
+  if (resolvedCfg.type === 'browser') {
+    try {
+      await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: { groups: state.groups } });
+      return { ok: true, reason: 'ok' };
+    } catch (e) {
+      console.error('syncWrite(browser) failed', e);
+      return { ok: false, reason: 'browser-sync-error' };
+    }
+  }
+
+  const fetchUrl = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type);
+
+  try {
+    new URL(fetchUrl);
+  } catch (e) {
+    return { ok: false, reason: 'invalid-url' };
+  }
+
+  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncWrite');
+  if (!credentials.ok) {
+    return credentials;
+  }
+
+  const credUser = credentials.username || '';
+  const credPass = credentials.password || '';
+  const writeBody = JSON.stringify({ groups: state.groups }, null, 2);
+  const lockRetryDelays = [400, 900, 1500];
+
+  try {
+    if (resolvedCfg.lastSync === 0 && isBootstrapPlaceholderState(state.groups)) {
+      const remote = await syncReadDetailed(resolvedCfg);
+      if (!remote.ok) {
+        return remote;
+      }
+      if (hasMeaningfulGroups(remote.data.groups)) {
+        console.warn("syncWrite: refusing to overwrite remote data with bootstrap local state");
+        state.groups = mergeGroups(state.groups, remote.data.groups, { preferCloudOnBootstrap: true });
+        await saveState();
+        return { ok: true, reason: 'protected-remote-data' };
+      }
+    }
+
+    const headers = { "Content-Type": "application/json" };
+    applyWebdavCompatibilityHeaders(headers, resolvedCfg);
+    if (credPass) {
+      headers['Authorization'] = safeBasicAuthHeader(credUser, credPass);
+    }
+
+    let res = null;
+    for (let attempt = 0; attempt <= lockRetryDelays.length; attempt++) {
+      res = await fetchWithTimeout(fetchUrl, {
+        method: "PUT",
+        headers,
+        body: writeBody
+      });
+
+      if (res.ok) {
+        return { ok: true, reason: 'ok' };
+      }
+
+      if (res.status === 423 && attempt < lockRetryDelays.length) {
+        console.warn(`syncWrite: remote file locked (423), retrying in ${lockRetryDelays[attempt]}ms`);
+        await delay(lockRetryDelays[attempt]);
+        continue;
+      }
+
+      break;
+    }
+
+    if (!res.ok) {
+      console.warn(`syncWrite failed: ${res.status} ${res.statusText} for ${fetchUrl}`);
+
+      if (res.status === 423) {
+        return { ok: false, reason: 'locked', status: res.status };
+      }
+
+      // Some WebDAV servers accept browser-native Basic auth challenge flow
+      // but reject manually attached Authorization headers from fetch.
+      if (resolvedCfg.type === 'webdav' && res.status === 401 && credUser && credPass) {
+        try {
+          const xhrRes = await xhrPutWithBasicAuth(
+            fetchUrl,
+            writeBody,
+            credUser,
+            credPass
+          );
+
+          if (xhrRes.ok) {
+            console.warn('syncWrite: fetch auth failed, XHR basic-auth fallback succeeded');
+            return { ok: true, reason: 'ok-xhr-fallback' };
+          }
+
+          if (xhrRes.status === 423) {
+            return { ok: false, reason: 'locked', status: xhrRes.status };
+          }
+
+          console.warn(`syncWrite XHR fallback failed: ${xhrRes.status} ${xhrRes.statusText} for ${fetchUrl}`);
+        } catch (xhrError) {
+          console.warn('syncWrite XHR fallback errored', xhrError);
+        }
+      }
+
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, reason: 'auth', status: res.status };
+      }
+      return { ok: false, reason: 'http-error', status: res.status };
+    }
+  } catch (e) {
+    console.log("fetch failed (syncWrite)", e);
+    if (e.message === 'auth-encoding-failed') {
+      return { ok: false, reason: 'auth-encoding-failed' };
+    }
+    if (e.name === 'AbortError') {
+      return { ok: false, reason: 'timeout' };
+    }
+    return { ok: false, reason: 'network-or-cors' };
+  }
+
+  return { ok: true, reason: 'ok' };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  READ
+// ─────────────────────────────────────────────────────────────
+
+export async function syncRead() {
+  const result = await syncReadDetailed();
+  return result.ok ? result.data : null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -303,68 +598,137 @@ export async function syncRead() {
 // ─────────────────────────────────────────────────────────────
 
 export async function syncWrite() {
-  const cfg = await loadSyncConfig();
-  if (!cfg) return;
+  const result = await syncWriteDetailed();
+  return result.ok;
+}
 
-  if (cfg.type === 'browser') {
-    try {
-      await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: { groups: state.groups } });
-    } catch (e) {
-      console.error('syncWrite(browser) failed', e);
-    }
-    return;
+export async function syncReadTest() {
+  return await syncReadDetailed();
+}
+
+export async function syncWriteTest() {
+  return await syncWriteDetailed();
+}
+
+function pickNewerRecord(localRecord, cloudRecord) {
+  if (localRecord.deleted && cloudRecord.deleted) {
+    return (localRecord.deletedAt > cloudRecord.deletedAt) ? localRecord : cloudRecord;
   }
 
-  const url = cfg.url;
-  const fetchUrl = getSyncFetchUrl(url, cfg.type);
-
-  // Attempt to obtain credentials depending on encryption mode
-  let username = cfg.username || '';
-  let password = cfg.password || '';
-  try {
-    if (cfg.authMode === 'basic') {
-      if (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) {
-        const key = await importRawKey(cfg.localKey);
-        const plain = await decryptWithKey(key, cfg.enc.ciphertext, cfg.enc.iv);
-        const obj = JSON.parse(plain);
-        username = obj.username || '';
-        password = obj.password || '';
-      } else if (cfg.encryptionMode === 'master' && cfg.enc) {
-        if (window._speeddial_masterKey) {
-          try {
-            const plain = await decryptWithKey(window._speeddial_masterKey, cfg.enc.ciphertext, cfg.enc.iv);
-            const obj = JSON.parse(plain);
-            username = obj.username || '';
-            password = obj.password || '';
-          } catch (e) {
-            console.warn('Cannot decrypt master-encrypted credentials without master key');
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Error while decrypting credentials for syncWrite', e);
+  if (cloudRecord.deleted) {
+    return (cloudRecord.deletedAt > localRecord.updatedAt) ? cloudRecord : localRecord;
   }
 
-  const credUser = username || (cfg.username || '');
-  const credPass = password || (cfg.password || '');
-
-  try {
-    const headers = { "Content-Type": "application/json" };
-    if (credPass) headers['Authorization'] = 'Basic ' + btoa(`${credUser}:${credPass}`);
-
-    const res = await fetchWithTimeout(fetchUrl, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ groups: state.groups }, null, 2)
-    });
-
-    if (!res.ok) {
-      console.warn(`syncWrite failed: ${res.status} ${res.statusText} for ${fetchUrl}`);
-    }
-  } catch (e) {
-    console.log("fetch failed (syncWrite)", e);
+  if (localRecord.deleted) {
+    return (localRecord.deletedAt > cloudRecord.updatedAt) ? localRecord : cloudRecord;
   }
+
+  return (localRecord.updatedAt > cloudRecord.updatedAt) ? localRecord : cloudRecord;
+}
+
+function isBootstrapPlaceholderState(groups) {
+  if (!Array.isArray(groups) || groups.length !== 1) {
+    return false;
+  }
+
+  const [group] = groups;
+  return !group.deleted && (group.items?.length || 0) === 0;
+}
+
+function hasMeaningfulGroups(groups) {
+  if (!Array.isArray(groups) || groups.length === 0) {
+    return false;
+  }
+
+  if (groups.length > 1) {
+    return true;
+  }
+
+  return groups.some(group => group.deleted || (group.items?.length || 0) > 0);
+}
+
+function mergeGroups(localGroups, cloudGroups, options = {}) {
+  const { preferCloudOnBootstrap = false } = options;
+
+  if (preferCloudOnBootstrap && isBootstrapPlaceholderState(localGroups) && hasMeaningfulGroups(cloudGroups)) {
+    return cloudGroups;
+  }
+
+  const merged = {};
+  const localMap = Object.fromEntries((localGroups || []).map(group => [group.id, group]));
+  const cloudMap = Object.fromEntries((cloudGroups || []).map(group => [group.id, group]));
+  const allIds = new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
+
+  for (const id of allIds) {
+    const localGroup = localMap[id];
+    const cloudGroup = cloudMap[id];
+
+    if (localGroup && !cloudGroup) {
+      merged[id] = localGroup;
+      continue;
+    }
+
+    if (!localGroup && cloudGroup) {
+      merged[id] = cloudGroup;
+      continue;
+    }
+
+    const newerGroup = pickNewerRecord(localGroup, cloudGroup);
+    merged[id] = {
+      ...newerGroup,
+      items: mergeItems(localGroup.items || [], cloudGroup.items || [])
+    };
+  }
+
+  return Object.values(merged);
+}
+
+function getGroupsFreshness(groups) {
+  let maxTs = 0;
+
+  for (const group of (groups || [])) {
+    const groupUpdated = group?.updatedAt || 0;
+    const groupDeleted = group?.deletedAt || 0;
+    if (groupUpdated > maxTs) maxTs = groupUpdated;
+    if (groupDeleted > maxTs) maxTs = groupDeleted;
+
+    for (const item of (group?.items || [])) {
+      const itemUpdated = item?.updatedAt || 0;
+      const itemDeleted = item?.deletedAt || 0;
+      if (itemUpdated > maxTs) maxTs = itemUpdated;
+      if (itemDeleted > maxTs) maxTs = itemDeleted;
+    }
+  }
+
+  return maxTs;
+}
+
+async function mergeAndWriteAtomically(config, cloudGroups) {
+  const previousGroups = state.groups;
+  const localFreshness = getGroupsFreshness(previousGroups);
+  const cloudFreshness = getGroupsFreshness(cloudGroups || []);
+  const localIsMoreRecent = localFreshness > cloudFreshness;
+
+  const mergedGroups = mergeGroups(previousGroups, cloudGroups || [], { preferCloudOnBootstrap: true });
+  state.groups = mergedGroups;
+
+  const writeResult = await syncWriteDetailed({ ...(await loadSyncConfig()), lastSync: Date.now() });
+
+  if (writeResult.ok) {
+    await saveState();
+    await updateLastSyncTime(config);
+    return { ok: true, reason: writeResult.reason || 'ok' };
+  }
+
+  // Never keep a merged local state that failed to persist remotely.
+  // This avoids losing recent local edits during temporary server failures.
+  state.groups = previousGroups;
+
+  if (localIsMoreRecent) {
+    console.warn('sync: preserving newer local state because remote write failed');
+  }
+
+  return writeResult;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -393,22 +757,7 @@ function mergeItems(localItems, cloudItems) {
     }
 
     if (local && cloud) {
-      if (local.deleted && cloud.deleted) {
-        result[id] = (local.deletedAt > cloud.deletedAt) ? local : cloud;
-        continue;
-      }
-
-      if (cloud.deleted) {
-        result[id] = (cloud.deletedAt > local.updatedAt) ? cloud : local;
-        continue;
-      }
-
-      if (local.deleted) {
-        result[id] = (local.deletedAt > cloud.updatedAt) ? local : cloud;
-        continue;
-      }
-
-      result[id] = (local.updatedAt > cloud.updatedAt) ? local : cloud;
+      result[id] = pickNewerRecord(local, cloud);
     }
   }
 
@@ -426,11 +775,6 @@ export function startSyncLoop() {
     const config = await loadConfig();
 
     if (!config.sync.enabled) {
-      // Stop sync loop if disabled
-      if (syncLoopInterval) {
-        clearInterval(syncLoopInterval);
-        syncLoopInterval = null;
-      }
       return;
     }
 
@@ -439,27 +783,10 @@ export function startSyncLoop() {
       return;
     }
 
-    const cloud = await syncRead();
-    if (!cloud) return;
-
-    const mergedGroups = state.groups.map(localGroup => {
-      const cloudGroup = cloud.groups.find(g => g.id === localGroup.id);
-
-      if (!cloudGroup) return localGroup;
-
-      return {
-        ...localGroup,
-        items: mergeItems(localGroup.items, cloudGroup.items)
-      };
-    });
-
-    state.groups = mergedGroups;
-    await saveState();
-
-    // Update last sync time in config
-    await updateLastSyncTime(config);
-
-    await syncWrite();
+    const result = await syncNow();
+    if (!result.ok && result.reason !== 'not-configured') {
+      console.warn('sync loop failed:', result.reason, result.status || '');
+    }
   };
 
   // Run sync loop every 10 seconds to check if sync is needed
@@ -479,35 +806,16 @@ export async function syncNow() {
 
   if (!config.sync.enabled || (!config.sync.serverUrl && config.sync.type !== 'browser')) {
     console.warn("Sync not configured or disabled");
-    return false;
+    return { ok: false, reason: 'not-configured' };
   }
 
-  const cloud = await syncRead();
-  if (!cloud) {
+  const readResult = await syncReadDetailed();
+  if (!readResult.ok) {
     console.warn("Failed to read from sync server");
-    return false;
+    return readResult;
   }
 
-  const mergedGroups = state.groups.map(localGroup => {
-    const cloudGroup = cloud.groups.find(g => g.id === localGroup.id);
-
-    if (!cloudGroup) return localGroup;
-
-    return {
-      ...localGroup,
-      items: mergeItems(localGroup.items, cloudGroup.items)
-    };
-  });
-
-  state.groups = mergedGroups;
-  await saveState();
-
-  // Update last sync time in config
-  await updateLastSyncTime(config);
-
-  await syncWrite();
-
-  return true;
+  return await mergeAndWriteAtomically(config, readResult.data.groups);
 }
 
 // ─────────────────────────────────────────────────────────────
