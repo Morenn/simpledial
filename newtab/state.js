@@ -1,6 +1,8 @@
 export const STORAGE_KEY = "myspeeddial-data";
 export const THEME_KEY = "myspeeddial-theme";
 
+import { t } from "./i18n.js";
+
 export let state = {
   groups: [],
   sync: {
@@ -49,7 +51,7 @@ export async function loadState() {
   if (state.groups.length === 0) {
     const defaultGroup = {
       id: generateId("g"),
-      name: "Moje záložky",
+      name: t("defaultGroupName"),
       items: [],
       updatedAt: Date.now(),
       deleted: false,

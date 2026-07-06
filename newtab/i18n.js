@@ -1,8 +1,8 @@
 // i18n loader: loads language JSON files from newtab/lang
 
 const LANG_FILES = [
-  { code: 'sk', name: 'Slovenčina', path: 'newtab/lang/sk.json' },
-  { code: 'en', name: 'English', path: 'newtab/lang/en.json' }
+  { code: 'en', name: 'English', path: 'newtab/lang/en.json' },
+  { code: 'sk', name: 'Slovenčina', path: 'newtab/lang/sk.json' }
 ];
 
 const languages = {}; // keyed by code -> { code, name, texts }
@@ -61,9 +61,9 @@ export async function initLanguage() {
     }
   } catch (e) {}
 
-  // Ensure default exists
+  // Ensure English is the default when no saved language exists.
   if (!languages[currentLanguage] && Object.keys(languages).length > 0) {
-    currentLanguage = Object.keys(languages)[0];
+    currentLanguage = languages.en ? 'en' : Object.keys(languages)[0];
     document.documentElement.lang = currentLanguage;
   }
 }
