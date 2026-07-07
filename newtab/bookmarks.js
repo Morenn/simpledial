@@ -136,10 +136,15 @@ bmSave.addEventListener("click", async () => {
 
   // EDIT
   if (editingBookmark) {
-    editingBookmark.title = title || url;
-    editingBookmark.url = url;
-    editingBookmark.customIcon = icon || null;
-    editingBookmark.updatedAt = Date.now();
+    // 🔥 Look up item by ID instead of using stale reference
+    // (sync loop may have replaced state.groups while modal was open)
+    const currentItem = group?.items.find(i => i.id === editingBookmark.id);
+    if (currentItem) {
+      currentItem.title = title || url;
+      currentItem.url = url;
+      currentItem.customIcon = icon || null;
+      currentItem.updatedAt = Date.now();
+    }
 
   // CREATE
   } else {
@@ -157,9 +162,10 @@ bmSave.addEventListener("click", async () => {
   await saveState();
   await syncWrite();
   closeBookmarkModal();
+  render();
   
-  // Check link health asynchronously and update timestamp only on change
-  const itemToCheck = editingBookmark || group.items[group.items.length - 1];
+  // Check link health asynchronously in background (don't delay UI update)
+  const itemToCheck = editingBookmark ? group?.items.find(i => i.id === editingBookmark.id) : group?.items[group.items.length - 1];
   if (itemToCheck && itemToCheck.url) {
     try {
       const isValid = await validateSingleLink(itemToCheck.url);
@@ -169,13 +175,12 @@ bmSave.addEventListener("click", async () => {
         itemToCheck.updatedAt = Date.now();
         await saveState();
         await syncWrite();
+        render();
       }
     } catch (e) {
       console.error('Link validation failed:', e);
     }
   }
-
-  render();
 });
 
 // ---------- Context menu – bookmarks ----------
