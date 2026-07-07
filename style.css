@@ -1102,6 +1102,42 @@ body.theme-dark .bookmark-title:hover {
   padding: 0;
 }
 
+.sync-manual-actions-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
+
+.backups-table-wrap {
+  margin-top: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.backups-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.backups-table th,
+.backups-table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.backups-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.backups-empty {
+  opacity: 0.75;
+  font-size: 0.8rem;
+}
+
 .export-import-grid {
   display: grid;
   gap: 1rem;

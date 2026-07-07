@@ -4,6 +4,7 @@ import { render } from "./render.js";
 import { loadConfig } from "./config.js";
 import { syncRead, syncWrite, startSyncLoop, cleanupDeletedItems } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
+import { runBackupInitCheck } from "./backup.js";
 
 // Make t global for modules that don't import it
 window.t = t;
@@ -68,6 +69,9 @@ window.addEventListener("keydown", e => {
 
   // 5) Start sync loop to keep data updated across tabs and with server
   startSyncLoop();
+
+  // 5b) Run one-time backup check on page initialization
+  await runBackupInitCheck();
 
   // 6) Run automatic housekeeping to cleanup deleted items older than retention period
   // Only if automatic cleanup is enabled in config
@@ -288,6 +292,32 @@ function updateSettingsModalText() {
     const key = label.getAttribute('data-i18n');
     const text = t(key);
     label.textContent = text;
+  });
+
+  // Update translatable title/aria-label attributes while keeping key for future language switches.
+  const attributeMappings = [
+    { selector: '[title]', attr: 'title', keyAttr: 'data-i18n-title-key' },
+    { selector: '[aria-label]', attr: 'aria-label', keyAttr: 'data-i18n-aria-key' }
+  ];
+
+  attributeMappings.forEach(({ selector, attr, keyAttr }) => {
+    const nodes = document.querySelectorAll(selector);
+    nodes.forEach(node => {
+      const storedKey = node.getAttribute(keyAttr);
+      const currentValue = node.getAttribute(attr);
+      const key = storedKey || currentValue;
+      if (!key) return;
+
+      const translated = t(key);
+      const keyIsTranslatable = translated !== key;
+
+      if (keyIsTranslatable || storedKey) {
+        if (!storedKey) {
+          node.setAttribute(keyAttr, key);
+        }
+        node.setAttribute(attr, translated);
+      }
+    });
   });
 }
 

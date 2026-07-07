@@ -457,7 +457,7 @@ async function syncReadDetailed(cfg = null) {
   }
 }
 
-async function syncWriteDetailed(cfg = null) {
+async function syncWriteDetailed(cfg = null, sourceGroups = null) {
   const resolvedCfg = cfg || await loadSyncConfig();
   if (!resolvedCfg) {
     return { ok: false, reason: 'not-configured' };
@@ -465,7 +465,8 @@ async function syncWriteDetailed(cfg = null) {
 
   if (resolvedCfg.type === 'browser') {
     try {
-      await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: { groups: state.groups } });
+      const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
+      await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: { groups: groupsToWrite } });
       return { ok: true, reason: 'ok' };
     } catch (e) {
       console.error('syncWrite(browser) failed', e);
@@ -488,18 +489,19 @@ async function syncWriteDetailed(cfg = null) {
 
   const credUser = credentials.username || '';
   const credPass = credentials.password || '';
-  const writeBody = JSON.stringify({ groups: state.groups }, null, 2);
+  const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
+  const writeBody = JSON.stringify({ groups: groupsToWrite }, null, 2);
   const lockRetryDelays = [400, 900, 1500];
 
   try {
-    if (resolvedCfg.lastSync === 0 && isBootstrapPlaceholderState(state.groups)) {
+    if (resolvedCfg.lastSync === 0 && isBootstrapPlaceholderState(groupsToWrite)) {
       const remote = await syncReadDetailed(resolvedCfg);
       if (!remote.ok) {
         return remote;
       }
       if (hasMeaningfulGroups(remote.data.groups)) {
         console.warn("syncWrite: refusing to overwrite remote data with bootstrap local state");
-        state.groups = mergeGroups(state.groups, remote.data.groups, { preferCloudOnBootstrap: true });
+        state.groups = mergeGroups(groupsToWrite, remote.data.groups, { preferCloudOnBootstrap: true });
         await saveState();
         return { ok: true, reason: 'protected-remote-data' };
       }
@@ -597,8 +599,9 @@ export async function syncRead() {
 //  WRITE
 // ─────────────────────────────────────────────────────────────
 
-export async function syncWrite() {
-  const result = await syncWriteDetailed();
+export async function syncWrite(sourceState = state) {
+  const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
+  const result = await syncWriteDetailed(null, groups);
   return result.ok;
 }
 

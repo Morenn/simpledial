@@ -67,6 +67,7 @@
       <!-- Tabs -->
       <div class="settings-tabs">
         <button class="settings-tab-btn active" data-tab="sync" data-i18n="synchronization">🔄 Synchronization</button>
+        <button class="settings-tab-btn" data-tab="backups" data-i18n="backups">💾 Backups</button>
         <button class="settings-tab-btn" data-tab="export" data-i18n="exportImport">📤 Export/Import</button>
         <button class="settings-tab-btn" data-tab="appearance" data-i18n="appearance">🎨 Appearance</button>
         <button class="settings-tab-btn" data-tab="housekeeper" data-i18n="housekeeper">🏠 HouseKeeper</button>
@@ -205,13 +206,44 @@
               <span class="choice-option-title" data-i18n="manualSyncOnly">Manual sync only</span>
             </label>
           </div>
-
-          <button id="sync-now-btn" class="icon-btn primary" data-i18n="syncNow">⬆️ Sync now</button>
+          <div class="sync-manual-actions-row">
+            <button id="sync-now-btn" class="icon-btn primary" data-i18n="syncNow" title="titleSyncNow" aria-label="titleSyncNow">⬆️ Sync now</button>
+            <button id="sync-upload-btn" class="icon-btn primary" data-i18n="syncUpload" title="titleSyncUpload" aria-label="titleSyncUpload">📤 Upload</button>
+            <button id="sync-download-btn" class="icon-btn primary" data-i18n="syncDownload" title="titleSyncDownload" aria-label="titleSyncDownload">📥 Download</button>
+          </div>
           <div id="sync-now-status" class="status"></div>
           <div id="last-sync-info" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
         </section>
 
         <div id="sync-status" class="status"></div>
+      </div>
+
+      <!-- Backups Tab -->
+      <div id="backups-tab" class="settings-tab-content">
+        <h3 data-i18n="backupsSettings">Backups</h3>
+        <p data-i18n="backupsSettingsHint">Automatically store local bookmark snapshots as JSON backup files.</p>
+
+        <label for="backup-retention-days" data-i18n="backupsRetentionDays">Retention period (days):</label>
+        <input type="number" id="backup-retention-days" min="1" max="365" value="30">
+
+        <label for="backup-frequency-hours" data-i18n="backupsFrequency">Backup frequency (hours):</label>
+        <input type="number" id="backup-frequency-hours" min="1" max="720" value="24">
+
+        <button id="backup-create-now" class="icon-btn primary" data-i18n="createBackupNow">💾 Create backup now</button>
+        <div id="backup-status" class="status"></div>
+
+        <div class="backups-table-wrap">
+          <table class="backups-table">
+            <thead>
+              <tr>
+                <th data-i18n="backupTimestamp">Timestamp</th>
+                <th data-i18n="backupFileSize">File size</th>
+                <th data-i18n="backupActions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="backups-table-body"></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Export/Import Tab -->

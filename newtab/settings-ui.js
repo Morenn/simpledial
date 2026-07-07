@@ -1,11 +1,12 @@
 import { state, saveState, generateId } from "./state.js";
 import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
-import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncReadTest, syncWriteTest } from "./sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest } from "./sync.js";
 import { t, getCurrentLanguage } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
 import { render } from "./render.js";
 import { applyBackground, applyTileOpacity } from "./theme.js";
+import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups } from "./backup.js";
 
 // ======================================================
 // SETTINGS MODAL UI
@@ -40,6 +41,8 @@ const syncCustom = document.getElementById("sync-custom");
 const syncCustomValue = document.getElementById("sync-interval-value");
 const syncManual = document.getElementById("sync-manual");
 const syncNowBtn = document.getElementById("sync-now-btn");
+const syncUploadBtn = document.getElementById("sync-upload-btn");
+const syncDownloadBtn = document.getElementById("sync-download-btn");
 const syncTestStatus = document.getElementById("sync-test-status");
 const syncNowStatus = document.getElementById("sync-now-status");
 const lastSyncInfo = document.getElementById("last-sync-info");
@@ -87,6 +90,13 @@ const hkCheckLinks = document.getElementById("hk-check-links");
 const hkLinkCheckStatus = document.getElementById("hk-link-check-status");
 const hkDeadLinksCount = document.getElementById("hk-dead-links-count");
 const hkClearErrors = document.getElementById("hk-clear-errors");
+
+// Backups Elements
+const backupRetentionDays = document.getElementById("backup-retention-days");
+const backupFrequencyHours = document.getElementById("backup-frequency-hours");
+const backupCreateNowBtn = document.getElementById("backup-create-now");
+const backupStatus = document.getElementById("backup-status");
+const backupsTableBody = document.getElementById("backups-table-body");
 
 // Tab System
 const tabButtons = document.querySelectorAll(".settings-tab-btn");
@@ -136,7 +146,7 @@ function markSettingsDirty() {
 }
 
 function initializeSettingsDirtyTracking() {
-  const trackedElements = document.querySelectorAll('#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input');
+  const trackedElements = document.querySelectorAll('#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input, #backups-tab input');
   trackedElements.forEach(el => {
     if (el.type === 'hidden') return;
     el.addEventListener('input', markSettingsDirty);
@@ -291,6 +301,15 @@ settingsBtn.addEventListener("click", async () => {
       tileOpacityValue.textContent = `${opacityPercent}%`;
     }
   }
+
+  // Load backups settings
+  if (backupRetentionDays) {
+    backupRetentionDays.value = config.backups?.retentionDays || 30;
+  }
+  if (backupFrequencyHours) {
+    backupFrequencyHours.value = config.backups?.frequencyHours || 24;
+  }
+  await refreshBackupsTable();
 
     syncStatus.textContent = "";
     if (syncTestStatus) syncTestStatus.textContent = "";
@@ -692,6 +711,59 @@ syncNowBtn.addEventListener("click", async () => {
     loadConfig().then(config => updateLastSyncInfo(config));
   }, 2000);
 });
+
+if (syncUploadBtn) {
+  syncUploadBtn.addEventListener("click", async () => {
+    syncUploadBtn.disabled = true;
+    if (syncNowStatus) syncNowStatus.textContent = "⏫ " + t("syncing");
+
+    if (settingsDirty) {
+      const saved = await persistSettings(false);
+      if (!saved) {
+        if (syncNowStatus) syncNowStatus.textContent = "❌ " + t('saveCredentialsFirst');
+        syncUploadBtn.disabled = false;
+        return;
+      }
+    }
+
+    const ok = await syncWrite(state);
+    if (syncNowStatus) {
+      syncNowStatus.textContent = ok ? "✅ " + t("syncUploadSuccessful") : "❌ " + t("syncFailed");
+    }
+
+    syncUploadBtn.disabled = false;
+    loadConfig().then(config => updateLastSyncInfo(config));
+  });
+}
+
+if (syncDownloadBtn) {
+  syncDownloadBtn.addEventListener("click", async () => {
+    syncDownloadBtn.disabled = true;
+    if (syncNowStatus) syncNowStatus.textContent = "⏬ " + t("syncing");
+
+    if (settingsDirty) {
+      const saved = await persistSettings(false);
+      if (!saved) {
+        if (syncNowStatus) syncNowStatus.textContent = "❌ " + t('saveCredentialsFirst');
+        syncDownloadBtn.disabled = false;
+        return;
+      }
+    }
+
+    const remote = await syncRead();
+    if (remote && Array.isArray(remote.groups)) {
+      state.groups = remote.groups;
+      await saveState();
+      await render();
+      if (syncNowStatus) syncNowStatus.textContent = "✅ " + t("syncDownloadSuccessful");
+    } else {
+      if (syncNowStatus) syncNowStatus.textContent = "❌ " + t("syncFailed");
+    }
+
+    syncDownloadBtn.disabled = false;
+    loadConfig().then(config => updateLastSyncInfo(config));
+  });
+}
 
 // ---------- Export ----------
 exportBtn.addEventListener("click", async () => {
@@ -1213,6 +1285,10 @@ async function persistSettings(closeAfterSave = false) {
   config.housekeeper.enableLinkCheck = hkEnableLinkCheck.checked;
   config.housekeeper.highlightDeadLinks = hkHighlightDeadLinks ? !!hkHighlightDeadLinks.checked : true;
 
+  // Save backups config
+  config.backups.retentionDays = Math.max(1, parseInt(backupRetentionDays?.value, 10) || 30);
+  config.backups.frequencyHours = Math.max(1, parseInt(backupFrequencyHours?.value, 10) || 24);
+
   // Save appearance settings
   if (bgSizeSelect) {
     config.appearance.backgroundSize = bgSizeSelect.value || 'stretched';
@@ -1224,6 +1300,7 @@ async function persistSettings(closeAfterSave = false) {
 
   // Single save operation
   await saveConfig(config);
+  await cleanupOldBackups(config.backups.retentionDays);
 
   // Update manual sync button visibility based on new settings
   updateManualSyncButtonVisibility(config);
@@ -1537,6 +1614,138 @@ function updateHouseKeeperInfo(config) {
       hkLastCleanup.textContent = "Last cleanup: Never";
     }
   }
+}
+
+function formatBytes(sizeBytes) {
+  const bytes = Number(sizeBytes) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatBackupTimestamp(timestamp) {
+  try {
+    return new Date(timestamp).toLocaleString();
+  } catch {
+    return "-";
+  }
+}
+
+async function refreshBackupsTable() {
+  if (!backupsTableBody) return;
+
+  const backups = await listBackups();
+  backupsTableBody.innerHTML = "";
+
+  if (!backups.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 3;
+    cell.className = "backups-empty";
+    cell.textContent = t("noBackupsYet");
+    row.appendChild(cell);
+    backupsTableBody.appendChild(row);
+    return;
+  }
+
+  backups.forEach(backup => {
+    const row = document.createElement("tr");
+
+    const timestampCell = document.createElement("td");
+    timestampCell.textContent = formatBackupTimestamp(backup.timestamp);
+
+    const sizeCell = document.createElement("td");
+    sizeCell.textContent = formatBytes(backup.sizeBytes);
+
+    const actionsCell = document.createElement("td");
+    const restoreBtn = document.createElement("button");
+    restoreBtn.className = "icon-btn primary";
+    restoreBtn.textContent = t("restoreBackup");
+    restoreBtn.dataset.backupFileRestore = backup.filename;
+    restoreBtn.type = "button";
+    actionsCell.appendChild(restoreBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "icon-btn danger";
+    deleteBtn.textContent = t("deleteBackup");
+    deleteBtn.dataset.backupFileDelete = backup.filename;
+    deleteBtn.type = "button";
+    deleteBtn.style.marginLeft = "0.5rem";
+    actionsCell.appendChild(deleteBtn);
+
+    row.appendChild(timestampCell);
+    row.appendChild(sizeCell);
+    row.appendChild(actionsCell);
+    backupsTableBody.appendChild(row);
+  });
+}
+
+if (backupCreateNowBtn) {
+  backupCreateNowBtn.addEventListener("click", async () => {
+    backupCreateNowBtn.disabled = true;
+    if (backupStatus) backupStatus.textContent = "💾 " + t("creatingBackup");
+
+    try {
+      const entry = await createBackup();
+      const config = await loadConfig();
+      await cleanupOldBackups(config.backups?.retentionDays || 30);
+      await refreshBackupsTable();
+
+      if (backupStatus) {
+        backupStatus.textContent = "✅ " + t("backupCreated") + ` (${entry.filename})`;
+      }
+    } catch (error) {
+      if (backupStatus) backupStatus.textContent = "❌ " + t("backupCreateFailed");
+      console.error("createBackup failed", error);
+    } finally {
+      backupCreateNowBtn.disabled = false;
+    }
+  });
+}
+
+if (backupsTableBody) {
+  backupsTableBody.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const restoreFile = target.dataset.backupFileRestore;
+    const deleteFile = target.dataset.backupFileDelete;
+    if (!restoreFile && !deleteFile) return;
+
+    if (restoreFile) {
+      const confirmed = confirm(t("confirmRestoreBackup"));
+      if (!confirmed) return;
+
+      try {
+        const result = await restoreBackup(restoreFile);
+        await refreshBackupsTable();
+        if (backupStatus) {
+          backupStatus.textContent = `⚠️ ${result.warning}`;
+        }
+        alert(result.warning);
+      } catch (error) {
+        if (backupStatus) backupStatus.textContent = "❌ " + t("backupRestoreFailed");
+        console.error("restoreBackup failed", error);
+      }
+      return;
+    }
+
+    if (deleteFile) {
+      const confirmedDelete = confirm(t("confirmDeleteBackup"));
+      if (!confirmedDelete) return;
+
+      try {
+        await deleteBackup(deleteFile);
+        await refreshBackupsTable();
+        if (backupStatus) {
+          backupStatus.textContent = "✅ " + t("backupDeleted");
+        }
+      } catch (error) {
+        if (backupStatus) backupStatus.textContent = "❌ " + t("backupDeleteFailed");
+        console.error("deleteBackup failed", error);
+      }
+    }
+  });
 }
 
 // ---------- Initialization ----------

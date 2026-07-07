@@ -30,6 +30,11 @@ export const defaultConfig = {
     highlightDeadLinks: true,
     lastLinkCheck: 0
   },
+  backups: {
+    retentionDays: 30,
+    frequencyHours: 24,
+    lastAutoBackup: 0
+  },
   appearance: {
     backgroundImage: null, // Base64 encoded image or null
     backgroundSize: "stretched", // "stretched", "fill", "fit", "tile", "center", "span"
@@ -54,6 +59,10 @@ export async function loadConfig() {
       housekeeper: {
         ...defaultConfig.housekeeper,
         ...(stored.housekeeper || {})
+      },
+      backups: {
+        ...defaultConfig.backups,
+        ...(stored.backups || {})
       },
       appearance: {
         ...defaultConfig.appearance,
