@@ -155,6 +155,7 @@
     "confirmDeleteBackup": "Zmazať túto zálohu natrvalo?",
     "backupTimestamp": "Čas vytvorenia",
     "backupFileSize": "Veľkosť súboru",
+    "backupContentSummary": "Obsah",
     "backupActions": "Akcie",
     "restoreBackup": "Obnoviť",
     "deleteBackup": "Zmazať",

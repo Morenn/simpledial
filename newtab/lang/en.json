@@ -155,6 +155,7 @@
     "confirmDeleteBackup": "Delete this backup permanently?",
     "backupTimestamp": "Timestamp",
     "backupFileSize": "File size",
+    "backupContentSummary": "Content",
     "backupActions": "Actions",
     "restoreBackup": "Restore",
     "deleteBackup": "Delete",

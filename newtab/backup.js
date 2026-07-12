@@ -45,8 +45,16 @@ function normalizeBackupFrequencyHours(config) {
 
 export async function createBackup() {
   const timestamp = Date.now();
+  const groups = Array.isArray(state.groups) ? state.groups : [];
+  const groupCount = groups.length;
+  const bookmarkCount = groups.reduce((sum, group) => {
+    const items = Array.isArray(group?.items)
+      ? group.items
+      : (Array.isArray(group?.bookmarks) ? group.bookmarks : []);
+    return sum + items.length;
+  }, 0);
   const payload = {
-    groups: state.groups
+    groups
   };
   const json = JSON.stringify(payload, null, 2);
   const sizeBytes = new Blob([json], { type: "application/json" }).size;
@@ -56,6 +64,8 @@ export async function createBackup() {
     filename: createBackupFilename(timestamp),
     timestamp,
     sizeBytes,
+    groupCount,
+    bookmarkCount,
     data: json
   });
 

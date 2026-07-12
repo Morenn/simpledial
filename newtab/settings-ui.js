@@ -1631,6 +1631,37 @@ function formatBackupTimestamp(timestamp) {
   }
 }
 
+function getBackupStats(backup) {
+  const explicitGroupCount = Number(backup?.groupCount);
+  const explicitBookmarkCount = Number(backup?.bookmarkCount);
+  if (Number.isFinite(explicitGroupCount) && Number.isFinite(explicitBookmarkCount)) {
+    return {
+      groupCount: Math.max(0, Math.floor(explicitGroupCount)),
+      bookmarkCount: Math.max(0, Math.floor(explicitBookmarkCount))
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(backup?.data || "{}");
+    const groups = Array.isArray(parsed?.groups) ? parsed.groups : [];
+    const bookmarkCount = groups.reduce((sum, group) => {
+      const items = Array.isArray(group?.items)
+        ? group.items
+        : (Array.isArray(group?.bookmarks) ? group.bookmarks : []);
+      return sum + items.length;
+    }, 0);
+    return {
+      groupCount: groups.length,
+      bookmarkCount
+    };
+  } catch {
+    return {
+      groupCount: 0,
+      bookmarkCount: 0
+    };
+  }
+}
+
 async function refreshBackupsTable() {
   if (!backupsTableBody) return;
 
@@ -1640,7 +1671,7 @@ async function refreshBackupsTable() {
   if (!backups.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 3;
+    cell.colSpan = 4;
     cell.className = "backups-empty";
     cell.textContent = t("noBackupsYet");
     row.appendChild(cell);
@@ -1656,6 +1687,10 @@ async function refreshBackupsTable() {
 
     const sizeCell = document.createElement("td");
     sizeCell.textContent = formatBytes(backup.sizeBytes);
+
+    const statsCell = document.createElement("td");
+    const stats = getBackupStats(backup);
+    statsCell.textContent = `G:${stats.groupCount} B:${stats.bookmarkCount}`;
 
     const actionsCell = document.createElement("td");
     const restoreBtn = document.createElement("button");
@@ -1675,6 +1710,7 @@ async function refreshBackupsTable() {
 
     row.appendChild(timestampCell);
     row.appendChild(sizeCell);
+    row.appendChild(statsCell);
     row.appendChild(actionsCell);
     backupsTableBody.appendChild(row);
   });
