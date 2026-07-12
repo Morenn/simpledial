@@ -119,6 +119,7 @@
     "syncCredentialsDecryptFailed": "Uložené prihlasovacie údaje sa nepodarilo dešifrovať. Uložte ich znova.",
     "syncUnexpectedHtmlResponse": "Server vrátil HTML stránku namiesto sync JSON. Ak URL funguje iba keď ste prihlásený v prehliadači, uložte platné WebDAV prihlasovacie údaje alebo app password.",
     "syncRemoteLocked": "Vzdialený súbor je dočasne uzamknutý (423). Skúste to znova o pár sekúnd.",
+    "syncAuthRedirectOpened": "Zistené presmerovanie na autentifikáciu. Prihlasovacia stránka bola otvorená v novom tabe. Po prihlásení spustite synchronizáciu znova.",
     "browserSyncUnavailable": "Synchronizačné úložisko prehliadača nie je dostupné. Skontrolujte stav synchronizácie prehliadača.",
     "exportDescription": "Exportovať záložky ako JSON súbor",
     "export": "Export",

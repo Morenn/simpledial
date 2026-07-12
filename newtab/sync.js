@@ -27,6 +27,82 @@ function getSyncFetchUrl(url, type) {
   return type === 'webdav' ? normalizeWebdavUrl(normalized) : normalized;
 }
 
+const AUTH_REDIRECT_TAB_COOLDOWN_MS = 60 * 1000;
+let lastAuthRedirect = { url: '', timestamp: 0 };
+
+function normalizeComparableUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const normalizedPath = parsed.pathname.replace(/\/$/, '');
+    return `${parsed.origin}${normalizedPath}${parsed.search}`;
+  } catch {
+    return String(url || '').trim();
+  }
+}
+
+async function maybeOpenAuthRedirectTab(redirectUrl) {
+  if (!redirectUrl) return false;
+
+  const now = Date.now();
+  const normalized = normalizeComparableUrl(redirectUrl);
+  if (normalized === lastAuthRedirect.url && (now - lastAuthRedirect.timestamp) < AUTH_REDIRECT_TAB_COOLDOWN_MS) {
+    return false;
+  }
+
+  lastAuthRedirect = { url: normalized, timestamp: now };
+
+  try {
+    if (chrome?.tabs?.create) {
+      const created = await new Promise(resolve => {
+        try {
+          chrome.tabs.create({ url: redirectUrl }, () => {
+            resolve(!chrome.runtime?.lastError);
+          });
+        } catch {
+          resolve(false);
+        }
+      });
+      if (created) {
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('Unable to open auth redirect in browser tab via chrome.tabs.create', e);
+  }
+
+  try {
+    const winRef = window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+    return !!winRef;
+  } catch (e) {
+    console.warn('Unable to open auth redirect in browser tab via window.open', e);
+    return false;
+  }
+}
+
+function getAuthRedirectInfo(requestUrl, response) {
+  if (!response?.redirected || !response?.url) {
+    return null;
+  }
+
+  const requestNormalized = normalizeComparableUrl(requestUrl);
+  const responseNormalized = normalizeComparableUrl(response.url);
+  if (requestNormalized === responseNormalized) {
+    return null;
+  }
+
+  const contentType = (response.headers?.get('content-type') || '').toLowerCase();
+  const isHtml = contentType.includes('text/html') || contentType.includes('application/xhtml+xml');
+  if (!isHtml) {
+    return null;
+  }
+
+  return {
+    reason: 'auth-redirect',
+    redirectUrl: response.url,
+    status: response.status
+  };
+}
+
 // ─────────────────────────────────────────────────────────────
 //  FETCH WITH TIMEOUT
 // ─────────────────────────────────────────────────────────────
@@ -157,6 +233,7 @@ function applyWebdavCompatibilityHeaders(headers, cfg) {
  * - 'ok': Server responded successfully
  * - 'not-found-will-create': Got 404 (server exists, file will be created)
  * - 'auth': Got 401/403 (bad credentials)
+ * - 'auth-redirect': Redirected to external authentication page
  * - 'http-error': Got other non-2xx status
  * - 'timeout': Request timed out
  * - 'network-or-cors': Network error or CORS blocked
@@ -190,6 +267,12 @@ export async function testSyncConnection(url, username = '', password = '', type
       headers
     });
 
+    const redirectInfo = getAuthRedirectInfo(endpoint, res);
+    if (redirectInfo) {
+      await maybeOpenAuthRedirectTab(redirectInfo.redirectUrl);
+      return { ok: false, ...redirectInfo };
+    }
+
     if (res.ok) return { ok: true, reason: 'ok' };
     if (res.status === 404) return { ok: true, reason: 'not-found-will-create' };
     if (res.status === 401 || res.status === 403) {
@@ -203,6 +286,16 @@ export async function testSyncConnection(url, username = '', password = '', type
     if (e.name === 'AbortError') {
       return { ok: false, reason: 'timeout' };
     }
+
+    // Some external auth proxies complete login via browser redirect flow.
+    // If fetch is blocked by CORS before redirect info is exposed, open endpoint
+    // directly so the user can authenticate in a regular tab.
+    const endpoint = getSyncFetchUrl(url, type);
+    const opened = await maybeOpenAuthRedirectTab(endpoint);
+    if (opened) {
+      return { ok: false, reason: 'auth-redirect', redirectUrl: endpoint };
+    }
+
     // A CORS block and a real DNS/network failure both throw a generic
     // TypeError here — the browser doesn't expose which one happened.
     return { ok: false, reason: 'network-or-cors' };
@@ -395,6 +488,12 @@ async function syncReadDetailed(cfg = null) {
       headers
     });
 
+    const redirectInfo = getAuthRedirectInfo(fetchUrl, res);
+    if (redirectInfo) {
+      await maybeOpenAuthRedirectTab(redirectInfo.redirectUrl);
+      return { ok: false, ...redirectInfo };
+    }
+
     if (res.status === 404) {
       console.warn("syncRead: 404 → initializing remote file");
       return await initializeRemoteDetailed(fetchUrl, headers);
@@ -520,6 +619,12 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null) {
         headers,
         body: writeBody
       });
+
+      const redirectInfo = getAuthRedirectInfo(fetchUrl, res);
+      if (redirectInfo) {
+        await maybeOpenAuthRedirectTab(redirectInfo.redirectUrl);
+        return { ok: false, ...redirectInfo };
+      }
 
       if (res.ok) {
         return { ok: true, reason: 'ok' };

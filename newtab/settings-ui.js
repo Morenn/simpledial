@@ -567,6 +567,9 @@ if (syncTest) {
       }
     } else {
       switch (result.reason) {
+        case 'auth-redirect':
+          message = "❌ " + t("syncAuthRedirectOpened");
+          break;
         case 'auth':
           message = "❌ " + t("wrongCredentials");
           break;
@@ -661,6 +664,8 @@ function getSyncFailureMessage(result) {
       return t('syncUnexpectedHtmlResponse');
     case 'locked':
       return t('syncRemoteLocked');
+    case 'auth-redirect':
+      return t('syncAuthRedirectOpened');
     case 'auth':
       return t('wrongCredentials');
     case 'timeout':

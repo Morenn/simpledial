@@ -119,6 +119,7 @@
     "syncCredentialsDecryptFailed": "Saved credentials could not be decrypted. Re-save sync credentials.",
     "syncUnexpectedHtmlResponse": "Server returned an HTML page instead of sync JSON. If the URL only works while you are logged into the browser, save valid WebDAV credentials or an app password.",
     "syncRemoteLocked": "Remote file is temporarily locked (423). Please retry in a few seconds.",
+    "syncAuthRedirectOpened": "Authentication redirect detected. Login page was opened in a new tab. After signing in, run sync again.",
     "browserSyncUnavailable": "Browser sync storage is unavailable. Check browser sync status.",
     "exportDescription": "Export bookmarks as JSON file",
     "export": "Export",
