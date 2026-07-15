@@ -364,6 +364,7 @@ settingsBtn.addEventListener("click", async () => {
   // Reset credentials changed state and update UI visibility
   credentialsTouched = false;
   updateSyncFields();
+  updateSyncNowButtonDisabledState();
 
   // Load sync interval settings
   const intervalMode = config.sync.intervalMode || "default";
@@ -550,6 +551,11 @@ function updateSyncFields() {
   updateCredentialsSaveButton();
 }
 
+function updateSyncNowButtonDisabledState() {
+  if (!syncNowBtn) return;
+  syncNowBtn.disabled = !(syncEnable && syncEnable.checked);
+}
+
 function updateCredentialsSaveButton() {
   if (!syncCredentialsSaveBtn) return;
   const isBasic = syncAuthMode && syncAuthMode.value === 'basic';
@@ -565,6 +571,7 @@ if (syncAuthMode) syncAuthMode.addEventListener('change', () => {
   updateSyncFields();
   markCredentialsTouched();
 });
+if (syncEnable) syncEnable.addEventListener('change', updateSyncNowButtonDisabledState);
 if (syncType) syncType.addEventListener('change', updateSyncFields);
 if (syncWebdavType) syncWebdavType.addEventListener('change', updateSyncFields);
 if (syncUsername) syncUsername.addEventListener('input', markCredentialsTouched);
@@ -820,6 +827,12 @@ function getSyncFailureMessage(result) {
 }
 
 syncNowBtn.addEventListener("click", async () => {
+  if (!(syncEnable && syncEnable.checked)) {
+    if (syncNowStatus) syncNowStatus.textContent = "❌ " + t("syncNotConfigured");
+    updateSyncNowButtonDisabledState();
+    return;
+  }
+
   syncNowBtn.disabled = true;
   syncNowBtn.textContent = "⬆️ " + t("syncing");
 
@@ -843,7 +856,7 @@ syncNowBtn.addEventListener("click", async () => {
 
   // Re-enable button after 2 seconds
   setTimeout(() => {
-    syncNowBtn.disabled = false;
+    updateSyncNowButtonDisabledState();
     syncNowBtn.textContent = "⬆️ " + t("syncNow");
     
     // Update last sync time

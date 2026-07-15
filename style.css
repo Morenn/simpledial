@@ -1109,6 +1109,14 @@ body.theme-dark .bookmark-title:hover {
   margin-top: 0.6rem;
 }
 
+#sync-now-btn:disabled {
+  background: #6f6f6f;
+  border-color: #7a7a7a;
+  color: #d8d8d8;
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
 .backups-table-wrap {
   margin-top: 0.9rem;
   border: 1px solid var(--border);
