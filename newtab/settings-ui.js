@@ -77,6 +77,7 @@ const bgPreview = document.getElementById("bg-preview");
 const bgRemoveBtn = document.getElementById("bg-remove-btn");
 const tileOpacitySlider = document.getElementById("tile-opacity-slider");
 const tileOpacityValue = document.getElementById("tile-opacity-value");
+const dateTimeToggle = document.getElementById("date-time-toggle");
 
 // HouseKeeper Elements
 const hkRetentionDays = document.getElementById("hk-retention-days");
@@ -104,6 +105,7 @@ const tabContents = document.querySelectorAll(".settings-tab-content");
 
 let isInitializingSettingsForm = false;
 let settingsDirty = false;
+let appearanceDraft = null;
 
 function updateChoiceOptionStates() {
   document.querySelectorAll('.choice-option').forEach(option => {
@@ -142,6 +144,7 @@ function setSettingsDirty(isDirty) {
 
 function markSettingsDirty() {
   if (isInitializingSettingsForm) return;
+  if (settingsModal?.classList.contains("hidden")) return;
   setSettingsDirty(true);
 }
 
@@ -152,6 +155,15 @@ function initializeSettingsDirtyTracking() {
     el.addEventListener('input', markSettingsDirty);
     el.addEventListener('change', markSettingsDirty);
   });
+  // Explicitly track the date/time toggle state change for robustness
+  const dateTimeToggle = document.getElementById("date-time-toggle");
+  if (dateTimeToggle) {
+    dateTimeToggle.addEventListener('change', () => {
+        markSettingsDirty(); 
+        // Also update visibility when toggled
+        updateDateTimeVisibility(dateTimeToggle.checked);
+    });
+  }
 }
 
 bindRadioGroupToModel(syncType, syncTypeChoices);
@@ -175,10 +187,95 @@ tabButtons.forEach(btn => {
   });
 });
 
+/**
+ * Updates the visibility of the date and time display element based on the toggle state.
+ */
+function updateDateTimeVisibility(isVisible) {
+  if (typeof window.setDateTimePreviewEnabled === "function") {
+    window.setDateTimePreviewEnabled(!!isVisible);
+    return;
+  }
+
+  const dateTimeDisplay = document.getElementById("date-time-display");
+  if (dateTimeDisplay) {
+    dateTimeDisplay.style.display = isVisible ? "block" : "none";
+  }
+}
+
+async function revertDateTimePreviewToSaved() {
+  try {
+    const config = await loadConfig();
+    const persistedValue = config.appearance?.showDateTime ?? true;
+    if (dateTimeToggle) {
+      dateTimeToggle.checked = persistedValue;
+    }
+    if (typeof window.clearDateTimePreview === "function") {
+      window.clearDateTimePreview();
+    }
+  } catch (err) {
+    console.warn("Failed to revert date/time preview", err);
+  }
+}
+
+async function revertAppearancePreviewToSaved() {
+  try {
+    const config = await loadConfig();
+    const appearance = config.appearance || {};
+
+    appearanceDraft = {
+      backgroundImage: appearance.backgroundImage ?? null,
+      backgroundSize: appearance.backgroundSize || 'stretched',
+      tileOpacity: appearance.tileOpacity ?? 1,
+      showDateTime: appearance.showDateTime ?? true,
+      showDeleted: appearance.showDeleted ?? false
+    };
+
+    if (bgSizeSelect) bgSizeSelect.value = appearanceDraft.backgroundSize;
+
+    if (tileOpacitySlider) {
+      const opacityPercent = Math.round((appearanceDraft.tileOpacity ?? 1) * 100);
+      tileOpacitySlider.value = opacityPercent;
+      if (tileOpacityValue) tileOpacityValue.textContent = `${opacityPercent}%`;
+    }
+
+    if (showDeletedToggle) {
+      showDeletedToggle.checked = !!appearanceDraft.showDeleted;
+      showDeletedToggle.dispatchEvent(new Event("change"));
+      updateShowDeletedButtonAppearance();
+    }
+
+    if (dateTimeToggle) {
+      dateTimeToggle.checked = !!appearanceDraft.showDateTime;
+    }
+
+    if (bgPreview) {
+      if (appearanceDraft.backgroundImage) {
+        bgPreview.style.backgroundImage = `url('${appearanceDraft.backgroundImage}')`;
+        bgPreview.style.display = 'block';
+      } else {
+        bgPreview.style.backgroundImage = '';
+        bgPreview.style.display = 'none';
+      }
+    }
+
+    if (bgImageInput) bgImageInput.value = "";
+
+    await applyBackground(config);
+    await applyTileOpacity(config);
+    await revertDateTimePreviewToSaved();
+  } catch (err) {
+    console.warn("Failed to revert appearance preview", err);
+  }
+}
+
 // ---------- Open Settings Modal ----------
 settingsBtn.addEventListener("click", async () => {
   isInitializingSettingsForm = true;
   try {
+    if (typeof window.clearDateTimePreview === "function") {
+      window.clearDateTimePreview();
+    }
+
     const config = await loadConfig();
 
   // Load sync settings
@@ -302,6 +399,26 @@ settingsBtn.addEventListener("click", async () => {
     }
   }
 
+  // Load date & time display toggle state
+  if (dateTimeToggle) {
+    const isVisible = config.appearance?.showDateTime ?? true;
+    dateTimeToggle.checked = isVisible;
+  }
+
+  if (showDeletedToggle) {
+    showDeletedToggle.checked = config.appearance?.showDeleted ?? false;
+    showDeletedToggle.dispatchEvent(new Event("change"));
+    updateShowDeletedButtonAppearance();
+  }
+
+  appearanceDraft = {
+    backgroundImage: config.appearance?.backgroundImage ?? null,
+    backgroundSize: config.appearance?.backgroundSize || 'stretched',
+    tileOpacity: config.appearance?.tileOpacity ?? 1,
+    showDateTime: config.appearance?.showDateTime ?? true,
+    showDeleted: config.appearance?.showDeleted ?? false
+  };
+
   // Load backups settings
   if (backupRetentionDays) {
     backupRetentionDays.value = config.backups?.retentionDays || 30;
@@ -325,12 +442,14 @@ settingsBtn.addEventListener("click", async () => {
 if (settingsCancelBtn) {
   settingsCancelBtn.addEventListener("click", () => {
     settingsModal.classList.add("hidden");
+    void revertAppearancePreviewToSaved();
   });
 }
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     settingsModal.classList.add("hidden");
+    void revertAppearancePreviewToSaved();
   }
 });
 
@@ -1131,7 +1250,7 @@ importBookmarksBtn?.addEventListener("click", async () => {
 
 // ---------- Background Image Settings ----------
 if (bgImageInput) {
-  bgImageInput.addEventListener("change", async (e) => {
+  bgImageInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -1146,6 +1265,17 @@ if (bgImageInput) {
     reader.onload = async (event) => {
       try {
         const base64Data = event.target.result;
+        if (!appearanceDraft) {
+          const config = await loadConfig();
+          appearanceDraft = {
+            backgroundImage: config.appearance?.backgroundImage ?? null,
+            backgroundSize: config.appearance?.backgroundSize || 'stretched',
+            tileOpacity: config.appearance?.tileOpacity ?? 1,
+            showDateTime: config.appearance?.showDateTime ?? true,
+            showDeleted: config.appearance?.showDeleted ?? false
+          };
+        }
+        appearanceDraft.backgroundImage = base64Data;
         
         // Show preview
         if (bgPreview) {
@@ -1153,15 +1283,9 @@ if (bgImageInput) {
           bgPreview.style.display = 'block';
         }
 
-        // Save to config
-        const config = await loadConfig();
-        config.appearance.backgroundImage = base64Data;
-        await saveConfig(config);
-
-        // Apply background immediately
-        await applyBackground(config);
-
-        setSettingsDirty(false);
+        const previewConfig = { appearance: { ...appearanceDraft } };
+        await applyBackground(previewConfig);
+        markSettingsDirty();
       } catch (error) {
         alert("Failed to load image: " + error.message);
         console.error("Image load error", error);
@@ -1178,9 +1302,17 @@ if (bgRemoveBtn) {
       return;
     }
 
-    const config = await loadConfig();
-    config.appearance.backgroundImage = null;
-    await saveConfig(config);
+    if (!appearanceDraft) {
+      const config = await loadConfig();
+      appearanceDraft = {
+        backgroundImage: config.appearance?.backgroundImage ?? null,
+        backgroundSize: config.appearance?.backgroundSize || 'stretched',
+        tileOpacity: config.appearance?.tileOpacity ?? 1,
+        showDateTime: config.appearance?.showDateTime ?? true,
+        showDeleted: config.appearance?.showDeleted ?? false
+      };
+    }
+    appearanceDraft.backgroundImage = null;
 
     if (bgPreview) {
       bgPreview.style.backgroundImage = "";
@@ -1190,23 +1322,29 @@ if (bgRemoveBtn) {
       bgImageInput.value = "";
     }
 
-    // Apply background immediately
-    await applyBackground(config);
-
-    setSettingsDirty(false);
+    const previewConfig = { appearance: { ...appearanceDraft } };
+    await applyBackground(previewConfig);
+    markSettingsDirty();
   });
 }
 
 if (bgSizeSelect) {
   bgSizeSelect.addEventListener("change", async () => {
-    const config = await loadConfig();
-    config.appearance.backgroundSize = bgSizeSelect.value;
-    await saveConfig(config);
+    if (!appearanceDraft) {
+      const config = await loadConfig();
+      appearanceDraft = {
+        backgroundImage: config.appearance?.backgroundImage ?? null,
+        backgroundSize: config.appearance?.backgroundSize || 'stretched',
+        tileOpacity: config.appearance?.tileOpacity ?? 1,
+        showDateTime: config.appearance?.showDateTime ?? true,
+        showDeleted: config.appearance?.showDeleted ?? false
+      };
+    }
+    appearanceDraft.backgroundSize = bgSizeSelect.value || 'stretched';
 
-    // Apply background immediately
-    await applyBackground(config);
-
-    setSettingsDirty(false);
+    const previewConfig = { appearance: { ...appearanceDraft } };
+    await applyBackground(previewConfig);
+    markSettingsDirty();
   });
 }
 
@@ -1220,13 +1358,11 @@ if (tileOpacitySlider) {
     // Apply opacity immediately
     const opacityValue = value / 100;
     document.body.style.setProperty('--tile-opacity', opacityValue);
-  });
 
-  tileOpacitySlider.addEventListener("change", async () => {
-    const config = await loadConfig();
-    config.appearance.tileOpacity = tileOpacitySlider.value / 100;
-    await saveConfig(config);
-    setSettingsDirty(false);
+    if (appearanceDraft) {
+      appearanceDraft.tileOpacity = opacityValue;
+    }
+    markSettingsDirty();
   });
 }
 
@@ -1301,7 +1437,18 @@ async function persistSettings(closeAfterSave = false) {
   if (tileOpacitySlider) {
     config.appearance.tileOpacity = tileOpacitySlider.value / 100;
   }
-  // Note: backgroundImage is saved separately when user uploads a file
+  if (appearanceDraft) {
+    config.appearance.backgroundImage = appearanceDraft.backgroundImage ?? null;
+  }
+
+  // Save date & time display toggle state
+  if (dateTimeToggle) {
+    config.appearance.showDateTime = dateTimeToggle.checked;
+  }
+
+  if (showDeletedToggle) {
+    config.appearance.showDeleted = showDeletedToggle.checked;
+  }
 
   // Single save operation
   await saveConfig(config);
@@ -1314,6 +1461,12 @@ async function persistSettings(closeAfterSave = false) {
   try {
     render();
   } catch (e) {}
+
+  if (dateTimeToggle && typeof window.applySavedDateTimeEnabled === "function") {
+    window.applySavedDateTimeEnabled(dateTimeToggle.checked);
+  } else if (typeof window.clearDateTimePreview === "function") {
+    window.clearDateTimePreview();
+  }
 
   setSettingsDirty(false);
 
@@ -1355,6 +1508,12 @@ function updateShowDeletedButtonAppearance() {
     showDeletedBtn.style.opacity = "0.6";
     showDeletedBtn.style.transform = "scale(1)";
   }
+}
+
+if (showDeletedToggle) {
+  showDeletedToggle.addEventListener("change", () => {
+    updateShowDeletedButtonAppearance();
+  });
 }
 
 // Initialize button appearance

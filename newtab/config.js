@@ -38,7 +38,9 @@ export const defaultConfig = {
   appearance: {
     backgroundImage: null, // Base64 encoded image or null
     backgroundSize: "stretched", // "stretched", "fill", "fit", "tile", "center", "span"
-    tileOpacity: 1 // Bookmark tile opacity: 0 (transparent) to 1 (opaque)
+    tileOpacity: 1, // Bookmark tile opacity: 0 (transparent) to 1 (opaque)
+    showDateTime: true,
+    showDeleted: false
   }
 };
 

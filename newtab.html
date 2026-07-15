@@ -22,13 +22,15 @@
       <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
     </div>
   </header>
-
+  
   <!-- Main section -->
   <main>
     <div id="bookmarks-grid">
       <!-- Bookmarks are rendered dynamically -->
     </div>
   </main>
+  <!-- Date and Time display -->
+  <div class="noselect" id="date-time-display" style="text-align: center; padding: 10px; font-size: 2rem; font-weight: bold;"></div>
 
   <!-- Context menu -->
   <div id="context-menu" class="hidden">
@@ -342,6 +344,10 @@
         <label class="checkbox-row">
           <input type="checkbox" id="show-deleted-toggle">
           <span data-i18n="showDeletedBookmarks">👁️ Show deleted bookmarks</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="date-time-toggle">
+          <span data-i18n="showDateTime">🕜 Show date & time</span>
         </label>
       </div>
 

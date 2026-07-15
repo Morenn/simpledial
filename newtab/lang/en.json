@@ -180,6 +180,7 @@
     "languageSelect": "Language:",
     "displayOptions": "Display Options",
     "showDeletedBookmarks": "Show deleted bookmarks",
+    "showDateTime": "Show date and time",
 
     "cleanupDeletedRecords": "Cleanup Deleted Records",
     "retentionPeriodDays": "Retention period (days):",

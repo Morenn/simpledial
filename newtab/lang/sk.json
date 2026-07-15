@@ -180,6 +180,7 @@
     "languageSelect": "Jazyk:",
     "displayOptions": "Možnosti zobrazenia",
     "showDeletedBookmarks": "Zobraziť zmazané záložky",
+    "showDateTime": "Zobraziť dátum a čas",
 
     "cleanupDeletedRecords": "Čistenie zmazaných záznamov",
     "retentionPeriodDays": "Doba uchovávadí (dni):",

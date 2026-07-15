@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Simple SpeedDial",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Lightweight speeddial extension that stores and syncs bookmarks through Nextcloud or a custom JSON sync server.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"

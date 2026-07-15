@@ -9,6 +9,71 @@ import { runBackupInitCheck } from "./backup.js";
 // Make t global for modules that don't import it
 window.t = t;
 
+const dateTimeDisplay = document.getElementById("date-time-display");
+let isDateTimeEnabled = false;
+let dateTimePreviewEnabled = null;
+let dateFormatter = null;
+let formatterLocale = "";
+
+function getEffectiveDateTimeEnabled() {
+  return dateTimePreviewEnabled ?? isDateTimeEnabled;
+}
+
+function applyDateTimeVisibility() {
+  if (!dateTimeDisplay) return;
+  dateTimeDisplay.style.display = getEffectiveDateTimeEnabled() ? "block" : "none";
+}
+
+function updateDateTimeEnabledFromConfig(config) {
+  isDateTimeEnabled = (config?.appearance?.showDateTime ?? true);
+  applyDateTimeVisibility();
+}
+
+function getDateFormatter(locale) {
+  if (dateFormatter && formatterLocale === locale) {
+    return dateFormatter;
+  }
+
+  formatterLocale = locale;
+  try {
+    dateFormatter = new Intl.DateTimeFormat(locale, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+  } catch (e) {
+    dateFormatter = new Intl.DateTimeFormat(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+  }
+
+  return dateFormatter;
+}
+
+// Settings UI can preview date/time visibility immediately without persisting config.
+window.setDateTimePreviewEnabled = function setDateTimePreviewEnabled(enabled) {
+  dateTimePreviewEnabled = typeof enabled === "boolean" ? enabled : null;
+  applyDateTimeVisibility();
+  updateClock();
+};
+
+window.clearDateTimePreview = function clearDateTimePreview() {
+  dateTimePreviewEnabled = null;
+  applyDateTimeVisibility();
+  updateClock();
+};
+
+window.applySavedDateTimeEnabled = function applySavedDateTimeEnabled(enabled) {
+  isDateTimeEnabled = !!enabled;
+  dateTimePreviewEnabled = null;
+  applyDateTimeVisibility();
+  updateClock();
+};
+
 // Listener activation
 import "./groups.js";
 import "./bookmarks.js";
@@ -47,6 +112,13 @@ window.addEventListener("keydown", e => {
 
   // 4) Initialize sync if enabled
   const config = await loadConfig();
+  updateDateTimeEnabledFromConfig(config);
+
+  const showDeletedToggle = document.getElementById("show-deleted-toggle");
+  if (showDeletedToggle) {
+    showDeletedToggle.checked = !!config.appearance?.showDeleted;
+    showDeletedToggle.dispatchEvent(new Event("change"));
+  }
   
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
     const cloud = await syncRead();
@@ -90,9 +162,22 @@ window.addEventListener("keydown", e => {
   // 8) Update initial UI text
   updateUIText();
 
-  // 9) Render UI
+  // 9: Start the clock display
+  setInterval(updateClock, 1000);
+  updateClock(); // Run immediately on load
+
+  // 10) Render UI
   render();
 })();
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local") return;
+  const configChange = changes["myspeeddial-config"];
+  if (!configChange || !configChange.newValue) return;
+
+  updateDateTimeEnabledFromConfig(configChange.newValue);
+  updateClock();
+});
 
 // Language selector setup
 function setupLanguageSelector() {
@@ -124,9 +209,58 @@ function setupLanguageSelector() {
         render();
         // Update all UI text
         updateUIText();
+        updateClock();
       }
     });
   }
+}
+
+/**
+ * Updates the date and time display element with localized formatting, 
+ * only if the feature is enabled in settings.
+ */
+function updateClock() {
+  if (!dateTimeDisplay) return;
+
+  if (!getEffectiveDateTimeEnabled()) {
+    applyDateTimeVisibility();
+    return;
+  }
+
+  applyDateTimeVisibility();
+
+  const now = new Date();
+  const currentLocale = getCurrentLanguage();
+
+  // Time is always computed manually — reliable across environments.
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  // const seconds = String(now.getSeconds()).padStart(2, '0');
+  // const timeString = `${hours}:${minutes}:${seconds}`;
+  const timeString = `${hours}:${minutes}`;
+
+  let dateString = "";
+  try {
+    dateString = getDateFormatter(currentLocale).format(now);
+  } catch (e) {
+    const weekday = now.toLocaleDateString(currentLocale, { weekday: "long" });
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    dateString = `${weekday}, ${year}-${month}-${day}`;
+  }
+
+  // Combine date and time components robustly.
+  let displayContent;
+  if (dateString && timeString) {
+      displayContent = `${dateString} | ${timeString}`;
+  } else if (dateString) {
+      displayContent = dateString;
+  } else {
+      displayContent = timeString;
+  }
+
+  dateTimeDisplay.textContent = displayContent;
 }
 
 // Update all UI text elements
