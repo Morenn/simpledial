@@ -370,6 +370,31 @@
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
 
+        <h3 id="icon-autorefresh-title" data-i18n="iconAutoRefresh">Icon Auto Refresh</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" data-i18n="iconAutoRefreshDesc">Configure how bookmark icons should be automatically refreshed.</p>
+
+        <div class="choice-group" id="hk-icon-refresh-choice-group">
+          <label class="choice-option choice-option-inline">
+            <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-all" value="all">
+            <span class="choice-option-title" data-i18n="iconAutoRefreshAll">Refresh all icons</span>
+          </label>
+
+          <label class="choice-option choice-option-inline">
+            <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-missing" value="missing">
+            <span class="choice-option-title" data-i18n="iconAutoRefreshMissing">Refresh only missing icons</span>
+          </label>
+
+          <label class="choice-option choice-option-inline">
+            <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-none" value="none">
+            <span class="choice-option-title" data-i18n="iconAutoRefreshNone">No automatic refresh</span>
+          </label>
+        </div>
+
+        <label for="hk-icon-refresh-hours" data-i18n="iconAutoRefreshFrequency">Refresh frequency (hours):</label>
+        <input type="number" id="hk-icon-refresh-hours" min="1" max="720" value="24">
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+
         <h3 id="link-validation-title" data-i18n="linkValidation">Link Validation</h3>
         <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="link-validation-desc" data-i18n="linkValidationDesc">Experimental - currently not working</p>
         

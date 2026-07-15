@@ -28,7 +28,9 @@ export const defaultConfig = {
     lastCleanup: 0,
     enableLinkCheck: false,
     highlightDeadLinks: true,
-    lastLinkCheck: 0
+    lastLinkCheck: 0,
+    iconAutoRefreshMode: "all", // "all", "missing", "none"
+    iconAutoRefreshHours: 24
   },
   backups: {
     retentionDays: 30,

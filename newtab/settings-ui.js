@@ -91,6 +91,10 @@ const hkCheckLinks = document.getElementById("hk-check-links");
 const hkLinkCheckStatus = document.getElementById("hk-link-check-status");
 const hkDeadLinksCount = document.getElementById("hk-dead-links-count");
 const hkClearErrors = document.getElementById("hk-clear-errors");
+const hkIconRefreshAll = document.getElementById("hk-icon-refresh-all");
+const hkIconRefreshMissing = document.getElementById("hk-icon-refresh-missing");
+const hkIconRefreshNone = document.getElementById("hk-icon-refresh-none");
+const hkIconRefreshHours = document.getElementById("hk-icon-refresh-hours");
 
 // Backups Elements
 const backupRetentionDays = document.getElementById("backup-retention-days");
@@ -200,6 +204,17 @@ function updateDateTimeVisibility(isVisible) {
   if (dateTimeDisplay) {
     dateTimeDisplay.style.display = isVisible ? "block" : "none";
   }
+}
+
+function getHousekeeperIconRefreshMode() {
+  if (hkIconRefreshNone?.checked) return "none";
+  if (hkIconRefreshMissing?.checked) return "missing";
+  return "all";
+}
+
+function updateHousekeeperIconRefreshFrequencyEnabled() {
+  if (!hkIconRefreshHours) return;
+  hkIconRefreshHours.disabled = getHousekeeperIconRefreshMode() === "none";
 }
 
 async function revertDateTimePreviewToSaved() {
@@ -904,6 +919,8 @@ exportBtn.addEventListener("click", async () => {
         title: i.title,
         url: i.url,
         customIcon: i.customIcon || null,
+        customIconCache: i.customIconCache || null,
+        iconRefreshedAt: Number(i.iconRefreshedAt || 0),
         updatedAt: i.updatedAt,
         deleted: i.deleted || false,
         deletedAt: i.deletedAt || null,
@@ -1062,6 +1079,8 @@ function parseNetscapeBookmarks(content) {
             title: itemLink.textContent || href,
             url: href,
             customIcon: null,
+            customIconCache: null,
+            iconRefreshedAt: 0,
             updatedAt: Date.now(),
             deleted: false,
             deletedAt: null,
@@ -1089,6 +1108,8 @@ function parseNetscapeBookmarks(content) {
         title: link.textContent || link.getAttribute("href") || "",
         url: link.getAttribute("href") || "",
         customIcon: null,
+        customIconCache: null,
+        iconRefreshedAt: 0,
         updatedAt: Date.now(),
         deleted: false,
         deletedAt: null,
@@ -1191,6 +1212,8 @@ importBookmarksBtn?.addEventListener("click", async () => {
           title: item.title || item.url,
           url: item.url,
           customIcon: null,
+          customIconCache: null,
+          iconRefreshedAt: 0,
           updatedAt: Date.now(),
           deleted: false,
           deletedAt: null,
@@ -1219,6 +1242,8 @@ importBookmarksBtn?.addEventListener("click", async () => {
           title: item.title || item.url,
           url: item.url,
           customIcon: null,
+          customIconCache: null,
+          iconRefreshedAt: 0,
           updatedAt: Date.now(),
           deleted: false,
           deletedAt: null,
@@ -1425,6 +1450,8 @@ async function persistSettings(closeAfterSave = false) {
   config.housekeeper.autoCleanupEnabled = hkAutoCleanup.checked;
   config.housekeeper.enableLinkCheck = hkEnableLinkCheck.checked;
   config.housekeeper.highlightDeadLinks = hkHighlightDeadLinks ? !!hkHighlightDeadLinks.checked : true;
+  config.housekeeper.iconAutoRefreshMode = getHousekeeperIconRefreshMode();
+  config.housekeeper.iconAutoRefreshHours = Math.max(1, parseInt(hkIconRefreshHours?.value, 10) || 24);
 
   // Save backups config
   config.backups.retentionDays = Math.max(1, parseInt(backupRetentionDays?.value, 10) || 30);
@@ -1740,6 +1767,16 @@ function updateHouseKeeperInfo(config) {
     }
   }
 
+  const iconRefreshMode = config.housekeeper.iconAutoRefreshMode || "all";
+  if (hkIconRefreshAll) hkIconRefreshAll.checked = iconRefreshMode === "all";
+  if (hkIconRefreshMissing) hkIconRefreshMissing.checked = iconRefreshMode === "missing";
+  if (hkIconRefreshNone) hkIconRefreshNone.checked = iconRefreshMode === "none";
+  if (hkIconRefreshHours) {
+    hkIconRefreshHours.value = String(Math.max(1, parseInt(config.housekeeper.iconAutoRefreshHours, 10) || 24));
+  }
+  updateHousekeeperIconRefreshFrequencyEnabled();
+  updateChoiceOptionStates();
+
   // Update last cleanup timestamp
   if (config.housekeeper.lastCleanup) {
     const lastCleanupDate = new Date(config.housekeeper.lastCleanup);
@@ -1974,4 +2011,12 @@ if (hkHighlightDeadLinks) {
     try { render(); } catch (e) {}
   });
 }
+
+[hkIconRefreshAll, hkIconRefreshMissing, hkIconRefreshNone].forEach(input => {
+  if (!input) return;
+  input.addEventListener("change", () => {
+    updateHousekeeperIconRefreshFrequencyEnabled();
+    updateChoiceOptionStates();
+  });
+});
 

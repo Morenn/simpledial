@@ -1,6 +1,7 @@
 import { loadState, saveState, state } from "./state.js";
 import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
+import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
 import { syncRead, syncWrite, startSyncLoop, cleanupDeletedItems } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
@@ -10,6 +11,7 @@ import { runBackupInitCheck } from "./backup.js";
 window.t = t;
 
 const dateTimeDisplay = document.getElementById("date-time-display");
+const ICON_REFRESH_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 let isDateTimeEnabled = false;
 let dateTimePreviewEnabled = null;
 let dateFormatter = null;
@@ -100,6 +102,19 @@ window.addEventListener("keydown", e => {
   }
 });
 
+function startIconRefreshLoop() {
+  setInterval(async () => {
+    try {
+      const changed = await refreshBookmarkIconsIfNeeded({ force: false, persist: true, sync: false });
+      if (changed) {
+        await render();
+      }
+    } catch (err) {
+      console.warn("icon refresh loop failed", err);
+    }
+  }, ICON_REFRESH_CHECK_INTERVAL_MS);
+}
+
 (async function init() {
   // 1) Initialize language
   await initLanguage();
@@ -165,6 +180,10 @@ window.addEventListener("keydown", e => {
   // 9: Start the clock display
   setInterval(updateClock, 1000);
   updateClock(); // Run immediately on load
+
+  // 9b) Refresh bookmark icons according to Housekeeper auto-refresh settings.
+  await refreshBookmarkIconsIfNeeded({ force: false, persist: true, sync: false });
+  startIconRefreshLoop();
 
   // 10) Render UI
   render();
