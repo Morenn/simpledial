@@ -5,6 +5,177 @@ import { t } from "./i18n.js";
 import { loadConfig } from "./config.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
+const FAVICON_DEBUG = false; // set true for verbose favicon console logs
+
+// Opt-in favicon lookups; both need the optional "*://*/*" host permission.
+// Off by default so no permission is ever requested.
+const EXPERIMENTAL_FAVICON_FETCH_LINK = false;
+const EXPERIMENTAL_FAVICON_FETCH_MANIFEST = false;
+
+// ---------- Host permission helpers ----------
+// "*://*/*" is an optional host permission (see manifest.json). contains()
+// never prompts; request() does, so it must only be called from a user
+// gesture (click handler).
+async function hasHostPermission() {
+  try {
+    return await chrome.permissions.contains({ origins: ["*://*/*"] });
+  } catch (err) {
+    console.warn("[favicon] permissions.contains failed", err);
+    return false;
+  }
+}
+
+async function ensureHostPermission() {
+  try {
+    if (await chrome.permissions.contains({ origins: ["*://*/*"] })) return true;
+    return await chrome.permissions.request({ origins: ["*://*/*"] });
+  } catch (err) {
+    console.warn("[favicon] permissions.request failed", err);
+    return false;
+  }
+}
+
+// ---------- Favicon cache (localStorage only, never synced) ----------
+const FAVICON_CACHE_PREFIX = "favicon-cache:";
+
+function faviconCacheKey(item) {
+  return `${FAVICON_CACHE_PREFIX}${item.id}`;
+}
+
+function getFaviconCacheEntry(item) {
+  if (!item?.id) return {};
+  try {
+    const raw = localStorage.getItem(faviconCacheKey(item));
+    return raw ? JSON.parse(raw) : {};
+  } catch (err) {
+    console.warn("[favicon] localStorage read/parse failed", err);
+    return {};
+  }
+}
+
+function setFaviconCacheEntry(item, partial) {
+  if (!item?.id) return;
+  try {
+    const next = { ...getFaviconCacheEntry(item), ...partial };
+    localStorage.setItem(faviconCacheKey(item), JSON.stringify(next));
+  } catch (err) {
+    console.warn("[favicon] localStorage write failed (quota?)", err);
+  }
+}
+
+function clearFaviconCacheEntry(item) {
+  if (!item?.id) return;
+  try {
+    localStorage.removeItem(faviconCacheKey(item));
+  } catch (err) {
+    console.warn("[favicon] localStorage remove failed", err);
+  }
+}
+
+function getCachedFaviconDataUrl(item) {
+  return getFaviconCacheEntry(item).dataUrl || null;
+}
+
+function setCachedFaviconDataUrl(item, dataUrl) {
+  setFaviconCacheEntry(item, { dataUrl });
+}
+
+function getIconRefreshedAt(item) {
+  return Number(getFaviconCacheEntry(item).refreshedAt || 0);
+}
+
+function setIconRefreshedAt(item, timestamp) {
+  setFaviconCacheEntry(item, { refreshedAt: timestamp });
+}
+
+// Chromium's own favicon cache. Needs only the "favicon" manifest
+// permission — no host permission, no network call to the target site.
+function buildChromeFaviconUrl(pageUrl, size = 32) {
+  try {
+    const url = new URL(chrome.runtime.getURL("/_favicon/"));
+    url.searchParams.set("pageUrl", pageUrl);
+    url.searchParams.set("size", String(size));
+    return url.toString();
+  } catch (err) {
+    console.warn("[favicon] failed to build chrome favicon url", err);
+    return null;
+  }
+}
+
+// Chromium-only endpoint — Firefox has no equivalent
+let chromeFaviconApiAvailableCache = null;
+
+function isChromeFaviconApiAvailable() {
+  if (chromeFaviconApiAvailableCache === null) {
+    chromeFaviconApiAvailableCache = !/Firefox\//.test(navigator.userAgent || "");
+  }
+  return chromeFaviconApiAvailableCache;
+}
+
+async function hashBlob(blob) {
+  const buf = await blob.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// The favicon API always returns 200 + an image, even with nothing cached
+// (a generic default icon), so there's no error to detect. Instead, probe
+// once per size with a URL that can never be visited/cached, hash that
+// response, and treat any later match as "just the default" rather than
+// a real favicon.
+const chromeFaviconBaselineHashes = new Map();
+
+function getChromeFaviconBaselineHash(size) {
+  if (chromeFaviconBaselineHashes.has(size)) return chromeFaviconBaselineHashes.get(size);
+
+  const probeId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+  const probeUrl = buildChromeFaviconUrl(`https://favicon-baseline-${probeId}.invalid/`, size);
+
+  const promise = (async () => {
+    try {
+      const res = await fetch(probeUrl);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await hashBlob(blob);
+    } catch (err) {
+      console.warn("[favicon] baseline probe failed", err);
+      return null;
+    }
+  })();
+
+  chromeFaviconBaselineHashes.set(size, promise);
+  return promise;
+}
+
+// Returns a data URL only if the favicon API gave back something other
+// than its generic default icon; otherwise null so the caller can fall
+// through to Google S2.
+async function getChromeFaviconIfReal(pageUrl, size = 32) {
+  const chromeUrl = buildChromeFaviconUrl(pageUrl, size);
+  if (!chromeUrl) return null;
+
+  try {
+    const [res, baselineHash] = await Promise.all([
+      fetch(chromeUrl),
+      getChromeFaviconBaselineHash(size)
+    ]);
+    if (!res.ok) return null;
+
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) return null;
+
+    const hash = await hashBlob(blob);
+    if (baselineHash && hash === baselineHash) {
+      if (FAVICON_DEBUG) console.log("[favicon] chrome favicon API returned default icon, skipping", pageUrl);
+      return null;
+    }
+
+    return await blobToDataUrl(blob);
+  } catch (err) {
+    if (FAVICON_DEBUG) console.warn("[favicon] chrome favicon fetch/hash failed", err);
+    return null;
+  }
+}
 
 // ---------- Create bookmark tile ----------
 export function createBookmarkTile(item, config = null) {
@@ -67,18 +238,149 @@ function buildGoogleFaviconUrl(hostname, refreshedAt = null) {
   return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64&cb=${refreshValue}`;
 }
 
-function resolveIconSrc(item) {
-  if (item.customIcon) {
-    return item.customIconCache || item.customIcon;
+// Google's S2 endpoint never sends CORS headers, for anyone — fetch() on
+// it always fails, and the browser logs that as an error regardless of
+// whether we catch it. So skip attempting it entirely instead of
+// fetching-and-catching.
+function isGoogleFaviconUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.hostname === "www.google.com" && u.pathname === "/s2/favicons";
+  } catch {
+    return false;
   }
+}
 
-  const refreshedAt = Number.isFinite(Number(item?.iconRefreshedAt))
-    ? Number(item.iconRefreshedAt)
-    : 0;
+function resolveIconSrc(item) {
+  // Cached icon (custom or fetched) wins; Google S2 is the last resort.
+  const cached = getCachedFaviconDataUrl(item);
+  if (cached) return cached;
+
+  if (item.customIcon) return item.customIcon;
 
   try {
     const u = new URL(item.url);
-    return buildGoogleFaviconUrl(u.hostname, refreshedAt);
+    return buildGoogleFaviconUrl(u.hostname, getIconRefreshedAt(item));
+  } catch {
+    return "";
+  }
+}
+
+// Fetches a page's HTML once and parses it, shared by the link-icon and
+// manifest lookups below.
+async function fetchPageDocument(pageUrl) {
+  const origin = new URL(pageUrl).origin;
+  if (FAVICON_DEBUG) console.log("[favicon] fetching page HTML", pageUrl);
+
+  const pageResponse = await fetch(pageUrl);
+  const html = await pageResponse.text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return { doc, origin };
+}
+
+function pickBestSizedIcon(candidates, srcKey, baseUrl, defaultSize = 0) {
+  if (!candidates || !candidates.length) return null;
+
+  const best = candidates
+    .map(c => ({
+      ...c,
+      size: (!c.sizes || c.sizes === "any")
+        ? defaultSize
+        : Math.max(...c.sizes.split(" ").map(s => parseInt(s, 10) || 0))
+    }))
+    .sort((a, b) => b.size - a.size)[0];
+
+  if (!best || !best[srcKey]) return null;
+  return new URL(best[srcKey], baseUrl).href;
+}
+
+// The page's own <link rel="icon"> / shortcut icon / apple-touch-icon.
+function getFaviconFromPageLinks(doc, origin) {
+  const nodes = Array.from(doc.querySelectorAll(
+    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"], link[rel="apple-touch-icon-precomposed"], link[rel="mask-icon"]'
+  ));
+  if (!nodes.length) return null;
+
+  const candidates = nodes
+    .map(n => ({ href: n.getAttribute("href"), sizes: n.getAttribute("sizes") }))
+    .filter(c => c.href);
+
+  const resolved = pickBestSizedIcon(candidates, "href", origin, 0);
+  if (FAVICON_DEBUG) console.log("[favicon] page link icon candidates", candidates, "resolved", resolved);
+  return resolved;
+}
+
+// The web app manifest's icons list.
+async function getFaviconFromManifest(doc, origin) {
+  const link = doc.querySelector('link[rel="manifest"]');
+  if (!link) return null;
+
+  const href = link.getAttribute("href");
+  if (!href) return null;
+
+  const manifestUrl = new URL(href, origin).href;
+  const manifestResponse = await fetch(manifestUrl);
+  if (!manifestResponse.ok) return null;
+
+  const manifest = await manifestResponse.json();
+  const resolved = pickBestSizedIcon(manifest.icons, "src", manifestUrl, 9999);
+  if (FAVICON_DEBUG) console.log("[favicon] manifest icons", manifest.icons, "resolved", resolved);
+  return resolved;
+}
+
+async function getBestFaviconUrl(item) {
+  if (item.customIcon) {
+    return item.customIcon;
+  }
+
+  // Experimental lookups, only if enabled and permission already granted.
+  // Never requests the permission here — that only happens from a click
+  // handler (ensureHostPermission), never automatically.
+  const needsPageFetch = EXPERIMENTAL_FAVICON_FETCH_LINK || EXPERIMENTAL_FAVICON_FETCH_MANIFEST;
+
+  if (needsPageFetch && (await hasHostPermission())) {
+    let pageDoc = null;
+    let pageOrigin = null;
+
+    try {
+      const parsed = await fetchPageDocument(item.url);
+      pageDoc = parsed.doc;
+      pageOrigin = parsed.origin;
+    } catch (err) {
+      if (FAVICON_DEBUG) console.warn("page fetch failed", err);
+    }
+
+    if (EXPERIMENTAL_FAVICON_FETCH_LINK && pageDoc) {
+      try {
+        const linkIcon = getFaviconFromPageLinks(pageDoc, pageOrigin);
+        if (linkIcon) return linkIcon;
+      } catch (err) {
+        if (FAVICON_DEBUG) console.warn("standard favicon link parse failed", err);
+      }
+    }
+
+    if (EXPERIMENTAL_FAVICON_FETCH_MANIFEST && pageDoc) {
+      try {
+        const manifestIcon = await getFaviconFromManifest(pageDoc, pageOrigin);
+        if (manifestIcon) return manifestIcon;
+      } catch (err) {
+        if (FAVICON_DEBUG) console.warn("manifest favicon failed (fetch)", err);
+      }
+    }
+  }
+
+  // Chromium's own favicon cache — default, zero-prompt path. Skipped if
+  // it's just the generic default icon (see getChromeFaviconIfReal), or
+  // if this browser doesn't support the endpoint at all (e.g. Firefox).
+  if (isChromeFaviconApiAvailable()) {
+    const chromeIcon = await getChromeFaviconIfReal(item.url, 32);
+    if (chromeIcon) return chromeIcon;
+  }
+
+  // Last resort: Google's S2 favicon service.
+  try {
+    const u = new URL(item.url);
+    return buildGoogleFaviconUrl(u.hostname, getIconRefreshedAt(item));
   } catch {
     return "";
   }
@@ -97,10 +399,10 @@ function shouldRefreshIcon(lastRefreshedAt, frequencyHours, force = false) {
 
 function isIconMissing(item) {
   if (item.customIcon) {
-    return !item.customIconCache;
+    return !getCachedFaviconDataUrl(item);
   }
 
-  return !Number(item.iconRefreshedAt || 0);
+  return !getIconRefreshedAt(item);
 }
 
 function blobToDataUrl(blob) {
@@ -136,21 +438,37 @@ async function refreshBookmarkIcon(item, options = {}) {
 
   if (!item || item.deleted) return false;
   if (!force && mode === "missing" && !isIconMissing(item)) return false;
-  if (!shouldRefreshIcon(item.iconRefreshedAt, frequencyHours, force)) return false;
+  if (!shouldRefreshIcon(getIconRefreshedAt(item), frequencyHours, force)) return false;
 
   const refreshTimestamp = Date.now();
 
-  if (item.customIcon) {
-    try {
-      const refreshedCache = await fetchIconAsDataUrl(item.customIcon, true);
-      item.customIconCache = refreshedCache;
-    } catch (err) {
-      // Keep previous cache/url when fetching fails, but mark attempt time.
-      console.warn("custom icon refresh failed", err);
+  try {
+    const faviconUrl = await getBestFaviconUrl(item);
+
+    if (faviconUrl) {
+      if (isGoogleFaviconUrl(faviconUrl)) {
+        // Known to always be CORS-blocked — don't even attempt the fetch,
+        // just use the URL directly as <img src>.
+        setCachedFaviconDataUrl(item, faviconUrl);
+      } else {
+        try {
+          // Cache the actual bytes as a data URL when we can.
+          const dataUrl = await fetchIconAsDataUrl(faviconUrl, true);
+          setCachedFaviconDataUrl(item, dataUrl);
+        } catch (fetchErr) {
+          // Fetch blocked (CORS/permissions) — <img> can still load the
+          // remote URL directly without CORS, so use that instead. This is
+          // expected/handled, so only noisy in debug mode.
+          if (FAVICON_DEBUG) console.warn("[favicon] could not download icon bytes, using direct URL", faviconUrl, fetchErr);
+          setCachedFaviconDataUrl(item, faviconUrl);
+        }
+      }
     }
+  } catch (err) {
+    console.warn("favicon refresh failed", err);
   }
 
-  item.iconRefreshedAt = refreshTimestamp;
+  setIconRefreshedAt(item, refreshTimestamp);
   return true;
 }
 
@@ -288,8 +606,7 @@ bmSave.addEventListener("click", async () => {
       currentItem.url = url;
       currentItem.customIcon = nextCustomIcon;
       if (previousCustomIcon !== nextCustomIcon) {
-        currentItem.customIconCache = null;
-        currentItem.iconRefreshedAt = 0;
+        clearFaviconCacheEntry(currentItem); // reset cached icon + timestamp
       }
       currentItem.updatedAt = Date.now();
     }
@@ -301,8 +618,6 @@ bmSave.addEventListener("click", async () => {
       title: title || url,
       url,
       customIcon: icon || null,
-      customIconCache: null,
-      iconRefreshedAt: 0,
       updatedAt: Date.now(),
       deleted: false,
       deletedAt: null
@@ -312,6 +627,11 @@ bmSave.addEventListener("click", async () => {
   await saveState();
   await syncWrite();
   closeBookmarkModal();
+
+  // Only prompt for the host permission if an experimental lookup needs it.
+  if (EXPERIMENTAL_FAVICON_FETCH_LINK || EXPERIMENTAL_FAVICON_FETCH_MANIFEST) {
+    await ensureHostPermission();
+  }
 
   // Cache/update icon immediately after save.
   await refreshBookmarkIconsIfNeeded({
@@ -377,8 +697,13 @@ export async function handleBookmarkContext(action, el) {
 
   if (action === "refresh-icon") {
     item.customIcon = null;
-    item.customIconCache = null;
-    item.iconRefreshedAt = 0;
+    clearFaviconCacheEntry(item);
+
+    // Only prompt for the host permission if an experimental lookup needs it.
+    if (EXPERIMENTAL_FAVICON_FETCH_LINK || EXPERIMENTAL_FAVICON_FETCH_MANIFEST) {
+      await ensureHostPermission();
+    }
+
     await refreshBookmarkIconsIfNeeded({
       force: true,
       bookmarkId: item.id,
@@ -395,6 +720,8 @@ export async function handleBookmarkContext(action, el) {
   if (action === "delete-permanent") {
     const confirmMsg = t("confirmDeletePermanentBookmark").replace("{0}", item.title);
     if (!confirm(confirmMsg)) return;
+
+    clearFaviconCacheEntry(item); // drop any cached icon for this bookmark
 
     // Permanently remove from array
     const index = group.items.indexOf(item);
