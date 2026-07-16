@@ -58,6 +58,13 @@ const syncPasswordRow = document.getElementById("sync-password-row");
 const syncAuthResetNote = document.getElementById("sync-auth-reset-note");
 const settingsUnsavedIndicator = document.getElementById("settings-unsaved-indicator");
 
+// Backups Elements
+const backupRetentionDays = document.getElementById("backup-retention-days");
+const backupFrequencyHours = document.getElementById("backup-frequency-hours");
+const backupCreateNowBtn = document.getElementById("backup-create-now");
+const backupStatus = document.getElementById("backup-status");
+const backupsTableBody = document.getElementById("backups-table-body");
+
 // Export/Import Elements
 const exportBtn = document.getElementById("export-btn");
 const importBtn = document.getElementById("import-btn");
@@ -96,12 +103,31 @@ const hkIconRefreshMissing = document.getElementById("hk-icon-refresh-missing");
 const hkIconRefreshNone = document.getElementById("hk-icon-refresh-none");
 const hkIconRefreshHours = document.getElementById("hk-icon-refresh-hours");
 
-// Backups Elements
-const backupRetentionDays = document.getElementById("backup-retention-days");
-const backupFrequencyHours = document.getElementById("backup-frequency-hours");
-const backupCreateNowBtn = document.getElementById("backup-create-now");
-const backupStatus = document.getElementById("backup-status");
-const backupsTableBody = document.getElementById("backups-table-body");
+// Advanced Elements
+const advFaviconDebugLogging = document.getElementById("enable-favicon-debug-logging");
+const advExperimentalFaviconFetchLink = document.getElementById("enable-experimental-favicon-fetch-link");
+const advExperimentalFaviconFetchManifest = document.getElementById("enable-experimental-favicon-fetch-manifest");
+
+function applyAdvancedSettingsToControls(advancedConfig = {}) {
+  if (advFaviconDebugLogging) {
+    advFaviconDebugLogging.checked = advancedConfig.faviconDebugLogging ?? advancedConfig.enableDebugLogging ?? false;
+  }
+  if (advExperimentalFaviconFetchLink) {
+    advExperimentalFaviconFetchLink.checked = advancedConfig.faviconFetchLink ?? advancedConfig.experimentalFaviconFetchLink ?? false;
+  }
+  if (advExperimentalFaviconFetchManifest) {
+    advExperimentalFaviconFetchManifest.checked = advancedConfig.faviconFetchManifest ?? advancedConfig.experimentalFaviconFetchManifest ?? false;
+  }
+}
+
+async function initializeAdvancedSettingsControls() {
+  try {
+    const config = await loadConfig();
+    applyAdvancedSettingsToControls(config.advanced || {});
+  } catch (err) {
+    console.warn("Failed to initialize advanced settings controls", err);
+  }
+}
 
 // Tab System
 const tabButtons = document.querySelectorAll(".settings-tab-btn");
@@ -153,7 +179,7 @@ function markSettingsDirty() {
 }
 
 function initializeSettingsDirtyTracking() {
-  const trackedElements = document.querySelectorAll('#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input, #backups-tab input');
+  const trackedElements = document.querySelectorAll('#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input, #backups-tab input, #advanced-tab input');
   trackedElements.forEach(el => {
     if (el.type === 'hidden') return;
     el.addEventListener('input', markSettingsDirty);
@@ -175,6 +201,7 @@ bindRadioGroupToModel(syncAuthMode, syncAuthChoices);
 bindRadioGroupToModel(document.getElementById('sync-encrypt-mode'), syncEncryptChoices);
 initializeSettingsDirtyTracking();
 updateChoiceOptionStates();
+void initializeAdvancedSettingsControls();
 
 // ---------- Tab Switching ----------
 tabButtons.forEach(btn => {
@@ -420,6 +447,9 @@ settingsBtn.addEventListener("click", async () => {
     const isVisible = config.appearance?.showDateTime ?? true;
     dateTimeToggle.checked = isVisible;
   }
+
+  // Load advanced settings
+  applyAdvancedSettingsToControls(config.advanced || {});
 
   if (showDeletedToggle) {
     showDeletedToggle.checked = config.appearance?.showDeleted ?? false;
@@ -1489,6 +1519,14 @@ async function persistSettings(closeAfterSave = false) {
   if (showDeletedToggle) {
     config.appearance.showDeleted = showDeletedToggle.checked;
   }
+
+  // Save advanced settings
+  config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;
+  config.advanced.faviconFetchLink = !!advExperimentalFaviconFetchLink?.checked;
+  config.advanced.faviconFetchManifest = !!advExperimentalFaviconFetchManifest?.checked;
+  delete config.advanced.enableDebugLogging;
+  delete config.advanced.experimentalFaviconFetchLink;
+  delete config.advanced.experimentalFaviconFetchManifest;
 
   // Single save operation
   await saveConfig(config);

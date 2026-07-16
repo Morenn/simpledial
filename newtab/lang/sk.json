@@ -209,6 +209,17 @@
     "hkLinkCheckRunning": "Kontrolujem odkazy...",
     "hkDeadLinks": "Nefunkčné odkazy: {0}",
 
+    "debugging": "Ladenie",
+    "debuggingDesc": "Tieto nastavenia sú určené pre vývojárov a môžu spôsobiť neočakávané správanie.",
+    "faviconDebugLogging": "Povoliť ladenie favicon",
+    "faviconDebugLoggingDesc": "Zapne podrobné ladenie pre proces obnovy favicon. Záznamy sa zobrazia v konzole prehliadača.",
+    "experimentalFeatures": "Experimentálne funkcie",
+    "experimentalFeaturesDesc": "Tieto funkcie sú experimentálne a nemusia fungovať podľa očakávania.",
+    "experimentalFaviconFetchLink": "Obnoviť favicon z odkazu. Vyžaduje dodatočné povolenia!",
+    "experimentalFaviconFetchManifest": "Obnoviť favicon z manifestu webovej aplikácie. Vyžaduje dodatočné povolenia!",
+    "advancedFeatures": "Pokročilé funkcie",
+    "advancedFeaturesDesc": "Tieto funkcie sú experimentálne a nemusia fungovať podľa očakávania.",
+
     "noActiveGroup": "Žiadna skupina nie je aktívna.",
 
     "language": "Jazyk"

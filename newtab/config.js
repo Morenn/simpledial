@@ -43,6 +43,11 @@ export const defaultConfig = {
     tileOpacity: 1, // Bookmark tile opacity: 0 (transparent) to 1 (opaque)
     showDateTime: true,
     showDeleted: false
+  },
+  advanced: {
+    faviconDebugLogging: false,
+    faviconFetchLink: false,
+    faviconFetchManifest: false
   }
 };
 
@@ -71,6 +76,10 @@ export async function loadConfig() {
       appearance: {
         ...defaultConfig.appearance,
         ...(stored.appearance || {})
+      },
+      advanced: {
+        ...defaultConfig.advanced,
+        ...(stored.advanced || {})
       }
     };
   }

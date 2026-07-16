@@ -73,6 +73,7 @@
         <button class="settings-tab-btn" data-tab="export" data-i18n="exportImport">📤 Export/Import</button>
         <button class="settings-tab-btn" data-tab="appearance" data-i18n="appearance">🎨 Appearance</button>
         <button class="settings-tab-btn" data-tab="housekeeper" data-i18n="housekeeper">🏠 HouseKeeper</button>
+        <button class="settings-tab-btn" data-tab="advanced" data-i18n="advancedFeatures">🧪 Advanced</button>
       </div>
 
       <!-- Synchronization Tab -->
@@ -414,6 +415,31 @@
 
         <div id="hk-link-check-status" class="status"></div>
         <div id="hk-dead-links-count" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
+      </div>
+
+      <!-- Advanced tab -->
+      <div id="advanced-tab" class="settings-tab-content">
+        <h3 id="debugging-title" data-i18n="debugging">Debugging</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="debugging-desc" data-i18n="debuggingDesc">Experimental - currently not working</p>
+        
+        <label class="checkbox-row">
+          <input type="checkbox" id="enable-favicon-debug-logging">
+          <span data-i18n="faviconDebugLogging">Enable favicon debug logging</span>
+        </label>
+
+        <h3 id="experimental-title" data-i18n="experimentalFeatures">Experimental Features</h3>
+        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="experimental-desc" data-i18n="experimentalFeaturesDesc">These features are experimental and may not work as expected.</p>
+        
+        <label class="checkbox-row">
+          <input type="checkbox" id="enable-experimental-favicon-fetch-link">
+          <span data-i18n="experimentalFaviconFetchLink">Fetch favicons from HTML link tags. It requires additional permissions!</span>
+        </label>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="enable-experimental-favicon-fetch-manifest">
+          <span data-i18n="experimentalFaviconFetchManifest">Fetch favicons from WEB APP manifest. It requires additional permissions!</span>
+        </label>
+
       </div>
 
       <div class="modal-buttons">

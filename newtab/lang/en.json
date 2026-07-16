@@ -209,6 +209,17 @@
     "hkLinkCheckRunning": "Checking links...",
     "hkDeadLinks": "Dead links: {0}",
 
+    "debugging": "Debugging",
+    "debuggingDesc": "These settings are intended for developers and may cause unexpected behavior.",
+    "faviconDebugLogging": "Enable favicon debug logging",
+    "faviconDebugLoggingDesc": "Enables detailed debugging for the favicon recovery process. Logs will appear in the browser console.",
+    "experimentalFeatures": "Experimental Features",
+    "experimentalFeaturesDesc": "These features are experimental and may not work as expected.",
+    "experimentalFaviconFetchLink": "Fetch favicon from link. Requires additional permissions!",
+    "experimentalFaviconFetchManifest": "Fetch favicon from web app manifest. Requires additional permissions!",
+    "advancedFeatures": "Advanced Features",
+    "advancedFeaturesDesc": "These features are experimental and may not work as expected.",
+    
     "noActiveGroup": "No group is active.",
 
     "language": "Language"

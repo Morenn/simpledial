@@ -5,12 +5,6 @@ import { t } from "./i18n.js";
 import { loadConfig } from "./config.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
-const FAVICON_DEBUG = false; // set true for verbose favicon console logs
-
-// Opt-in favicon lookups; both need the optional "*://*/*" host permission.
-// Off by default so no permission is ever requested.
-const EXPERIMENTAL_FAVICON_FETCH_LINK = false;
-const EXPERIMENTAL_FAVICON_FETCH_MANIFEST = false;
 
 // ---------- Host permission helpers ----------
 // "*://*/*" is an optional host permission (see manifest.json). contains()
@@ -166,13 +160,13 @@ async function getChromeFaviconIfReal(pageUrl, size = 32) {
 
     const hash = await hashBlob(blob);
     if (baselineHash && hash === baselineHash) {
-      if (FAVICON_DEBUG) console.log("[favicon] chrome favicon API returned default icon, skipping", pageUrl);
+      if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] chrome favicon API returned default icon, skipping", pageUrl);
       return null;
     }
 
     return await blobToDataUrl(blob);
   } catch (err) {
-    if (FAVICON_DEBUG) console.warn("[favicon] chrome favicon fetch/hash failed", err);
+    if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("[favicon] chrome favicon fetch/hash failed", err);
     return null;
   }
 }
@@ -270,7 +264,7 @@ function resolveIconSrc(item) {
 // manifest lookups below.
 async function fetchPageDocument(pageUrl) {
   const origin = new URL(pageUrl).origin;
-  if (FAVICON_DEBUG) console.log("[favicon] fetching page HTML", pageUrl);
+  if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] fetching page HTML", pageUrl);
 
   const pageResponse = await fetch(pageUrl);
   const html = await pageResponse.text();
@@ -306,7 +300,7 @@ function getFaviconFromPageLinks(doc, origin) {
     .filter(c => c.href);
 
   const resolved = pickBestSizedIcon(candidates, "href", origin, 0);
-  if (FAVICON_DEBUG) console.log("[favicon] page link icon candidates", candidates, "resolved", resolved);
+  if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] page link icon candidates", candidates, "resolved", resolved);
   return resolved;
 }
 
@@ -324,7 +318,7 @@ async function getFaviconFromManifest(doc, origin) {
 
   const manifest = await manifestResponse.json();
   const resolved = pickBestSizedIcon(manifest.icons, "src", manifestUrl, 9999);
-  if (FAVICON_DEBUG) console.log("[favicon] manifest icons", manifest.icons, "resolved", resolved);
+  if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] manifest icons", manifest.icons, "resolved", resolved);
   return resolved;
 }
 
@@ -336,7 +330,7 @@ async function getBestFaviconUrl(item) {
   // Experimental lookups, only if enabled and permission already granted.
   // Never requests the permission here — that only happens from a click
   // handler (ensureHostPermission), never automatically.
-  const needsPageFetch = EXPERIMENTAL_FAVICON_FETCH_LINK || EXPERIMENTAL_FAVICON_FETCH_MANIFEST;
+  const needsPageFetch = document.getElementById("enable-experimental-favicon-fetch-link")?.checked || document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked;
 
   if (needsPageFetch && (await hasHostPermission())) {
     let pageDoc = null;
@@ -347,24 +341,24 @@ async function getBestFaviconUrl(item) {
       pageDoc = parsed.doc;
       pageOrigin = parsed.origin;
     } catch (err) {
-      if (FAVICON_DEBUG) console.warn("page fetch failed", err);
+      if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("page fetch failed", err);
     }
 
-    if (EXPERIMENTAL_FAVICON_FETCH_LINK && pageDoc) {
+    if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked && pageDoc) {
       try {
         const linkIcon = getFaviconFromPageLinks(pageDoc, pageOrigin);
         if (linkIcon) return linkIcon;
       } catch (err) {
-        if (FAVICON_DEBUG) console.warn("standard favicon link parse failed", err);
+        if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("standard favicon link parse failed", err);
       }
     }
 
-    if (EXPERIMENTAL_FAVICON_FETCH_MANIFEST && pageDoc) {
+    if (document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked && pageDoc) {
       try {
         const manifestIcon = await getFaviconFromManifest(pageDoc, pageOrigin);
         if (manifestIcon) return manifestIcon;
       } catch (err) {
-        if (FAVICON_DEBUG) console.warn("manifest favicon failed (fetch)", err);
+        if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("manifest favicon failed (fetch)", err);
       }
     }
   }
@@ -459,7 +453,7 @@ async function refreshBookmarkIcon(item, options = {}) {
           // Fetch blocked (CORS/permissions) — <img> can still load the
           // remote URL directly without CORS, so use that instead. This is
           // expected/handled, so only noisy in debug mode.
-          if (FAVICON_DEBUG) console.warn("[favicon] could not download icon bytes, using direct URL", faviconUrl, fetchErr);
+          if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("[favicon] could not download icon bytes, using direct URL", faviconUrl, fetchErr);
           setCachedFaviconDataUrl(item, faviconUrl);
         }
       }
@@ -629,7 +623,7 @@ bmSave.addEventListener("click", async () => {
   closeBookmarkModal();
 
   // Only prompt for the host permission if an experimental lookup needs it.
-  if (EXPERIMENTAL_FAVICON_FETCH_LINK || EXPERIMENTAL_FAVICON_FETCH_MANIFEST) {
+  if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked || document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked) {
     await ensureHostPermission();
   }
 
@@ -700,7 +694,7 @@ export async function handleBookmarkContext(action, el) {
     clearFaviconCacheEntry(item);
 
     // Only prompt for the host permission if an experimental lookup needs it.
-    if (EXPERIMENTAL_FAVICON_FETCH_LINK || EXPERIMENTAL_FAVICON_FETCH_MANIFEST) {
+    if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked || document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked) {
       await ensureHostPermission();
     }
 
