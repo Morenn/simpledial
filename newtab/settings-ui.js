@@ -1,12 +1,13 @@
 import { state, saveState, generateId } from "./state.js";
 import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest } from "./sync.js";
-import { t, getCurrentLanguage } from "./i18n.js";
+import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
 import { render } from "./render.js";
 import { applyBackground, applyTileOpacity } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups } from "./backup.js";
+import { updateUIText, updateClock } from "./main.js";
 
 // ======================================================
 // SETTINGS MODAL UI
@@ -2071,3 +2072,20 @@ if (hkHighlightDeadLinks) {
   });
 });
 
+// open browser native extension settings in a new tab
+document.getElementById('open-extension-settings').addEventListener('click', () => {
+  const extensionId = chrome.runtime.id; 
+  const settingsUrl = `chrome://extensions/?id=${extensionId}`;
+  chrome.tabs.create({ url: settingsUrl });
+});
+
+// button to reset language to browser default
+document.getElementById('reset-language-to-browser').addEventListener('click', () => {
+  resetLanguageToBrowser();
+  if (languageSelect) {
+    languageSelect.value = getCurrentLanguage();
+  }
+  render();
+  updateUIText();
+  updateClock();
+});

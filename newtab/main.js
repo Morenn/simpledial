@@ -199,7 +199,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 // Language selector setup
-function setupLanguageSelector() {
+export function setupLanguageSelector() {
   const langSelect = document.getElementById("language-select");
   if (langSelect) {
     // Populate options from LANG_FILES (via i18n.getAvailableLanguages)
@@ -238,7 +238,7 @@ function setupLanguageSelector() {
  * Updates the date and time display element with localized formatting, 
  * only if the feature is enabled in settings.
  */
-function updateClock() {
+export function updateClock() {
   if (!dateTimeDisplay) return;
 
   if (!getEffectiveDateTimeEnabled()) {
@@ -283,7 +283,7 @@ function updateClock() {
 }
 
 // Update all UI text elements
-function updateUIText() {
+export function updateUIText() {
   // Search box
   const searchBox = document.getElementById("search-box");
   if (searchBox) searchBox.placeholder = t("searchPlaceholder");
