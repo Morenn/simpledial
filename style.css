@@ -1257,6 +1257,9 @@ body.theme-dark .bookmark-title:hover {
   }
 }
 
+/* ─────────────────────────────────────────────
+   Forbid text selection
+───────────────────────────────────────────── */
 .noselect {
   -webkit-touch-callout: none; /* iOS Safari */
     -webkit-user-select: none; /* Safari */
@@ -1265,4 +1268,16 @@ body.theme-dark .bookmark-title:hover {
         -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome, Edge, Opera and Firefox */
+}
+/* ─────────────────────────────────────────────
+   Date and time text styling
+───────────────────────────────────────────── */
+.time {
+  text-align: center;
+  padding: 10px;
+  font-size: 2rem;
+  font-weight: bold;
+  mix-blend-mode: difference;
+  color: rgba(255, 255, 255, 0.911);
+  background: transparent;
 }
