@@ -6,7 +6,7 @@ import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKe
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
 import { render } from "./render.js";
 import { applyBackground, applyTileOpacity } from "./theme.js";
-import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups } from "./backup.js";
+import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 
 // ======================================================
@@ -1946,6 +1946,7 @@ async function refreshBackupsTable() {
     statsCell.textContent = `G:${stats.groupCount} B:${stats.bookmarkCount}`;
 
     const actionsCell = document.createElement("td");
+
     const restoreBtn = document.createElement("button");
     restoreBtn.className = "icon-btn primary";
     restoreBtn.textContent = t("restoreBackup");
@@ -1961,6 +1962,14 @@ async function refreshBackupsTable() {
     deleteBtn.style.marginLeft = "0.5rem";
     actionsCell.appendChild(deleteBtn);
 
+    const downloadBtn = document.createElement("button");
+    downloadBtn.className = "icon-btn";
+    downloadBtn.textContent = t("downloadBackup");
+    downloadBtn.dataset.backupFileDownload = backup.filename;
+    downloadBtn.type = "button";
+    downloadBtn.style.marginLeft = "0.5rem";
+    actionsCell.appendChild(downloadBtn);
+
     row.appendChild(timestampCell);
     row.appendChild(sizeCell);
     row.appendChild(statsCell);
@@ -1968,7 +1977,6 @@ async function refreshBackupsTable() {
     backupsTableBody.appendChild(row);
   });
 }
-
 if (backupCreateNowBtn) {
   backupCreateNowBtn.addEventListener("click", async () => {
     backupCreateNowBtn.disabled = true;
@@ -1999,7 +2007,30 @@ if (backupsTableBody) {
 
     const restoreFile = target.dataset.backupFileRestore;
     const deleteFile = target.dataset.backupFileDelete;
-    if (!restoreFile && !deleteFile) return;
+    const downloadFile = target.dataset.backupFileDownload;
+
+    if (!restoreFile && !deleteFile && !downloadFile) return;
+
+    if (downloadFile) {
+      try {
+        const entry = await getBackup(downloadFile);
+        const blob = new Blob([entry.data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = entry.filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        if (backupStatus) backupStatus.textContent = "❌ " + t("backupDownloadFailed");
+        console.error("getBackup failed", error);
+      }
+      return;
+    }
 
     if (restoreFile) {
       const confirmed = confirm(t("confirmRestoreBackup"));

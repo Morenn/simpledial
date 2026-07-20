@@ -162,6 +162,7 @@
   "restoreBackup": { "message": "Restore" },
   "deleteBackup": { "message": "Delete" },
   "noBackupsYet": { "message": "No backups created yet." },
+  "downloadBackup": { "message": "Download" },
 
   "appearance": { "message": "Appearance" },
   "themeSettings": { "message": "Theme" },

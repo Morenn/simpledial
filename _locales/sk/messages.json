@@ -162,6 +162,7 @@
   "restoreBackup": { "message": "Obnoviť" },
   "deleteBackup": { "message": "Zmazať" },
   "noBackupsYet": { "message": "Zatiaľ neboli vytvorené žiadne zálohy." },
+  "downloadBackup": { "message": "Stiahnuť" },
 
   "appearance": { "message": "Vzhľad" },
   "themeSettings": { "message": "Motív" },

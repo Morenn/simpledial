@@ -176,3 +176,18 @@ export async function runBackupInitCheck() {
     console.warn("backup init check failed", err);
   });
 }
+
+export async function getBackup(file) {
+  const parsed = parseBackupInput(file);
+  if (!parsed) {
+    throw new Error("invalid-backup-file");
+  }
+
+  const entries = await readBackupEntries();
+  const target = entries.find(entry => entry.filename === parsed.filename);
+  if (!target) {
+    throw new Error("backup-not-found");
+  }
+
+  return target;
+}
