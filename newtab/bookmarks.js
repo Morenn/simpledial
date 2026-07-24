@@ -187,17 +187,24 @@ export function createBookmarkTile(item, config = null) {
   link.className = "bookmark-title";
   link.href = item.url;
   link.textContent = item.title || item.url;
-  link.removeAttribute("target");
 
   link.addEventListener("click", e => {
     e.preventDefault();
-    window.location.href = item.url;
+    openBookmark(item.url, e);
   });
 
   tile.addEventListener("click", e => {
-    if (e.target.tagName.toLowerCase() === "a") return;
-    if (e.button === 2) return;
-    window.location.href = item.url;
+    if (e.target.closest("a")) return;
+    e.preventDefault();
+    openBookmark(item.url, e);
+  });
+
+  tile.addEventListener("auxclick", e => {
+    if (e.target.closest("a")) return;
+    if (e.button === 1) {
+      e.preventDefault();
+      openBookmark(item.url, e, true);
+    }
   });
 
   tile.appendChild(icon);
@@ -215,6 +222,14 @@ export function createBookmarkTile(item, config = null) {
   }
 
   return tile;
+}
+
+function openBookmark(url, e, forceNewTab = false) {
+  if (forceNewTab || e.ctrlKey || e.metaKey) {
+    window.open(url, "_blank");
+  } else {
+    window.location.href = url;
+  }
 }
 
 // ---------- Helper functions ----------
