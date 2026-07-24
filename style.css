@@ -963,7 +963,7 @@ body.theme-dark .bookmark-title:hover {
   display: flex;
   gap: 8px;
   margin: 0 -1.2rem 1rem -1.2rem;
-  padding: 0 1.2rem 0.8rem 1.2rem;
+  padding: 0 3rem 0.8rem 1.2rem; 
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -1184,6 +1184,26 @@ body.theme-dark .bookmark-title:hover {
 .export-import-actions .icon-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────
+   Maximize Settings Modal Button
+───────────────────────────────────────────── */
+#settings-maximize-btn {
+  margin-left: auto;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+#settings-modal .modal-content {
+  transition: width 0.2s ease, height 0.2s ease, max-width 0.2s ease, max-height 0.2s ease;
+}
+
+#settings-modal .modal-content.maximized {
+  width: 95vw;
+  height: 95vh;
+  max-width: 95vw;
+  max-height: 95vh;
 }
 
 /* ─────────────────────────────────────────────

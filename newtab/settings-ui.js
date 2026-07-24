@@ -2120,3 +2120,15 @@ document.getElementById('reset-language-to-browser').addEventListener('click', (
   updateUIText();
   updateClock();
 });
+
+// ---------- Settings Modal Maximize/Restore ----------
+const settingsMaximizeBtn = document.getElementById("settings-maximize-btn");
+const settingsModalContent = settingsModal.querySelector(".modal-content");
+
+if (settingsMaximizeBtn && settingsModalContent) {
+  settingsMaximizeBtn.addEventListener("click", () => {
+    const isMaximized = settingsModalContent.classList.toggle("maximized");
+    settingsMaximizeBtn.textContent = isMaximized ? "🗗" : "⛶";
+    settingsMaximizeBtn.title = isMaximized ? t("restoreSize") : t("maximize");
+  });
+}

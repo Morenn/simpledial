@@ -224,6 +224,9 @@
   "advancedFeaturesDesc": { "message": "These features are experimental and may not work as expected." },
   "openExtensionSettings": { "message": "Open extension settings" },
 
+  "maximize": { "message": "Maximize" },
+  "restoreSize": { "message": "Restore Size" },
+
   "noActiveGroup": { "message": "No group is active." },
   "language": { "message": "Language" }
 }

@@ -224,6 +224,9 @@
   "advancedFeaturesDesc": { "message": "Tieto funkcie sú experimentálne a nemusia fungovať podľa očakávania." },
   "openExtensionSettings": { "message": "Otvoriť nastavenia rozšírenia" },
 
+  "maximize": { "message": "Maximalizovať" },
+  "restoreSize": { "message": "Obnoviť veľkosť" },
+
   "noActiveGroup": { "message": "Žiadna skupina nie je aktívna." },
   "language": { "message": "Jazyk" }
 }
