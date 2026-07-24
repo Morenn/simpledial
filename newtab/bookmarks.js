@@ -481,6 +481,8 @@ async function refreshBookmarkIcon(item, options = {}) {
   return true;
 }
 
+const ICON_REFRESH_BATCH_SIZE = 5;
+
 export async function refreshBookmarkIconsIfNeeded(options = {}) {
   const force = !!options.force;
   const bookmarkId = options.bookmarkId || null;
@@ -500,7 +502,7 @@ export async function refreshBookmarkIconsIfNeeded(options = {}) {
     }
   }
 
-  let changed = false;
+  const tasks = [];
 
   for (const group of state.groups) {
     if (group.deleted) continue;
@@ -509,9 +511,21 @@ export async function refreshBookmarkIconsIfNeeded(options = {}) {
       if (item.deleted) continue;
       if (bookmarkId && item.id !== bookmarkId) continue;
 
-      const itemChanged = await refreshBookmarkIcon(item, { force, mode, frequencyHours });
-      if (itemChanged) {
+      tasks.push(() => refreshBookmarkIcon(item, { force, mode, frequencyHours }));
+    }
+  }
+
+  let changed = false;
+
+  for (let i = 0; i < tasks.length; i += ICON_REFRESH_BATCH_SIZE) {
+    const batch = tasks.slice(i, i + ICON_REFRESH_BATCH_SIZE);
+    const batchResults = await Promise.allSettled(batch.map(fn => fn()));
+
+    for (const result of batchResults) {
+      if (result.status === "fulfilled" && result.value === true) {
         changed = true;
+      } else if (result.status === "rejected") {
+        console.warn("refreshBookmarkIcon failed", result.reason);
       }
     }
   }
