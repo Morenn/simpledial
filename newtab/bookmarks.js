@@ -487,12 +487,12 @@ export async function refreshBookmarkIconsIfNeeded(options = {}) {
   const persist = options.persist !== false;
   const sync = !!options.sync;
 
-  let mode = "all";
+  let mode = "missing";
   let frequencyHours = DEFAULT_ICON_AUTO_REFRESH_HOURS;
 
   if (!force) {
     const config = await loadConfig();
-    mode = config?.housekeeper?.iconAutoRefreshMode || "all";
+    mode = config?.housekeeper?.iconAutoRefreshMode || "missing";
     frequencyHours = Math.max(1, Number(config?.housekeeper?.iconAutoRefreshHours) || DEFAULT_ICON_AUTO_REFRESH_HOURS);
 
     if (mode === "none") {

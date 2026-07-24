@@ -99,7 +99,7 @@ async function updateContextMenuForGroup(groupTab) {
   }
 }
 
-// Clik outside to close menu
+// Click outside to close menu
 document.addEventListener("click", e => {
   if (!e.target.closest("#context-menu")) {
     contextMenu.classList.add("hidden");
