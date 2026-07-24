@@ -876,37 +876,33 @@ function mergeItems(localItems, cloudItems) {
 // ─────────────────────────────────────────────────────────────
 //  PERIODIC SYNC
 // ─────────────────────────────────────────────────────────────
-
 export function startSyncLoop() {
-  let syncLoopInterval = null;
+  let isSyncing = false;
 
   const runSyncLoop = async () => {
-    const config = await loadConfig();
+    if (isSyncing) return;
+    isSyncing = true;
 
-    if (!config.sync.enabled) {
-      return;
-    }
+    try {
+      const config = await loadConfig();
+      if (!config.sync.enabled) return;
+      if (!shouldSync(config)) return;
 
-    // Check if we should sync based on interval configuration
-    if (!shouldSync(config)) {
-      return;
-    }
-
-    const result = await syncNow();
-    if (!result.ok && result.reason !== 'not-configured') {
-      console.warn('sync loop failed:', result.reason, result.status || '');
-    }
-
-    if (result.ok && result.changed) {
-      window.dispatchEvent(new CustomEvent('speeddial:data-changed'));
+      const result = await syncNow();
+      if (!result.ok && result.reason !== 'not-configured') {
+        console.warn('sync loop failed:', result.reason, result.status || '');
+      }
+      if (result.ok && result.changed) {
+        window.dispatchEvent(new CustomEvent('speeddial:data-changed'));
+      }
+    } finally {
+      isSyncing = false;
     }
   };
 
   // Run sync loop every 10 seconds to check if sync is needed
   // This allows for flexible interval configuration without restarting the interval
-  syncLoopInterval = setInterval(runSyncLoop, 10000);
-  
-  // Run once immediately on startup
+  setInterval(runSyncLoop, 10000);
   runSyncLoop();
 }
 
