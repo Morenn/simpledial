@@ -818,6 +818,8 @@ async function mergeAndWriteAtomically(config, cloudGroups) {
   const localIsMoreRecent = localFreshness > cloudFreshness;
 
   const mergedGroups = mergeGroups(previousGroups, cloudGroups || [], { preferCloudOnBootstrap: true });
+  const changed = JSON.stringify(previousGroups) !== JSON.stringify(mergedGroups);
+
   state.groups = mergedGroups;
 
   const writeResult = await syncWriteDetailed({ ...(await loadSyncConfig()), lastSync: Date.now() });
@@ -825,11 +827,10 @@ async function mergeAndWriteAtomically(config, cloudGroups) {
   if (writeResult.ok) {
     await saveState();
     await updateLastSyncTime(config);
-    return { ok: true, reason: writeResult.reason || 'ok' };
+    return { ok: true, reason: writeResult.reason || 'ok', changed };
   }
 
   // Never keep a merged local state that failed to persist remotely.
-  // This avoids losing recent local edits during temporary server failures.
   state.groups = previousGroups;
 
   if (localIsMoreRecent) {
@@ -894,6 +895,10 @@ export function startSyncLoop() {
     const result = await syncNow();
     if (!result.ok && result.reason !== 'not-configured') {
       console.warn('sync loop failed:', result.reason, result.status || '');
+    }
+
+    if (result.ok && result.changed) {
+      window.dispatchEvent(new CustomEvent('speeddial:data-changed'));
     }
   };
 

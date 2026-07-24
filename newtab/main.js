@@ -102,6 +102,9 @@ window.addEventListener("keydown", e => {
   }
 });
 
+// Refresh UI when data changes (e.g., after sync)
+window.addEventListener('speeddial:data-changed', () => render());
+
 function startIconRefreshLoop() {
   setInterval(async () => {
     try {
@@ -125,7 +128,6 @@ function startIconRefreshLoop() {
   // 3) Load and apply theme
   await loadTheme();
 
-  // 4) Initialize sync if enabled
   const config = await loadConfig();
   updateDateTimeEnabledFromConfig(config);
 
@@ -134,42 +136,6 @@ function startIconRefreshLoop() {
     showDeletedToggle.checked = !!config.appearance?.showDeleted;
     showDeletedToggle.dispatchEvent(new Event("change"));
   }
-  
-  if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
-    const cloud = await syncRead();
-
-    if (cloud && cloud.groups) {
-      if (cloud.groups.length === 0 && state.groups.length > 0) {
-        // Remote is empty, preserve local entries and push them to remote first
-        await syncWrite();
-      } else {
-        // 🔥 We sync only groups, not whole state
-        state.groups = cloud.groups;
-        await saveState();
-      }
-    } else if (config.sync.enabled) {
-      // Sync is enabled but server is unavailable - notify user
-      console.warn("Sync server is unavailable, using local data");
-      showSyncUnavailableNotification();
-    }
-  }
-
-  // 5) Start sync loop to keep data updated across tabs and with server
-  startSyncLoop();
-
-  // 5b) Run one-time backup check on page initialization
-  await runBackupInitCheck();
-
-  // 6) Run automatic housekeeping to cleanup deleted items older than retention period
-  // Only if automatic cleanup is enabled in config
-  if (config.housekeeper?.autoCleanupEnabled) {
-    try {
-      const retentionDays = config.housekeeper?.retentionDays || 30;
-      await cleanupDeletedItems(retentionDays);
-    } catch (err) {
-      console.error("Housekeeping cleanup failed", err);
-    }
-  }
 
   // 7) Setup language selector
   setupLanguageSelector();
@@ -177,16 +143,50 @@ function startIconRefreshLoop() {
   // 8) Update initial UI text
   updateUIText();
 
-  // 9: Start the clock display
-  setInterval(updateClock, 1000);
-  updateClock(); // Run immediately on load
-
-  // 9b) Refresh bookmark icons according to Housekeeper auto-refresh settings.
-  await refreshBookmarkIconsIfNeeded({ force: false, persist: true, sync: false });
-  startIconRefreshLoop();
-
-  // 10) Render UI
+  // 9) Render UI immediately with local data — does not wait for network
   render();
+
+  // 10) Start the clock display
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // 4) Sync (in background, with re-render after data changes)
+  if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
+    (async () => {
+      const cloud = await syncRead();
+
+      if (cloud && cloud.groups) {
+        if (cloud.groups.length === 0 && state.groups.length > 0) {
+          await syncWrite();
+        } else {
+          state.groups = cloud.groups;
+          await saveState();
+          render(); // re-render UI after loading cloud data
+        }
+      } else {
+        console.warn("Sync server is unavailable, using local data");
+        showSyncUnavailableNotification();
+      }
+    })().catch(err => console.warn("initial sync failed", err));
+  }
+
+  // 5) Start sync loop
+  startSyncLoop();
+
+  // 5b) Backup check (in background, non-blocking)
+  runBackupInitCheck().catch(err => console.error("Backup init check failed", err));
+
+  // 6) Housekeeping cleanup (in  background, non-blocking)
+  if (config.housekeeper?.autoCleanupEnabled) {
+    const retentionDays = config.housekeeper?.retentionDays || 30;
+    cleanupDeletedItems(retentionDays).catch(err => console.error("Housekeeping cleanup failed", err));
+  }
+
+  // 11) Refresh bookmark icons (in background, non-blocking)
+  refreshBookmarkIconsIfNeeded({ force: false, persist: true, sync: false })
+    .then(changed => { if (changed) render(); })
+    .catch(err => console.warn("icon refresh failed", err));
+  startIconRefreshLoop();
 })();
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
