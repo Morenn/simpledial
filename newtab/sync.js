@@ -1,6 +1,7 @@
 import { state, saveState } from "./state.js";
 import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
 import { importRawKey, deriveKeyFromPassword, decryptWithKey } from './crypto.js';
+import { deadLinkDebugLog } from "./debug.js";
 
 function ensureNoTrailingSlash(url) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -962,31 +963,89 @@ export async function cleanupDeletedItems(retentionDays) {
 // ─────────────────────────────────────────────────────────────
 //  HOUSEKEEPING - LINK VALIDATION
 // ─────────────────────────────────────────────────────────────
+const inFlightValidations = new Map();
 
-async function validateLink(url, timeoutMs = 2000) {
+async function validateLinkWithGet(url, timeoutMs) {
+  try {
+    const response = await fetchWithTimeout(url, {
+      method: "GET",
+      cache: "no-cache",
+      headers: { "Range": "bytes=0-0" }
+    }, timeoutMs);
+
+    deadLinkDebugLog(`GET fallback response: ${url} → status ${response.status}`);
+
+    const isDead = response.status >= 400 && response.status < 600;
+    deadLinkDebugLog(isDead ? `[linkcheck] DEAD (GET fallback http error): ${url}` : `[linkcheck] OK (GET fallback): ${url}`);
+    return !isDead;
+  } catch (error) {
+    deadLinkDebugLog(`GET fallback error: ${url} → name=${error.name} message=${error.message}`);
+    deadLinkDebugLog(`OK (GET fallback failed, assuming alive): ${url}`);
+    return true;
+  }
+}
+
+async function validateLinkOnce(url, timeoutMs) {
+  deadLinkDebugLog(`start: ${url} (timeout=${timeoutMs}ms)`);
   try {
     const response = await fetchWithTimeout(url, {
       method: "HEAD",
       cache: "no-cache"
-      // Removed mode: "no-cors" to allow proper status code checking
     }, timeoutMs);
 
-    // Mark as dead if status code is 400-599 (client/server errors)
-    // Accept 2xx and 3xx (success and redirects)
-    if (response.status >= 400 && response.status < 600) {
-      return false; // Dead link
+    deadLinkDebugLog(`response: ${url} → status ${response.status}`);
+
+    if (response.status === 405 || response.status === 403) {
+      deadLinkDebugLog(`HEAD rejected (${response.status}), retrying with GET: ${url}`);
+      return await validateLinkWithGet(url, timeoutMs);
     }
 
-    return true; // Link is working
-  } catch (error) {
-    // Network error, timeout, or CORS error
-    // Only mark as dead if it's a real network error, not CORS
-    if (error.name === "AbortError") {
-      return false; // Timeout = dead link
+    if (response.status >= 400 && response.status < 600) {
+      deadLinkDebugLog(`DEAD (http error): ${url}`);
+      return false;
     }
-    // For other errors (CORS, etc), assume link is working to avoid false positives
+    deadLinkDebugLog(`OK: ${url}`);
+    return true;
+  } catch (error) {
+    deadLinkDebugLog(`error on first attempt: ${url} → name=${error.name} message=${error.message}`);
+
+    if (error.name === "AbortError") {
+      deadLinkDebugLog(`retrying with longer timeout: ${url}`);
+      try {
+        const retryResponse = await fetchWithTimeout(url, {
+          method: "HEAD",
+          cache: "no-cache"
+        }, timeoutMs * 2);
+
+        deadLinkDebugLog(`retry response: ${url} → status ${retryResponse.status}`);
+
+        const isDead = retryResponse.status >= 400 && retryResponse.status < 600;
+        deadLinkDebugLog(isDead ? `[linkcheck] DEAD (retry http error): ${url}` : `[linkcheck] OK (retry): ${url}`);
+        return !isDead;
+      } catch (retryError) {
+        deadLinkDebugLog(`retry FAILED: ${url} → name=${retryError.name} message=${retryError.message}`);
+        deadLinkDebugLog(`DEAD (retry failed): ${url}`);
+        return false;
+      }
+    }
+
+    deadLinkDebugLog(`OK (non-abort error, assuming alive): ${url}`);
     return true;
   }
+}
+
+async function validateLink(url, timeoutMs = 6000) {
+  if (inFlightValidations.has(url)) {
+    deadLinkDebugLog(`dedup: reusing in-flight validation for ${url}`);
+    return inFlightValidations.get(url);
+  }
+
+  const promise = validateLinkOnce(url, timeoutMs).finally(() => {
+    inFlightValidations.delete(url);
+  });
+
+  inFlightValidations.set(url, promise);
+  return promise;
 }
 
 export async function validateSingleLink(url) {

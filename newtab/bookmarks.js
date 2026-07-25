@@ -3,6 +3,7 @@ import { render } from "./render.js";
 import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
 import { loadConfig } from "./config.js";
+import { faviconDebugLog } from "./debug.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
 
@@ -160,13 +161,13 @@ async function getChromeFaviconIfReal(pageUrl, size = 32) {
 
     const hash = await hashBlob(blob);
     if (baselineHash && hash === baselineHash) {
-      if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] chrome favicon API returned default icon, skipping", pageUrl);
+      faviconDebugLog("chrome favicon API returned default icon, skipping", pageUrl);
       return null;
     }
 
     return await blobToDataUrl(blob);
   } catch (err) {
-    if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("[favicon] chrome favicon fetch/hash failed", err);
+    faviconDebugLog("chrome favicon fetch/hash failed", err);
     return null;
   }
 }
@@ -279,7 +280,7 @@ function resolveIconSrc(item) {
 // manifest lookups below.
 async function fetchPageDocument(pageUrl) {
   const origin = new URL(pageUrl).origin;
-  if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] fetching page HTML", pageUrl);
+  faviconDebugLog("fetching page HTML", pageUrl);
 
   const pageResponse = await fetch(pageUrl);
   const html = await pageResponse.text();
@@ -315,7 +316,7 @@ function getFaviconFromPageLinks(doc, origin) {
     .filter(c => c.href);
 
   const resolved = pickBestSizedIcon(candidates, "href", origin, 0);
-  if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] page link icon candidates", candidates, "resolved", resolved);
+  faviconDebugLog("page link icon candidates", candidates, "resolved", resolved);
   return resolved;
 }
 
@@ -333,7 +334,7 @@ async function getFaviconFromManifest(doc, origin) {
 
   const manifest = await manifestResponse.json();
   const resolved = pickBestSizedIcon(manifest.icons, "src", manifestUrl, 9999);
-  if (document.getElementById("enable-favicon-debug-logging")?.checked) console.log("[favicon] manifest icons", manifest.icons, "resolved", resolved);
+  faviconDebugLog("manifest icons", manifest.icons, "resolved", resolved);
   return resolved;
 }
 
@@ -356,7 +357,7 @@ async function getBestFaviconUrl(item) {
       pageDoc = parsed.doc;
       pageOrigin = parsed.origin;
     } catch (err) {
-      if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("page fetch failed", err);
+      faviconDebugLog("page fetch failed", err);
     }
 
     if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked && pageDoc) {
@@ -364,7 +365,7 @@ async function getBestFaviconUrl(item) {
         const linkIcon = getFaviconFromPageLinks(pageDoc, pageOrigin);
         if (linkIcon) return linkIcon;
       } catch (err) {
-        if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("standard favicon link parse failed", err);
+        faviconDebugLog("standard favicon link parse failed", err);
       }
     }
 
@@ -373,7 +374,7 @@ async function getBestFaviconUrl(item) {
         const manifestIcon = await getFaviconFromManifest(pageDoc, pageOrigin);
         if (manifestIcon) return manifestIcon;
       } catch (err) {
-        if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("manifest favicon failed (fetch)", err);
+        faviconDebugLog("manifest favicon failed (fetch)", err);
       }
     }
   }
@@ -468,7 +469,7 @@ async function refreshBookmarkIcon(item, options = {}) {
           // Fetch blocked (CORS/permissions) — <img> can still load the
           // remote URL directly without CORS, so use that instead. This is
           // expected/handled, so only noisy in debug mode.
-          if (document.getElementById("enable-favicon-debug-logging")?.checked) console.warn("[favicon] could not download icon bytes, using direct URL", faviconUrl, fetchErr);
+          faviconDebugLog("could not download icon bytes, using direct URL", faviconUrl, fetchErr);
           setCachedFaviconDataUrl(item, faviconUrl);
         }
       }

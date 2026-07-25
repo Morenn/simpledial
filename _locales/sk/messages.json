@@ -216,6 +216,7 @@
   "resetLanguageToBrowser": { "message": "Obnoviť jazyk podľa predvoleného jazyka prehliadača" },
   "faviconDebugLogging": { "message": "Povoliť ladenie favicon" },
   "faviconDebugLoggingDesc": { "message": "Zapne podrobné ladenie pre proces obnovy favicon. Záznamy sa zobrazia v konzole prehliadača." },
+  "deadLinkDebugLogging": { "message": "Povoliť ladenie kontroly nefunkčných odkazov" },
   "experimentalFeatures": { "message": "Experimentálne funkcie" },
   "experimentalFeaturesDesc": { "message": "Tieto funkcie sú experimentálne a nemusia fungovať podľa očakávania." },
   "experimentalFaviconFetchLink": { "message": "Obnoviť favicon z odkazu. Vyžaduje dodatočné povolenia!" },

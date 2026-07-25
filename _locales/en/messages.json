@@ -216,6 +216,7 @@
   "resetLanguageToBrowser": { "message": "Reset language to browser default" },
   "faviconDebugLogging": { "message": "Enable favicon debug logging" },
   "faviconDebugLoggingDesc": { "message": "Enables detailed debugging for the favicon recovery process. Logs will appear in the browser console." },
+  "deadLinkDebugLogging": { "message": "Enable dead link debug logging" },
   "experimentalFeatures": { "message": "Experimental Features" },
   "experimentalFeaturesDesc": { "message": "These features are experimental and may not work as expected." },
   "experimentalFaviconFetchLink": { "message": "Fetch favicon from link. Requires additional permissions!" },

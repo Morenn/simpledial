@@ -46,6 +46,7 @@ export const defaultConfig = {
   },
   advanced: {
     faviconDebugLogging: false,
+    deadLinkDebugLogging: false,
     faviconFetchLink: false,
     faviconFetchManifest: false
   }
