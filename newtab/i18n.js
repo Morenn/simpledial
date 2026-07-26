@@ -50,7 +50,7 @@ export function getAvailableLanguages() {
 // --- Initialize language system ---
 export async function initLanguage() {
   // Load JSON files manually (Firefox + fallback)
-  for (const entry of LANG_FILES) {
+  await Promise.all(LANG_FILES.map(async entry => {
     try {
       const url = runtime.getURL(entry.path);
       const res = await fetch(url);
@@ -71,11 +71,10 @@ export async function initLanguage() {
         name: entry.name,
         texts
       };
-
     } catch (err) {
       console.warn('i18n: failed to load', entry.path, err);
     }
-  }
+  }));
 
   // 1) Saved language has priority
   try {

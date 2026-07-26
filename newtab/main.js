@@ -79,8 +79,12 @@ window.applySavedDateTimeEnabled = function applySavedDateTimeEnabled(enabled) {
 // Listener activation
 import "./groups.js";
 import "./bookmarks.js";
-import "./contextmenu.js";
-import "./dragdrop.js";
+
+// Load context menu and drag-drop modules asynchronously to avoid blocking initial render
+(async () => {
+  await import("./contextmenu.js");
+  await import("./dragdrop.js");
+})();
 
 window.addEventListener("keydown", e => {
   const isMac = navigator.platform.toUpperCase().includes("MAC");
