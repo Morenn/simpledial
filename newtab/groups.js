@@ -1,4 +1,4 @@
-import { state, saveState, generateId } from "./state.js";
+import { state, saveState, generateId, saveActiveGroupId } from "./state.js";
 import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
@@ -70,6 +70,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups) {
     tab.addEventListener("click", () => {
       if (group.deleted) return;
       window.activeGroupId = group.id;
+      saveActiveGroupId(group.id);
       render();
     });
 
@@ -95,6 +96,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups) {
 
     state.groups.push(g);
     window.activeGroupId = g.id;
+    await saveActiveGroupId(g.id);
 
     await saveState();
     await syncWrite();
@@ -135,6 +137,7 @@ function renderGroupsDropdown(groupsHeader, visibleGroups) {
     option.addEventListener("click", async () => {
       if (group.deleted) return;
       window.activeGroupId = group.id;
+      await saveActiveGroupId(group.id);
       dropdownBtn.textContent = group.name;
       dropdownMenu.classList.remove("show");
       render();
@@ -169,6 +172,7 @@ function renderGroupsDropdown(groupsHeader, visibleGroups) {
 
     state.groups.push(g);
     window.activeGroupId = g.id;
+    await saveActiveGroupId(g.id);
 
     await saveState();
     await syncWrite();
@@ -225,6 +229,7 @@ function showGroupContextMenu(e, group, optionElement) {
     if (window.activeGroupId === group.id) {
       const firstActive = state.groups.find(g => !g.deleted);
       window.activeGroupId = firstActive ? firstActive.id : null;
+      await saveActiveGroupId(window.activeGroupId);
     }
 
     await saveState();
@@ -260,6 +265,7 @@ function showGroupContextMenu(e, group, optionElement) {
     if (window.activeGroupId === group.id) {
       const firstActive = state.groups.find(g => !g.deleted);
       window.activeGroupId = firstActive ? firstActive.id : null;
+      await saveActiveGroupId(window.activeGroupId);
     }
 
     await saveState();
@@ -372,6 +378,7 @@ export async function handleGroupContext(action, el) {
     if (window.activeGroupId === id) {
       const firstActive = state.groups.find(g => !g.deleted);
       window.activeGroupId = firstActive ? firstActive.id : null;
+      await saveActiveGroupId(window.activeGroupId);
     }
 
     await saveState();
@@ -400,6 +407,7 @@ export async function handleGroupContext(action, el) {
     if (window.activeGroupId === id) {
       const firstActive = state.groups.find(g => !g.deleted);
       window.activeGroupId = firstActive ? firstActive.id : null;
+      await saveActiveGroupId(window.activeGroupId);
     }
 
     await saveState();
