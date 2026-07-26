@@ -29,7 +29,7 @@ export const defaultConfig = {
     enableLinkCheck: false,
     highlightDeadLinks: true,
     lastLinkCheck: 0,
-    iconAutoRefreshMode: "all", // "all", "missing", "none"
+    iconAutoRefreshMode: "missing", // "all", "missing", "none"
     iconAutoRefreshHours: 24
   },
   backups: {

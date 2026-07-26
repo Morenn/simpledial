@@ -447,6 +447,13 @@ async function refreshBookmarkIcon(item, options = {}) {
   const frequencyHours = Math.max(1, Number(options.frequencyHours) || DEFAULT_ICON_AUTO_REFRESH_HOURS);
 
   if (!item || item.deleted) return false;
+
+  // "none" mode only blocks automatic/background refreshes. Explicit
+  // force:true calls (triggered by saving/creating a bookmark, or by the
+  // manual "refresh icon" context menu action) always bypass this,
+  // regardless of mode.
+  if (!force && mode === "none") return false;
+
   if (!force && mode === "missing" && !isIconMissing(item)) return false;
   if (!shouldRefreshIcon(getIconRefreshedAt(item), frequencyHours, force)) return false;
 
