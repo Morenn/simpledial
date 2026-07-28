@@ -1,6 +1,6 @@
 import { state, saveState, generateId } from "./state.js";
 import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
-import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest } from "./sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
 import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
@@ -706,6 +706,7 @@ if (syncCredentialsSaveBtn) {
 
 if (syncTest) {
   syncTest.addEventListener("click", async () => {
+    resetLogonCount();
     const url = syncUrl ? syncUrl.value.trim() : '';
 
     if (!url) {

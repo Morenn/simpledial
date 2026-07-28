@@ -30,6 +30,11 @@ function getSyncFetchUrl(url, type) {
 
 const AUTH_REDIRECT_TAB_COOLDOWN_MS = 60 * 1000;
 let lastAuthRedirect = { url: '', timestamp: 0 };
+let logonCount = 0;
+
+export function resetLogonCount() {
+  logonCount = 0;
+}
 
 function normalizeComparableUrl(url) {
   try {
@@ -44,6 +49,8 @@ function normalizeComparableUrl(url) {
 async function maybeOpenAuthRedirectTab(redirectUrl) {
   if (!redirectUrl) return false;
 
+  if (logonCount >= 1) return false;
+
   const now = Date.now();
   const normalized = normalizeComparableUrl(redirectUrl);
   if (normalized === lastAuthRedirect.url && (now - lastAuthRedirect.timestamp) < AUTH_REDIRECT_TAB_COOLDOWN_MS) {
@@ -51,6 +58,7 @@ async function maybeOpenAuthRedirectTab(redirectUrl) {
   }
 
   lastAuthRedirect = { url: normalized, timestamp: now };
+  logonCount++;
 
   try {
     if (chrome?.tabs?.create) {
