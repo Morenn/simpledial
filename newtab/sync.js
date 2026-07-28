@@ -763,33 +763,71 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
     return cloudGroups;
   }
 
-  const merged = {};
-  const localMap = Object.fromEntries((localGroups || []).map(group => [group.id, group]));
-  const cloudMap = Object.fromEntries((cloudGroups || []).map(group => [group.id, group]));
-  const allIds = new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
+  // ---- Merge group-level metadata (name, deleted, etc.) ----
+  const localGroupMap = Object.fromEntries((localGroups || []).map(group => [group.id, group]));
+  const cloudGroupMap = Object.fromEntries((cloudGroups || []).map(group => [group.id, group]));
+  const allGroupIds = new Set([...Object.keys(localGroupMap), ...Object.keys(cloudGroupMap)]);
 
-  for (const id of allIds) {
-    const localGroup = localMap[id];
-    const cloudGroup = cloudMap[id];
+  const mergedGroupMeta = {};
+  for (const id of allGroupIds) {
+    const localGroup = localGroupMap[id];
+    const cloudGroup = cloudGroupMap[id];
 
     if (localGroup && !cloudGroup) {
-      merged[id] = localGroup;
+      mergedGroupMeta[id] = { ...localGroup, items: [] };
       continue;
     }
-
     if (!localGroup && cloudGroup) {
-      merged[id] = cloudGroup;
+      mergedGroupMeta[id] = { ...cloudGroup, items: [] };
       continue;
     }
-
-    const newerGroup = pickNewerRecord(localGroup, cloudGroup);
-    merged[id] = {
-      ...newerGroup,
-      items: mergeItems(localGroup.items || [], cloudGroup.items || [])
-    };
+    mergedGroupMeta[id] = { ...pickNewerRecord(localGroup, cloudGroup), items: [] };
   }
 
-  return Object.values(merged);
+  // ---- Merge items GLOBALLY by id, tracking which group each belongs to ----
+  // This is what makes cross-group moves (moveBookmarkToGroup) sync correctly
+  const localItemIndex = {};
+  const cloudItemIndex = {};
+
+  for (const group of (localGroups || [])) {
+    for (const item of (group.items || [])) {
+      localItemIndex[item.id] = { item, groupId: group.id };
+    }
+  }
+  for (const group of (cloudGroups || [])) {
+    for (const item of (group.items || [])) {
+      cloudItemIndex[item.id] = { item, groupId: group.id };
+    }
+  }
+
+  const allItemIds = new Set([...Object.keys(localItemIndex), ...Object.keys(cloudItemIndex)]);
+
+  for (const itemId of allItemIds) {
+    const localEntry = localItemIndex[itemId];
+    const cloudEntry = cloudItemIndex[itemId];
+
+    let winner, winningGroupId;
+
+    if (localEntry && !cloudEntry) {
+      winner = localEntry.item;
+      winningGroupId = localEntry.groupId;
+    } else if (!localEntry && cloudEntry) {
+      winner = cloudEntry.item;
+      winningGroupId = cloudEntry.groupId;
+    } else {
+      const localIsNewer = pickNewerRecord(localEntry.item, cloudEntry.item) === localEntry.item;
+      winner = localIsNewer ? localEntry.item : cloudEntry.item;
+      winningGroupId = localIsNewer ? localEntry.groupId : cloudEntry.groupId;
+    }
+
+    // Only place the item if its target group actually exists in the merged
+    // result (it always should, but guard against orphaned data).
+    if (mergedGroupMeta[winningGroupId]) {
+      mergedGroupMeta[winningGroupId].items.push(winner);
+    }
+  }
+
+  return Object.values(mergedGroupMeta);
 }
 
 function getGroupsFreshness(groups) {
@@ -839,39 +877,6 @@ async function mergeAndWriteAtomically(config, cloudGroups) {
   }
 
   return writeResult;
-}
-
-// ─────────────────────────────────────────────────────────────
-//  MERGE ITEMS
-// ─────────────────────────────────────────────────────────────
-
-function mergeItems(localItems, cloudItems) {
-  const result = {};
-  const localMap = Object.fromEntries(localItems.map(i => [i.id, i]));
-  const cloudMap = Object.fromEntries(cloudItems.map(i => [i.id, i]));
-
-  const allIds = new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
-
-  for (const id of allIds) {
-    const local = localMap[id];
-    const cloud = cloudMap[id];
-
-    if (local && !cloud) {
-      result[id] = local;
-      continue;
-    }
-
-    if (!local && cloud) {
-      result[id] = cloud;
-      continue;
-    }
-
-    if (local && cloud) {
-      result[id] = pickNewerRecord(local, cloud);
-    }
-  }
-
-  return Object.values(result);
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -1,9 +1,60 @@
 import { handleGroupContext } from "./groups.js";
-import { handleBookmarkContext } from "./bookmarks.js";
+import { handleBookmarkContext, moveBookmarkToGroup } from "./bookmarks.js";
+import { state } from "./state.js";
 
 // ---------- Context menu ----------
 const contextMenu = document.getElementById("context-menu");
+const moveToItem = document.getElementById("context-move-to");
+const moveToSubmenu = document.getElementById("context-move-to-submenu");
 let contextTarget = null;
+
+// Move submenu to <body> so it isn't clipped by #context-menu's overflow:auto
+if (moveToSubmenu) {
+  document.body.appendChild(moveToSubmenu);
+}
+
+// Show/position submenu on hover over the "Move to" item
+if (moveToItem && moveToSubmenu) {
+  let hideTimeout = null;
+
+  function showSubmenu() {
+    clearTimeout(hideTimeout);
+
+    const rect = moveToItem.getBoundingClientRect();
+
+    moveToSubmenu.style.visibility = "hidden";
+    moveToSubmenu.classList.add("show");
+    const submenuHeight = moveToSubmenu.offsetHeight;
+    const submenuWidth = moveToSubmenu.offsetWidth;
+
+    let left = rect.right;
+    if (left + submenuWidth > window.innerWidth) {
+      left = Math.max(0, rect.left - submenuWidth);
+    }
+
+    let top = rect.top;
+    if (top + submenuHeight > window.innerHeight) {
+      top = Math.max(0, window.innerHeight - submenuHeight - 4);
+    }
+
+    moveToSubmenu.style.left = `${left}px`;
+    moveToSubmenu.style.top = `${top}px`;
+    moveToSubmenu.style.visibility = "visible";
+  }
+
+  function scheduleHideSubmenu() {
+    clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+      moveToSubmenu.classList.remove("show");
+    }, 150);
+  }
+
+  moveToItem.addEventListener("mouseenter", showSubmenu);
+  moveToItem.addEventListener("mouseleave", scheduleHideSubmenu);
+
+  moveToSubmenu.addEventListener("mouseenter", () => clearTimeout(hideTimeout));
+  moveToSubmenu.addEventListener("mouseleave", scheduleHideSubmenu);
+}
 
 // Open context menu on right-click
 document.addEventListener("contextmenu", e => {
@@ -33,21 +84,20 @@ document.addEventListener("contextmenu", e => {
 });
 
 // Update context menu visibility based on bookmark state
-async function updateContextMenuForBookmark(bookmarkTile) {
+function updateContextMenuForBookmark(bookmarkTile) {
   const bookmarkId = bookmarkTile.dataset.bookmarkId;
-  const { state } = await import("./state.js");
-  
+
   const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
   const item = group?.items.find(i => i.id === bookmarkId);
-  
+
   const deleteBtn = contextMenu.querySelector('[data-action="delete"]');
   const restoreBtn = contextMenu.querySelector('[data-action="restore"]');
   const deletePermanentBtn = contextMenu.querySelector('[data-action="delete-permanent"]');
   const editBtn = contextMenu.querySelector('[data-action="edit"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
-  
+
   if (!item) return;
-  
+
   // Show/hide based on deleted status
   if (item.deleted) {
     // Item is deleted: show restore and delete-permanent, hide delete
@@ -56,6 +106,7 @@ async function updateContextMenuForBookmark(bookmarkTile) {
     if (deletePermanentBtn) deletePermanentBtn.classList.remove("hidden");
     if (editBtn) editBtn.classList.add("hidden");
     if (refreshIconBtn) refreshIconBtn.classList.add("hidden");
+    if (moveToItem) moveToItem.classList.add("hidden");
   } else {
     // Item is not deleted: show delete and edit, hide restore and delete-permanent
     if (deleteBtn) deleteBtn.classList.remove("hidden");
@@ -63,24 +114,57 @@ async function updateContextMenuForBookmark(bookmarkTile) {
     if (deletePermanentBtn) deletePermanentBtn.classList.add("hidden");
     if (editBtn) editBtn.classList.remove("hidden");
     if (refreshIconBtn) refreshIconBtn.classList.remove("hidden");
+    if (moveToItem) moveToItem.classList.remove("hidden");
+    populateMoveToSubmenu(bookmarkId);
   }
 }
 
+// Populate the "Move to" submenu with all non-deleted groups except the current one
+function populateMoveToSubmenu(bookmarkId) {
+  if (!moveToSubmenu) return;
+  moveToSubmenu.innerHTML = "";
+
+  const availableGroups = state.groups.filter(g => !g.deleted && g.id !== window.activeGroupId);
+
+  if (availableGroups.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "disabled";
+    empty.textContent = window.t ? window.t("noOtherGroups") : "No other groups";
+    moveToSubmenu.appendChild(empty);
+    return;
+  }
+
+  availableGroups.forEach(group => {
+    const option = document.createElement("div");
+    option.textContent = group.name;
+    option.dataset.targetGroupId = group.id;
+    option.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await moveBookmarkToGroup(bookmarkId, group.id);
+      contextMenu.classList.add("hidden");
+      moveToSubmenu.classList.remove("show");
+      contextTarget = null;
+    });
+    moveToSubmenu.appendChild(option);
+  });
+}
+
 // Update context menu visibility based on group state
-async function updateContextMenuForGroup(groupTab) {
+function updateContextMenuForGroup(groupTab) {
   const groupId = groupTab.dataset.groupId;
-  const { state } = await import("./state.js");
-  
+
   const group = state.groups.find(g => g.id === groupId);
-  
+
   const editBtn = contextMenu.querySelector('[data-action="edit"]');
   const deleteBtn = contextMenu.querySelector('[data-action="delete"]');
   const restoreBtn = contextMenu.querySelector('[data-action="restore"]');
   const deletePermanentBtn = contextMenu.querySelector('[data-action="delete-permanent"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
-  
+
   if (!group) return;
-  
+
+  if (moveToItem) moveToItem.classList.add("hidden");
+
   // Show/hide based on deleted status
   if (group.deleted) {
     // Group is deleted: show restore and delete-permanent, hide edit and delete
@@ -101,8 +185,9 @@ async function updateContextMenuForGroup(groupTab) {
 
 // Click outside to close menu
 document.addEventListener("click", e => {
-  if (!e.target.closest("#context-menu")) {
+  if (!e.target.closest("#context-menu") && !e.target.closest("#context-move-to-submenu")) {
     contextMenu.classList.add("hidden");
+    if (moveToSubmenu) moveToSubmenu.classList.remove("show");
     contextTarget = null;
   }
 });

@@ -8,7 +8,6 @@ import { render } from "./render.js";
 import { applyBackground, applyTileOpacity } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
-
 // ======================================================
 // SETTINGS MODAL UI
 // ======================================================

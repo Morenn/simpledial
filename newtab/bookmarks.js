@@ -766,3 +766,25 @@ export async function handleBookmarkContext(action, el) {
     render();
   }
 }
+
+// ---------- Move bookmark to another group ----------
+export async function moveBookmarkToGroup(bookmarkId, targetGroupId) {
+  const sourceGroup = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
+  const targetGroup = state.groups.find(g => g.id === targetGroupId && !g.deleted);
+
+  if (!sourceGroup || !targetGroup || sourceGroup.id === targetGroup.id) return;
+
+  const itemIndex = sourceGroup.items.findIndex(i => i.id === bookmarkId);
+  if (itemIndex === -1) return;
+
+  const [item] = sourceGroup.items.splice(itemIndex, 1);
+  item.updatedAt = Date.now();
+  targetGroup.items.push(item);
+
+  sourceGroup.updatedAt = Date.now();
+  targetGroup.updatedAt = Date.now();
+
+  await saveState();
+  await syncWrite();
+  render();
+}

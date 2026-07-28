@@ -14,6 +14,7 @@
   "restore": { "message": "Restore" },
   "deletePermanent": { "message": "Delete permanently" },
   "refreshIcon": { "message": "Refresh icon" },
+  "moveToGroup": { "message": "Move to group" },
   "confirmDeletePermanentBookmark": { "message": "Delete bookmark \"{0}\" permanently? This action cannot be undone." },
   "confirmDeletePermanentGroup": { "message": "Delete group \"{0}\" permanently? This action cannot be undone." },
   "editGroup": { "message": "Edit group name:" },

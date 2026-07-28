@@ -250,6 +250,56 @@ body {
   background: var(--bg-hover);
 }
 
+.context-menu-has-submenu {
+  position: relative;
+}
+
+.context-menu-has-submenu::after {
+  content: "▶";
+  position: absolute;
+  right: 0.6rem;
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.context-submenu {
+  display: none;
+  position: fixed;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-width: 140px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 10001;
+}
+
+.context-menu-has-submenu:hover .context-submenu,
+.context-submenu.show {
+  display: block;
+}
+
+.context-submenu div {
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.context-submenu div:last-child {
+  border-bottom: none;
+}
+
+.context-submenu div:hover {
+  background: var(--bg-hover);
+}
+
+.context-submenu div.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 /* ─────────────────────────────────────────────
   THEME TOGGLE
 ───────────────────────────────────────────── */
