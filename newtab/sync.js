@@ -714,6 +714,12 @@ export async function syncRead() {
 // ─────────────────────────────────────────────────────────────
 
 export async function syncWrite(sourceState = state) {
+  // do no sync if sync is disabled in config
+  const config = await loadConfig();
+  if (!config.sync.enabled) {
+    return true; // sync disabled — nothing to do, not an error
+  }
+
   const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
   const result = await syncWriteDetailed(null, groups);
   return result.ok;

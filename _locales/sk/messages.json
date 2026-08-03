@@ -31,7 +31,7 @@
   "syncServer": { "message": "Sync Server" },
   "syncProvider": { "message": "Poskytovateľ synchronizácie" },
   "syncProviderHint": { "message": "Vyberte, kde sa budú synchronizovať údaje záložiek." },
-  "syncProviderDirectDesc": { "message": "Použiť priamu URL JSON endpointu." },
+  "syncProviderDirectDesc": { "message": "Použiť priamu URL JSON endpointu. Funguje s akýmkoľvek serverom alebo skriptom, ktorý dokáže čítať a zapisovať (GET/PUT) súbory cez HTTP — nie je potrebný žiadny špeciálny softvér." },
   "syncProviderWebdavDesc": { "message": "Použiť server kompatibilný s WebDAV." },
   "syncProviderBrowserDesc": { "message": "Použiť synchronizačné úložisko spravované prehliadačom." },
   "syncConnection": { "message": "Pripojenie" },
