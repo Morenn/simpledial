@@ -337,7 +337,7 @@ async function initializeRemote(url, headers = {}) {
     const res = await fetchWithTimeout(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify(defaultData, null, 2)
+      body: JSON.stringify(defaultData)
     });
 
     if (!res.ok) {
@@ -357,7 +357,7 @@ async function initializeRemoteDetailed(url, headers = {}) {
     const res = await fetchWithTimeout(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify(defaultData, null, 2)
+      body: JSON.stringify(defaultData)
     });
 
     if (!res.ok) {
@@ -597,7 +597,7 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null) {
   const credUser = credentials.username || '';
   const credPass = credentials.password || '';
   const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
-  const writeBody = JSON.stringify({ groups: groupsToWrite }, null, 2);
+  const writeBody = JSON.stringify({ groups: groupsToWrite });
   const lockRetryDelays = [400, 900, 1500];
 
   try {
