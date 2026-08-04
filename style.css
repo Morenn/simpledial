@@ -874,6 +874,35 @@ body.theme-dark .bookmark-title:hover {
   background: var(--bg-hover);
 }
 
+/* Keep settings action buttons always reachable while tab content scrolls */
+#settings-modal .modal-buttons {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+  justify-content: flex-end;
+  margin: 0 -1.2rem -1.2rem -1.2rem;
+  padding: 0.75rem 1.2rem 0.9rem 1.2rem;
+  border-top: 1px solid var(--border);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--bg2) 95%, black 5%) 0%,
+    color-mix(in srgb, var(--bg2) 82%, transparent 18%) 70%,
+    transparent 100%
+  );
+  backdrop-filter: blur(2px);
+}
+
+#settings-modal .modal-buttons .settings-unsaved-indicator {
+  order: -1;
+  flex: 1 0 100%;
+  text-align: right;
+  margin-right: 0;
+  padding-left: 0;
+}
+
 /* ─────────────────────────────────────────────
   SEARCH
 ───────────────────────────────────────────── */
