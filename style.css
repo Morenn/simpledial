@@ -1060,6 +1060,15 @@ body.theme-dark .bookmark-title:hover {
   border-bottom: 2px solid transparent;
   opacity: 0.7;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* Remove default focus outline for buttons in settings tabs in mozilla*/
+.settings-tab-btn::-moz-focus-inner {
+  border: 0;
+  padding: 0;
 }
 
 .settings-tab-btn:hover {
