@@ -8,56 +8,30 @@ const LANG_FILES = [
 ];
 
 const languages = {};
+const languageLoadPromises = {};
 let currentLanguage = 'en';
 let useNative = false; // chrome.i18n mode
 
-// --- Translation function ---
-export function t(key) {
-  if (useNative && chrome?.i18n?.getMessage) {
-    const msg = chrome.i18n.getMessage(key);
-    if (msg) return msg;
+function getLanguageEntry(code) {
+  return LANG_FILES.find(entry => entry.code === code) || null;
+}
+
+async function loadLanguageFile(code) {
+  const entry = getLanguageEntry(code);
+  if (!entry) return false;
+  if (languages[code]) return true;
+
+  if (languageLoadPromises[code]) {
+    return languageLoadPromises[code];
   }
 
-  const lang = languages[currentLanguage];
-  if (lang?.texts?.[key]) return lang.texts[key];
-
-  return key;
-}
-
-// --- Set language ---
-export function setLanguage(lang) {
-  if (languages[lang]) {
-    currentLanguage = lang;
-
-    // User explicitly chose a language → disable chrome.i18n
-    useNative = false;
-
-    try { localStorage.setItem('speeddial-language', lang); } catch (e) {}
-    document.documentElement.lang = lang;
-    return true;
-  }
-  return false;
-}
-
-export function getCurrentLanguage() {
-  return currentLanguage;
-}
-
-export function getAvailableLanguages() {
-  return LANG_FILES.map(e => ({ code: e.code, name: e.name }));
-}
-
-// --- Initialize language system ---
-export async function initLanguage() {
-  // Load JSON files manually (Firefox + fallback)
-  await Promise.all(LANG_FILES.map(async entry => {
+  languageLoadPromises[code] = (async () => {
     try {
       const url = runtime.getURL(entry.path);
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to load ' + entry.path);
 
       const json = await res.json();
-
       const texts = {};
       for (const key of Object.keys(json)) {
         const item = json[key];
@@ -71,48 +45,113 @@ export async function initLanguage() {
         name: entry.name,
         texts
       };
+      return true;
     } catch (err) {
       console.warn('i18n: failed to load', entry.path, err);
+      return false;
     }
-  }));
+  })();
 
+  const loaded = await languageLoadPromises[code];
+  if (!loaded) {
+    delete languageLoadPromises[code];
+  }
+  return loaded;
+}
+
+// --- Translation function ---
+export function t(key) {
+  if (useNative && chrome?.i18n?.getMessage) {
+    const msg = chrome.i18n.getMessage(key);
+    if (msg) return msg;
+  }
+
+  const lang = languages[currentLanguage];
+  if (lang?.texts?.[key]) return lang.texts[key];
+
+  const english = languages.en;
+  if (english?.texts?.[key]) return english.texts[key];
+
+  return key;
+}
+
+// --- Set language ---
+export async function setLanguage(lang) {
+  const loaded = await loadLanguageFile(lang);
+  if (!loaded) return false;
+
+  currentLanguage = lang;
+
+  // User explicitly chose a language → disable chrome.i18n
+  useNative = false;
+
+  try { localStorage.setItem('speeddial-language', lang); } catch (e) {}
+  document.documentElement.lang = lang;
+  return true;
+}
+
+export function getCurrentLanguage() {
+  return currentLanguage;
+}
+
+export function getAvailableLanguages() {
+  return LANG_FILES.map(e => ({ code: e.code, name: e.name }));
+}
+
+// --- Initialize language system ---
+export async function initLanguage() {
   // 1) Saved language has priority
+  let targetLanguage = 'en';
+  let hasUserOverride = false;
+
   try {
     const saved = localStorage.getItem('speeddial-language');
-    if (saved && languages[saved]) {
-      currentLanguage = saved;
-      useNative = false; // user override
-      document.documentElement.lang = saved;
-      return;
+    if (saved && getLanguageEntry(saved)) {
+      targetLanguage = saved;
+      hasUserOverride = true;
     }
   } catch (e) {}
 
-  // 2) Browser language detection
-  const browserLang = (navigator.language || navigator.userLanguage || 'en')
-    .split('-')[0]
-    .toLowerCase();
+  if (!hasUserOverride) {
+    // 2) Browser language detection
+    const browserLang = (navigator.language || navigator.userLanguage || 'en')
+      .split('-')[0]
+      .toLowerCase();
 
-  if (languages[browserLang]) {
-    currentLanguage = browserLang;
-  } else {
-    currentLanguage = 'en';
+    targetLanguage = getLanguageEntry(browserLang) ? browserLang : 'en';
   }
 
-  // Only use chrome.i18n if user did NOT override language
-  useNative = chrome?.i18n?.getMessage ? true : false;
+  const loadedTarget = await loadLanguageFile(targetLanguage);
+  if (!loadedTarget && targetLanguage !== 'en') {
+    await loadLanguageFile('en');
+    targetLanguage = 'en';
+  }
 
+  currentLanguage = targetLanguage;
+  useNative = hasUserOverride ? false : !!chrome?.i18n?.getMessage;
   document.documentElement.lang = currentLanguage;
+
+  // Keep english cached for stable fallback after first load.
+  if (currentLanguage !== 'en' && !languages.en) {
+    void loadLanguageFile('en');
+  }
 }
 
-export function resetLanguageToBrowser() {
+export async function resetLanguageToBrowser() {
   // Get browser language (e.g., "de-DE" → "de")
   const browserLang = (navigator.language || navigator.userLanguage || 'en')
     .split('-')[0]
     .toLowerCase();
 
+  const targetLanguage = getLanguageEntry(browserLang) ? browserLang : 'en';
+  const loaded = await loadLanguageFile(targetLanguage);
+  if (!loaded && targetLanguage !== 'en') {
+    await loadLanguageFile('en');
+  }
+
   // If we have a translation for this language → use it
-  if (languages[browserLang]) {
-    currentLanguage = browserLang;
+  if (languages[targetLanguage]) {
+    currentLanguage = targetLanguage;
   } else {
     // Otherwise fallback to English
     currentLanguage = 'en';

@@ -2103,8 +2103,8 @@ document.getElementById('open-extension-settings').addEventListener('click', () 
 });
 
 // button to reset language to browser default
-document.getElementById('reset-language-to-browser').addEventListener('click', () => {
-  resetLanguageToBrowser();
+document.getElementById('reset-language-to-browser').addEventListener('click', async () => {
+  await resetLanguageToBrowser();
   if (languageSelect) {
     languageSelect.value = getCurrentLanguage();
   }

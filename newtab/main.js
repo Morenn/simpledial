@@ -225,9 +225,9 @@ export function setupLanguageSelector() {
     langSelect.value = getCurrentLanguage();
 
     // Handle language change
-    langSelect.addEventListener("change", (e) => {
+    langSelect.addEventListener("change", async (e) => {
       const newLang = e.target.value;
-      if (setLanguage(newLang)) {
+      if (await setLanguage(newLang)) {
         // Re-render UI with new language
         render();
         // Update all UI text
