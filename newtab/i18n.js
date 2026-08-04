@@ -1,5 +1,7 @@
 // i18n loader: loads language JSON files
 
+import { loadConfig } from "./config.js";
+
 const runtime = typeof browser !== 'undefined' ? browser.runtime : chrome.runtime;
 
 const LANG_FILES = [
@@ -10,7 +12,14 @@ const LANG_FILES = [
 const languages = {};
 const languageLoadPromises = {};
 let currentLanguage = 'en';
-let useNative = false; // chrome.i18n mode
+let useNative = false; // Keep false: chrome.i18n can stay stale until full extension reload during development.
+let i18nHotReloadEnabled = false;
+
+function normalizeMessageText(value) {
+  if (typeof value !== 'string') return value;
+  // Handle both real newlines and literal "\\n" sequences consistently.
+  return value.replace(/\\n/g, '\n');
+}
 
 function getLanguageEntry(code) {
   return LANG_FILES.find(entry => entry.code === code) || null;
@@ -27,8 +36,10 @@ async function loadLanguageFile(code) {
 
   languageLoadPromises[code] = (async () => {
     try {
-      const url = runtime.getURL(entry.path);
-      const res = await fetch(url);
+      const baseUrl = runtime.getURL(entry.path);
+      const url = i18nHotReloadEnabled ? `${baseUrl}?v=${Date.now()}` : baseUrl;
+      const fetchOptions = i18nHotReloadEnabled ? { cache: 'no-store' } : {};
+      const res = await fetch(url, fetchOptions);
       if (!res.ok) throw new Error('Failed to load ' + entry.path);
 
       const json = await res.json();
@@ -63,14 +74,14 @@ async function loadLanguageFile(code) {
 export function t(key) {
   if (useNative && chrome?.i18n?.getMessage) {
     const msg = chrome.i18n.getMessage(key);
-    if (msg) return msg;
+    if (msg) return normalizeMessageText(msg);
   }
 
   const lang = languages[currentLanguage];
-  if (lang?.texts?.[key]) return lang.texts[key];
+  if (lang?.texts?.[key]) return normalizeMessageText(lang.texts[key]);
 
   const english = languages.en;
-  if (english?.texts?.[key]) return english.texts[key];
+  if (english?.texts?.[key]) return normalizeMessageText(english.texts[key]);
 
   return key;
 }
@@ -100,6 +111,13 @@ export function getAvailableLanguages() {
 
 // --- Initialize language system ---
 export async function initLanguage() {
+  try {
+    const config = await loadConfig();
+    i18nHotReloadEnabled = !!config?.advanced?.i18nHotReload;
+  } catch {
+    i18nHotReloadEnabled = false;
+  }
+
   // 1) Saved language has priority
   let targetLanguage = 'en';
   let hasUserOverride = false;
@@ -128,7 +146,7 @@ export async function initLanguage() {
   }
 
   currentLanguage = targetLanguage;
-  useNative = hasUserOverride ? false : !!chrome?.i18n?.getMessage;
+  useNative = false;
   document.documentElement.lang = currentLanguage;
 
   // Keep english cached for stable fallback after first load.
@@ -158,7 +176,7 @@ export async function resetLanguageToBrowser() {
   }
 
   // Reset: enable chrome.i18n if it exists
-  useNative = chrome?.i18n?.getMessage ? true : false;
+  useNative = false;
 
   // Clear any saved override so future loads keep following the browser
   // language automatically, instead of re-pinning it as an explicit choice

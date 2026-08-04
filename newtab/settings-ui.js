@@ -104,6 +104,7 @@ const hkIconRefreshHours = document.getElementById("hk-icon-refresh-hours");
 // Advanced Elements
 const advFaviconDebugLogging = document.getElementById("enable-favicon-debug-logging");
 const advDeadLinkDebugLogging = document.getElementById("enable-dead-link-debug-logging");
+const advI18nHotReload = document.getElementById("enable-i18n-hot-reload");
 const advExperimentalFaviconFetchLink = document.getElementById("enable-experimental-favicon-fetch-link");
 const advExperimentalFaviconFetchManifest = document.getElementById("enable-experimental-favicon-fetch-manifest");
 
@@ -113,6 +114,9 @@ function applyAdvancedSettingsToControls(advancedConfig = {}) {
   }
   if (advDeadLinkDebugLogging) {
     advDeadLinkDebugLogging.checked = advancedConfig.deadLinkDebugLogging ?? advancedConfig.enableDeadLinkDebugLogging ?? false;
+  }
+  if (advI18nHotReload) {
+    advI18nHotReload.checked = advancedConfig.i18nHotReload ?? advancedConfig.enableI18nHotReload ?? false;
   }
   if (advExperimentalFaviconFetchLink) {
     advExperimentalFaviconFetchLink.checked = advancedConfig.faviconFetchLink ?? advancedConfig.experimentalFaviconFetchLink ?? false;
@@ -1515,9 +1519,11 @@ async function persistSettings(closeAfterSave = false) {
   // Save advanced settings
   config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;
   config.advanced.deadLinkDebugLogging = !!advDeadLinkDebugLogging?.checked;
+  config.advanced.i18nHotReload = !!advI18nHotReload?.checked;
   config.advanced.faviconFetchLink = !!advExperimentalFaviconFetchLink?.checked;
   config.advanced.faviconFetchManifest = !!advExperimentalFaviconFetchManifest?.checked;
   delete config.advanced.enableDebugLogging;
+  delete config.advanced.enableI18nHotReload;
   delete config.advanced.experimentalFaviconFetchLink;
   delete config.advanced.experimentalFaviconFetchManifest;
 
