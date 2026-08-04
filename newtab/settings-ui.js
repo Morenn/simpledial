@@ -28,12 +28,10 @@ const syncReadTestBtn = document.getElementById("sync-read-test");
 const syncWriteTestBtn = document.getElementById("sync-write-test");
 const syncEnable = document.getElementById("sync-enable");
 const syncType = document.getElementById("sync-type");
-const syncWebdavType = document.getElementById("sync-webdav-type");
 const syncAuthMode = document.getElementById("sync-auth-mode");
 const syncUsername = document.getElementById("sync-username");
 const syncPassword = document.getElementById("sync-password");
 const syncStatus = document.getElementById("sync-status");
-const syncWebdavTypeRow = document.getElementById("sync-webdav-type-row");
 const syncCredentialsSaveBtn = document.getElementById("sync-credentials-save");
 const syncCredentialsRow = document.getElementById("sync-credentials-row");
 const syncImmediate = document.getElementById("sync-immediate");
@@ -328,7 +326,6 @@ settingsBtn.addEventListener("click", async () => {
   syncUrl.value = config.sync.serverUrl || "";
   syncEnable.checked = config.sync.enabled;
   if (syncType) syncType.value = config.sync.type || 'direct';
-  if (syncWebdavType) syncWebdavType.value = config.sync.webdavType || 'generic';
   if (syncAuthMode) syncAuthMode.value = config.sync.authMode || (config.sync.password ? 'basic' : 'none');
   syncRadioGroupFromModel(syncType, syncTypeChoices);
   syncRadioGroupFromModel(syncAuthMode, syncAuthChoices);
@@ -557,7 +554,6 @@ function updateSyncFields() {
   if (syncUrlDiv) syncUrlDiv.style.display = isBrowserSync ? 'none' : '';
   if (syncTest) syncTest.style.display = isBrowserSync ? 'none' : '';
   if (authDiv) authDiv.style.display = isBrowserSync ? 'none' : '';
-  if (syncWebdavTypeRow) syncWebdavTypeRow.style.display = isWebdav ? '' : 'none';
   if (syncBrowserHint) syncBrowserHint.classList.toggle('hidden', !isBrowserSync);
 
   const usingBasic = (isDirect || isWebdav) && syncAuthMode && syncAuthMode.value === 'basic';
@@ -607,7 +603,6 @@ if (syncAuthMode) syncAuthMode.addEventListener('change', () => {
 });
 if (syncEnable) syncEnable.addEventListener('change', updateSyncNowButtonDisabledState);
 if (syncType) syncType.addEventListener('change', updateSyncFields);
-if (syncWebdavType) syncWebdavType.addEventListener('change', updateSyncFields);
 if (syncUsername) syncUsername.addEventListener('input', markCredentialsTouched);
 if (syncPassword) syncPassword.addEventListener('input', markCredentialsTouched);
 const syncEncryptModeEl = document.getElementById('sync-encrypt-mode');
@@ -629,10 +624,6 @@ if (syncCredentialsSaveBtn) {
       clearSyncCredentialsInConfig(config);
     } else if (syncUrl.value.trim()) {
       config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, "");
-    }
-
-    if (syncWebdavType) {
-      config.sync.webdavType = syncWebdavType.value || 'generic';
     }
 
     config.sync.authMode = 'basic';
@@ -1458,10 +1449,6 @@ async function persistSettings(closeAfterSave = false) {
     config.sync.encryptionMode = 'none';
   } else if (syncUrl.value.trim()) {
     config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, ""); // Remove trailing slash
-  }
-
-  if (syncWebdavType) {
-    config.sync.webdavType = syncWebdavType.value || 'generic';
   }
 
   // Persist selected auth mode for direct/webdav sync types.

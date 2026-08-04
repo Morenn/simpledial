@@ -185,7 +185,6 @@ export async function loadSyncConfig() {
   return {
     url: config.sync.serverUrl,
     type: config.sync.type || 'direct',
-    webdavType: config.sync.webdavType || 'generic',
     username: config.sync.username || '',
     password: config.sync.password || '',
     authMode: config.sync.authMode || (config.sync.password ? 'basic' : 'none'),
@@ -920,9 +919,9 @@ export function startSyncLoop() {
     }
   };
 
-  // Run sync loop every 10 seconds to check if sync is needed
+  // Run sync loop every 20 seconds to check if sync is needed
   // This allows for flexible interval configuration without restarting the interval
-  setInterval(runSyncLoop, 10000);
+  setInterval(runSyncLoop, 20000);
   runSyncLoop();
 }
 

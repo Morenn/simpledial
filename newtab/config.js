@@ -11,7 +11,6 @@ export const defaultConfig = {
     enabled: false,
     serverUrl: "",
     type: "direct", // "direct", "webdav" or "browser"
-    webdavType: "generic", // "generic" or "nextcloud"
     authMode: "none", // "none" or "basic"
     username: "",
     password: "",
