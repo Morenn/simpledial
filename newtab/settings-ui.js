@@ -1,4 +1,4 @@
-import { state, saveState, generateId } from "./state.js";
+﻿import { state, saveState, generateId } from "./state.js";
 import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
 import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
@@ -1003,10 +1003,16 @@ importFile.addEventListener("change", async (e) => {
         return;
       }
 
+      const config = await loadConfig();
+      if (config.sync.enabled === true) {
+        config.sync.enabled = false;
+        await saveConfig(config);
+      }
+
       state.groups = imported.groups;
       await saveState();
-
-      alert("Data imported successfully!");
+      alert(t('importedSuccessfully') + "\n\n" + t('syncDisabledAfterImport'));
+      
       settingsModal.classList.add("hidden");
       // Re-render UI to show imported data
       window.location.reload();
@@ -1037,10 +1043,17 @@ importNetscapeFile?.addEventListener("change", async (e) => {
         return;
       }
 
+      const config = await loadConfig();
+      if (config.sync.enabled === true) {
+        config.sync.enabled = false;
+        await saveConfig(config);
+      }
+
       state.groups = importedGroups;
       await saveState();
 
-      alert("Data imported successfully!");
+      alert(t('importedSuccessfully') + "\n\n" + t('syncDisabledAfterImport'));
+      
       settingsModal.classList.add("hidden");
       window.location.reload();
     } catch (error) {
@@ -1303,10 +1316,16 @@ importBookmarksBtn?.addEventListener("click", async () => {
       return;
     }
 
+    const config = await loadConfig();
+    if (config.sync.enabled === true) {
+      config.sync.enabled = false;
+      await saveConfig(config);
+    }
+
     state.groups = importedGroups;
     await saveState();
 
-    alert(t('bookmarksImportSuccessful'));
+    alert(t('bookmarksImportSuccessful') + "\n\n" + t('syncDisabledAfterImport'));
     settingsModal.classList.add("hidden");
     window.location.reload();
   } catch (error) {

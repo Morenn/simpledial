@@ -137,6 +137,7 @@
   "bookmarksExportSuccessful": { "message": "Browser bookmarks exported successfully!" },
   "bookmarksImportSuccessful": { "message": "Browser bookmarks imported successfully!" },
   "importedSuccessfully": { "message": "Data imported successfully!" },
+  "syncDisabledAfterImport": { "message": "Synchronization has been disabled." },
   "invalidFileFormat": { "message": "Invalid file format" },
   "failedToParse": { "message": "Failed to parse file:" },
 

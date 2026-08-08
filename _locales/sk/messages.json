@@ -137,6 +137,7 @@
   "bookmarksExportSuccessful": { "message": "Export do záložiek prebehol úspešne!" },
   "bookmarksImportSuccessful": { "message": "Import zo záložiek prebehol úspešne!" },
   "importedSuccessfully": { "message": "Údaje boli importované úspešne!" },
+  "syncDisabledAfterImport": { "message": "Synchronizácia bola vypnutá." },
   "invalidFileFormat": { "message": "Neplatný formát súboru" },
   "failedToParse": { "message": "Nepodarilo sa spracovať súbor:" },
 
