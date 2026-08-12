@@ -2149,3 +2149,27 @@ if (settingsMaximizeBtn && settingsModalContent) {
     settingsMaximizeBtn.title = isMaximized ? t("restoreSize") : t("maximize");
   });
 }
+// ---------- Info Tab ----------
+(async () => {
+  const badge = document.getElementById("info-version-string");
+  if (!badge) return;
+
+  const manifest = chrome.runtime.getManifest();
+  let label = manifest.version || "?";
+
+  try {
+    const res = await fetch(chrome.runtime.getURL("version.json"));
+    if (res.ok) {
+      const v = await res.json();
+      if (v.commit && v.commit !== "dev") {
+        label += ` (${v.commit})`;
+      } else if (v.commit === "dev") {
+        label += " (dev)";
+      }
+    }
+  } catch {
+    // version.json missing or unreadable — show manifest version only
+  }
+
+  badge.textContent = label;
+})();

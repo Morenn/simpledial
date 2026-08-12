@@ -1,4 +1,4 @@
-{
+﻿{
   "extensionName": { "message": "Simple SpeedDial" },
   "extensionDescription": { "message": "Jednoduché rozšírenie speeddial, ktoré ukladá a synchronizuje záložky cez Nextcloud alebo vlastný JSON synchronizačný server." },
 
@@ -229,5 +229,10 @@
   "restoreSize": { "message": "Obnoviť veľkosť" },
 
   "noActiveGroup": { "message": "Žiadna skupina nie je aktívna." },
-  "language": { "message": "Jazyk" }
+  "language": { "message": "Jazyk" },
+
+  "info": { "message": "Info" },
+  "infoVersion": { "message": "Verzia:" },
+  "infoAuthor": { "message": "Autor:" },
+  "infoLicense": { "message": "Vydane pod licenciou MIT" }
 }

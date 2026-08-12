@@ -1,4 +1,4 @@
-{
+﻿{
   "extensionName": { "message": "Simple SpeedDial" },
   "extensionDescription": { "message": "Lightweight speeddial extension that stores and syncs bookmarks through Nextcloud or a custom JSON sync server." },
 
@@ -229,5 +229,10 @@
   "restoreSize": { "message": "Restore Size" },
 
   "noActiveGroup": { "message": "No group is active." },
-  "language": { "message": "Language" }
+  "language": { "message": "Language" },
+
+  "info": { "message": "Info" },
+  "infoVersion": { "message": "Version:" },
+  "infoAuthor": { "message": "Author:" },
+  "infoLicense": { "message": "Released under the MIT License" }
 }
