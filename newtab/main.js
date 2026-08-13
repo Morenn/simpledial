@@ -16,6 +16,7 @@ let isDateTimeEnabled = false;
 let dateTimePreviewEnabled = null;
 let dateFormatter = null;
 let formatterLocale = "";
+let initialSyncInProgress = false;
 
 function getEffectiveDateTimeEnabled() {
   return dateTimePreviewEnabled ?? isDateTimeEnabled;
@@ -156,6 +157,7 @@ function startIconRefreshLoop() {
 
   // 4) Sync (in background, with re-render after data changes)
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
+    initialSyncInProgress = true;
     (async () => {
       const cloud = await syncRead();
 
@@ -171,11 +173,18 @@ function startIconRefreshLoop() {
         console.warn("Sync server is unavailable, using local data");
         showSyncUnavailableNotification();
       }
-    })().catch(err => console.warn("initial sync failed", err));
+    })()
+      .catch(err => console.warn("initial sync failed", err))
+      .finally(() => {
+        initialSyncInProgress = false;
+      });
   }
 
   // 5) Start sync loop
-  startSyncLoop();
+  startSyncLoop({
+    initialDelayMs: 6000,
+    shouldSkip: () => initialSyncInProgress
+  });
 
   // 5b) Backup check (in background, non-blocking)
   runBackupInitCheck().catch(err => console.error("Backup init check failed", err));

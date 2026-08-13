@@ -6,6 +6,10 @@ import { loadConfig } from "./config.js";
 import { faviconDebugLog } from "./debug.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
+const PLACEHOLDER_ICON_URL = chrome.runtime.getURL("icons/icon-16.png");
+const ICON_HYDRATION_CONCURRENCY = 4;
+const iconHydrationQueue = [];
+let activeIconHydrations = 0;
 
 // ---------- Host permission helpers ----------
 // "*://*/*" is an optional host permission (see manifest.json). contains()
@@ -182,7 +186,10 @@ export function createBookmarkTile(item, config = null) {
 
   const icon = document.createElement("img");
   icon.className = "bookmark-favicon";
-  icon.src = resolveIconSrc(item);
+  icon.loading = "lazy";
+  icon.decoding = "async";
+  icon.src = getImmediateIconSrc(item);
+  scheduleDeferredIconHydration(icon, item);
 
   const link = document.createElement("a");
   link.className = "bookmark-title";
@@ -261,19 +268,65 @@ function isGoogleFaviconUrl(url) {
   }
 }
 
-function resolveIconSrc(item) {
-  // Cached icon (custom or fetched) wins; Google S2 is the last resort.
+function getImmediateIconSrc(item) {
+  // Keep first paint local and immediate.
   const cached = getCachedFaviconDataUrl(item);
   if (cached) return cached;
 
   if (item.customIcon) return item.customIcon;
 
+  return PLACEHOLDER_ICON_URL;
+}
+
+function getDeferredIconSrc(item) {
+  const cached = getCachedFaviconDataUrl(item);
+  if (cached) return null;
+
+  if (item.customIcon) return null;
+
   try {
     const u = new URL(item.url);
     return buildGoogleFaviconUrl(u.hostname, getIconRefreshedAt(item));
   } catch {
-    return "";
+    return null;
   }
+}
+
+function processIconHydrationQueue() {
+  while (activeIconHydrations < ICON_HYDRATION_CONCURRENCY && iconHydrationQueue.length > 0) {
+    const task = iconHydrationQueue.shift();
+    activeIconHydrations++;
+
+    Promise.resolve()
+      .then(task)
+      .catch(err => faviconDebugLog("icon hydration task failed", err))
+      .finally(() => {
+        activeIconHydrations--;
+        processIconHydrationQueue();
+      });
+  }
+}
+
+function scheduleDeferredIconHydration(iconElement, item) {
+  const deferredSrc = getDeferredIconSrc(item);
+  if (!deferredSrc || deferredSrc === iconElement.src) return;
+
+  iconHydrationQueue.push(async () => {
+    await new Promise(resolve => setTimeout(resolve, 25));
+    if (!iconElement.isConnected) return;
+    iconElement.src = deferredSrc;
+  });
+
+  processIconHydrationQueue();
+}
+
+function resolveIconSrc(item) {
+  const immediateSrc = getImmediateIconSrc(item);
+  if (immediateSrc && immediateSrc !== PLACEHOLDER_ICON_URL) {
+    return immediateSrc;
+  }
+
+  return getDeferredIconSrc(item) || immediateSrc;
 }
 
 // Fetches a page's HTML once and parses it, shared by the link-icon and

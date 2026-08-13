@@ -1,6 +1,39 @@
 import { THEME_KEY } from "./state.js";
 import { loadConfig } from "./config.js";
 
+const BACKGROUND_IMAGE_CACHE_KEY = "myspeeddial-background-image-cache";
+
+export async function getBackgroundImageFromCache() {
+  const res = await chrome.storage.local.get(BACKGROUND_IMAGE_CACHE_KEY);
+  const cached = res && res[BACKGROUND_IMAGE_CACHE_KEY];
+  return typeof cached === "string" && cached.trim() ? cached : null;
+}
+
+export async function saveBackgroundImageToCache(bgImage) {
+  if (!bgImage) {
+    await chrome.storage.local.remove(BACKGROUND_IMAGE_CACHE_KEY);
+    return;
+  }
+
+  await chrome.storage.local.set({ [BACKGROUND_IMAGE_CACHE_KEY]: bgImage });
+}
+
+function isAllowedBackgroundImage(bgImage) {
+  if (!bgImage || typeof bgImage !== "string") return false;
+
+  const trimmed = bgImage.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("//")) return false;
+
+  try {
+    const parsed = new URL(trimmed, window.location.href);
+    return parsed.protocol !== "http:" && parsed.protocol !== "https:";
+  } catch {
+    return true;
+  }
+}
+
+
 // ---------- Load theme ----------
 export async function loadTheme() {
   const res = await chrome.storage.local.get(THEME_KEY);
@@ -10,11 +43,17 @@ export async function loadTheme() {
     document.body.className = saved;
   }
 
+  const config = await loadConfig();
+  const cachedBackground = await getBackgroundImageFromCache();
+  if (cachedBackground && !config.appearance?.backgroundImage) {
+    config.appearance = { ...(config.appearance || {}), backgroundImage: cachedBackground };
+  }
+
   // Load background image
-  await applyBackground();
+  await applyBackground(config);
 
   // Load tile opacity
-  await applyTileOpacity();
+  await applyTileOpacity(config);
 }
 
 // ---------- Apply background ----------
@@ -24,10 +63,16 @@ export async function applyBackground(config = null) {
   }
 
   const body = document.body;
-  const bgImage = config.appearance?.backgroundImage;
+  const cachedBackground = await getBackgroundImageFromCache();
+  const bgImage = config.appearance?.backgroundImage || cachedBackground;
   const bgSize = config.appearance?.backgroundSize || "stretched";
 
+  if (config.appearance && bgImage && config.appearance.backgroundImage !== bgImage) {
+    config.appearance.backgroundImage = bgImage;
+  }
+
   if (!bgImage) {
+    await saveBackgroundImageToCache(null);
     // Remove background
     body.style.backgroundImage = "";
     body.style.backgroundSize = "";
@@ -37,6 +82,18 @@ export async function applyBackground(config = null) {
     return;
   }
 
+  if (!isAllowedBackgroundImage(bgImage)) {
+    console.warn("Blocked remote background image URL for startup performance", bgImage);
+    await saveBackgroundImageToCache(null);
+    body.style.backgroundImage = "";
+    body.style.backgroundSize = "";
+    body.style.backgroundPosition = "";
+    body.style.backgroundRepeat = "";
+    body.style.backgroundAttachment = "";
+    return;
+  }
+
+  await saveBackgroundImageToCache(bgImage);
   // Set base background image
   body.style.backgroundImage = `url('${bgImage}')`;
   body.style.backgroundAttachment = "fixed";

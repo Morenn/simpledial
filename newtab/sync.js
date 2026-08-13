@@ -872,6 +872,11 @@ async function mergeAndWriteAtomically(config, cloudGroups) {
   const mergedGroups = mergeGroups(previousGroups, cloudGroups || [], { preferCloudOnBootstrap: true });
   const changed = JSON.stringify(previousGroups) !== JSON.stringify(mergedGroups);
 
+  if (!changed) {
+    await updateLastSyncTime(config);
+    return { ok: true, reason: 'no-changes', changed: false };
+  }
+
   state.groups = mergedGroups;
 
   const writeResult = await syncWriteDetailed({ ...(await loadSyncConfig()), lastSync: Date.now() });
@@ -895,10 +900,13 @@ async function mergeAndWriteAtomically(config, cloudGroups) {
 // ─────────────────────────────────────────────────────────────
 //  PERIODIC SYNC
 // ─────────────────────────────────────────────────────────────
-export function startSyncLoop() {
+export function startSyncLoop(options = {}) {
+  const shouldSkip = (typeof options.shouldSkip === "function") ? options.shouldSkip : null;
+  const initialDelayMs = Math.max(0, Number(options.initialDelayMs) || 0);
   let isSyncing = false;
 
   const runSyncLoop = async () => {
+    if (shouldSkip && shouldSkip()) return;
     if (isSyncing) return;
     isSyncing = true;
 
@@ -922,7 +930,11 @@ export function startSyncLoop() {
   // Run sync loop every 20 seconds to check if sync is needed
   // This allows for flexible interval configuration without restarting the interval
   setInterval(runSyncLoop, 20000);
-  runSyncLoop();
+  if (initialDelayMs > 0) {
+    setTimeout(runSyncLoop, initialDelayMs);
+  } else {
+    runSyncLoop();
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
