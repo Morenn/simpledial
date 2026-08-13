@@ -104,6 +104,7 @@ const hkIconRefreshHours = document.getElementById("hk-icon-refresh-hours");
 // Advanced Elements
 const advFaviconDebugLogging = document.getElementById("enable-favicon-debug-logging");
 const advDeadLinkDebugLogging = document.getElementById("enable-dead-link-debug-logging");
+const advSyncDebugLogging = document.getElementById("enable-sync-debug-logging");
 const advI18nHotReload = document.getElementById("enable-i18n-hot-reload");
 const advExperimentalFaviconFetchLink = document.getElementById("enable-experimental-favicon-fetch-link");
 const advExperimentalFaviconFetchManifest = document.getElementById("enable-experimental-favicon-fetch-manifest");
@@ -114,6 +115,9 @@ function applyAdvancedSettingsToControls(advancedConfig = {}) {
   }
   if (advDeadLinkDebugLogging) {
     advDeadLinkDebugLogging.checked = advancedConfig.deadLinkDebugLogging ?? advancedConfig.enableDeadLinkDebugLogging ?? false;
+  }
+  if (advSyncDebugLogging) {
+    advSyncDebugLogging.checked = advancedConfig.syncDebugLogging ?? false;
   }
   if (advI18nHotReload) {
     advI18nHotReload.checked = advancedConfig.i18nHotReload ?? advancedConfig.enableI18nHotReload ?? false;
@@ -784,7 +788,8 @@ if (syncReadTestBtn) {
       const result = await syncReadTest();
       if (result.ok) {
         const groupCount = Array.isArray(result.data?.groups) ? result.data.groups.length : 0;
-        if (syncTestStatus) syncTestStatus.textContent = "✅ " + t("readTestSuccessful") + ` (${groupCount})`;
+        const headerSummary = formatSupportedHeadersSummary(result.supportedHeaders);
+        if (syncTestStatus) syncTestStatus.textContent = "✅ " + t("readTestSuccessful") + ` (${groupCount})` + (headerSummary ? ` — ${headerSummary}` : '');
       } else {
         if (syncTestStatus) syncTestStatus.textContent = "❌ " + getSyncFailureMessage(result);
       }
@@ -821,6 +826,17 @@ if (syncWriteTestBtn) {
 }
 
 // ---------- Sync Now Button ----------
+const REMOTE_MARKER_LABELS = { sha256: 'X-JSON-SHA256', etag: 'ETag', 'last-modified': 'Last-Modified' };
+
+function formatSupportedHeadersSummary(supportedHeaders) {
+  if (!supportedHeaders) return '';
+
+  const supported = Object.keys(supportedHeaders).filter(type => supportedHeaders[type]);
+  if (supported.length === 0) return t('noChangeMarkerHeaders');
+
+  return t('supportedChangeMarkerHeaders') + ': ' + supported.map(type => REMOTE_MARKER_LABELS[type] || type).join(', ');
+}
+
 function getSyncFailureMessage(result) {
   switch (result?.reason) {
     case 'not-configured':
@@ -1538,6 +1554,7 @@ async function persistSettings(closeAfterSave = false) {
   // Save advanced settings
   config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;
   config.advanced.deadLinkDebugLogging = !!advDeadLinkDebugLogging?.checked;
+  config.advanced.syncDebugLogging = !!advSyncDebugLogging?.checked;
   config.advanced.i18nHotReload = !!advI18nHotReload?.checked;
   config.advanced.faviconFetchLink = !!advExperimentalFaviconFetchLink?.checked;
   config.advanced.faviconFetchManifest = !!advExperimentalFaviconFetchManifest?.checked;

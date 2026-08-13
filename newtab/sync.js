@@ -1,7 +1,7 @@
 import { state, saveState } from "./state.js";
 import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
 import { importRawKey, deriveKeyFromPassword, decryptWithKey } from './crypto.js';
-import { deadLinkDebugLog } from "./debug.js";
+import { deadLinkDebugLog, syncDebugLog } from "./debug.js";
 
 function ensureNoTrailingSlash(url) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -135,6 +135,165 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const REMOTE_MARKER_HEADERS = {
+  sha256: 'X-JSON-SHA256',
+  etag: 'ETag',
+  'last-modified': 'Last-Modified'
+};
+const REMOTE_MARKER_TYPES = ['sha256', 'etag', 'last-modified'];
+
+function isValidRemoteMarker(type, value) {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  const trimmed = value.trim();
+  if (type === 'sha256') return /^[a-fA-F0-9]{64}$/.test(trimmed);
+  if (type === 'etag') return trimmed.length > 0;
+  if (type === 'last-modified') return !Number.isNaN(Date.parse(trimmed));
+  return false;
+}
+
+// Marker capability is scoped to a specific backend; a new/changed URL
+// must be re-probed rather than inheriting a stale supported/unsupported verdict.
+function resetRemoteMarkerStateIfUrlChanged(config) {
+  const currentKey = `${config.sync.type || 'direct'}::${config.sync.serverUrl || ''}`;
+  if (config.sync.lastMarkerCheckUrl === currentKey) {
+    return false;
+  }
+
+  syncDebugLog('backend URL changed, resetting remote-marker state', {
+    previousUrl: config.sync.lastMarkerCheckUrl,
+    currentUrl: currentKey
+  });
+
+  config.sync.remoteChangeHeaderType = null;
+  config.sync.lastSeenRemoteMarker = '';
+  config.sync.lastRemoteMarkerCheck = 0;
+  config.sync.lastMarkerCheckUrl = currentKey;
+  return true;
+}
+
+function logRemoteMarkerCapabilityChange(config, nowType) {
+  const previous = config.sync.remoteChangeHeaderType;
+  if (previous === nowType) return;
+
+  syncDebugLog(
+    nowType ? `remote change marker ACTIVATED (${nowType})` : 'remote change marker DEACTIVATED',
+    { previous, nowType }
+  );
+}
+
+// Probes HEAD/GET responses for a usable change-marker header, trying the
+// previously-successful type first so steady-state checks stay cheap.
+async function getRemoteChangeMarker(cfg, options = {}) {
+  const { allowFallback = true, preferredType = null } = options;
+  const resolvedCfg = cfg || await loadSyncConfig();
+  if (!resolvedCfg || resolvedCfg.type === 'browser') {
+    return null;
+  }
+
+  const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type);
+  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
+  if (!credentials.ok) {
+    return null;
+  }
+
+  const headers = {};
+  applyWebdavCompatibilityHeaders(headers, resolvedCfg);
+  const credUser = credentials.username || '';
+  const credPass = credentials.password || '';
+  if (credPass) {
+    headers['Authorization'] = safeBasicAuthHeader(credUser, credPass);
+  }
+
+  // Extra request headers (auth, webdav compat) turn this into a preflighted
+  // request, which some backends handle differently for Expose-Headers.
+  syncDebugLog('marker probe request headers', {
+    url,
+    sentHeaderNames: Object.keys(headers),
+    willPreflight: Object.keys(headers).length > 0
+  });
+
+  const typesToTry = preferredType
+    ? [preferredType, ...REMOTE_MARKER_TYPES.filter(t => t !== preferredType)]
+    : REMOTE_MARKER_TYPES;
+
+  const attempts = [
+    { method: 'HEAD', cache: 'no-store' },
+    ...(allowFallback ? [{ method: 'GET', cache: 'no-store' }] : [])
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const res = await fetchWithTimeout(url, {
+        method: attempt.method,
+        cache: attempt.cache,
+        headers
+      }, 5000);
+
+      if (!res.ok) {
+        syncDebugLog(`marker probe ${attempt.method} failed`, { status: res.status });
+        continue;
+      }
+
+      for (const type of typesToTry) {
+        const raw = res.headers.get(REMOTE_MARKER_HEADERS[type]);
+        if (isValidRemoteMarker(type, raw)) {
+          syncDebugLog(`marker probe ${attempt.method} succeeded`, { type, value: raw.trim() });
+          return { type, value: raw.trim() };
+        }
+      }
+
+      // No usable marker header is most often a CORS exposure issue: the
+      // server must list the header in Access-Control-Expose-Headers for
+      // cross-origin fetch() to read it at all.
+      syncDebugLog(`marker probe ${attempt.method} found no usable change marker`, {
+        exposedHeaders: [...res.headers.keys()].join(', ') || '(none)',
+        requestOrigin: window.location.origin,
+        targetUrl: url
+      });
+    } catch (e) {
+      syncDebugLog(`marker probe ${attempt.method} threw`, { name: e.name, message: e.message });
+    }
+  }
+
+  return null;
+}
+
+// Checks all marker header types at once (used by the settings "read test"
+// button so the user can see which headers the backend actually exposes).
+export async function probeSupportedRemoteMarkers(cfg = null) {
+  const resolvedCfg = cfg || await loadSyncConfig();
+  if (!resolvedCfg || resolvedCfg.type === 'browser') {
+    return null;
+  }
+
+  const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type);
+  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
+  if (!credentials.ok) {
+    return null;
+  }
+
+  const headers = {};
+  applyWebdavCompatibilityHeaders(headers, resolvedCfg);
+  const credUser = credentials.username || '';
+  const credPass = credentials.password || '';
+  if (credPass) {
+    headers['Authorization'] = safeBasicAuthHeader(credUser, credPass);
+  }
+
+  try {
+    const res = await fetchWithTimeout(url, { method: 'HEAD', cache: 'no-store', headers }, 5000);
+    if (!res.ok) return null;
+
+    const support = {};
+    for (const type of REMOTE_MARKER_TYPES) {
+      support[type] = isValidRemoteMarker(type, res.headers.get(REMOTE_MARKER_HEADERS[type]));
+    }
+    return support;
+  } catch {
+    return null;
+  }
 }
 
 function xhrPutWithBasicAuth(url, body, username, password, timeoutMs = 5000) {
@@ -725,7 +884,11 @@ export async function syncWrite(sourceState = state) {
 }
 
 export async function syncReadTest() {
-  return await syncReadDetailed();
+  const result = await syncReadDetailed();
+  if (result.ok) {
+    result.supportedHeaders = await probeSupportedRemoteMarkers();
+  }
+  return result;
 }
 
 export async function syncWriteTest() {
@@ -916,6 +1079,10 @@ export function startSyncLoop(options = {}) {
       if (!shouldSync(config)) return;
 
       const result = await syncNow();
+      if (result.ok && result.reason === 'remote-marker-unchanged') {
+        console.info('sync loop skipped: remote change marker unchanged');
+        return;
+      }
       if (!result.ok && result.reason !== 'not-configured') {
         console.warn('sync loop failed:', result.reason, result.status || '');
       }
@@ -941,12 +1108,55 @@ export function startSyncLoop(options = {}) {
 //  MANUAL SYNC
 // ─────────────────────────────────────────────────────────────
 
+// Shared by syncNow() and the initial startup sync so both paths skip work
+// when the backend proves nothing changed, not just the periodic loop.
+export async function checkRemoteMarkerUnchanged(config) {
+  if (!config || config.sync.type === 'browser') return false;
+
+  resetRemoteMarkerStateIfUrlChanged(config);
+  const preferredType = config.sync.remoteChangeHeaderType || null;
+  const resolvedSyncCfg = await loadSyncConfig();
+  const marker = await getRemoteChangeMarker(resolvedSyncCfg, { allowFallback: true, preferredType });
+
+  if (!marker) {
+    logRemoteMarkerCapabilityChange(config, false);
+    syncDebugLog('marker check result', { type: null, skipped: false, reason: 'no usable change marker from backend' });
+    config.sync.remoteChangeHeaderType = false;
+    config.sync.lastSeenRemoteMarker = '';
+    config.sync.lastRemoteMarkerCheck = Date.now();
+    await saveConfig(config);
+    return false;
+  }
+
+  const unchanged = config.sync.remoteChangeHeaderType === marker.type
+    && !!config.sync.lastSeenRemoteMarker
+    && config.sync.lastSeenRemoteMarker === marker.value;
+
+  logRemoteMarkerCapabilityChange(config, marker.type);
+
+  if (unchanged) {
+    syncDebugLog('marker check result', { type: marker.type, value: marker.value, skipped: true, reason: 'unchanged since last sync' });
+    return true;
+  }
+
+  syncDebugLog('marker check result', { type: marker.type, value: marker.value, skipped: false, previous: config.sync.lastSeenRemoteMarker });
+  config.sync.remoteChangeHeaderType = marker.type;
+  config.sync.lastSeenRemoteMarker = marker.value;
+  config.sync.lastRemoteMarkerCheck = Date.now();
+  await saveConfig(config);
+  return false;
+}
+
 export async function syncNow() {
   const config = await loadConfig();
 
   if (!config.sync.enabled || (!config.sync.serverUrl && config.sync.type !== 'browser')) {
     console.warn("Sync not configured or disabled");
     return { ok: false, reason: 'not-configured' };
+  }
+
+  if (await checkRemoteMarkerUnchanged(config)) {
+    return { ok: true, reason: 'remote-marker-unchanged', changed: false };
   }
 
   const readResult = await syncReadDetailed();

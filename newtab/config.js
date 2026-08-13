@@ -19,7 +19,11 @@ export const defaultConfig = {
     enc: null,
     interval: DEFAULT_SYNC_INTERVAL, // milliseconds
     intervalMode: "default", // "immediate", "custom", "manual", "default"
-    lastSync: 0
+    lastSync: 0,
+    remoteChangeHeaderType: null, // null=unknown, false=unsupported, or 'sha256'|'etag'|'last-modified'
+    lastSeenRemoteMarker: "",
+    lastRemoteMarkerCheck: 0,
+    lastMarkerCheckUrl: "" // serverUrl the remote marker was last checked against
   },
   housekeeper: {
     retentionDays: 30,
@@ -46,6 +50,7 @@ export const defaultConfig = {
   advanced: {
     faviconDebugLogging: false,
     deadLinkDebugLogging: false,
+    syncDebugLogging: false,
     i18nHotReload: false,
     faviconFetchLink: false,
     faviconFetchManifest: false

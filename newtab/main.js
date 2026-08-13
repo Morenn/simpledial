@@ -3,7 +3,7 @@ import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
-import { syncRead, syncWrite, startSyncLoop, cleanupDeletedItems } from "./sync.js";
+import { syncRead, syncWrite, startSyncLoop, cleanupDeletedItems, checkRemoteMarkerUnchanged } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { runBackupInitCheck } from "./backup.js";
 
@@ -159,6 +159,10 @@ function startIconRefreshLoop() {
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
     initialSyncInProgress = true;
     (async () => {
+      if (await checkRemoteMarkerUnchanged(config)) {
+        return;
+      }
+
       const cloud = await syncRead();
 
       if (cloud && cloud.groups) {
