@@ -25,6 +25,7 @@
   "bookmarkTitle": { "message": "Názov" },
   "bookmarkUrl": { "message": "URL" },
   "bookmarkIcon": { "message": "URL ikony (voliteľné)" },
+  "bookmarkNotes": { "message": "Poznámky (voliteľné)" },
   "save": { "message": "Uložiť" },
   "cancel": { "message": "Zrušiť" },
   "settingsSaved": { "message": "Nastavenia uložené." },

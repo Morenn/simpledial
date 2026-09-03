@@ -25,6 +25,7 @@
   "bookmarkTitle": { "message": "Title" },
   "bookmarkUrl": { "message": "URL" },
   "bookmarkIcon": { "message": "Icon URL (optional)" },
+  "bookmarkNotes": { "message": "Notes (optional)" },
   "save": { "message": "Save" },
   "cancel": { "message": "Cancel" },
   "settingsSaved": { "message": "Settings saved." },

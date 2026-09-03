@@ -619,10 +619,20 @@ const modalTitle = document.getElementById("modal-title");
 const bmTitle = document.getElementById("bm-title");
 const bmUrl = document.getElementById("bm-url");
 const bmIcon = document.getElementById("bm-icon");
+const bmNotes = document.getElementById("bm-notes");
+const bmNotesCounter = document.getElementById("bm-notes-counter");
 const bmSave = document.getElementById("bm-save");
 const bmCancel = document.getElementById("bm-cancel");
 
 let editingBookmark = null;
+
+function updateNotesCounter() {
+  if (bmNotesCounter) {
+    bmNotesCounter.textContent = `${bmNotes.value.length}/100`;
+  }
+}
+
+bmNotes.addEventListener("input", updateNotesCounter);
 
 export function openBookmarkModal(data = null) {
   editingBookmark = data;
@@ -632,12 +642,16 @@ export function openBookmarkModal(data = null) {
     bmTitle.value = data.title;
     bmUrl.value = data.url;
     bmIcon.value = data.customIcon || "";
+    bmNotes.value = data.notes || "";
   } else {
     modalTitle.textContent = t("newBookmark");
     bmTitle.value = "";
     bmUrl.value = "";
     bmIcon.value = "";
+    bmNotes.value = "";
   }
+
+  updateNotesCounter();
 
   modal.classList.remove("hidden");
   bmTitle.focus();
@@ -667,6 +681,7 @@ bmSave.addEventListener("click", async () => {
   const title = bmTitle.value.trim();
   const rawUrl = bmUrl.value.trim();
   const icon = bmIcon.value.trim();
+  const notes = bmNotes.value.trim();
   const url = normalizeBookmarkUrl(rawUrl);
 
   if (!url) {
@@ -689,6 +704,7 @@ bmSave.addEventListener("click", async () => {
       currentItem.title = title || url;
       currentItem.url = url;
       currentItem.customIcon = nextCustomIcon;
+      currentItem.notes = notes || null;
       if (previousCustomIcon !== nextCustomIcon) {
         clearFaviconCacheEntry(currentItem); // reset cached icon + timestamp
       }
@@ -702,6 +718,7 @@ bmSave.addEventListener("click", async () => {
       title: title || url,
       url,
       customIcon: icon || null,
+      notes: notes || null,
       updatedAt: Date.now(),
       deleted: false,
       deletedAt: null
