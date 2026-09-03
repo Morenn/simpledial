@@ -10,6 +10,7 @@
   "defaultGroupName": { "message": "Moje záložky" },
 
   "edit": { "message": "Upraviť" },
+  "openInNewTab": { "message": "Otvoriť na novej karte" },
   "delete": { "message": "Zmazať" },
   "restore": { "message": "Obnoviť" },
   "deletePermanent": { "message": "Vymazať natrvalo" },

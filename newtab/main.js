@@ -327,6 +327,9 @@ export function updateUIText() {
     const editItem = contextMenu.querySelector('[data-action="edit"]');
     if (editItem) editItem.textContent = t("edit");
 
+    const openNewTabItem = contextMenu.querySelector('[data-action="open-new-tab"]');
+    if (openNewTabItem) openNewTabItem.textContent = t("openInNewTab");
+
     const deleteItem = contextMenu.querySelector('[data-action="delete"]');
     if (deleteItem) deleteItem.textContent = t("delete");
 

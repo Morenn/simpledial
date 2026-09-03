@@ -95,6 +95,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
   const deletePermanentBtn = contextMenu.querySelector('[data-action="delete-permanent"]');
   const editBtn = contextMenu.querySelector('[data-action="edit"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
+  const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
 
   if (!item) return;
 
@@ -106,6 +107,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
     if (deletePermanentBtn) deletePermanentBtn.classList.remove("hidden");
     if (editBtn) editBtn.classList.add("hidden");
     if (refreshIconBtn) refreshIconBtn.classList.add("hidden");
+    if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
     if (moveToItem) moveToItem.classList.add("hidden");
   } else {
     // Item is not deleted: show delete and edit, hide restore and delete-permanent
@@ -114,6 +116,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
     if (deletePermanentBtn) deletePermanentBtn.classList.add("hidden");
     if (editBtn) editBtn.classList.remove("hidden");
     if (refreshIconBtn) refreshIconBtn.classList.remove("hidden");
+    if (openNewTabBtn) openNewTabBtn.classList.remove("hidden");
     if (moveToItem) moveToItem.classList.remove("hidden");
     populateMoveToSubmenu(bookmarkId);
   }
@@ -160,10 +163,12 @@ function updateContextMenuForGroup(groupTab) {
   const restoreBtn = contextMenu.querySelector('[data-action="restore"]');
   const deletePermanentBtn = contextMenu.querySelector('[data-action="delete-permanent"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
+  const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
 
   if (!group) return;
 
   if (moveToItem) moveToItem.classList.add("hidden");
+  if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
 
   // Show/hide based on deleted status
   if (group.deleted) {

@@ -10,6 +10,7 @@
   "defaultGroupName": { "message": "My bookmarks" },
 
   "edit": { "message": "Edit" },
+  "openInNewTab": { "message": "Open in new tab" },
   "delete": { "message": "Delete" },
   "restore": { "message": "Restore" },
   "deletePermanent": { "message": "Delete permanently" },

@@ -232,7 +232,7 @@ export function createBookmarkTile(item, config = null) {
   return tile;
 }
 
-function openBookmark(url, e, forceNewTab = false) {
+export function openBookmark(url, e, forceNewTab = false) {
   if (forceNewTab || e.ctrlKey || e.metaKey) {
     window.open(url, "_blank");
   } else {
@@ -757,6 +757,10 @@ export async function handleBookmarkContext(action, el) {
 
   if (action === "edit") {
     openBookmarkModal(item);
+  }
+
+  if (action === "open-new-tab") {
+    openBookmark(item.url, null, true);
   }
 
   if (action === "delete") {
