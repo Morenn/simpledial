@@ -6,7 +6,13 @@ const runtime = typeof browser !== 'undefined' ? browser.runtime : chrome.runtim
 
 const LANG_FILES = [
   { code: 'en', name: 'English', path: '_locales/en/messages.json' },
-  { code: 'sk', name: 'Slovenčina', path: '_locales/sk/messages.json' }
+  { code: 'de', name: 'Deutsch', path: '_locales/de/messages.json' },
+  { code: 'cs', name: 'Čeština', path: '_locales/cs/messages.json' },
+  { code: 'fi', name: 'Suomi', path: '_locales/fi/messages.json' },
+  { code: 'fr', name: 'Français', path: '_locales/fr/messages.json' },
+  { code: 'nl', name: 'Nederlands', path: '_locales/nl/messages.json' },
+  { code: 'sk', name: 'Slovenčina', path: '_locales/sk/messages.json' },
+  { code: 'uk', name: 'Українська', path: '_locales/uk/messages.json' }
 ];
 
 const languages = {};

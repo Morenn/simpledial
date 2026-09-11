@@ -1,4 +1,4 @@
-﻿{
+{
   "extensionName": { "message": "Simple SpeedDial" },
   "extensionDescription": { "message": "Jednoduché rozšírenie speeddial, ktoré ukladá a synchronizuje záložky cez Nextcloud alebo vlastný JSON synchronizačný server." },
 

@@ -1,4 +1,4 @@
-﻿{
+{
   "extensionName": { "message": "Simple SpeedDial" },
   "extensionDescription": { "message": "Lightweight speeddial extension that stores and syncs bookmarks through Nextcloud or a custom JSON sync server." },
 
