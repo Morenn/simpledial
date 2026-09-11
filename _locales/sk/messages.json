@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Jednoduché rozšírenie speeddial, ktoré ukladá a synchronizuje záložky cez Nextcloud alebo vlastný JSON synchronizačný server." },
+  "extensionDescription": { "message": "Jednoduché rozšírenie SpeedDial na ukladanie a synchronizáciu záložiek cez WebDAV alebo vlastný JSON synchronizačný server (HTTP server s podporou GET/PUT)." },
 
   "searchPlaceholder": { "message": "Hľadať..." },
   "themeToggle": { "message": "Prepnúť tému" },

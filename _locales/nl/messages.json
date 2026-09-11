@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Lichte SpeedDial-extensie waarmee bladwijzers kunnen worden opgeslagen en gesynchroniseerd met Nextcloud of een aangepaste JSON-syncserver." },
+  "extensionDescription": { "message": "Eenvoudige SpeedDial-extensie waarmee bladwijzers kunnen worden opgeslagen en gesynchroniseerd via WebDAV of een aangepaste JSON-syncserver (HTTP-server met GET/PUT-ondersteuning)." },
 
   "searchPlaceholder": { "message": "Zoeken..." },
   "themeToggle": { "message": "Thema wisselen" },

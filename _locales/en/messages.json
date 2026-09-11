@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Lightweight speeddial extension that stores and syncs bookmarks through Nextcloud or a custom JSON sync server." },
+  "extensionDescription": { "message": "Simple SpeedDial extension that stores and syncs bookmarks through WebDAV or a custom JSON sync server (HTTP server with GET/PUT support)." },
 
   "searchPlaceholder": { "message": "Search..." },
   "themeToggle": { "message": "Toggle theme" },

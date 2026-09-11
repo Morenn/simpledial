@@ -143,7 +143,10 @@ async function renderBookmarks() {
     const group = state.groups.find(g => g.id === window.activeGroupId);
 
     if (!group) {
-      grid.innerHTML = `<div class="empty-info">${t("noActiveGroup")}</div>`;
+      const emptyInfo = document.createElement("div");
+      emptyInfo.className = "empty-info";
+      emptyInfo.textContent = t("noActiveGroup");
+      grid.appendChild(emptyInfo);
       return;
     }
 

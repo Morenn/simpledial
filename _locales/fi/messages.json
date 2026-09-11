@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Kevyt SpeedDial-laajennus, joka tallentaa ja synkronoi kirjanmerkkejä Nextcloudin tai oman JSON-synkronointipalvelimen kautta." },
+  "extensionDescription": { "message": "Yksinkertainen SpeedDial-laajennus, joka tallentaa ja synkronoi kirjanmerkkejä WebDAV:n tai oman JSON-synkronointipalvelimen kautta (HTTP-palvelin, joka tukee GET/PUT-toimintoja)." },
 
   "searchPlaceholder": { "message": "Haku..." },
   "themeToggle": { "message": "Vaihda teema" },

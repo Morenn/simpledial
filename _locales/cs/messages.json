@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Lehká rozšíření SpeedDial pro ukládání a synchronizaci záložek přes Nextcloud nebo vlastní JSON synchronizační server." },
+  "extensionDescription": { "message": "Jednoduché rozšíření SpeedDial pro ukládání a synchronizaci záložek přes WebDAV nebo vlastní JSON synchronizační server (HTTP server s podporou GET/PUT)." },
 
   "searchPlaceholder": { "message": "Hledat..." },
   "themeToggle": { "message": "Přepnout motiv" },

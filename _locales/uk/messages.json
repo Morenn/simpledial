@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Легка розширення SpeedDial для збереження та синхронізації закладок через Nextcloud або власний сервер синхронізації JSON." },
+  "extensionDescription": { "message": "Просте розширення SpeedDial для збереження та синхронізації закладок через WebDAV або власний сервер синхронізації JSON (HTTP-сервер із підтримкою GET/PUT)." },
 
   "searchPlaceholder": { "message": "Пошук..." },
   "themeToggle": { "message": "Перемкнути тему" },
