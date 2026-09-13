@@ -1,9 +1,7 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Yksinkertainen SpeedDial-laajennus, joka tallentaa ja synkronoi kirjanmerkkejä WebDAV:n tai oman JSON-synkronointipalvelimen kautta (HTTP-palvelin, joka tukee GET/PUT-toimintoja)." },
-
   "searchPlaceholder": { "message": "Haku..." },
-  "themeToggle": { "message": "Vaihda teema" },
+  "extensionDescription": { "message": "Yksinkertainen SpeedDial tallentaa ja synkronoi kirjanmerkit WebDAV:n tai JSON GET/PUT -tuella toimivan HTTP-palvelimen kautta." },
   "settings": { "message": "Asetukset" },
   "showDeleted": { "message": "Näytä poistetut" },
   "newGroupName": { "message": "Uuden ryhmän nimi:" },

@@ -1,9 +1,7 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Extension simple SpeedDial pour enregistrer et synchroniser les favoris via WebDAV ou un serveur JSON personnalisé (serveur HTTP compatible avec GET/PUT)." },
-
   "searchPlaceholder": { "message": "Rechercher..." },
-  "themeToggle": { "message": "Changer de thème" },
+  "extensionDescription": { "message": "Extension SpeedDial simple pour enregistrer et synchroniser les favoris via WebDAV ou HTTP avec JSON GET/PUT." },
   "settings": { "message": "Paramètres" },
   "showDeleted": { "message": "Afficher les éléments supprimés" },
   "newGroupName": { "message": "Nom du nouveau groupe :" },

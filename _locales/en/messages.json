@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Simple SpeedDial extension that stores and syncs bookmarks through WebDAV or a custom JSON sync server (HTTP server with GET/PUT support)." },
+  "extensionDescription": { "message": "Simple SpeedDial stores and syncs bookmarks via WebDAV or any HTTP server with JSON GET/PUT." },
 
   "searchPlaceholder": { "message": "Search..." },
   "themeToggle": { "message": "Toggle theme" },

@@ -1,9 +1,7 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Eenvoudige SpeedDial-extensie waarmee bladwijzers kunnen worden opgeslagen en gesynchroniseerd via WebDAV of een aangepaste JSON-syncserver (HTTP-server met GET/PUT-ondersteuning)." },
-
   "searchPlaceholder": { "message": "Zoeken..." },
-  "themeToggle": { "message": "Thema wisselen" },
+  "extensionDescription": { "message": "Eenvoudige SpeedDial-extensie slaat bladwijzers op en synchroniseert ze via WebDAV of HTTP met JSON GET/PUT." },
   "settings": { "message": "Instellingen" },
   "showDeleted": { "message": "Verwijderde items tonen" },
   "newGroupName": { "message": "Naam van nieuwe groep:" },

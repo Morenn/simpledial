@@ -1,9 +1,7 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Jednoduché rozšíření SpeedDial pro ukládání a synchronizaci záložek přes WebDAV nebo vlastní JSON synchronizační server (HTTP server s podporou GET/PUT)." },
-
   "searchPlaceholder": { "message": "Hledat..." },
-  "themeToggle": { "message": "Přepnout motiv" },
+  "extensionDescription": { "message": "Jednoduché rozšíření SpeedDial ukládá a synchronizuje záložky přes WebDAV nebo HTTP server s podporou JSON GET/PUT." },
   "settings": { "message": "Nastavení" },
   "showDeleted": { "message": "Zobrazit smazané" },
   "newGroupName": { "message": "Název nové skupiny:" },

@@ -1,9 +1,7 @@
 {
   "extensionName": { "message": "Simple SpeedDial" },
-  "extensionDescription": { "message": "Einfache SpeedDial-Erweiterung zum Speichern und Synchronisieren von Lesezeichen über WebDAV oder einen eigenen JSON-Synchronisationsserver (HTTP-Server mit GET/PUT-Unterstützung)." },
-
   "searchPlaceholder": { "message": "Suchen..." },
-  "themeToggle": { "message": "Design wechseln" },
+  "extensionDescription": { "message": "Einfache SpeedDial-Erweiterung speichert und synchronisiert Lesezeichen über WebDAV oder HTTP mit JSON-GET/PUT." },
   "settings": { "message": "Einstellungen" },
   "showDeleted": { "message": "Gelöschte anzeigen" },
   "newGroupName": { "message": "Name der neuen Gruppe:" },
