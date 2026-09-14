@@ -12,6 +12,7 @@ window.t = t;
 
 const dateTimeDisplay = document.getElementById("date-time-display");
 const ICON_REFRESH_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const STARTUP_SYNC_DELAY_MS = 1000;
 let isDateTimeEnabled = false;
 let dateTimePreviewEnabled = null;
 let dateFormatter = null;
@@ -158,23 +159,25 @@ function startIconRefreshLoop() {
   // 4) Sync (in background, with re-render after data changes)
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
     initialSyncInProgress = true;
-    (async () => {
-      const result = await syncNow();
+    setTimeout(() => {
+      (async () => {
+        const result = await syncNow();
 
-      if (!result.ok) {
-        console.warn("Sync server is unavailable, using local data");
-        showSyncUnavailableNotification();
-        return;
-      }
+        if (!result.ok) {
+          console.warn("Sync server is unavailable, using local data");
+          showSyncUnavailableNotification();
+          return;
+        }
 
-      if (result.changed) {
-        render(); // re-render UI after merging cloud data
-      }
-    })()
-      .catch(err => console.warn("initial sync failed", err))
-      .finally(() => {
-        initialSyncInProgress = false;
-      });
+        if (result.changed) {
+          render(); // re-render UI after merging cloud data
+        }
+      })()
+        .catch(err => console.warn("initial sync failed", err))
+        .finally(() => {
+          initialSyncInProgress = false;
+        });
+    }, STARTUP_SYNC_DELAY_MS);
   }
 
   // 5) Start sync loop
