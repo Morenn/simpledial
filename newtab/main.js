@@ -1,9 +1,9 @@
-import { loadState, saveState, state } from "./state.js";
+import { loadState } from "./state.js";
 import { loadTheme } from "./theme.js";
 import { render } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
-import { syncRead, syncWrite, startSyncLoop, cleanupDeletedItems, checkRemoteMarkerUnchanged } from "./sync.js";
+import { syncNow, startSyncLoop, cleanupDeletedItems } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { runBackupInitCheck } from "./backup.js";
 
@@ -159,23 +159,16 @@ function startIconRefreshLoop() {
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
     initialSyncInProgress = true;
     (async () => {
-      if (await checkRemoteMarkerUnchanged(config)) {
+      const result = await syncNow();
+
+      if (!result.ok) {
+        console.warn("Sync server is unavailable, using local data");
+        showSyncUnavailableNotification();
         return;
       }
 
-      const cloud = await syncRead();
-
-      if (cloud && cloud.groups) {
-        if (cloud.groups.length === 0 && state.groups.length > 0) {
-          await syncWrite();
-        } else {
-          state.groups = cloud.groups;
-          await saveState();
-          render(); // re-render UI after loading cloud data
-        }
-      } else {
-        console.warn("Sync server is unavailable, using local data");
-        showSyncUnavailableNotification();
+      if (result.changed) {
+        render(); // re-render UI after merging cloud data
       }
     })()
       .catch(err => console.warn("initial sync failed", err))

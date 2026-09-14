@@ -879,7 +879,19 @@ export async function syncWrite(sourceState = state) {
   }
 
   const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
-  const result = await syncWriteDetailed(null, groups);
+  const previousGroups = state.groups;
+  state.groups = groups;
+
+  const readResult = await syncReadDetailed();
+  if (!readResult.ok) {
+    state.groups = previousGroups;
+    return false;
+  }
+
+  const result = await mergeAndWriteAtomically(config, readResult.data.groups);
+  if (!result.ok) {
+    state.groups = previousGroups;
+  }
   return result.ok;
 }
 
