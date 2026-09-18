@@ -6,6 +6,7 @@ import { loadConfig } from "./config.js";
 import { syncNow, startSyncLoop, cleanupDeletedItems } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { runBackupInitCheck } from "./backup.js";
+import "./browser-bookmarks-sync.js";
 
 // Make t global for modules that don't import it
 window.t = t;

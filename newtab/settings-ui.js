@@ -3,11 +3,12 @@ import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
 import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
-import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from './bookmarks-api.js';
+import { findOrCreateSimpleDialFolder, getBookmarkChildren } from './bookmarks-api.js';
 import { render } from "./render.js";
 import { applyBackground, applyTileOpacity } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
+import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
 // ======================================================
 // SETTINGS MODAL UI
 // ======================================================
@@ -72,6 +73,7 @@ const importBookmarksBtn = document.getElementById("import-bookmarks-btn");
 const exportNetscapeBtn = document.getElementById("export-netscape-btn");
 const importNetscapeBtn = document.getElementById("import-netscape-btn");
 const importNetscapeFile = document.getElementById("import-netscape-file");
+const browserBookmarksAutoSync = document.getElementById("browser-bookmarks-auto-sync");
 
 // Appearance Elements
 const showDeletedToggle = document.getElementById("show-deleted-toggle");
@@ -189,7 +191,7 @@ function markSettingsDirty() {
 }
 
 function initializeSettingsDirtyTracking() {
-  const trackedElements = document.querySelectorAll('#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input, #backups-tab input, #advanced-tab input');
+  const trackedElements = document.querySelectorAll('#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input, #backups-tab input, #advanced-tab input, #export-tab input');
   trackedElements.forEach(el => {
     if (el.type === 'hidden') return;
     el.addEventListener('input', markSettingsDirty);
@@ -459,6 +461,9 @@ settingsBtn.addEventListener("click", async () => {
 
   // Load advanced settings
   applyAdvancedSettingsToControls(config.advanced || {});
+  if (browserBookmarksAutoSync) {
+    browserBookmarksAutoSync.checked = !!config.browserBookmarksAutoSync;
+  }
 
   if (showDeletedToggle) {
     showDeletedToggle.checked = config.appearance?.showDeleted ?? false;
@@ -1022,8 +1027,9 @@ importFile.addEventListener("change", async (e) => {
       const config = await loadConfig();
       if (config.sync.enabled === true) {
         config.sync.enabled = false;
-        await saveConfig(config);
       }
+      config.browserBookmarksAutoSync = false;
+      await saveConfig(config);
 
       state.groups = imported.groups;
       await saveState();
@@ -1062,8 +1068,9 @@ importNetscapeFile?.addEventListener("change", async (e) => {
       const config = await loadConfig();
       if (config.sync.enabled === true) {
         config.sync.enabled = false;
-        await saveConfig(config);
       }
+      config.browserBookmarksAutoSync = false;
+      await saveConfig(config);
 
       state.groups = importedGroups;
       await saveState();
@@ -1219,25 +1226,7 @@ exportNetscapeBtn?.addEventListener("click", async () => {
 
 exportBookmarksBtn?.addEventListener("click", async () => {
   try {
-    const folder = await findOrCreateSimpleDialFolder();
-    const existingChildren = await getBookmarkChildren(folder.id);
-
-    for (const child of existingChildren) {
-      await removeBookmarkNode(child.id);
-    }
-
-    const groupsToExport = state.groups.filter(g => !g.deleted);
-    for (const group of groupsToExport) {
-      const groupFolder = await createBookmarkNode({ parentId: folder.id, title: group.name || 'Group' });
-      const itemsToExport = (group.items || []).filter(item => !item.deleted && item.url);
-      for (const item of itemsToExport) {
-        await createBookmarkNode({
-          parentId: groupFolder.id,
-          title: item.title || item.url,
-          url: item.url
-        });
-      }
-    }
+    await syncBrowserBookmarks({ force: true });
 
     syncStatus.textContent = "✅ " + t('bookmarksExportSuccessful');
     alert(t('bookmarksExportSuccessful'));
@@ -1335,8 +1324,9 @@ importBookmarksBtn?.addEventListener("click", async () => {
     const config = await loadConfig();
     if (config.sync.enabled === true) {
       config.sync.enabled = false;
-      await saveConfig(config);
     }
+    config.browserBookmarksAutoSync = false;
+    await saveConfig(config);
 
     state.groups = importedGroups;
     await saveState();
@@ -1508,6 +1498,7 @@ async function persistSettings(closeAfterSave = false) {
 
   // Save enable/disable state
   config.sync.enabled = syncEnable.checked;
+  config.browserBookmarksAutoSync = !!browserBookmarksAutoSync?.checked;
 
   // Save sync interval mode
   if (syncImmediate.checked) {

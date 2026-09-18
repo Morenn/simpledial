@@ -125,6 +125,7 @@ export async function restoreBackup(file) {
 
   const config = await loadConfig();
   config.sync.enabled = false;
+  config.browserBookmarksAutoSync = false;
   await saveConfig(config);
 
   state.groups = parsedData.groups;

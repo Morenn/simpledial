@@ -7,6 +7,7 @@ export const DEFAULT_SYNC_INTERVAL = 60000; // 1 minute in milliseconds
 const CONFIG_STORAGE_KEY = "myspeeddial-config";
 
 export const defaultConfig = {
+  browserBookmarksAutoSync: false,
   sync: {
     enabled: false,
     serverUrl: "",

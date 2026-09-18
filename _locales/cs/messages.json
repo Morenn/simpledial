@@ -130,6 +130,7 @@
   "jsonFormatDesc": { "message": "Exportujte záložky jako JSON soubor a importujte záložky z JSON souboru." },
   "browserBookmarks": { "message": "Záložky prohlížeče" },
   "browserBookmarksDesc": { "message": "Exportujte a importujte skupiny do složky záložek prohlížeče s názvem SimpleDial." },
+  "browserBookmarksAutoSync": { "message": "Automaticky synchronizovat změny do záložek prohlížeče" },
   "netscapeFormat": { "message": "NETSCAPE formát" },
   "netscapeFormatDesc": { "message": "Exportujte skupiny do HTML souboru záložek NETSCAPE a importujte skupiny z HTML souboru záložek NETSCAPE." },
   "exportBrowserBookmarks": { "message": "Exportovat do záložek prohlížeče" },

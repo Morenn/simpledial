@@ -18,6 +18,7 @@ export function generateId(prefix) {
 
 export async function saveState() {
   await chrome.storage.local.set({ [STORAGE_KEY]: state });
+  window.dispatchEvent(new Event("speeddial:state-saved"));
 }
 
 export async function saveActiveGroupId(groupId) {
