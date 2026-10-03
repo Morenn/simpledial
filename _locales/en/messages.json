@@ -132,7 +132,7 @@
   "jsonFormatDesc": { "message": "Export bookmarks as JSON file and import bookmarks from JSON file." },
   "browserBookmarks": { "message": "Browser bookmarks" },
   "browserBookmarksDesc": { "message": "Export and import groups to a browser bookmarks folder named SimpleDial." },
-  "browserBookmarksAutoSync": { "message": "Automatically sync changes to browser bookmarks" },
+  "browserBookmarksAutoSync": { "message": "Automatically sync changes from the add-on to browser bookmarks (one-way; the SimpleDial folder is overwritten, and bookmarks added directly to it are removed on sync)" },
   "netscapeFormat": { "message": "NETSCAPE Format" },
   "netscapeFormatDesc": { "message": "Export groups to a NETSCAPE bookmark HTML file and import groups from a NETSCAPE bookmark HTML file." },
   "exportBrowserBookmarks": { "message": "Export to browser bookmarks" },

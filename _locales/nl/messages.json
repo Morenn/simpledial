@@ -130,7 +130,7 @@
   "jsonFormatDesc": { "message": "Exporteer bladwijzers als JSON-bestand en importeer ze uit een JSON-bestand." },
   "browserBookmarks": { "message": "Browserbladwijzers" },
   "browserBookmarksDesc": { "message": "Exporteer en importeer groepen naar een map met browserbladwijzers met de naam SimpleDial." },
-  "browserBookmarksAutoSync": { "message": "Wijzigingen automatisch synchroniseren met browserbladwijzers" },
+  "browserBookmarksAutoSync": { "message": "Wijzigingen automatisch van de add-on naar browserbladwijzers synchroniseren (eenrichtingsverkeer; de map SimpleDial wordt overschreven en bladwijzers die daar rechtstreeks aan zijn toegevoegd, worden bij synchronisatie verwijderd)" },
   "netscapeFormat": { "message": "NETSCAPE-formaat" },
   "netscapeFormatDesc": { "message": "Exporteer groepen naar een HTML-bestand met NETSCAPE-bladwijzers en importeer groepen uit zo'n bestand." },
   "exportBrowserBookmarks": { "message": "Exporteren naar browserbladwijzers" },

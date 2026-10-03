@@ -130,7 +130,7 @@
   "jsonFormatDesc": { "message": "Експортуйте закладки у файл JSON і імпортуйте їх з файлу JSON." },
   "browserBookmarks": { "message": "Закладки браузера" },
   "browserBookmarksDesc": { "message": "Експортуйте та імпортуйте групи в папку закладок браузера під назвою SimpleDial." },
-  "browserBookmarksAutoSync": { "message": "Автоматично синхронізувати зміни із закладками браузера" },
+  "browserBookmarksAutoSync": { "message": "Автоматично синхронізувати зміни з додатка до закладок браузера (лише в одному напрямку; вміст папки SimpleDial буде замінено, а закладки, додані безпосередньо до неї, буде видалено під час синхронізації)" },
   "netscapeFormat": { "message": "Формат NETSCAPE" },
   "netscapeFormatDesc": { "message": "Експортуйте групи в HTML-файл закладок NETSCAPE та імпортуйте групи з такого файлу." },
   "exportBrowserBookmarks": { "message": "Експортувати до закладок браузера" },

@@ -130,7 +130,7 @@
   "jsonFormatDesc": { "message": "Exporter les favoris dans un fichier JSON et les importer depuis un fichier JSON." },
   "browserBookmarks": { "message": "Favoris du navigateur" },
   "browserBookmarksDesc": { "message": "Exporter et importer des groupes dans un dossier de favoris du navigateur nommé SimpleDial." },
-  "browserBookmarksAutoSync": { "message": "Synchroniser automatiquement les modifications avec les favoris du navigateur" },
+  "browserBookmarksAutoSync": { "message": "Synchroniser automatiquement les modifications de l’extension vers les favoris du navigateur (dans un seul sens ; le dossier SimpleDial est remplacé et les favoris qui y sont ajoutés directement sont supprimés lors de la synchronisation)" },
   "netscapeFormat": { "message": "Format NETSCAPE" },
   "netscapeFormatDesc": { "message": "Exporter les groupes dans un fichier HTML de favoris NETSCAPE et les importer depuis un tel fichier." },
   "exportBrowserBookmarks": { "message": "Exporter vers les favoris du navigateur" },

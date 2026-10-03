@@ -130,7 +130,7 @@
   "jsonFormatDesc": { "message": "Lesezeichen als JSON-Datei exportieren und aus einer JSON-Datei importieren." },
   "browserBookmarks": { "message": "Browser-Lesezeichen" },
   "browserBookmarksDesc": { "message": "Exportieren und Importieren von Gruppen in einen Browserordner namens SimpleDial." },
-  "browserBookmarksAutoSync": { "message": "Änderungen automatisch mit den Browser-Lesezeichen synchronisieren" },
+  "browserBookmarksAutoSync": { "message": "Änderungen automatisch vom Add-on zu den Browser-Lesezeichen synchronisieren (einseitig; der Ordner SimpleDial wird überschrieben und direkt dort hinzugefügte Lesezeichen werden beim Synchronisieren entfernt)" },
   "netscapeFormat": { "message": "NETSCAPE-Format" },
   "netscapeFormatDesc": { "message": "Exportieren Sie Gruppen als NETSCAPE-HTML-Datei und importieren Sie Gruppen aus einer NETSCAPE-HTML-Datei." },
   "exportBrowserBookmarks": { "message": "In Browser-Lesezeichen exportieren" },

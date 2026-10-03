@@ -130,7 +130,7 @@
   "jsonFormatDesc": { "message": "Vie kirjanmerkit JSON-tiedostona ja tuo ne tiedostosta." },
   "browserBookmarks": { "message": "Selaimen kirjanmerkit" },
   "browserBookmarksDesc": { "message": "Vie ja tuo ryhmät selaimen kirjanmerkkikansioon nimeltä SimpleDial." },
-  "browserBookmarksAutoSync": { "message": "Synkronoi muutokset automaattisesti selaimen kirjanmerkkeihin" },
+  "browserBookmarksAutoSync": { "message": "Synkronoi muutokset automaattisesti lisäosasta selaimen kirjanmerkkeihin (yksisuuntaisesti; SimpleDial-kansion sisältö korvataan, ja sinne suoraan lisätyt kirjanmerkit poistetaan synkronoinnissa)" },
   "netscapeFormat": { "message": "NETSCAPE-muoto" },
   "netscapeFormatDesc": { "message": "Vie ryhmät NETSCAPE-kirjanmerkkien HTML-tiedostoon ja tuo ryhmät sieltä." },
   "exportBrowserBookmarks": { "message": "Vie selaimen kirjanmerkkeihin" },
