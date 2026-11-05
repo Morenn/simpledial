@@ -21,6 +21,7 @@ export const defaultConfig = {
     interval: DEFAULT_SYNC_INTERVAL, // milliseconds
     intervalMode: "default", // "immediate", "custom", "manual", "default"
     lastSync: 0,
+    lastSyncedLocalHash: "",
     remoteChangeHeaderType: null, // null=unknown, false=unsupported, or 'sha256'|'etag'|'last-modified'
     lastSeenRemoteMarker: "",
     lastRemoteMarkerCheck: 0,

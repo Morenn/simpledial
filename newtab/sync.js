@@ -733,6 +733,11 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null) {
     try {
       const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
       await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: { groups: groupsToWrite } });
+      const verified = await chrome.storage.sync.get(CLOUD_STORAGE_KEY);
+      if (stableSerialize(verified[CLOUD_STORAGE_KEY]?.groups || []) !== stableSerialize(groupsToWrite)) {
+        console.warn('syncWrite(browser): stored data changed during write; keeping local changes for retry');
+        return { ok: false, reason: 'browser-sync-conflict' };
+      }
       return { ok: true, reason: 'ok' };
     } catch (e) {
       console.error('syncWrite(browser) failed', e);
@@ -908,19 +913,25 @@ export async function syncWriteTest() {
 }
 
 function pickNewerRecord(localRecord, cloudRecord) {
-  if (localRecord.deleted && cloudRecord.deleted) {
-    return (localRecord.deletedAt > cloudRecord.deletedAt) ? localRecord : cloudRecord;
+  const localTimestamp = localRecord.deleted ? (localRecord.deletedAt || 0) : (localRecord.updatedAt || 0);
+  const cloudTimestamp = cloudRecord.deleted ? (cloudRecord.deletedAt || 0) : (cloudRecord.updatedAt || 0);
+  if (localTimestamp !== cloudTimestamp) {
+    return localTimestamp > cloudTimestamp ? localRecord : cloudRecord;
   }
 
-  if (cloudRecord.deleted) {
-    return (cloudRecord.deletedAt > localRecord.updatedAt) ? cloudRecord : localRecord;
-  }
+  const localSnapshot = stableSerialize(localRecord);
+  const cloudSnapshot = stableSerialize(cloudRecord);
+  return localSnapshot > cloudSnapshot ? localRecord : cloudRecord;
+}
 
-  if (localRecord.deleted) {
-    return (localRecord.deletedAt > cloudRecord.updatedAt) ? localRecord : cloudRecord;
+function stableSerialize(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerialize).join(",")}]`;
   }
-
-  return (localRecord.updatedAt > cloudRecord.updatedAt) ? localRecord : cloudRecord;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
 }
 
 function isBootstrapPlaceholderState(groups) {
@@ -1038,7 +1049,13 @@ function getGroupsFreshness(groups) {
   return maxTs;
 }
 
-async function mergeAndWriteAtomically(config, cloudGroups) {
+async function getGroupsHash(groups) {
+  const data = new TextEncoder().encode(JSON.stringify(groups || []));
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetries = 2) {
   const previousGroups = state.groups;
   const localFreshness = getGroupsFreshness(previousGroups);
   const cloudFreshness = getGroupsFreshness(cloudGroups || []);
@@ -1046,30 +1063,48 @@ async function mergeAndWriteAtomically(config, cloudGroups) {
 
   const mergedGroups = mergeGroups(previousGroups, cloudGroups || [], { preferCloudOnBootstrap: true });
   const changed = JSON.stringify(previousGroups) !== JSON.stringify(mergedGroups);
+  const remoteNeedsUpdate = JSON.stringify(cloudGroups || []) !== JSON.stringify(mergedGroups);
 
-  if (!changed) {
+  if (!changed && !remoteNeedsUpdate) {
+    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups);
     await updateLastSyncTime(config);
     return { ok: true, reason: 'no-changes', changed: false };
   }
 
-  state.groups = mergedGroups;
+  if (changed) {
+    state.groups = mergedGroups;
+  }
 
-  const writeResult = await syncWriteDetailed({ ...(await loadSyncConfig()), lastSync: Date.now() });
+  let writeResult = null;
+  if (remoteNeedsUpdate) {
+    writeResult = await syncWriteDetailed({ ...(await loadSyncConfig()), lastSync: Date.now() });
 
-  if (writeResult.ok) {
+    if (!writeResult.ok) {
+      // Never keep a merged local state that failed to persist remotely.
+      state.groups = previousGroups;
+
+      if (writeResult.reason === 'browser-sync-conflict' && browserConflictRetries > 0) {
+        const latestRemote = await syncReadDetailed();
+        if (!latestRemote.ok) {
+          return latestRemote;
+        }
+        return await mergeAndWriteAtomically(config, latestRemote.data.groups, browserConflictRetries - 1);
+      }
+
+      if (localIsMoreRecent) {
+        console.warn('sync: preserving newer local state because remote write failed');
+      }
+
+      return writeResult;
+    }
+  }
+
+  if (changed) {
     await saveState();
-    await updateLastSyncTime(config);
-    return { ok: true, reason: writeResult.reason || 'ok', changed };
   }
-
-  // Never keep a merged local state that failed to persist remotely.
-  state.groups = previousGroups;
-
-  if (localIsMoreRecent) {
-    console.warn('sync: preserving newer local state because remote write failed');
-  }
-
-  return writeResult;
+  config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups);
+  await updateLastSyncTime(config);
+  return { ok: true, reason: writeResult?.reason || 'no-changes', changed };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1155,7 +1190,6 @@ export async function checkRemoteMarkerUnchanged(config) {
   config.sync.remoteChangeHeaderType = marker.type;
   config.sync.lastSeenRemoteMarker = marker.value;
   config.sync.lastRemoteMarkerCheck = Date.now();
-  await saveConfig(config);
   return false;
 }
 
@@ -1167,7 +1201,14 @@ export async function syncNow() {
     return { ok: false, reason: 'not-configured' };
   }
 
-  if (await checkRemoteMarkerUnchanged(config)) {
+  const localHash = await getGroupsHash(state.groups);
+  const hasPendingLocalChanges = !config.sync.lastSyncedLocalHash
+    || config.sync.lastSyncedLocalHash !== localHash;
+  const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config);
+  const markerIsReliableForSkip = config.sync.remoteChangeHeaderType === 'sha256'
+    || (config.sync.remoteChangeHeaderType === 'etag'
+      && !(config.sync.lastSeenRemoteMarker || '').startsWith('W/'));
+  if (!hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip) {
     return { ok: true, reason: 'remote-marker-unchanged', changed: false };
   }
 
@@ -1358,4 +1399,3 @@ export async function checkDeadLinks() {
   // Return the total number of dead links (consistent with stored state)
   return totalDead;
 }
-
