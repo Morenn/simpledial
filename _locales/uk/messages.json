@@ -238,5 +238,14 @@
   "info": { "message": "Інформація" },
   "infoVersion": { "message": "Версія:" },
   "infoAuthor": { "message": "Автор:" },
-  "infoLicense": { "message": "Опубліковано під ліцензією MIT" }
+  "infoLicense": { "message": "Опубліковано під ліцензією MIT" },
+
+  "footerSyncActive": { "message": "Синхронізація активна" },
+  "footerSyncDisabled": { "message": "Синхронізацію вимкнено" },
+  "footerNeverSynced": { "message": "Ніколи не синхронізовано" },
+  "footerLastSyncedJustNow": { "message": "Синхронізовано щойно" },
+  "footerLastSyncedMinutes": { "message": "Синхронізовано {0}хв тому" },
+  "footerLastSyncedHours": { "message": "Синхронізовано {0}год тому" },
+  "footerLastSyncedDays": { "message": "Синхронізовано {0}дн тому" },
+  "footerTotalBookmarks": { "message": "Усього: {0} закладок" }
 }

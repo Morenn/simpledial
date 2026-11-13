@@ -238,5 +238,14 @@
   "info": { "message": "Info" },
   "infoVersion": { "message": "Verzia:" },
   "infoAuthor": { "message": "Autor:" },
-  "infoLicense": { "message": "Vydane pod licenciou MIT" }
+  "infoLicense": { "message": "Vydane pod licenciou MIT" },
+
+  "footerSyncActive": { "message": "Synchronizácia aktívna" },
+  "footerSyncDisabled": { "message": "Synchronizácia vypnutá" },
+  "footerNeverSynced": { "message": "Nikdy nesynchronizované" },
+  "footerLastSyncedJustNow": { "message": "Synchronizované práve teraz" },
+  "footerLastSyncedMinutes": { "message": "Synchronizované pred {0}m" },
+  "footerLastSyncedHours": { "message": "Synchronizované pred {0}h" },
+  "footerLastSyncedDays": { "message": "Synchronizované pred {0}d" },
+  "footerTotalBookmarks": { "message": "Celkom: {0} záložiek" }
 }

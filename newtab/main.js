@@ -1,6 +1,6 @@
 import { loadState } from "./state.js";
 import { loadTheme } from "./theme.js";
-import { render } from "./render.js";
+import { render, updateFooter } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
 import { syncNow, startSyncLoop, cleanupDeletedItems } from "./sync.js";
@@ -156,6 +156,7 @@ function startIconRefreshLoop() {
   // 10) Start the clock display
   setInterval(updateClock, 1000);
   updateClock();
+  setInterval(() => { void updateFooter(); }, 60000);
 
   // 4) Sync (in background, with re-render after data changes)
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
@@ -210,6 +211,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
   updateDateTimeEnabledFromConfig(configChange.newValue);
   updateClock();
+  void updateFooter(configChange.newValue);
 });
 
 // Language selector setup

@@ -238,5 +238,14 @@
   "info": { "message": "Tietoa" },
   "infoVersion": { "message": "Versio:" },
   "infoAuthor": { "message": "Tekijä:" },
-  "infoLicense": { "message": "Julkaistu MIT-lisenssillä" }
+  "infoLicense": { "message": "Julkaistu MIT-lisenssillä" },
+
+  "footerSyncActive": { "message": "Synkronointi käytössä" },
+  "footerSyncDisabled": { "message": "Synkronointi pois käytöstä" },
+  "footerNeverSynced": { "message": "Ei koskaan synkronoitu" },
+  "footerLastSyncedJustNow": { "message": "Synkronoitu juuri nyt" },
+  "footerLastSyncedMinutes": { "message": "Synkronoitu {0}m sitten" },
+  "footerLastSyncedHours": { "message": "Synkronoitu {0}t sitten" },
+  "footerLastSyncedDays": { "message": "Synkronoitu {0}pv sitten" },
+  "footerTotalBookmarks": { "message": "Yhteensä: {0} kirjanmerkkiä" }
 }

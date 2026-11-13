@@ -238,5 +238,14 @@
   "info": { "message": "Informations" },
   "infoVersion": { "message": "Version :" },
   "infoAuthor": { "message": "Auteur :" },
-  "infoLicense": { "message": "Publié sous licence MIT" }
+  "infoLicense": { "message": "Publié sous licence MIT" },
+
+  "footerSyncActive": { "message": "Sync active" },
+  "footerSyncDisabled": { "message": "Sync désactivée" },
+  "footerNeverSynced": { "message": "Jamais synchronisé" },
+  "footerLastSyncedJustNow": { "message": "Synchronisé à l'instant" },
+  "footerLastSyncedMinutes": { "message": "Synchronisé il y a {0}m" },
+  "footerLastSyncedHours": { "message": "Synchronisé il y a {0}h" },
+  "footerLastSyncedDays": { "message": "Synchronisé il y a {0}j" },
+  "footerTotalBookmarks": { "message": "Total : {0} favoris" }
 }

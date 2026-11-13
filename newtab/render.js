@@ -83,6 +83,60 @@ function calculateGridLayout() {
 }
 
 // ======================================================
+// FOOTER STATUS & COUNTERS
+// ======================================================
+function formatFooterLastSync(lastSyncMs) {
+  if (!lastSyncMs || lastSyncMs <= 0) return null;
+
+  const diffMins = Math.floor(Math.max(0, Date.now() - lastSyncMs) / 60000);
+  if (diffMins < 1) {
+    return t("footerLastSyncedJustNow");
+  }
+  if (diffMins < 60) {
+    return t("footerLastSyncedMinutes").replace("{0}", String(diffMins));
+  }
+  if (diffMins < 1440) {
+    return t("footerLastSyncedHours").replace("{0}", String(Math.floor(diffMins / 60)));
+  }
+  return t("footerLastSyncedDays").replace("{0}", String(Math.floor(diffMins / 1440)));
+}
+
+export async function updateFooter(providedConfig = null) {
+  const footerSyncDot = document.getElementById("footer-sync-dot");
+  const footerSyncText = document.getElementById("footer-sync-text");
+  const footerBookmarksTotal = document.getElementById("footer-bookmarks-total");
+
+  if (!footerSyncDot && !footerSyncText && !footerBookmarksTotal) return;
+
+  const config = providedConfig || await loadConfig();
+  const syncEnabled = !!config?.sync?.enabled;
+
+  if (footerSyncDot) {
+    footerSyncDot.classList.toggle("active", syncEnabled);
+    footerSyncDot.classList.toggle("disabled", !syncEnabled);
+  }
+
+  if (footerSyncText) {
+    const statusPart = syncEnabled ? t("footerSyncActive") : t("footerSyncDisabled");
+    const lastSyncStr = formatFooterLastSync(config?.sync?.lastSync);
+
+    if (syncEnabled) {
+      footerSyncText.textContent = `${statusPart} • ${lastSyncStr || t("footerNeverSynced")}`;
+    } else {
+      footerSyncText.textContent = lastSyncStr ? `${statusPart} • ${lastSyncStr}` : statusPart;
+    }
+  }
+
+  if (footerBookmarksTotal) {
+    const totalBookmarks = (state.groups || [])
+      .filter(g => !g.deleted)
+      .reduce((sum, g) => sum + (g.items || []).filter(i => !i.deleted && i.url).length, 0);
+
+    footerBookmarksTotal.textContent = t("footerTotalBookmarks").replace("{0}", String(totalBookmarks));
+  }
+}
+
+// ======================================================
 // MAIN RENDER FUNCTION
 // ======================================================
 
@@ -99,6 +153,7 @@ export async function render() {
 // ======================================================
 async function renderBookmarks() {
   const config = await loadConfig();
+  await updateFooter(config);
   const grid = document.getElementById("bookmarks-grid");
   grid.innerHTML = "";
 

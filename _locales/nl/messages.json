@@ -238,5 +238,14 @@
   "info": { "message": "Info" },
   "infoVersion": { "message": "Versie:" },
   "infoAuthor": { "message": "Auteur:" },
-  "infoLicense": { "message": "Uitgebracht onder de MIT-licentie" }
+  "infoLicense": { "message": "Uitgebracht onder de MIT-licentie" },
+
+  "footerSyncActive": { "message": "Sync actief" },
+  "footerSyncDisabled": { "message": "Sync uitgeschakeld" },
+  "footerNeverSynced": { "message": "Nooit gesynchroniseerd" },
+  "footerLastSyncedJustNow": { "message": "Zojuist gesynchroniseerd" },
+  "footerLastSyncedMinutes": { "message": "{0}m geleden gesynchroniseerd" },
+  "footerLastSyncedHours": { "message": "{0}u geleden gesynchroniseerd" },
+  "footerLastSyncedDays": { "message": "{0}d geleden gesynchroniseerd" },
+  "footerTotalBookmarks": { "message": "Totaal: {0} bladwijzers" }
 }

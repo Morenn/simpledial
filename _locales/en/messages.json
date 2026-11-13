@@ -240,5 +240,14 @@
   "info": { "message": "Info" },
   "infoVersion": { "message": "Version:" },
   "infoAuthor": { "message": "Author:" },
-  "infoLicense": { "message": "Released under the MIT License" }
+  "infoLicense": { "message": "Released under the MIT License" },
+
+  "footerSyncActive": { "message": "Sync active" },
+  "footerSyncDisabled": { "message": "Sync disabled" },
+  "footerNeverSynced": { "message": "Never synced" },
+  "footerLastSyncedJustNow": { "message": "Last synced just now" },
+  "footerLastSyncedMinutes": { "message": "Last synced {0}m ago" },
+  "footerLastSyncedHours": { "message": "Last synced {0}h ago" },
+  "footerLastSyncedDays": { "message": "Last synced {0}d ago" },
+  "footerTotalBookmarks": { "message": "Total: {0} Bookmarks" }
 }
