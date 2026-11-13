@@ -247,5 +247,6 @@
   "footerLastSyncedMinutes": { "message": "Synkronoitu {0}m sitten" },
   "footerLastSyncedHours": { "message": "Synkronoitu {0}t sitten" },
   "footerLastSyncedDays": { "message": "Synkronoitu {0}pv sitten" },
-  "footerTotalBookmarks": { "message": "Yhteensä: {0} kirjanmerkkiä" }
+  "footerTotalBookmarks": { "message": "Yhteensä: {0} kirjanmerkkiä" },
+  "showGroupBookmarkCount": { "message": "Näytä kirjanmerkkien määrä ryhmissä" }
 }

@@ -247,5 +247,6 @@
   "footerLastSyncedMinutes": { "message": "Синхронізовано {0}хв тому" },
   "footerLastSyncedHours": { "message": "Синхронізовано {0}год тому" },
   "footerLastSyncedDays": { "message": "Синхронізовано {0}дн тому" },
-  "footerTotalBookmarks": { "message": "Усього: {0} закладок" }
+  "footerTotalBookmarks": { "message": "Усього: {0} закладок" },
+  "showGroupBookmarkCount": { "message": "Показувати кількість закладок у групах" }
 }

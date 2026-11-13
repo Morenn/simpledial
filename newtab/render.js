@@ -141,8 +141,9 @@ export async function updateFooter(providedConfig = null) {
 // ======================================================
 
 export async function render() {
-  renderGroups(true);
-  await renderBookmarks();
+  const config = await loadConfig();
+  renderGroups(true, config);
+  await renderBookmarks(config);
 
   // Apply grid layout after rendering
   calculateGridLayout();
@@ -151,8 +152,8 @@ export async function render() {
 // ======================================================
 // RENDER BOOKMARKS
 // ======================================================
-async function renderBookmarks() {
-  const config = await loadConfig();
+async function renderBookmarks(providedConfig = null) {
+  const config = providedConfig || await loadConfig();
   await updateFooter(config);
   const grid = document.getElementById("bookmarks-grid");
   grid.innerHTML = "";

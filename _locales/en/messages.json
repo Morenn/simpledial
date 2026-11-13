@@ -249,5 +249,6 @@
   "footerLastSyncedMinutes": { "message": "Last synced {0}m ago" },
   "footerLastSyncedHours": { "message": "Last synced {0}h ago" },
   "footerLastSyncedDays": { "message": "Last synced {0}d ago" },
-  "footerTotalBookmarks": { "message": "Total: {0} Bookmarks" }
+  "footerTotalBookmarks": { "message": "Total: {0} Bookmarks" },
+  "showGroupBookmarkCount": { "message": "Show bookmark count on groups" }
 }

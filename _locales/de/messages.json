@@ -247,5 +247,6 @@
   "footerLastSyncedMinutes": { "message": "Vor {0}m synchronisiert" },
   "footerLastSyncedHours": { "message": "Vor {0}h synchronisiert" },
   "footerLastSyncedDays": { "message": "Vor {0}T synchronisiert" },
-  "footerTotalBookmarks": { "message": "Gesamt: {0} Lesezeichen" }
+  "footerTotalBookmarks": { "message": "Gesamt: {0} Lesezeichen" },
+  "showGroupBookmarkCount": { "message": "Lesezeichenanzahl bei Gruppen anzeigen" }
 }

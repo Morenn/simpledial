@@ -247,5 +247,6 @@
   "footerLastSyncedMinutes": { "message": "{0}m geleden gesynchroniseerd" },
   "footerLastSyncedHours": { "message": "{0}u geleden gesynchroniseerd" },
   "footerLastSyncedDays": { "message": "{0}d geleden gesynchroniseerd" },
-  "footerTotalBookmarks": { "message": "Totaal: {0} bladwijzers" }
+  "footerTotalBookmarks": { "message": "Totaal: {0} bladwijzers" },
+  "showGroupBookmarkCount": { "message": "Aantal bladwijzers bij groepen tonen" }
 }

@@ -247,5 +247,6 @@
   "footerLastSyncedMinutes": { "message": "Synchronizované pred {0}m" },
   "footerLastSyncedHours": { "message": "Synchronizované pred {0}h" },
   "footerLastSyncedDays": { "message": "Synchronizované pred {0}d" },
-  "footerTotalBookmarks": { "message": "Celkom: {0} záložiek" }
+  "footerTotalBookmarks": { "message": "Celkom: {0} záložiek" },
+  "showGroupBookmarkCount": { "message": "Zobraziť počet záložiek pri skupinách" }
 }

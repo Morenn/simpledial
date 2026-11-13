@@ -47,7 +47,8 @@ export const defaultConfig = {
     backgroundSize: "stretched", // "stretched", "fill", "fit", "tile", "center", "span"
     tileOpacity: 1, // Bookmark tile opacity: 0 (transparent) to 1 (opaque)
     showDateTime: true,
-    showDeleted: false
+    showDeleted: false,
+    showGroupBookmarkCount: true
   },
   advanced: {
     faviconDebugLogging: false,

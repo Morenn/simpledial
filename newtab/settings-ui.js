@@ -85,6 +85,7 @@ const bgRemoveBtn = document.getElementById("bg-remove-btn");
 const tileOpacitySlider = document.getElementById("tile-opacity-slider");
 const tileOpacityValue = document.getElementById("tile-opacity-value");
 const dateTimeToggle = document.getElementById("date-time-toggle");
+const groupCountToggle = document.getElementById("group-count-toggle");
 
 // HouseKeeper Elements
 const hkRetentionDays = document.getElementById("hk-retention-days");
@@ -206,6 +207,16 @@ function initializeSettingsDirtyTracking() {
         updateDateTimeVisibility(dateTimeToggle.checked);
     });
   }
+  if (groupCountToggle) {
+    groupCountToggle.addEventListener('change', () => {
+      markSettingsDirty();
+      window.groupCountPreviewEnabled = groupCountToggle.checked;
+      if (appearanceDraft) {
+        appearanceDraft.showGroupBookmarkCount = groupCountToggle.checked;
+      }
+      void render();
+    });
+  }
 }
 
 bindRadioGroupToModel(syncType, syncTypeChoices);
@@ -281,7 +292,8 @@ async function revertAppearancePreviewToSaved() {
       backgroundSize: appearance.backgroundSize || 'stretched',
       tileOpacity: appearance.tileOpacity ?? 1,
       showDateTime: appearance.showDateTime ?? true,
-      showDeleted: appearance.showDeleted ?? false
+      showDeleted: appearance.showDeleted ?? false,
+      showGroupBookmarkCount: appearance.showGroupBookmarkCount ?? true
     };
 
     if (bgSizeSelect) bgSizeSelect.value = appearanceDraft.backgroundSize;
@@ -302,6 +314,11 @@ async function revertAppearancePreviewToSaved() {
       dateTimeToggle.checked = !!appearanceDraft.showDateTime;
     }
 
+    if (groupCountToggle) {
+      groupCountToggle.checked = !!appearanceDraft.showGroupBookmarkCount;
+    }
+    window.groupCountPreviewEnabled = null;
+
     if (bgPreview) {
       if (appearanceDraft.backgroundImage) {
         bgPreview.style.backgroundImage = `url('${appearanceDraft.backgroundImage}')`;
@@ -317,6 +334,7 @@ async function revertAppearancePreviewToSaved() {
     await applyBackground(config);
     await applyTileOpacity(config);
     await revertDateTimePreviewToSaved();
+    await render();
   } catch (err) {
     console.warn("Failed to revert appearance preview", err);
   }
@@ -329,6 +347,7 @@ settingsBtn.addEventListener("click", async () => {
     if (typeof window.clearDateTimePreview === "function") {
       window.clearDateTimePreview();
     }
+    window.groupCountPreviewEnabled = null;
 
     const config = await loadConfig();
 
@@ -459,6 +478,11 @@ settingsBtn.addEventListener("click", async () => {
     dateTimeToggle.checked = isVisible;
   }
 
+  // Load group bookmark count display toggle state
+  if (groupCountToggle) {
+    groupCountToggle.checked = config.appearance?.showGroupBookmarkCount ?? true;
+  }
+
   // Load advanced settings
   applyAdvancedSettingsToControls(config.advanced || {});
   if (browserBookmarksAutoSync) {
@@ -476,7 +500,8 @@ settingsBtn.addEventListener("click", async () => {
     backgroundSize: config.appearance?.backgroundSize || 'stretched',
     tileOpacity: config.appearance?.tileOpacity ?? 1,
     showDateTime: config.appearance?.showDateTime ?? true,
-    showDeleted: config.appearance?.showDeleted ?? false
+    showDeleted: config.appearance?.showDeleted ?? false,
+    showGroupBookmarkCount: config.appearance?.showGroupBookmarkCount ?? true
   };
 
   // Load backups settings
@@ -1541,6 +1566,11 @@ async function persistSettings(closeAfterSave = false) {
   if (showDeletedToggle) {
     config.appearance.showDeleted = showDeletedToggle.checked;
   }
+
+  if (groupCountToggle) {
+    config.appearance.showGroupBookmarkCount = groupCountToggle.checked;
+  }
+  window.groupCountPreviewEnabled = null;
 
   // Save advanced settings
   config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;

@@ -3,8 +3,40 @@ import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
 
+let lastShowGroupBookmarkCount = true;
+
+function getEffectiveShowGroupCount(config = null) {
+  if (typeof window.groupCountPreviewEnabled === "boolean") {
+    return window.groupCountPreviewEnabled;
+  }
+  if (config && typeof config.appearance?.showGroupBookmarkCount === "boolean") {
+    lastShowGroupBookmarkCount = config.appearance.showGroupBookmarkCount;
+  }
+  return lastShowGroupBookmarkCount;
+}
+
+function getActiveBookmarkCount(group) {
+  if (!group || !Array.isArray(group.items)) return 0;
+  return group.items.filter(item => !item.deleted && item.url).length;
+}
+
+function setGroupElementContent(el, group, showCount) {
+  el.innerHTML = "";
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "group-tab-name";
+  nameSpan.textContent = group.name;
+  el.appendChild(nameSpan);
+
+  if (showCount) {
+    const countBadge = document.createElement("span");
+    countBadge.className = "group-tab-count";
+    countBadge.textContent = String(getActiveBookmarkCount(group));
+    el.appendChild(countBadge);
+  }
+}
+
 // ---------- Render groups ----------
-export function renderGroups(show = true) {
+export function renderGroups(show = true, config = null) {
   const groupsHeader = document.getElementById("groups-header");
 
   if (!show) {
@@ -19,14 +51,15 @@ export function renderGroups(show = true) {
   const showDeletedToggle = document.getElementById("show-deleted-toggle");
   const showDeleted = showDeletedToggle ? showDeletedToggle.checked : false;
   const visibleGroups = state.groups.filter(g => !(g.deleted && !showDeleted));
+  const showGroupCount = getEffectiveShowGroupCount(config);
   
   // Check if we need dropdown by simulating layout
   const needsDropdown = shouldUseDropdown(visibleGroups.length + 1); // +1 for add button
 
   if (needsDropdown) {
-    renderGroupsDropdown(groupsHeader, visibleGroups);
+    renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount);
   } else {
-    renderGroupsTabs(groupsHeader, visibleGroups);
+    renderGroupsTabs(groupsHeader, visibleGroups, showGroupCount);
   }
 }
 
@@ -53,7 +86,7 @@ function shouldUseDropdown(groupCount) {
 }
 
 // ---------- Render groups as tabs ----------
-function renderGroupsTabs(groupsHeader, visibleGroups) {
+function renderGroupsTabs(groupsHeader, visibleGroups, showGroupCount) {
   visibleGroups.forEach(group => {
     const tab = document.createElement("div");
     tab.className = "group-tab";
@@ -65,7 +98,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups) {
       tab.classList.add("active");
     }
 
-    tab.textContent = group.name;
+    setGroupElementContent(tab, group, showGroupCount);
 
     tab.addEventListener("click", () => {
       if (group.deleted) return;
@@ -109,7 +142,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups) {
 }
 
 // ---------- Render groups as dropdown ----------
-function renderGroupsDropdown(groupsHeader, visibleGroups) {
+function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
   const dropdownContainer = document.createElement("div");
   dropdownContainer.className = "groups-dropdown-container";
 
@@ -117,7 +150,11 @@ function renderGroupsDropdown(groupsHeader, visibleGroups) {
   const activeGroup = visibleGroups.find(g => g.id === window.activeGroupId && !g.deleted);
   const dropdownBtn = document.createElement("button");
   dropdownBtn.className = "groups-dropdown-btn";
-  dropdownBtn.textContent = activeGroup ? activeGroup.name : "Select Group";
+  if (activeGroup) {
+    setGroupElementContent(dropdownBtn, activeGroup, showGroupCount);
+  } else {
+    dropdownBtn.textContent = "Select Group";
+  }
   dropdownBtn.title = "Select group";
 
   // Dropdown menu
@@ -132,13 +169,13 @@ function renderGroupsDropdown(groupsHeader, visibleGroups) {
       option.classList.add("active");
     }
 
-    option.textContent = group.name;
+    setGroupElementContent(option, group, showGroupCount);
 
     option.addEventListener("click", async () => {
       if (group.deleted) return;
       window.activeGroupId = group.id;
       await saveActiveGroupId(group.id);
-      dropdownBtn.textContent = group.name;
+      setGroupElementContent(dropdownBtn, group, showGroupCount);
       dropdownMenu.classList.remove("show");
       render();
     });
