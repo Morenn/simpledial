@@ -250,5 +250,13 @@
   "footerLastSyncedHours": { "message": "Last synced {0}h ago" },
   "footerLastSyncedDays": { "message": "Last synced {0}d ago" },
   "footerTotalBookmarks": { "message": "Total: {0} Bookmarks" },
-  "showGroupBookmarkCount": { "message": "Show bookmark count on groups" }
+  "showGroupBookmarkCount": { "message": "Show bookmark count on groups" },
+  "newGroup": { "message": "New group" },
+  "editGroupTitle": { "message": "Edit group" },
+  "groupName": { "message": "Group name" },
+  "groupIcon": { "message": "Icon URL or emoji (optional)" },
+  "tileColor": { "message": "Tile color (optional)" },
+  "useCustomColor": { "message": "Custom color" },
+  "colorFromIcon": { "message": "Auto from icon" },
+  "invalidIconUrl": { "message": "Please enter a valid icon URL." }
 }

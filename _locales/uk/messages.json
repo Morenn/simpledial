@@ -248,5 +248,13 @@
   "footerLastSyncedHours": { "message": "Синхронізовано {0}год тому" },
   "footerLastSyncedDays": { "message": "Синхронізовано {0}дн тому" },
   "footerTotalBookmarks": { "message": "Усього: {0} закладок" },
-  "showGroupBookmarkCount": { "message": "Показувати кількість закладок у групах" }
+  "showGroupBookmarkCount": { "message": "Показувати кількість закладок у групах" },
+  "newGroup": { "message": "Нова група" },
+  "editGroupTitle": { "message": "Редагувати групу" },
+  "groupName": { "message": "Назва групи" },
+  "groupIcon": { "message": "URL іконки або емодзі (необов'язково)" },
+  "tileColor": { "message": "Колір плитки (необов'язково)" },
+  "useCustomColor": { "message": "Власний колір" },
+  "colorFromIcon": { "message": "Авто з іконки" },
+  "invalidIconUrl": { "message": "Будь ласка, введіть дійсну URL-адресу іконки." }
 }

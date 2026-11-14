@@ -248,5 +248,13 @@
   "footerLastSyncedHours": { "message": "Vor {0}h synchronisiert" },
   "footerLastSyncedDays": { "message": "Vor {0}T synchronisiert" },
   "footerTotalBookmarks": { "message": "Gesamt: {0} Lesezeichen" },
-  "showGroupBookmarkCount": { "message": "Lesezeichenanzahl bei Gruppen anzeigen" }
+  "showGroupBookmarkCount": { "message": "Lesezeichenanzahl bei Gruppen anzeigen" },
+  "newGroup": { "message": "Neue Gruppe" },
+  "editGroupTitle": { "message": "Gruppe bearbeiten" },
+  "groupName": { "message": "Gruppenname" },
+  "groupIcon": { "message": "Symbol-URL oder Emoji (optional)" },
+  "tileColor": { "message": "Kachelfarbe (optional)" },
+  "useCustomColor": { "message": "Benutzerdefinierte Farbe" },
+  "colorFromIcon": { "message": "Automatisch aus Symbol" },
+  "invalidIconUrl": { "message": "Bitte geben Sie eine gültige Symbol-URL ein." }
 }

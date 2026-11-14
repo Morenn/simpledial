@@ -2,6 +2,15 @@ import { state, saveState, generateId, saveActiveGroupId } from "./state.js";
 import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
+import { ensureHostPermission } from "./bookmarks.js";
+import {
+  isUrlLikeIcon,
+  normalizeCustomIconValue,
+  isValidHexColor,
+  extractDominantColorFromImageSource,
+  extractDominantColorFromEmoji,
+  applyTileColorStyle
+} from "./color-utils.js";
 
 let lastShowGroupBookmarkCount = true;
 
@@ -21,7 +30,25 @@ function getActiveBookmarkCount(group) {
 }
 
 function setGroupElementContent(el, group, showCount) {
-  el.innerHTML = "";
+  el.textContent = "";
+  applyTileColorStyle(el, group?.tileColor || null);
+
+  if (group?.customIcon) {
+    if (isUrlLikeIcon(group.customIcon)) {
+      const iconImg = document.createElement("img");
+      iconImg.className = "group-tab-icon";
+      iconImg.alt = "";
+      iconImg.src = group.customIcon;
+      iconImg.addEventListener("error", () => iconImg.remove());
+      el.appendChild(iconImg);
+    } else {
+      const emojiSpan = document.createElement("span");
+      emojiSpan.className = "group-tab-emoji";
+      emojiSpan.textContent = group.customIcon;
+      el.appendChild(emojiSpan);
+    }
+  }
+
   const nameSpan = document.createElement("span");
   nameSpan.className = "group-tab-name";
   nameSpan.textContent = group.name;
@@ -34,6 +61,143 @@ function setGroupElementContent(el, group, showCount) {
     el.appendChild(countBadge);
   }
 }
+
+// ---------- Group Modal ----------
+const groupModal = document.getElementById("group-modal");
+const groupModalTitle = document.getElementById("group-modal-title");
+const grpName = document.getElementById("grp-name");
+const grpIcon = document.getElementById("grp-icon");
+const grpColor = document.getElementById("grp-color");
+const grpColorCustom = document.getElementById("grp-color-custom");
+const grpColorFromIcon = document.getElementById("grp-color-from-icon");
+const grpSave = document.getElementById("grp-save");
+const grpCancel = document.getElementById("grp-cancel");
+
+let editingGroupId = null;
+
+if (grpColor && grpColorCustom && grpColorFromIcon) {
+  grpColor.addEventListener("input", () => {
+    grpColorCustom.checked = true;
+    grpColorFromIcon.checked = false;
+  });
+  grpColorCustom.addEventListener("change", () => {
+    if (grpColorCustom.checked) {
+      grpColorFromIcon.checked = false;
+    }
+  });
+  grpColorFromIcon.addEventListener("change", () => {
+    if (grpColorFromIcon.checked) {
+      grpColorCustom.checked = false;
+    }
+  });
+}
+
+export function openGroupModal(group = null) {
+  if (!groupModal) return;
+
+  editingGroupId = group?.id || null;
+  if (groupModalTitle) {
+    groupModalTitle.textContent = group ? t("editGroupTitle") : t("newGroup");
+  }
+
+  const fallbackHex = "#4a6bff";
+  if (grpName) grpName.value = group?.name || "";
+  if (grpIcon) grpIcon.value = group?.customIcon || "";
+  if (grpColor) {
+    grpColor.value = isValidHexColor(group?.tileColor) ? group.tileColor : fallbackHex;
+  }
+  if (grpColorFromIcon) grpColorFromIcon.checked = !!group?.colorFromIcon;
+  if (grpColorCustom) grpColorCustom.checked = !!(group?.tileColor && !group?.colorFromIcon);
+
+  groupModal.classList.remove("hidden");
+  grpName?.focus();
+}
+
+function closeGroupModal() {
+  groupModal?.classList.add("hidden");
+  editingGroupId = null;
+}
+
+grpCancel?.addEventListener("click", closeGroupModal);
+
+groupModal?.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeGroupModal();
+  }
+
+  if (e.key === "Enter" && (e.target === grpName || e.target === grpIcon)) {
+    e.preventDefault();
+    grpSave?.click();
+  }
+});
+
+grpSave?.addEventListener("click", async () => {
+  const name = grpName?.value.trim() || "";
+  if (!name) return;
+
+  const rawIcon = grpIcon?.value.trim() || "";
+  let customIcon = null;
+  if (rawIcon) {
+    customIcon = normalizeCustomIconValue(rawIcon, { allowEmoji: true });
+    if (!customIcon) {
+      alert(t("invalidIconUrl"));
+      return;
+    }
+  }
+
+  const wantColorFromIcon = !!grpColorFromIcon?.checked;
+  const wantCustomColor = !!grpColorCustom?.checked;
+  const pickedColor = grpColor?.value || "#4a6bff";
+
+  let colorFromIcon = false;
+  let tileColor = null;
+
+  if (wantColorFromIcon && customIcon) {
+    colorFromIcon = true;
+    if (isUrlLikeIcon(customIcon)) {
+      await ensureHostPermission();
+      tileColor = await extractDominantColorFromImageSource(customIcon);
+    } else {
+      tileColor = extractDominantColorFromEmoji(customIcon);
+    }
+  } else if (wantCustomColor) {
+    colorFromIcon = false;
+    tileColor = pickedColor;
+  }
+
+  if (editingGroupId) {
+    // Look up group by ID so background sync refreshes cannot leave a stale object reference.
+    const currentGroup = state.groups.find(g => g.id === editingGroupId);
+    if (currentGroup) {
+      currentGroup.name = name;
+      currentGroup.customIcon = customIcon;
+      currentGroup.tileColor = tileColor;
+      currentGroup.colorFromIcon = colorFromIcon;
+      currentGroup.updatedAt = Date.now();
+    }
+  } else {
+    const g = {
+      id: generateId("g"),
+      name,
+      customIcon,
+      tileColor,
+      colorFromIcon,
+      items: [],
+      updatedAt: Date.now(),
+      deleted: false,
+      deletedAt: null
+    };
+
+    state.groups.push(g);
+    window.activeGroupId = g.id;
+    await saveActiveGroupId(g.id);
+  }
+
+  closeGroupModal();
+  await saveState();
+  await syncWrite();
+  render();
+});
 
 // ---------- Render groups ----------
 export function renderGroups(show = true, config = null) {
@@ -65,7 +229,6 @@ export function renderGroups(show = true, config = null) {
 
 // ---------- Check if dropdown is needed ----------
 function shouldUseDropdown(groupCount) {
-  const groupsHeader = document.getElementById("groups-header");
   const topBar = document.getElementById("top-bar");
   if (!topBar) return false;
   
@@ -114,26 +277,8 @@ function renderGroupsTabs(groupsHeader, visibleGroups, showGroupCount) {
   const addTab = document.createElement("div");
   addTab.className = "group-tab add-group";
   addTab.textContent = "+";
-  addTab.addEventListener("click", async () => {
-    const name = prompt(window.t("newGroupName"));
-    if (!name) return;
-
-    const g = {
-      id: generateId("g"),
-      name: name.trim(),
-      items: [],
-      updatedAt: Date.now(),
-      deleted: false,
-      deletedAt: null
-    };
-
-    state.groups.push(g);
-    window.activeGroupId = g.id;
-    await saveActiveGroupId(g.id);
-
-    await saveState();
-    await syncWrite();
-    render();
+  addTab.addEventListener("click", () => {
+    openGroupModal(null);
   });
 
   groupsHeader.appendChild(addTab);
@@ -194,26 +339,9 @@ function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
   addOption.className = "groups-dropdown-option add-group-option";
   addOption.textContent = "+ Add Group";
 
-  addOption.addEventListener("click", async () => {
-    const name = prompt(window.t("newGroupName"));
-    if (!name) return;
-
-    const g = {
-      id: generateId("g"),
-      name: name.trim(),
-      items: [],
-      updatedAt: Date.now(),
-      deleted: false,
-      deletedAt: null
-    };
-
-    state.groups.push(g);
-    window.activeGroupId = g.id;
-    await saveActiveGroupId(g.id);
-
-    await saveState();
-    await syncWrite();
-    render();
+  addOption.addEventListener("click", () => {
+    dropdownMenu.classList.remove("show");
+    openGroupModal(null);
   });
 
   dropdownMenu.appendChild(addOption);
@@ -244,16 +372,9 @@ function showGroupContextMenu(e, group, optionElement) {
 
   const editBtn = document.createElement("div");
   editBtn.textContent = t("edit");
-  editBtn.addEventListener("click", async () => {
-    const newName = prompt(t("editGroup"), group.name);
-    if (newName && newName.trim()) {
-      group.name = newName.trim();
-      group.updatedAt = Date.now();
-      await saveState();
-      await syncWrite();
-      render();
-    }
+  editBtn.addEventListener("click", () => {
     document.body.removeChild(menu);
+    openGroupModal(group);
   });
 
   const deleteBtn = document.createElement("div");
@@ -397,14 +518,7 @@ export async function handleGroupContext(action, el) {
   if (!group) return;
 
   if (action === "edit") {
-    const newName = prompt("Nový názov skupiny:", group.name);
-    if (newName && newName.trim()) {
-      group.name = newName.trim();
-      group.updatedAt = Date.now();
-      await saveState();
-      await syncWrite();
-      render();
-    }
+    openGroupModal(group);
   }
 
   if (action === "delete") {
@@ -434,7 +548,8 @@ export async function handleGroupContext(action, el) {
   }
 
   if (action === "delete-permanent") {
-    if (!confirm(`Vymazať skupinu "${group.name}" natrvalo? Túto operáciu nie je možné vrátiť.`)) return;
+    const confirmMsg = t("confirmDeletePermanentGroup").replace("{0}", group.name);
+    if (!confirm(confirmMsg)) return;
 
     const groupIndex = state.groups.findIndex(g => g.id === id);
     if (groupIndex > -1) {

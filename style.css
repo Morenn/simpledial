@@ -1566,3 +1566,83 @@ body.theme-dark .bookmark-title:hover {
   color: var(--footer-accent);
   font-weight: 500;
 }
+
+/* ─────────────────────────────────────────────
+   CUSTOM GROUP ICONS & TILE COLORS
+───────────────────────────────────────────── */
+.group-tab-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.group-tab-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.groups-dropdown-option {
+  justify-content: flex-start;
+}
+
+.groups-dropdown-option .group-tab-count {
+  margin-left: auto;
+}
+
+.tile-color-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.1rem;
+}
+
+.tile-color-controls input[type="color"] {
+  width: 36px;
+  height: 30px;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  cursor: pointer;
+}
+
+.tile-color-checkbox {
+  margin: 0 !important;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.bookmark-tile.has-custom-color {
+  background: color-mix(in srgb, var(--custom-tile-color) 22%, var(--tile-bg));
+  border-color: color-mix(in srgb, var(--custom-tile-color) 55%, var(--tile-border));
+}
+
+.bookmark-tile.has-custom-color:hover {
+  background: color-mix(in srgb, var(--custom-tile-color) 32%, var(--tile-bg-hover));
+  box-shadow: var(--tile-shadow-hover),
+    0 0 10px 4px color-mix(in srgb, var(--custom-tile-color) 65%, transparent);
+}
+
+.group-tab.has-custom-color,
+.groups-dropdown-btn.has-custom-color,
+.groups-dropdown-option.has-custom-color {
+  background: color-mix(in srgb, var(--custom-tile-color) 22%, var(--bg3));
+  border: 1px solid color-mix(in srgb, var(--custom-tile-color) 55%, var(--border));
+}
+
+.group-tab.has-custom-color:hover,
+.groups-dropdown-btn.has-custom-color:hover,
+.groups-dropdown-option.has-custom-color:hover {
+  background: color-mix(in srgb, var(--custom-tile-color) 32%, var(--bg2));
+}
+
+.group-tab.active.has-custom-color,
+.groups-dropdown-option.active.has-custom-color {
+  background: color-mix(in srgb, var(--custom-tile-color) 75%, var(--accent));
+  border-color: var(--custom-tile-color);
+  color: #fff;
+}

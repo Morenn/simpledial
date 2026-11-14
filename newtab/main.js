@@ -362,6 +362,22 @@ export function updateUIText() {
     if (cancelBtn) cancelBtn.textContent = t("cancel");
   }
 
+  // Group modal
+  const groupModal = document.getElementById("group-modal");
+  if (groupModal) {
+    const grpNameLabel = document.querySelector('label[for="grp-name"]');
+    if (grpNameLabel) grpNameLabel.textContent = t("groupName");
+
+    const grpIconLabel = document.querySelector('label[for="grp-icon"]');
+    if (grpIconLabel) grpIconLabel.textContent = t("groupIcon");
+
+    const grpSaveBtn = document.getElementById("grp-save");
+    if (grpSaveBtn) grpSaveBtn.textContent = t("save");
+
+    const grpCancelBtn = document.getElementById("grp-cancel");
+    if (grpCancelBtn) grpCancelBtn.textContent = t("cancel");
+  }
+
   // Sync modal
   const syncModal = document.getElementById("sync-modal");
   if (syncModal) {

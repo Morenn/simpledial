@@ -995,11 +995,14 @@ if (syncDownloadBtn) {
 
 // ---------- Export ----------
 exportBtn.addEventListener("click", async () => {
-  // Export a clean copy of state ensuring hasError flag is present on items
+  // Export a clean copy of state ensuring hasError flag and customization fields are present
   const exportData = {
     groups: state.groups.map(g => ({
       id: g.id,
       name: g.name,
+      customIcon: g.customIcon || null,
+      tileColor: g.tileColor || null,
+      colorFromIcon: !!g.colorFromIcon,
       updatedAt: g.updatedAt,
       deleted: g.deleted,
       deletedAt: g.deletedAt,
@@ -1008,6 +1011,9 @@ exportBtn.addEventListener("click", async () => {
         title: i.title,
         url: i.url,
         customIcon: i.customIcon || null,
+        notes: i.notes || null,
+        tileColor: i.tileColor || null,
+        colorFromIcon: !!i.colorFromIcon,
         customIconCache: i.customIconCache || null,
         iconRefreshedAt: Number(i.iconRefreshedAt || 0),
         updatedAt: i.updatedAt,

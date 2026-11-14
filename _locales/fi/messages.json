@@ -248,5 +248,13 @@
   "footerLastSyncedHours": { "message": "Synkronoitu {0}t sitten" },
   "footerLastSyncedDays": { "message": "Synkronoitu {0}pv sitten" },
   "footerTotalBookmarks": { "message": "Yhteensä: {0} kirjanmerkkiä" },
-  "showGroupBookmarkCount": { "message": "Näytä kirjanmerkkien määrä ryhmissä" }
+  "showGroupBookmarkCount": { "message": "Näytä kirjanmerkkien määrä ryhmissä" },
+  "newGroup": { "message": "Uusi ryhmä" },
+  "editGroupTitle": { "message": "Muokkaa ryhmää" },
+  "groupName": { "message": "Ryhmän nimi" },
+  "groupIcon": { "message": "Kuvakkeen URL tai emoji (valinnainen)" },
+  "tileColor": { "message": "Ruudun väri (valinnainen)" },
+  "useCustomColor": { "message": "Mukautettu väri" },
+  "colorFromIcon": { "message": "Automaattisesti kuvakkeesta" },
+  "invalidIconUrl": { "message": "Anna kelvollinen kuvakkeen URL-osoite." }
 }

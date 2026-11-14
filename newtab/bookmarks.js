@@ -4,6 +4,7 @@ import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
 import { loadConfig } from "./config.js";
 import { faviconDebugLog } from "./debug.js";
+import { extractDominantColorFromImageSource, applyTileColorStyle, isValidHexColor } from "./color-utils.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
 const PLACEHOLDER_ICON_URL = chrome.runtime.getURL("icons/icon-16.png");
@@ -24,7 +25,7 @@ async function hasHostPermission() {
   }
 }
 
-async function ensureHostPermission() {
+export async function ensureHostPermission() {
   try {
     if (await chrome.permissions.contains({ origins: ["*://*/*"] })) return true;
     return await chrome.permissions.request({ origins: ["*://*/*"] });
@@ -176,6 +177,26 @@ async function getChromeFaviconIfReal(pageUrl, size = 32) {
   }
 }
 
+function findBookmarkInState(bookmarkId) {
+  if (!bookmarkId) return null;
+  for (const g of state.groups) {
+    const found = (g.items || []).find(i => i.id === bookmarkId);
+    if (found) return found;
+  }
+  return null;
+}
+
+async function syncBookmarkColorFromIcon(item, tile, iconSrc) {
+  if (!item?.colorFromIcon || !iconSrc || iconSrc === PLACEHOLDER_ICON_URL) return null;
+  if (isGoogleFaviconUrl(iconSrc) && !(await hasHostPermission())) return null;
+  const extracted = await extractDominantColorFromImageSource(iconSrc);
+  if (!extracted) return null;
+  item.tileColor = extracted;
+  setFaviconCacheEntry(item, { iconColor: extracted });
+  if (tile) applyTileColorStyle(tile, extracted);
+  return extracted;
+}
+
 // ---------- Create bookmark tile ----------
 export function createBookmarkTile(item, config = null) {
   const tile = document.createElement("div");
@@ -184,10 +205,26 @@ export function createBookmarkTile(item, config = null) {
   tile.dataset.bookmarkId = item.id;
   tile.title = item.url;
 
+  const cachedEntry = getFaviconCacheEntry(item);
+  const effectiveColor = item.tileColor || (item.colorFromIcon ? cachedEntry.iconColor : null);
+  applyTileColorStyle(tile, effectiveColor);
+
   const icon = document.createElement("img");
   icon.className = "bookmark-favicon";
   icon.loading = "lazy";
   icon.decoding = "async";
+
+  if (item.colorFromIcon && !effectiveColor) {
+    if (cachedEntry.dataUrl) {
+      void syncBookmarkColorFromIcon(item, tile, cachedEntry.dataUrl);
+    } else {
+      icon.addEventListener("load", () => {
+        const loadedSrc = icon.currentSrc || icon.src;
+        void syncBookmarkColorFromIcon(item, tile, loadedSrc);
+      });
+    }
+  }
+
   icon.src = getImmediateIconSrc(item);
   scheduleDeferredIconHydration(icon, item);
 
@@ -516,14 +553,16 @@ async function refreshBookmarkIcon(item, options = {}) {
     const faviconUrl = await getBestFaviconUrl(item);
 
     if (faviconUrl) {
+      let resolvedIconSrc = faviconUrl;
       if (isGoogleFaviconUrl(faviconUrl)) {
-        // Known to always be CORS-blocked — don't even attempt the fetch,
-        // just use the URL directly as <img src>.
+        // Known to always be CORS-blocked unless host permission was granted —
+        // skip fetch() here and use the URL directly as <img src>.
         setCachedFaviconDataUrl(item, faviconUrl);
       } else {
         try {
           // Cache the actual bytes as a data URL when we can.
           const dataUrl = await fetchIconAsDataUrl(faviconUrl, true);
+          resolvedIconSrc = dataUrl;
           setCachedFaviconDataUrl(item, dataUrl);
         } catch (fetchErr) {
           // Fetch blocked (CORS/permissions) — <img> can still load the
@@ -531,6 +570,17 @@ async function refreshBookmarkIcon(item, options = {}) {
           // expected/handled, so only noisy in debug mode.
           faviconDebugLog("could not download icon bytes, using direct URL", faviconUrl, fetchErr);
           setCachedFaviconDataUrl(item, faviconUrl);
+        }
+      }
+
+      if (item.colorFromIcon && (!isGoogleFaviconUrl(resolvedIconSrc) || await hasHostPermission())) {
+        const iconColor = await extractDominantColorFromImageSource(resolvedIconSrc);
+        if (iconColor) {
+          setFaviconCacheEntry(item, { iconColor });
+          if (item.tileColor !== iconColor) {
+            item.tileColor = iconColor;
+            item.updatedAt = Date.now();
+          }
         }
       }
     }
@@ -621,10 +671,30 @@ const bmUrl = document.getElementById("bm-url");
 const bmIcon = document.getElementById("bm-icon");
 const bmNotes = document.getElementById("bm-notes");
 const bmNotesCounter = document.getElementById("bm-notes-counter");
+const bmColor = document.getElementById("bm-color");
+const bmColorCustom = document.getElementById("bm-color-custom");
+const bmColorFromIcon = document.getElementById("bm-color-from-icon");
 const bmSave = document.getElementById("bm-save");
 const bmCancel = document.getElementById("bm-cancel");
 
 let editingBookmark = null;
+
+if (bmColor && bmColorCustom && bmColorFromIcon) {
+  bmColor.addEventListener("input", () => {
+    bmColorCustom.checked = true;
+    bmColorFromIcon.checked = false;
+  });
+  bmColorCustom.addEventListener("change", () => {
+    if (bmColorCustom.checked) {
+      bmColorFromIcon.checked = false;
+    }
+  });
+  bmColorFromIcon.addEventListener("change", () => {
+    if (bmColorFromIcon.checked) {
+      bmColorCustom.checked = false;
+    }
+  });
+}
 
 function updateNotesCounter() {
   if (bmNotesCounter) {
@@ -636,6 +706,7 @@ bmNotes.addEventListener("input", updateNotesCounter);
 
 export function openBookmarkModal(data = null) {
   editingBookmark = data;
+  const fallbackHex = "#4a6bff";
 
   if (data) {
     modalTitle.textContent = t("editBookmark");
@@ -643,12 +714,20 @@ export function openBookmarkModal(data = null) {
     bmUrl.value = data.url;
     bmIcon.value = data.customIcon || "";
     bmNotes.value = data.notes || "";
+    if (bmColor) {
+      bmColor.value = isValidHexColor(data.tileColor) ? data.tileColor : fallbackHex;
+    }
+    if (bmColorFromIcon) bmColorFromIcon.checked = !!data.colorFromIcon;
+    if (bmColorCustom) bmColorCustom.checked = !!(data.tileColor && !data.colorFromIcon);
   } else {
     modalTitle.textContent = t("newBookmark");
     bmTitle.value = "";
     bmUrl.value = "";
     bmIcon.value = "";
     bmNotes.value = "";
+    if (bmColor) bmColor.value = fallbackHex;
+    if (bmColorFromIcon) bmColorFromIcon.checked = false;
+    if (bmColorCustom) bmColorCustom.checked = false;
   }
 
   updateNotesCounter();
@@ -690,69 +769,119 @@ bmSave.addEventListener("click", async () => {
   }
 
   const group = state.groups.find(g => g.id === window.activeGroupId);
-  const targetBookmarkId = editingBookmark?.id || null;
+  if (!group) return;
+
+  const wantColorFromIcon = !!bmColorFromIcon?.checked;
+  const wantCustomColor = !!bmColorCustom?.checked;
+  const pickedColor = bmColor?.value || "#4a6bff";
+  const needsExperimental =
+    document.getElementById("enable-experimental-favicon-fetch-link")?.checked ||
+    document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked;
+
+  // Request optional host permission upfront while user gesture is still active.
+  if (wantColorFromIcon || icon || needsExperimental) {
+    await ensureHostPermission();
+  }
+
+  let targetBookmark = null;
+  let iconChanged = false;
+  let isNewBookmark = false;
 
   // EDIT
   if (editingBookmark) {
     // 🔥 Look up item by ID instead of using stale reference
     // (sync loop may have replaced state.groups while modal was open)
-    const currentItem = group?.items.find(i => i.id === editingBookmark.id);
+    const currentItem = group.items.find(i => i.id === editingBookmark.id);
     if (currentItem) {
       const previousCustomIcon = currentItem.customIcon || null;
       const nextCustomIcon = icon || null;
+      iconChanged = previousCustomIcon !== nextCustomIcon;
 
       currentItem.title = title || url;
       currentItem.url = url;
       currentItem.customIcon = nextCustomIcon;
       currentItem.notes = notes || null;
-      if (previousCustomIcon !== nextCustomIcon) {
+      currentItem.colorFromIcon = wantColorFromIcon;
+      if (wantColorFromIcon) {
+        if (iconChanged) {
+          currentItem.tileColor = null;
+        }
+      } else if (wantCustomColor) {
+        currentItem.tileColor = pickedColor;
+      } else {
+        currentItem.tileColor = null;
+      }
+
+      if (iconChanged) {
         clearFaviconCacheEntry(currentItem); // reset cached icon + timestamp
       }
       currentItem.updatedAt = Date.now();
+      targetBookmark = currentItem;
     }
 
   // CREATE
   } else {
-    group.items.push({
+    isNewBookmark = true;
+    targetBookmark = {
       id: generateId("b"),
       title: title || url,
       url,
       customIcon: icon || null,
       notes: notes || null,
+      tileColor: wantCustomColor ? pickedColor : null,
+      colorFromIcon: wantColorFromIcon,
       updatedAt: Date.now(),
       deleted: false,
       deletedAt: null
-    });
+    };
+    group.items.push(targetBookmark);
   }
+
+  const targetBookmarkId = targetBookmark?.id || null;
 
   await saveState();
-  await syncWrite();
   closeBookmarkModal();
+  render();
 
-  // Only prompt for the host permission if an experimental lookup needs it.
-  if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked || document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked) {
-    await ensureHostPermission();
+  if (targetBookmarkId) {
+    // Cache/update icon immediately after save.
+    await refreshBookmarkIconsIfNeeded({
+      force: iconChanged || isNewBookmark || wantColorFromIcon || isIconMissing(targetBookmark),
+      bookmarkId: targetBookmarkId,
+      persist: true,
+      sync: false
+    });
+
+    const latestItem = findBookmarkInState(targetBookmarkId);
+    if (latestItem && wantColorFromIcon) {
+      const iconSrc = getCachedFaviconDataUrl(latestItem) || latestItem.customIcon || getFaviconUrl(latestItem.url);
+      if (iconSrc && (!isGoogleFaviconUrl(iconSrc) || await hasHostPermission())) {
+        const autoColor = await extractDominantColorFromImageSource(iconSrc);
+        if (autoColor) {
+          setFaviconCacheEntry(latestItem, { iconColor: autoColor });
+          if (latestItem.tileColor !== autoColor) {
+            latestItem.tileColor = autoColor;
+            latestItem.updatedAt = Date.now();
+            await saveState();
+          }
+          render();
+        }
+      }
+    }
   }
 
-  // Cache/update icon immediately after save.
-  await refreshBookmarkIconsIfNeeded({
-    force: true,
-    bookmarkId: targetBookmarkId || group?.items[group.items.length - 1]?.id,
-    persist: true,
-    sync: false
-  });
+  await syncWrite();
 
-  render();
-  
   // Check link health asynchronously in background (don't delay UI update)
-  const itemToCheck = targetBookmarkId ? group?.items.find(i => i.id === targetBookmarkId) : group?.items[group.items.length - 1];
+  const itemToCheck = findBookmarkInState(targetBookmarkId);
   if (itemToCheck && itemToCheck.url) {
     try {
       const isValid = await validateSingleLink(itemToCheck.url);
       const newHasError = !isValid;
-      if (itemToCheck.hasError !== newHasError) {
-        itemToCheck.hasError = newHasError;
-        itemToCheck.updatedAt = Date.now();
+      const liveItem = findBookmarkInState(targetBookmarkId);
+      if (liveItem && liveItem.hasError !== newHasError) {
+        liveItem.hasError = newHasError;
+        liveItem.updatedAt = Date.now();
         await saveState();
         await syncWrite();
         render();

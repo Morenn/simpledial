@@ -75,9 +75,53 @@
       <textarea id="bm-notes" rows="4" maxlength="100"></textarea>
       <div id="bm-notes-counter" class="bookmark-notes-counter">0/100</div>
 
+      <label data-i18n="tileColor">Tile color (optional)</label>
+      <div class="tile-color-controls">
+        <input type="color" id="bm-color" value="#4a6bff">
+        <label class="checkbox-row tile-color-checkbox">
+          <input type="checkbox" id="bm-color-custom">
+          <span data-i18n="useCustomColor">Custom color</span>
+        </label>
+        <label class="checkbox-row tile-color-checkbox">
+          <input type="checkbox" id="bm-color-from-icon">
+          <span data-i18n="colorFromIcon">Auto from icon</span>
+        </label>
+      </div>
+
       <div class="modal-buttons">
         <button id="bm-save">Save</button>
         <button id="bm-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for adding/editing group -->
+  <div id="group-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="group-modal-title" data-i18n="newGroup">New group</h2>
+
+      <label for="grp-name" data-i18n="groupName">Group name</label>
+      <input type="text" id="grp-name">
+
+      <label for="grp-icon" data-i18n="groupIcon">Icon URL or emoji (optional)</label>
+      <input type="text" id="grp-icon" placeholder="https://... or 🤖">
+
+      <label data-i18n="tileColor">Tile color (optional)</label>
+      <div class="tile-color-controls">
+        <input type="color" id="grp-color" value="#4a6bff">
+        <label class="checkbox-row tile-color-checkbox">
+          <input type="checkbox" id="grp-color-custom">
+          <span data-i18n="useCustomColor">Custom color</span>
+        </label>
+        <label class="checkbox-row tile-color-checkbox">
+          <input type="checkbox" id="grp-color-from-icon">
+          <span data-i18n="colorFromIcon">Auto from icon</span>
+        </label>
+      </div>
+
+      <div class="modal-buttons">
+        <button id="grp-save" data-i18n="save">Save</button>
+        <button id="grp-cancel" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>

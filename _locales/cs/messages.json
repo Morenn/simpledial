@@ -248,5 +248,13 @@
   "footerLastSyncedHours": { "message": "Synchronizováno před {0}h" },
   "footerLastSyncedDays": { "message": "Synchronizováno před {0}d" },
   "footerTotalBookmarks": { "message": "Celkem: {0} záložek" },
-  "showGroupBookmarkCount": { "message": "Zobrazit počet záložek u skupin" }
+  "showGroupBookmarkCount": { "message": "Zobrazit počet záložek u skupin" },
+  "newGroup": { "message": "Nová skupina" },
+  "editGroupTitle": { "message": "Upravit skupinu" },
+  "groupName": { "message": "Název skupiny" },
+  "groupIcon": { "message": "URL ikony nebo emoji (volitelné)" },
+  "tileColor": { "message": "Barva dlaždice (volitelné)" },
+  "useCustomColor": { "message": "Vlastní barva" },
+  "colorFromIcon": { "message": "Automaticky z ikony" },
+  "invalidIconUrl": { "message": "Zadejte prosím platnou URL adresu ikony." }
 }
