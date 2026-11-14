@@ -54,6 +54,12 @@ export async function loadTheme() {
 
   // Load tile opacity
   await applyTileOpacity(config);
+
+  // Load tile size
+  await applyTileSize(config);
+
+  // Load group tile size
+  await applyGroupTileSize(config);
 }
 
 // ---------- Apply background ----------
@@ -147,6 +153,29 @@ export async function applyTileOpacity(config = null) {
   const opacity = config.appearance?.tileOpacity ?? 1;
   // Set on body element where the CSS variable is defined with theme classes
   document.body.style.setProperty('--tile-opacity', opacity);
+}
+
+function clampTileScale(rawSize) {
+  const parsed = Number(rawSize);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(1.5, Math.max(0.5, parsed)) : 1;
+}
+
+// ---------- Apply tile size ----------
+export async function applyTileSize(config = null) {
+  if (!config) {
+    config = await loadConfig();
+  }
+
+  document.body.style.setProperty('--tile-scale', clampTileScale(config.appearance?.tileSize));
+}
+
+// ---------- Apply group tile size ----------
+export async function applyGroupTileSize(config = null) {
+  if (!config) {
+    config = await loadConfig();
+  }
+
+  document.body.style.setProperty('--group-tile-scale', clampTileScale(config.appearance?.groupTileSize));
 }
 
 // ---------- Toggle theme ----------

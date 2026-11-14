@@ -4,7 +4,13 @@ import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
 import { loadConfig } from "./config.js";
 import { faviconDebugLog } from "./debug.js";
-import { extractDominantColorFromImageSource, applyTileColorStyle, isValidHexColor } from "./color-utils.js";
+import {
+  extractDominantColorFromImageSource,
+  extractDominantColorFromEmoji,
+  resolveGroupIcons,
+  applyTileColorStyle,
+  isValidHexColor
+} from "./color-utils.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
 const PLACEHOLDER_ICON_URL = chrome.runtime.getURL("icons/icon-16.png");
@@ -649,6 +655,114 @@ export async function refreshBookmarkIconsIfNeeded(options = {}) {
   }
 
   return changed;
+}
+
+export async function applyMassTileColorFromIcon(enable) {
+  const shouldEnable = !!enable;
+  let groupsUpdated = 0;
+  let bookmarksUpdated = 0;
+
+  if (!shouldEnable) {
+    const now = Date.now();
+    for (const group of state.groups) {
+      if (group.deleted) continue;
+
+      let groupBookmarksChanged = false;
+      if (group.colorFromIcon) {
+        group.colorFromIcon = false;
+        group.tileColor = null;
+        group.updatedAt = now;
+        groupsUpdated++;
+      }
+
+      for (const item of (group.items || [])) {
+        if (item.deleted) continue;
+        if (item.colorFromIcon) {
+          item.colorFromIcon = false;
+          item.tileColor = null;
+          item.updatedAt = now;
+          bookmarksUpdated++;
+          groupBookmarksChanged = true;
+        }
+      }
+
+      if (groupBookmarksChanged) {
+        group.updatedAt = now;
+      }
+    }
+
+    if (groupsUpdated > 0 || bookmarksUpdated > 0) {
+      await saveState();
+      await syncWrite();
+      render();
+    }
+
+    return { groupsUpdated, bookmarksUpdated };
+  }
+
+  await ensureHostPermission();
+  const hostAllowed = await hasHostPermission();
+  const tasks = [];
+
+  for (const group of state.groups) {
+    if (group.deleted) continue;
+
+    const { iconEmoji, customIcon } = resolveGroupIcons(group);
+    if (customIcon || iconEmoji) {
+      tasks.push(async () => {
+        let extracted = null;
+        if (customIcon) {
+          extracted = await extractDominantColorFromImageSource(customIcon);
+        }
+        if (!extracted && iconEmoji) {
+          extracted = extractDominantColorFromEmoji(iconEmoji);
+        }
+        group.colorFromIcon = true;
+        group.tileColor = extracted || null;
+        group.updatedAt = Date.now();
+        groupsUpdated++;
+      });
+    }
+
+    for (const item of (group.items || [])) {
+      if (item.deleted || !item.url) continue;
+
+      tasks.push(async () => {
+        item.colorFromIcon = true;
+        const cachedEntry = getFaviconCacheEntry(item);
+        let extractedColor = isValidHexColor(cachedEntry.iconColor) ? cachedEntry.iconColor : null;
+
+        if (!extractedColor) {
+          const iconSrc = resolveIconSrc(item);
+          if (iconSrc && iconSrc !== PLACEHOLDER_ICON_URL && (!isGoogleFaviconUrl(iconSrc) || hostAllowed)) {
+            extractedColor = await extractDominantColorFromImageSource(iconSrc);
+            if (extractedColor) {
+              setFaviconCacheEntry(item, { iconColor: extractedColor });
+            }
+          }
+        }
+
+        item.tileColor = extractedColor || null;
+        const updatedAt = Date.now();
+        item.updatedAt = updatedAt;
+        group.updatedAt = updatedAt;
+        bookmarksUpdated++;
+      });
+    }
+  }
+
+  for (let i = 0; i < tasks.length; i += ICON_REFRESH_BATCH_SIZE) {
+    const batch = tasks.slice(i, i + ICON_REFRESH_BATCH_SIZE);
+    await Promise.allSettled(batch.map(fn => fn()));
+  }
+
+  if (groupsUpdated > 0 || bookmarksUpdated > 0) {
+    await saveState();
+    await syncWrite();
+    render();
+  }
+
+  return { groupsUpdated, bookmarksUpdated };
 }
 
 function normalizeBookmarkUrl(url) {

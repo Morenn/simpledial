@@ -252,9 +252,17 @@
   "newGroup": { "message": "Нова група" },
   "editGroupTitle": { "message": "Редагувати групу" },
   "groupName": { "message": "Назва групи" },
-  "groupIcon": { "message": "URL іконки або емодзі (необов'язково)" },
+  "groupEmoji": { "message": "Емодзі (необов'язково)" },
+  "groupIcon": { "message": "URL іконки (необов'язково)" },
   "tileColor": { "message": "Колір плитки (необов'язково)" },
   "useCustomColor": { "message": "Власний колір" },
   "colorFromIcon": { "message": "Авто з іконки" },
-  "invalidIconUrl": { "message": "Будь ласка, введіть дійсну URL-адресу іконки." }
+  "invalidIconUrl": { "message": "Будь ласка, введіть дійсну URL-адресу іконки." },
+  "massTileColorFromIcon": { "message": "Автоколір плиток з іконки (групи та закладки):" },
+  "massEnableColorFromIcon": { "message": "Активувати для всіх" },
+  "massDisableColorFromIcon": { "message": "Деактивувати для всіх" },
+  "massColorFromIconActivated": { "message": "Колір плиток з іконки активовано" },
+  "massColorFromIconDeactivated": { "message": "Колір плиток з іконки деактивовано" },
+  "tileSize": { "message": "Розмір плиток:" },
+  "groupTileSize": { "message": "Розмір плиток груп:" }
 }

@@ -252,9 +252,17 @@
   "newGroup": { "message": "Nouveau groupe" },
   "editGroupTitle": { "message": "Modifier le groupe" },
   "groupName": { "message": "Nom du groupe" },
-  "groupIcon": { "message": "URL de l'icône ou emoji (facultatif)" },
+  "groupEmoji": { "message": "Emoji (facultatif)" },
+  "groupIcon": { "message": "URL de l'icône (facultatif)" },
   "tileColor": { "message": "Couleur de la tuile (facultatif)" },
   "useCustomColor": { "message": "Couleur personnalisée" },
   "colorFromIcon": { "message": "Auto depuis l'icône" },
-  "invalidIconUrl": { "message": "Veuillez saisir une URL d'icône valide." }
+  "invalidIconUrl": { "message": "Veuillez saisir une URL d'icône valide." },
+  "massTileColorFromIcon": { "message": "Couleur auto des tuiles depuis l'icône (groupes et favoris) :" },
+  "massEnableColorFromIcon": { "message": "Activer pour tous" },
+  "massDisableColorFromIcon": { "message": "Désactiver pour tous" },
+  "massColorFromIconActivated": { "message": "Couleur des tuiles depuis l'icône activée" },
+  "massColorFromIconDeactivated": { "message": "Couleur des tuiles depuis l'icône désactivée" },
+  "tileSize": { "message": "Taille des tuiles :" },
+  "groupTileSize": { "message": "Taille des tuiles de groupe :" }
 }

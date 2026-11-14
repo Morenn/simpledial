@@ -16,41 +16,46 @@ const MAX_HEIGHT_RATIO = 0.95; // Extend to 90% if needed
 // ======================================================
 // CALCULATE AND APPLY DYNAMIC GRID LAYOUT
 // ======================================================
-function calculateGridLayout() {
+function getEffectiveTileScale() {
+  const inlineScale = parseFloat(document.body?.style?.getPropertyValue?.("--tile-scale") || "");
+  if (Number.isFinite(inlineScale) && inlineScale > 0) {
+    return inlineScale;
+  }
+  return 1;
+}
+
+export function calculateGridLayout() {
   const main = document.querySelector("main");
   if (!main) return;
 
   const grid = document.getElementById("bookmarks-grid");
   const availableWidth = grid.clientWidth || main.clientWidth - 48; // Account for padding
   const availableHeight = main.clientHeight - 40; // Subtract some padding
-  
+  const scale = getEffectiveTileScale();
+  const tileHeight = Math.round(40 * scale) + 3;
+  const columnWidth = Math.round(COLUMN_WIDTH * scale);
+  const columnGap = Math.round(16 * scale);
+
   // Get total number of tiles (including the add button if present)
   const tiles = grid.querySelectorAll(".bookmark-tile").length;
-  
+
   if (tiles === 0) {
-    grid.style.gridTemplateRows = `repeat(1, ${TILE_HEIGHT}px)`;
+    grid.style.gridTemplateRows = `repeat(1, ${tileHeight}px)`;
     return;
   }
-  
-  // Calculate max columns that can fit within window width
-  // Each column is 300px + 16px gap (except last column)
-  // Be conservative: if not enough space for 2 full columns, use 1
+
   let maxColumnsForWidth;
-  
-  if (availableWidth < 450) {
+  if (availableWidth < columnWidth + 90) {
     // Mobile/narrow: force single column
     maxColumnsForWidth = 1;
-  } else if (availableWidth < 750) {
-    // Tablet: allow up to 2 columns
-    maxColumnsForWidth = Math.max(1, Math.floor(availableWidth / (COLUMN_WIDTH + 16)));
   } else {
-    // Desktop: calculate based on standard 300px columns
-    maxColumnsForWidth = Math.max(1, Math.floor(availableWidth / (COLUMN_WIDTH + 16)));
+    // Desktop: calculate based on scaled column width + gap
+    maxColumnsForWidth = Math.max(1, Math.floor(availableWidth / (columnWidth + columnGap)));
   }
-  
+
   // Calculate tiles per column to fit within max columns
   // Prefer filling columns up to INITIAL_HEIGHT_RATIO before adding columns
-  const tilesPerColumnFromHeight = Math.max(1, Math.floor((availableHeight * INITIAL_HEIGHT_RATIO) / TILE_HEIGHT));
+  const tilesPerColumnFromHeight = Math.max(1, Math.floor((availableHeight * INITIAL_HEIGHT_RATIO) / tileHeight));
 
   let tilesPerColumn;
   // If using the height-limited tiles per column would require no more columns
@@ -61,14 +66,14 @@ function calculateGridLayout() {
   } else {
     tilesPerColumn = Math.ceil(tiles / maxColumnsForWidth);
   }
-  
+
   // Adjust if height exceeds viewport, extending height limits gradually
-  const requiredHeight = tilesPerColumn * TILE_HEIGHT;
-  
+  const requiredHeight = tilesPerColumn * tileHeight;
+
   if (requiredHeight > availableHeight) {
     // Try to optimize for viewport: try INITIAL_HEIGHT_RATIO and MAX_HEIGHT_RATIO
-    const heightRatioInitial = Math.max(1, Math.floor((availableHeight * INITIAL_HEIGHT_RATIO) / TILE_HEIGHT));
-    const heightRatioMax = Math.max(1, Math.floor((availableHeight * MAX_HEIGHT_RATIO) / TILE_HEIGHT));
+    const heightRatioInitial = Math.max(1, Math.floor((availableHeight * INITIAL_HEIGHT_RATIO) / tileHeight));
+    const heightRatioMax = Math.max(1, Math.floor((availableHeight * MAX_HEIGHT_RATIO) / tileHeight));
 
     if (heightRatioInitial >= tilesPerColumn) {
       tilesPerColumn = heightRatioInitial;
@@ -79,7 +84,7 @@ function calculateGridLayout() {
   }
 
   // Set grid template rows based on calculated tiles per column
-  grid.style.gridTemplateRows = `repeat(${tilesPerColumn}, ${TILE_HEIGHT}px)`;
+  grid.style.gridTemplateRows = `repeat(${tilesPerColumn}, ${tileHeight}px)`;
 }
 
 // ======================================================

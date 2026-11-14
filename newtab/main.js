@@ -368,6 +368,9 @@ export function updateUIText() {
     const grpNameLabel = document.querySelector('label[for="grp-name"]');
     if (grpNameLabel) grpNameLabel.textContent = t("groupName");
 
+    const grpEmojiLabel = document.querySelector('label[for="grp-emoji"]');
+    if (grpEmojiLabel) grpEmojiLabel.textContent = t("groupEmoji");
+
     const grpIconLabel = document.querySelector('label[for="grp-icon"]');
     if (grpIconLabel) grpIconLabel.textContent = t("groupIcon");
 

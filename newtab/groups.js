@@ -4,7 +4,7 @@ import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
 import { ensureHostPermission } from "./bookmarks.js";
 import {
-  isUrlLikeIcon,
+  resolveGroupIcons,
   normalizeCustomIconValue,
   isValidHexColor,
   extractDominantColorFromImageSource,
@@ -29,24 +29,33 @@ function getActiveBookmarkCount(group) {
   return group.items.filter(item => !item.deleted && item.url).length;
 }
 
+function createGroupEmojiSpan(emojiText) {
+  const emojiSpan = document.createElement("span");
+  emojiSpan.className = "group-tab-emoji";
+  emojiSpan.textContent = emojiText;
+  return emojiSpan;
+}
+
 function setGroupElementContent(el, group, showCount) {
   el.textContent = "";
   applyTileColorStyle(el, group?.tileColor || null);
 
-  if (group?.customIcon) {
-    if (isUrlLikeIcon(group.customIcon)) {
-      const iconImg = document.createElement("img");
-      iconImg.className = "group-tab-icon";
-      iconImg.alt = "";
-      iconImg.src = group.customIcon;
-      iconImg.addEventListener("error", () => iconImg.remove());
-      el.appendChild(iconImg);
-    } else {
-      const emojiSpan = document.createElement("span");
-      emojiSpan.className = "group-tab-emoji";
-      emojiSpan.textContent = group.customIcon;
-      el.appendChild(emojiSpan);
-    }
+  const { iconEmoji, customIcon } = resolveGroupIcons(group);
+  if (customIcon) {
+    const iconImg = document.createElement("img");
+    iconImg.className = "group-tab-icon";
+    iconImg.alt = "";
+    iconImg.src = customIcon;
+    iconImg.addEventListener("error", () => {
+      if (iconEmoji) {
+        iconImg.replaceWith(createGroupEmojiSpan(iconEmoji));
+      } else {
+        iconImg.remove();
+      }
+    });
+    el.appendChild(iconImg);
+  } else if (iconEmoji) {
+    el.appendChild(createGroupEmojiSpan(iconEmoji));
   }
 
   const nameSpan = document.createElement("span");
@@ -66,6 +75,7 @@ function setGroupElementContent(el, group, showCount) {
 const groupModal = document.getElementById("group-modal");
 const groupModalTitle = document.getElementById("group-modal-title");
 const grpName = document.getElementById("grp-name");
+const grpEmoji = document.getElementById("grp-emoji");
 const grpIcon = document.getElementById("grp-icon");
 const grpColor = document.getElementById("grp-color");
 const grpColorCustom = document.getElementById("grp-color-custom");
@@ -101,8 +111,10 @@ export function openGroupModal(group = null) {
   }
 
   const fallbackHex = "#4a6bff";
+  const { iconEmoji, customIcon } = resolveGroupIcons(group);
   if (grpName) grpName.value = group?.name || "";
-  if (grpIcon) grpIcon.value = group?.customIcon || "";
+  if (grpEmoji) grpEmoji.value = iconEmoji || "";
+  if (grpIcon) grpIcon.value = customIcon || "";
   if (grpColor) {
     grpColor.value = isValidHexColor(group?.tileColor) ? group.tileColor : fallbackHex;
   }
@@ -125,7 +137,7 @@ groupModal?.addEventListener("keydown", e => {
     closeGroupModal();
   }
 
-  if (e.key === "Enter" && (e.target === grpName || e.target === grpIcon)) {
+  if (e.key === "Enter" && (e.target === grpName || e.target === grpEmoji || e.target === grpIcon)) {
     e.preventDefault();
     grpSave?.click();
   }
@@ -135,10 +147,13 @@ grpSave?.addEventListener("click", async () => {
   const name = grpName?.value.trim() || "";
   if (!name) return;
 
-  const rawIcon = grpIcon?.value.trim() || "";
+  const rawEmoji = grpEmoji?.value.trim() || "";
+  const iconEmoji = rawEmoji || null;
+
+  const rawIconUrl = grpIcon?.value.trim() || "";
   let customIcon = null;
-  if (rawIcon) {
-    customIcon = normalizeCustomIconValue(rawIcon, { allowEmoji: true });
+  if (rawIconUrl) {
+    customIcon = normalizeCustomIconValue(rawIconUrl, { allowEmoji: false });
     if (!customIcon) {
       alert(t("invalidIconUrl"));
       return;
@@ -152,13 +167,14 @@ grpSave?.addEventListener("click", async () => {
   let colorFromIcon = false;
   let tileColor = null;
 
-  if (wantColorFromIcon && customIcon) {
+  if (wantColorFromIcon && (customIcon || iconEmoji)) {
     colorFromIcon = true;
-    if (isUrlLikeIcon(customIcon)) {
+    if (customIcon) {
       await ensureHostPermission();
       tileColor = await extractDominantColorFromImageSource(customIcon);
-    } else {
-      tileColor = extractDominantColorFromEmoji(customIcon);
+    }
+    if (!tileColor && iconEmoji) {
+      tileColor = extractDominantColorFromEmoji(iconEmoji);
     }
   } else if (wantCustomColor) {
     colorFromIcon = false;
@@ -170,6 +186,7 @@ grpSave?.addEventListener("click", async () => {
     const currentGroup = state.groups.find(g => g.id === editingGroupId);
     if (currentGroup) {
       currentGroup.name = name;
+      currentGroup.iconEmoji = iconEmoji;
       currentGroup.customIcon = customIcon;
       currentGroup.tileColor = tileColor;
       currentGroup.colorFromIcon = colorFromIcon;
@@ -179,6 +196,7 @@ grpSave?.addEventListener("click", async () => {
     const g = {
       id: generateId("g"),
       name,
+      iconEmoji,
       customIcon,
       tileColor,
       colorFromIcon,
@@ -238,7 +256,8 @@ function shouldUseDropdown(groupCount) {
   const availableWidth = topBar.clientWidth - manageWidth - 20; // Extra padding
   
   // Estimate how many tabs fit per line
-  const avgTabWidth = 120; // Average tab width including gap
+  const groupScale = parseFloat(document.body?.style?.getPropertyValue?.("--group-tile-scale") || "") || 1;
+  const avgTabWidth = Math.round(120 * groupScale); // Average tab width including gap
   const tabsPerLine = Math.max(1, Math.floor(availableWidth / avgTabWidth));
   
   // Calculate how many lines would be needed

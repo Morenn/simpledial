@@ -4,11 +4,13 @@ import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems
 import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from './bookmarks-api.js';
-import { render } from "./render.js";
-import { applyBackground, applyTileOpacity } from "./theme.js";
+import { render, calculateGridLayout } from "./render.js";
+import { applyBackground, applyTileOpacity, applyTileSize, applyGroupTileSize } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
+import { applyMassTileColorFromIcon } from "./bookmarks.js";
+import { renderGroups } from "./groups.js";
 // ======================================================
 // SETTINGS MODAL UI
 // ======================================================
@@ -84,8 +86,15 @@ const bgPreview = document.getElementById("bg-preview");
 const bgRemoveBtn = document.getElementById("bg-remove-btn");
 const tileOpacitySlider = document.getElementById("tile-opacity-slider");
 const tileOpacityValue = document.getElementById("tile-opacity-value");
+const tileSizeSlider = document.getElementById("tile-size-slider");
+const tileSizeValue = document.getElementById("tile-size-value");
+const groupTileSizeSlider = document.getElementById("group-tile-size-slider");
+const groupTileSizeValue = document.getElementById("group-tile-size-value");
 const dateTimeToggle = document.getElementById("date-time-toggle");
 const groupCountToggle = document.getElementById("group-count-toggle");
+const massEnableColorFromIconBtn = document.getElementById("mass-enable-color-from-icon");
+const massDisableColorFromIconBtn = document.getElementById("mass-disable-color-from-icon");
+const massColorFromIconStatus = document.getElementById("mass-color-from-icon-status");
 
 // HouseKeeper Elements
 const hkRetentionDays = document.getElementById("hk-retention-days");
@@ -291,6 +300,8 @@ async function revertAppearancePreviewToSaved() {
       backgroundImage: appearance.backgroundImage ?? null,
       backgroundSize: appearance.backgroundSize || 'stretched',
       tileOpacity: appearance.tileOpacity ?? 1,
+      tileSize: appearance.tileSize ?? 1,
+      groupTileSize: appearance.groupTileSize ?? 1,
       showDateTime: appearance.showDateTime ?? true,
       showDeleted: appearance.showDeleted ?? false,
       showGroupBookmarkCount: appearance.showGroupBookmarkCount ?? true
@@ -302,6 +313,18 @@ async function revertAppearancePreviewToSaved() {
       const opacityPercent = Math.round((appearanceDraft.tileOpacity ?? 1) * 100);
       tileOpacitySlider.value = opacityPercent;
       if (tileOpacityValue) tileOpacityValue.textContent = `${opacityPercent}%`;
+    }
+
+    if (tileSizeSlider) {
+      const sizePercent = Math.round((appearanceDraft.tileSize ?? 1) * 100);
+      tileSizeSlider.value = sizePercent;
+      if (tileSizeValue) tileSizeValue.textContent = `${sizePercent}%`;
+    }
+
+    if (groupTileSizeSlider) {
+      const groupSizePercent = Math.round((appearanceDraft.groupTileSize ?? 1) * 100);
+      groupTileSizeSlider.value = groupSizePercent;
+      if (groupTileSizeValue) groupTileSizeValue.textContent = `${groupSizePercent}%`;
     }
 
     if (showDeletedToggle) {
@@ -333,6 +356,8 @@ async function revertAppearancePreviewToSaved() {
 
     await applyBackground(config);
     await applyTileOpacity(config);
+    await applyTileSize(config);
+    await applyGroupTileSize(config);
     await revertDateTimePreviewToSaved();
     await render();
   } catch (err) {
@@ -472,6 +497,24 @@ settingsBtn.addEventListener("click", async () => {
     }
   }
 
+  // Load tile size settings
+  if (tileSizeSlider) {
+    const sizePercent = Math.round((config.appearance?.tileSize ?? 1) * 100);
+    tileSizeSlider.value = sizePercent;
+    if (tileSizeValue) {
+      tileSizeValue.textContent = `${sizePercent}%`;
+    }
+  }
+
+  // Load group tile size settings
+  if (groupTileSizeSlider) {
+    const groupSizePercent = Math.round((config.appearance?.groupTileSize ?? 1) * 100);
+    groupTileSizeSlider.value = groupSizePercent;
+    if (groupTileSizeValue) {
+      groupTileSizeValue.textContent = `${groupSizePercent}%`;
+    }
+  }
+
   // Load date & time display toggle state
   if (dateTimeToggle) {
     const isVisible = config.appearance?.showDateTime ?? true;
@@ -499,6 +542,8 @@ settingsBtn.addEventListener("click", async () => {
     backgroundImage: config.appearance?.backgroundImage ?? null,
     backgroundSize: config.appearance?.backgroundSize || 'stretched',
     tileOpacity: config.appearance?.tileOpacity ?? 1,
+    tileSize: config.appearance?.tileSize ?? 1,
+    groupTileSize: config.appearance?.groupTileSize ?? 1,
     showDateTime: config.appearance?.showDateTime ?? true,
     showDeleted: config.appearance?.showDeleted ?? false,
     showGroupBookmarkCount: config.appearance?.showGroupBookmarkCount ?? true
@@ -516,6 +561,7 @@ settingsBtn.addEventListener("click", async () => {
     syncStatus.textContent = "";
     if (syncTestStatus) syncTestStatus.textContent = "";
     if (syncNowStatus) syncNowStatus.textContent = "";
+    if (massColorFromIconStatus) massColorFromIconStatus.textContent = "";
     settingsModal.classList.remove("hidden");
     setSettingsDirty(false);
   } finally {
@@ -1000,6 +1046,7 @@ exportBtn.addEventListener("click", async () => {
     groups: state.groups.map(g => ({
       id: g.id,
       name: g.name,
+      iconEmoji: g.iconEmoji || null,
       customIcon: g.customIcon || null,
       tileColor: g.tileColor || null,
       colorFromIcon: !!g.colorFromIcon,
@@ -1490,6 +1537,82 @@ if (tileOpacitySlider) {
   });
 }
 
+// ---------- Tile Size Settings ----------
+if (tileSizeSlider) {
+  tileSizeSlider.addEventListener("input", (e) => {
+    const value = e.target.value;
+    if (tileSizeValue) {
+      tileSizeValue.textContent = `${value}%`;
+    }
+    const sizeValue = value / 100;
+    document.body.style.setProperty('--tile-scale', sizeValue);
+    calculateGridLayout();
+
+    if (appearanceDraft) {
+      appearanceDraft.tileSize = sizeValue;
+    }
+    markSettingsDirty();
+  });
+}
+
+// ---------- Group Tile Size Settings ----------
+if (groupTileSizeSlider) {
+  groupTileSizeSlider.addEventListener("input", (e) => {
+    const value = e.target.value;
+    if (groupTileSizeValue) {
+      groupTileSizeValue.textContent = `${value}%`;
+    }
+    const sizeValue = value / 100;
+    document.body.style.setProperty('--group-tile-scale', sizeValue);
+    renderGroups(true);
+    calculateGridLayout();
+
+    if (appearanceDraft) {
+      appearanceDraft.groupTileSize = sizeValue;
+    }
+    markSettingsDirty();
+  });
+}
+
+// ---------- Mass Auto Tile Color From Icon ----------
+async function handleMassColorFromIconAction(enable) {
+  if (massEnableColorFromIconBtn) massEnableColorFromIconBtn.disabled = true;
+  if (massDisableColorFromIconBtn) massDisableColorFromIconBtn.disabled = true;
+  if (massColorFromIconStatus) {
+    massColorFromIconStatus.textContent = "";
+    massColorFromIconStatus.style.color = "";
+  }
+
+  try {
+    const result = await applyMassTileColorFromIcon(enable);
+    const totalUpdated = (result?.groupsUpdated || 0) + (result?.bookmarksUpdated || 0);
+    if (massColorFromIconStatus) {
+      const msgKey = enable ? "massColorFromIconActivated" : "massColorFromIconDeactivated";
+      massColorFromIconStatus.textContent = `✅ ${t(msgKey)} (${totalUpdated})`;
+    }
+  } catch (err) {
+    console.error("Mass color from icon action failed", err);
+    if (massColorFromIconStatus) {
+      massColorFromIconStatus.textContent = `❌ ${err?.message || "Error"}`;
+    }
+  } finally {
+    if (massEnableColorFromIconBtn) massEnableColorFromIconBtn.disabled = false;
+    if (massDisableColorFromIconBtn) massDisableColorFromIconBtn.disabled = false;
+  }
+}
+
+if (massEnableColorFromIconBtn) {
+  massEnableColorFromIconBtn.addEventListener("click", () => {
+    void handleMassColorFromIconAction(true);
+  });
+}
+
+if (massDisableColorFromIconBtn) {
+  massDisableColorFromIconBtn.addEventListener("click", () => {
+    void handleMassColorFromIconAction(false);
+  });
+}
+
 // ---------- Save Settings ----------
 async function persistSettings(closeAfterSave = false) {
   const config = await loadConfig();
@@ -1559,6 +1682,14 @@ async function persistSettings(closeAfterSave = false) {
   }
   if (tileOpacitySlider) {
     config.appearance.tileOpacity = tileOpacitySlider.value / 100;
+  }
+  if (tileSizeSlider) {
+    config.appearance.tileSize = tileSizeSlider.value / 100;
+    await applyTileSize(config);
+  }
+  if (groupTileSizeSlider) {
+    config.appearance.groupTileSize = groupTileSizeSlider.value / 100;
+    await applyGroupTileSize(config);
   }
   if (appearanceDraft) {
     config.appearance.backgroundImage = appearanceDraft.backgroundImage ?? null;

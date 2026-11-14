@@ -252,9 +252,17 @@
   "newGroup": { "message": "Nová skupina" },
   "editGroupTitle": { "message": "Upraviť skupinu" },
   "groupName": { "message": "Názov skupiny" },
-  "groupIcon": { "message": "URL ikony alebo emoji (voliteľné)" },
+  "groupEmoji": { "message": "Emoji (voliteľné)" },
+  "groupIcon": { "message": "URL ikony (voliteľné)" },
   "tileColor": { "message": "Farba dlaždice (voliteľné)" },
   "useCustomColor": { "message": "Vlastná farba" },
   "colorFromIcon": { "message": "Automaticky podľa ikony" },
-  "invalidIconUrl": { "message": "Zadajte platnú URL adresu ikony." }
+  "invalidIconUrl": { "message": "Zadajte platnú URL adresu ikony." },
+  "massTileColorFromIcon": { "message": "Automatická farba dlaždíc podľa ikony (skupiny a záložky):" },
+  "massEnableColorFromIcon": { "message": "Aktivovať pre všetky" },
+  "massDisableColorFromIcon": { "message": "Deaktivovať pre všetky" },
+  "massColorFromIconActivated": { "message": "Farba dlaždíc podľa ikony bola aktivovaná" },
+  "massColorFromIconDeactivated": { "message": "Farba dlaždíc podľa ikony bola deaktivovaná" },
+  "tileSize": { "message": "Veľkosť dlaždíc:" },
+  "groupTileSize": { "message": "Veľkosť dlaždíc skupín:" }
 }

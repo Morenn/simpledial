@@ -252,9 +252,17 @@
   "newGroup": { "message": "Uusi ryhmä" },
   "editGroupTitle": { "message": "Muokkaa ryhmää" },
   "groupName": { "message": "Ryhmän nimi" },
-  "groupIcon": { "message": "Kuvakkeen URL tai emoji (valinnainen)" },
+  "groupEmoji": { "message": "Emoji (valinnainen)" },
+  "groupIcon": { "message": "Kuvakkeen URL (valinnainen)" },
   "tileColor": { "message": "Ruudun väri (valinnainen)" },
   "useCustomColor": { "message": "Mukautettu väri" },
   "colorFromIcon": { "message": "Automaattisesti kuvakkeesta" },
-  "invalidIconUrl": { "message": "Anna kelvollinen kuvakkeen URL-osoite." }
+  "invalidIconUrl": { "message": "Anna kelvollinen kuvakkeen URL-osoite." },
+  "massTileColorFromIcon": { "message": "Automaattinen ruudun väri kuvakkeesta (ryhmät ja kirjanmerkit):" },
+  "massEnableColorFromIcon": { "message": "Aktivoi kaikille" },
+  "massDisableColorFromIcon": { "message": "Poista käytöstä kaikilta" },
+  "massColorFromIconActivated": { "message": "Ruudun väri kuvakkeesta aktivoitu" },
+  "massColorFromIconDeactivated": { "message": "Ruudun väri kuvakkeesta poistettu käytöstä" },
+  "tileSize": { "message": "Ruutujen koko:" },
+  "groupTileSize": { "message": "Ryhmäruutujen koko:" }
 }

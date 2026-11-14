@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { loadConfig } from "./config.js";
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from "./bookmarks-api.js";
+import { formatGroupFolderTitle } from "./color-utils.js";
 
 let syncQueue = Promise.resolve();
 
@@ -19,7 +20,7 @@ export async function syncBrowserBookmarks({ force = false } = {}) {
   for (const group of groupsToExport) {
     const groupFolder = await createBookmarkNode({
       parentId: folder.id,
-      title: group.name || "Group"
+      title: formatGroupFolderTitle(group)
     });
     const itemsToExport = (group.items || []).filter(item => !item.deleted && item.url);
     for (const item of itemsToExport) {

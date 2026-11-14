@@ -43,6 +43,36 @@ export function isValidHexColor(value) {
   return typeof value === "string" && HEX_COLOR_REGEX.test(value.trim());
 }
 
+export function resolveGroupIcons(group) {
+  const rawEmoji = typeof group?.iconEmoji === "string" ? group.iconEmoji.trim() : "";
+  const rawCustomIcon = typeof group?.customIcon === "string" ? group.customIcon.trim() : "";
+
+  let iconEmoji = rawEmoji || null;
+  let customIcon = rawCustomIcon || null;
+
+  // Backwards compatibility: older groups could hold an emoji/text symbol inside customIcon.
+  if (customIcon && !isUrlLikeIcon(customIcon)) {
+    if (!iconEmoji) {
+      iconEmoji = customIcon;
+    }
+    customIcon = null;
+  }
+
+  return { iconEmoji, customIcon };
+}
+
+export function formatGroupFolderTitle(group) {
+  const baseName = (group?.name || "").trim() || "Group";
+  const { iconEmoji } = resolveGroupIcons(group);
+  if (iconEmoji) {
+    if (baseName.startsWith(iconEmoji)) {
+      return baseName;
+    }
+    return `${iconEmoji} ${baseName}`;
+  }
+  return baseName;
+}
+
 export function applyTileColorStyle(element, colorHex) {
   if (!element) return;
 

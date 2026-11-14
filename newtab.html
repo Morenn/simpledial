@@ -103,8 +103,16 @@
       <label for="grp-name" data-i18n="groupName">Group name</label>
       <input type="text" id="grp-name">
 
-      <label for="grp-icon" data-i18n="groupIcon">Icon URL or emoji (optional)</label>
-      <input type="text" id="grp-icon" placeholder="https://... or 🤖">
+      <div class="group-icon-row">
+        <div class="group-icon-col group-icon-col-emoji">
+          <label for="grp-emoji" data-i18n="groupEmoji">Emoji (optional)</label>
+          <input type="text" id="grp-emoji" maxlength="8" placeholder="🤖">
+        </div>
+        <div class="group-icon-col group-icon-col-url">
+          <label for="grp-icon" data-i18n="groupIcon">Icon URL (optional)</label>
+          <input type="url" id="grp-icon" placeholder="https://...">
+        </div>
+      </div>
 
       <label data-i18n="tileColor">Tile color (optional)</label>
       <div class="tile-color-controls">
@@ -144,155 +152,179 @@
 
       <!-- Synchronization Tab -->
       <div id="sync-tab" class="settings-tab-content active">
-        <h3 id="sync-config-title" data-i18n="syncConfiguration">Sync Configuration</h3>
+        <h3 id="sync-config-title" class="sr-only" data-i18n="syncConfiguration">Sync Configuration</h3>
 
         <input type="hidden" id="sync-type" value="direct">
         <input type="hidden" id="sync-auth-mode" value="none">
         <input type="hidden" id="sync-encrypt-mode" value="none">
 
-        <section class="sync-section-card" id="sync-provider-card">
-          <div class="sync-section-header" data-i18n="syncProvider">Sync provider</div>
-          <p class="sync-section-subtitle" data-i18n="syncProviderHint">Choose where bookmark data is synchronized.</p>
-          <div class="choice-group" id="sync-type-choice-group">
-            <label class="choice-option">
-              <input type="radio" name="sync-type-choice" value="direct" checked>
-              <span class="choice-option-title" data-i18n="syncTypeDirect">Direct JSON</span>
-              <span class="choice-option-subtitle" data-i18n="syncProviderDirectDesc">Use a direct JSON endpoint URL. Backend must support GET/PUT requests.</span>
-            </label>
-            <label class="choice-option">
-              <input type="radio" name="sync-type-choice" value="webdav">
-              <span class="choice-option-title" data-i18n="syncTypeWebdav">WebDAV</span>
-              <span class="choice-option-subtitle" data-i18n="syncProviderWebdavDesc">Use a WebDAV-compatible server.</span>
-            </label>
-            <label class="choice-option">
-              <input type="radio" name="sync-type-choice" value="browser">
-              <span class="choice-option-title" data-i18n="syncTypeBrowserNative">Browser native sync</span>
-              <span class="choice-option-subtitle" data-i18n="syncProviderBrowserDesc">Use browser-managed sync storage.</span>
-            </label>
-          </div>
-        </section>
-
-        <section class="sync-section-card" id="sync-connection-card">
-          <div class="sync-section-header" data-i18n="syncConnection">Connection</div>
-          <p class="sync-section-subtitle" data-i18n="syncConnectionHint">Set endpoint details and verify the connection.</p>
-
-          <div id="sync-url-row">
-            <label id="sync-url-label" data-i18n="serverUrl">Server URL</label>
-            <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json" size="60">
-          </div>
-
-          <div id="sync-browser-hint" class="sync-inline-note hidden" data-i18n="syncBrowserNativeHint">Browser native sync uses your browser account. URL and authentication are not required.</div>
-
-          <button id="sync-test" class="icon-btn primary" data-i18n="testConnection">🔍 Test connection</button>
-          <button id="sync-read-test" class="icon-btn primary" data-i18n="readTest">📥 Read Test</button>
-          <button id="sync-write-test" class="icon-btn primary" data-i18n="writeTest">📤 Write Test</button>
-          <div id="sync-test-status" class="status"></div>
-        </section>
-
-        <section class="sync-section-card" id="sync-auth-card">
-          <div class="sync-section-header" data-i18n="syncAuthMode">Authentication</div>
-          <p class="sync-section-subtitle" data-i18n="syncAuthenticationHint">Pick how the server authenticates requests.</p>
-          <div class="choice-group choice-group-inline" id="sync-auth-choice-group">
-            <label class="choice-option choice-option-inline">
-              <input type="radio" name="sync-auth-choice" value="none" checked>
-              <span class="choice-option-title" data-i18n="syncAuthNone">Don't use authentication</span>
-            </label>
-            <label class="choice-option choice-option-inline">
-              <input type="radio" name="sync-auth-choice" value="basic">
-              <span class="choice-option-title" data-i18n="syncAuthBasic">Use Basic auth</span>
-            </label>
-          </div>
-          <div id="sync-auth-reset-note" class="sync-inline-note hidden" data-i18n="syncAuthResetNotice">Saved credentials will be cleared when you save with no authentication.</div>
-        </section>
-
-        <section class="sync-section-card" id="sync-credentials-card">
-          <div class="sync-section-header" data-i18n="syncCredentialsProtection">Credentials protection</div>
-          <p class="sync-section-subtitle" data-i18n="syncCredentialsProtectionHint">Choose how saved credentials should be protected.</p>
-
-          <div id="sync-username-row" style="margin-top:8px;">
-            <label id="sync-username-label" data-i18n="syncUsername">Username</label>
-            <input type="text" id="sync-username" placeholder="">
-          </div>
-
-          <div id="sync-password-row" style="margin-top:8px;">
-            <label id="sync-password-label" data-i18n="syncPassword">Password</label>
-            <input type="password" id="sync-password" placeholder="">
-          </div>
-
-          <div id="sync-encrypt-section" style="margin-top:8px;">
-            <label id="sync-encrypt-label" data-i18n="syncEncryptMode">Credentials encryption</label>
-            <div class="choice-group choice-group-inline" id="sync-encrypt-choice-group">
-              <label class="choice-option choice-option-inline">
-                <input type="radio" name="sync-encrypt-choice" value="none" checked>
-                <span class="choice-option-title" data-i18n="syncEncryptNone">Do not encrypt</span>
+        <div class="appearance-grid">
+          <section class="sync-section-card appearance-card" id="sync-provider-card">
+            <h3 class="sync-section-header" data-i18n="syncProvider">Sync provider</h3>
+            <p class="sync-section-subtitle appearance-card-desc" data-i18n="syncProviderHint">Choose where bookmark data is synchronized.</p>
+            <div class="choice-group appearance-choice-group" id="sync-type-choice-group">
+              <label class="choice-option">
+                <input type="radio" name="sync-type-choice" value="direct" checked>
+                <span class="choice-option-title" data-i18n="syncTypeDirect">Direct JSON</span>
+                <span class="choice-option-subtitle" data-i18n="syncProviderDirectDesc">Use a direct JSON endpoint URL. Backend must support GET/PUT requests.</span>
               </label>
-              <label class="choice-option choice-option-inline">
-                <input type="radio" name="sync-encrypt-choice" value="master">
-                <span class="choice-option-title" data-i18n="syncEncryptMaster">Encrypt with master password</span>
+              <label class="choice-option">
+                <input type="radio" name="sync-type-choice" value="webdav">
+                <span class="choice-option-title" data-i18n="syncTypeWebdav">WebDAV</span>
+                <span class="choice-option-subtitle" data-i18n="syncProviderWebdavDesc">Use a WebDAV-compatible server.</span>
               </label>
-              <label class="choice-option choice-option-inline">
-                <input type="radio" name="sync-encrypt-choice" value="local">
-                <span class="choice-option-title" data-i18n="syncEncryptLocal">Encrypt with local key</span>
+              <label class="choice-option">
+                <input type="radio" name="sync-type-choice" value="browser">
+                <span class="choice-option-title" data-i18n="syncTypeBrowserNative">Browser native sync</span>
+                <span class="choice-option-subtitle" data-i18n="syncProviderBrowserDesc">Use browser-managed sync storage.</span>
               </label>
             </div>
-          </div>
+          </section>
 
-          <div style="margin-top:8px; display:none;" id="sync-credentials-row">
-            <button id="sync-credentials-save" class="icon-btn primary" data-i18n="saveCredentials">💾 Save credentials</button>
-          </div>
-        </section>
+          <section class="sync-section-card appearance-card" id="sync-connection-card">
+            <h3 class="sync-section-header" data-i18n="syncConnection">Connection</h3>
+            <p class="sync-section-subtitle appearance-card-desc" data-i18n="syncConnectionHint">Set endpoint details and verify the connection.</p>
 
-        <section class="sync-section-card" id="sync-behavior-card">
-          <div class="sync-section-header" data-i18n="syncBehavior">Sync behavior</div>
-          <p class="sync-section-subtitle" data-i18n="syncBehaviorHint">Control when synchronization is triggered.</p>
+            <div id="sync-url-row" class="sync-field-stack">
+              <label for="sync-url" id="sync-url-label" data-i18n="serverUrl">Server URL</label>
+              <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json">
+            </div>
 
-          <label class="checkbox-row">
-            <input type="checkbox" id="sync-enable">
-            <span data-i18n="enableSync">🔄 Enable synchronization</span>
-          </label>
+            <div id="sync-browser-hint" class="sync-inline-note hidden" data-i18n="syncBrowserNativeHint">Browser native sync uses your browser account. URL and authentication are not required.</div>
 
-          <div class="choice-group" id="sync-interval-choice-group">
-            <label class="choice-option choice-option-inline">
-              <input type="radio" name="sync-interval" value="immediate" id="sync-immediate">
-              <span class="choice-option-title" data-i18n="immediateSyncWarning">Immediate sync (on every change)</span>
-            </label>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="sync-test" class="icon-btn primary" data-i18n="testConnection">🔍 Test connection</button>
+                <button id="sync-read-test" class="icon-btn primary" data-i18n="readTest">📥 Read Test</button>
+                <button id="sync-write-test" class="icon-btn primary" data-i18n="writeTest">📤 Write Test</button>
+              </div>
+              <div id="sync-test-status" class="status"></div>
+            </div>
+          </section>
 
-            <label class="choice-option choice-option-inline">
-              <input type="radio" name="sync-interval" value="custom" id="sync-custom">
-              <span class="choice-option-title" data-i18n="customInterval">Custom interval (minutes):</span>
-              <input type="number" id="sync-interval-value" min="1" max="1440" placeholder="60">
-            </label>
+          <section class="sync-section-card appearance-card" id="sync-auth-card">
+            <h3 class="sync-section-header" data-i18n="syncAuthMode">Authentication</h3>
+            <p class="sync-section-subtitle appearance-card-desc" data-i18n="syncAuthenticationHint">Pick how the server authenticates requests.</p>
+            <div class="choice-group appearance-choice-group" id="sync-auth-choice-group">
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-auth-choice" value="none" checked>
+                <span class="choice-option-title" data-i18n="syncAuthNone">Don't use authentication</span>
+              </label>
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-auth-choice" value="basic">
+                <span class="choice-option-title" data-i18n="syncAuthBasic">Use Basic auth</span>
+              </label>
+            </div>
+            <div id="sync-auth-reset-note" class="sync-inline-note hidden" data-i18n="syncAuthResetNotice">Saved credentials will be cleared when you save with no authentication.</div>
+          </section>
 
-            <label class="choice-option choice-option-inline">
-              <input type="radio" name="sync-interval" value="manual" id="sync-manual">
-              <span class="choice-option-title" data-i18n="manualSyncOnly">Manual sync only</span>
-            </label>
-          </div>
-          <div class="sync-manual-actions-row">
-            <button id="sync-now-btn" class="icon-btn primary" data-i18n="syncNow" title="titleSyncNow" aria-label="titleSyncNow">⬆️ Sync now</button>
-            <button id="sync-upload-btn" class="icon-btn primary" data-i18n="syncUpload" title="titleSyncUpload" aria-label="titleSyncUpload">📤 Upload</button>
-            <button id="sync-download-btn" class="icon-btn primary" data-i18n="syncDownload" title="titleSyncDownload" aria-label="titleSyncDownload">📥 Download</button>
-          </div>
-          <div id="sync-now-status" class="status"></div>
-          <div id="last-sync-info" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
-        </section>
+          <section class="sync-section-card appearance-card" id="sync-credentials-card">
+            <h3 class="sync-section-header" data-i18n="syncCredentialsProtection">Credentials protection</h3>
+            <p class="sync-section-subtitle appearance-card-desc" data-i18n="syncCredentialsProtectionHint">Choose how saved credentials should be protected.</p>
+
+            <div id="sync-username-row" class="appearance-slider-row">
+              <label for="sync-username" id="sync-username-label" data-i18n="syncUsername">Username</label>
+              <input type="text" id="sync-username" class="sync-compact-input" placeholder="">
+            </div>
+
+            <div id="sync-password-row" class="appearance-slider-row">
+              <label for="sync-password" id="sync-password-label" data-i18n="syncPassword">Password</label>
+              <input type="password" id="sync-password" class="sync-compact-input" placeholder="">
+            </div>
+
+            <div id="sync-encrypt-section" class="appearance-card-spaced">
+              <label id="sync-encrypt-label" class="sync-sub-label" data-i18n="syncEncryptMode">Credentials encryption</label>
+              <div class="choice-group appearance-choice-group" id="sync-encrypt-choice-group">
+                <label class="choice-option choice-option-inline">
+                  <input type="radio" name="sync-encrypt-choice" value="none" checked>
+                  <span class="choice-option-title" data-i18n="syncEncryptNone">Do not encrypt</span>
+                </label>
+                <label class="choice-option choice-option-inline">
+                  <input type="radio" name="sync-encrypt-choice" value="master">
+                  <span class="choice-option-title" data-i18n="syncEncryptMaster">Encrypt with master password</span>
+                </label>
+                <label class="choice-option choice-option-inline">
+                  <input type="radio" name="sync-encrypt-choice" value="local">
+                  <span class="choice-option-title" data-i18n="syncEncryptLocal">Encrypt with local key</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="appearance-card-footer" style="display:none;" id="sync-credentials-row">
+              <div class="tile-mass-color-actions">
+                <button id="sync-credentials-save" class="icon-btn primary" data-i18n="saveCredentials">💾 Save credentials</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="sync-section-card appearance-card" id="sync-behavior-card">
+            <h3 class="sync-section-header" data-i18n="syncBehavior">Sync behavior</h3>
+            <p class="sync-section-subtitle appearance-card-desc" data-i18n="syncBehaviorHint">Control when synchronization is triggered.</p>
+
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="sync-enable">
+                <span data-i18n="enableSync">🔄 Enable synchronization</span>
+              </label>
+            </div>
+
+            <div class="choice-group appearance-choice-group appearance-card-spaced" id="sync-interval-choice-group">
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-interval" value="immediate" id="sync-immediate">
+                <span class="choice-option-title" data-i18n="immediateSyncWarning">Immediate sync (on every change)</span>
+              </label>
+
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-interval" value="custom" id="sync-custom">
+                <span class="choice-option-title" data-i18n="customInterval">Custom interval (minutes):</span>
+                <input type="number" id="sync-interval-value" class="appearance-number-input" min="1" max="1440" placeholder="60">
+              </label>
+
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="sync-interval" value="manual" id="sync-manual">
+                <span class="choice-option-title" data-i18n="manualSyncOnly">Manual sync only</span>
+              </label>
+            </div>
+
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions sync-manual-actions-row">
+                <button id="sync-now-btn" class="icon-btn primary" data-i18n="syncNow" title="titleSyncNow" aria-label="titleSyncNow">⬆️ Sync now</button>
+                <button id="sync-upload-btn" class="icon-btn primary" data-i18n="syncUpload" title="titleSyncUpload" aria-label="titleSyncUpload">📤 Upload</button>
+                <button id="sync-download-btn" class="icon-btn primary" data-i18n="syncDownload" title="titleSyncDownload" aria-label="titleSyncDownload">📥 Download</button>
+              </div>
+              <div id="sync-now-status" class="status"></div>
+              <div id="last-sync-info" class="appearance-card-meta"></div>
+            </div>
+          </section>
+        </div>
 
         <div id="sync-status" class="status"></div>
       </div>
 
       <!-- Backups Tab -->
       <div id="backups-tab" class="settings-tab-content">
-        <h3 data-i18n="backupsSettings">Backups</h3>
-        <p data-i18n="backupsSettingsHint">Automatically store local bookmark snapshots as JSON backup files.</p>
+        <div class="sync-section-card appearance-card">
+          <h3 data-i18n="backupsSettings">Backups</h3>
+          <p class="appearance-card-desc" data-i18n="backupsSettingsHint">Automatically store local bookmark snapshots as JSON backup files.</p>
 
-        <label for="backup-retention-days" data-i18n="backupsRetentionDays">Retention period (days):</label>
-        <input type="number" id="backup-retention-days" min="1" max="365" value="30">
+          <div class="backups-controls-grid">
+            <div class="appearance-slider-row">
+              <label for="backup-retention-days" data-i18n="backupsRetentionDays">Retention period (days):</label>
+              <input type="number" id="backup-retention-days" class="appearance-number-input" min="1" max="365" value="30">
+            </div>
+            <div class="appearance-slider-row">
+              <label for="backup-frequency-hours" data-i18n="backupsFrequency">Backup frequency (hours):</label>
+              <input type="number" id="backup-frequency-hours" class="appearance-number-input" min="1" max="720" value="24">
+            </div>
+          </div>
 
-        <label for="backup-frequency-hours" data-i18n="backupsFrequency">Backup frequency (hours):</label>
-        <input type="number" id="backup-frequency-hours" min="1" max="720" value="24">
-
-        <button id="backup-create-now" class="icon-btn primary" data-i18n="createBackupNow">💾 Create backup now</button>
-        <div id="backup-status" class="status"></div>
+          <div class="appearance-card-footer">
+            <div class="tile-mass-color-actions">
+              <button id="backup-create-now" class="icon-btn primary" data-i18n="createBackupNow">💾 Create backup now</button>
+            </div>
+            <div id="backup-status" class="status"></div>
+          </div>
+        </div>
 
         <div class="backups-table-wrap">
           <table class="backups-table">
@@ -311,41 +343,43 @@
 
       <!-- Export/Import Tab -->
       <div id="export-tab" class="settings-tab-content">
-        <div class="export-import-grid">
-          <div class="export-import-card">
-            <div>
-              <h4 data-i18n="jsonFormat">JSON Format</h4>
-              <p data-i18n="jsonFormatDesc">Export bookmarks as JSON file and import bookmarks from JSON file.</p>
-            </div>
-            <div class="export-import-actions">
-              <button id="export-btn" class="icon-btn primary" data-i18n="export">📥 Export</button>
-              <button id="import-btn" class="icon-btn primary" data-i18n="import">📤 Import</button>
+        <div class="appearance-grid">
+          <div class="sync-section-card appearance-card">
+            <h3 data-i18n="jsonFormat">JSON Format</h3>
+            <p class="appearance-card-desc" data-i18n="jsonFormatDesc">Export bookmarks as JSON file and import bookmarks from JSON file.</p>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="export-btn" class="icon-btn primary" data-i18n="export">📥 Export</button>
+                <button id="import-btn" class="icon-btn primary" data-i18n="import">📤 Import</button>
+              </div>
             </div>
           </div>
 
-          <div class="export-import-card">
-            <div>
-              <h4 data-i18n="browserBookmarks">Browser bookmarks</h4>
-              <p data-i18n="browserBookmarksDesc">Export and import groups to a browser bookmarks folder named SimpleDial.</p>
+          <div class="sync-section-card appearance-card">
+            <h3 data-i18n="browserBookmarks">Browser bookmarks</h3>
+            <p class="appearance-card-desc" data-i18n="browserBookmarksDesc">Export and import groups to a browser bookmarks folder named SimpleDial.</p>
+            <div class="appearance-display-list">
               <label class="checkbox-row">
                 <input type="checkbox" id="browser-bookmarks-auto-sync">
                 <span data-i18n="browserBookmarksAutoSync">Automatically sync changes to browser bookmarks</span>
               </label>
             </div>
-            <div class="export-import-actions">
-              <button id="export-bookmarks-btn" class="icon-btn primary" data-i18n="exportBrowserBookmarks">📁 Export</button>
-              <button id="import-bookmarks-btn" class="icon-btn primary" data-i18n="importBrowserBookmarks">📂 Import</button>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="export-bookmarks-btn" class="icon-btn primary" data-i18n="exportBrowserBookmarks">📁 Export</button>
+                <button id="import-bookmarks-btn" class="icon-btn primary" data-i18n="importBrowserBookmarks">📂 Import</button>
+              </div>
             </div>
           </div>
 
-          <div class="export-import-card">
-            <div>
-              <h4 data-i18n="netscapeFormat">NETSCAPE Format</h4>
-              <p data-i18n="netscapeFormatDesc">Export and import bookmarks in NETSCAPE-Bookmark-file-1 format.</p>
-            </div>
-            <div class="export-import-actions">
-              <button id="export-netscape-btn" class="icon-btn primary" data-i18n="export">📥 Export</button>
-              <button id="import-netscape-btn" class="icon-btn primary" data-i18n="import">📤 Import</button>
+          <div class="sync-section-card appearance-card">
+            <h3 data-i18n="netscapeFormat">NETSCAPE Format</h3>
+            <p class="appearance-card-desc" data-i18n="netscapeFormatDesc">Export and import bookmarks in NETSCAPE-Bookmark-file-1 format.</p>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="export-netscape-btn" class="icon-btn primary" data-i18n="export">📥 Export</button>
+                <button id="import-netscape-btn" class="icon-btn primary" data-i18n="import">📤 Import</button>
+              </div>
             </div>
           </div>
         </div>
@@ -356,171 +390,232 @@
 
       <!-- Appearance Tab -->
       <div id="appearance-tab" class="settings-tab-content">
+        <div class="appearance-grid">
 
-        <h3 id="language-title" data-i18n="language">🅰️ Language</h3>
-        <div class="language-selector">
-          <label for="language-select" id="language-label" data-i18n="languageSelect">Language:</label>
-          <select id="language-select">
-            <!-- options loaded dynamically from newtab/lang folder -->
-          </select>
-        </div>
-
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
-        <h3 id="theme-title" data-i18n="themeSettings">🎨 Theme</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="theme-desc" data-i18n="themeComingSoon">Coming soon</p>
-
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
-
-        <h3 id="background-title" data-i18n="backgroundSettings">🖼️ Background Picture</h3>
-        <div class="background-settings">
-          <label for="bg-image-input" id="bg-upload-label" data-i18n="uploadBackgroundImage">Upload background image:</label>
-          <input type="file" id="bg-image-input" accept="image/*" class="bg-file-input">
-          
-          <div id="bg-preview" class="bg-preview"></div>
-          
-          <label id="bg-size-label" data-i18n="backgroundSize">Background size:</label>
-          <select id="bg-size-select" class="bg-size-select">
-            <option value="stretched" data-i18n="bgStretch">Stretched (fill entire screen)</option>
-            <option value="fill" data-i18n="bgFill">Fill (cover screen, may crop)</option>
-            <option value="fit" data-i18n="bgFit">Fit (entire image visible, black bars)</option>
-            <option value="tile" data-i18n="bgTile">Tile (repeat pattern)</option>
-            <option value="center" data-i18n="bgCenter">Center (original size, border)</option>
-            <option value="span" data-i18n="bgSpan">Span (across multiple monitors)</option>
-          </select>
-          
-          <button id="bg-remove-btn" data-i18n="removeBackgroundImage" class="bg-remove-btn">Remove background</button>
-        </div>
-
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
-
-        <h3 id="tiles-title" data-i18n="tileSettings">🎯 Bookmark Tiles</h3>
-        <div class="tile-settings">
-          <label id="tile-opacity-label" data-i18n="tileOpacity">Tile transparency:</label>
-          <div class="opacity-slider-container">
-            <input type="range" id="tile-opacity-slider" min="0" max="100" value="100">
-            <span id="tile-opacity-value" class="opacity-value">100%</span>
+          <div class="sync-section-card appearance-card">
+            <h3 id="language-title" data-i18n="language">🅰️ Language</h3>
+            <div class="language-selector appearance-slider-row">
+              <label for="language-select" id="language-label" data-i18n="languageSelect">Language:</label>
+              <select id="language-select">
+                <!-- options loaded dynamically from newtab/lang folder -->
+              </select>
+            </div>
+            <div class="appearance-theme-row">
+              <h3 id="theme-title" data-i18n="themeSettings">🎨 Theme</h3>
+              <p id="theme-desc" data-i18n="themeComingSoon">Coming soon</p>
+            </div>
           </div>
+
+          <div class="sync-section-card appearance-card">
+            <h3 id="display-options-title" data-i18n="displayOptions">Display Options</h3>
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="show-deleted-toggle">
+                <span data-i18n="showDeletedBookmarks">👁️ Show deleted bookmarks</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="date-time-toggle">
+                <span data-i18n="showDateTime">🕜 Show date &amp; time</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="group-count-toggle">
+                <span data-i18n="showGroupBookmarkCount">🔢 Show bookmark count on groups</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="sync-section-card appearance-card">
+            <h3 id="tiles-title" data-i18n="tileSettings">🎯 Bookmark Tiles</h3>
+            <div class="tile-settings">
+              <div class="appearance-slider-row">
+                <label id="tile-opacity-label" data-i18n="tileOpacity">Tile transparency:</label>
+                <div class="opacity-slider-container">
+                  <input type="range" id="tile-opacity-slider" min="0" max="100" value="100">
+                  <span id="tile-opacity-value" class="opacity-value">100%</span>
+                </div>
+              </div>
+              <div class="appearance-slider-row">
+                <label id="tile-size-label" data-i18n="tileSize">Tile size:</label>
+                <div class="opacity-slider-container">
+                  <input type="range" id="tile-size-slider" min="50" max="150" value="100">
+                  <span id="tile-size-value" class="opacity-value">100%</span>
+                </div>
+              </div>
+              <div class="appearance-slider-row">
+                <label id="group-tile-size-label" data-i18n="groupTileSize">Group tile size:</label>
+                <div class="opacity-slider-container">
+                  <input type="range" id="group-tile-size-slider" min="50" max="150" value="100">
+                  <span id="group-tile-size-value" class="opacity-value">100%</span>
+                </div>
+              </div>
+              <div class="appearance-mass-color-block">
+                <label id="mass-color-from-icon-label" class="tile-mass-color-label" data-i18n="massTileColorFromIcon">Auto tile color from icon:</label>
+                <div class="tile-mass-color-actions">
+                  <button type="button" id="mass-enable-color-from-icon" class="icon-btn primary" data-i18n="massEnableColorFromIcon">🎨 Activate for all</button>
+                  <button type="button" id="mass-disable-color-from-icon" class="icon-btn" data-i18n="massDisableColorFromIcon">✖️ Deactivate for all</button>
+                </div>
+                <div id="mass-color-from-icon-status" class="status"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sync-section-card appearance-card">
+            <h3 id="background-title" data-i18n="backgroundSettings">🖼️ Background Picture</h3>
+            <div class="background-settings">
+              <div class="appearance-slider-row">
+                <label for="bg-size-select" id="bg-size-label" data-i18n="backgroundSize">Background size:</label>
+                <select id="bg-size-select" class="bg-size-select">
+                  <option value="stretched" data-i18n="bgStretch">Stretched (fill entire screen)</option>
+                  <option value="fill" data-i18n="bgFill">Fill (cover screen, may crop)</option>
+                  <option value="fit" data-i18n="bgFit">Fit (entire image visible, black bars)</option>
+                  <option value="tile" data-i18n="bgTile">Tile (repeat pattern)</option>
+                  <option value="center" data-i18n="bgCenter">Center (original size, border)</option>
+                  <option value="span" data-i18n="bgSpan">Span (across multiple monitors)</option>
+                </select>
+              </div>
+              <div class="appearance-bg-actions-block">
+                <label for="bg-image-input" id="bg-upload-label" class="icon-btn bg-upload-btn" data-i18n="uploadBackgroundImage">Upload background image:</label>
+                <input type="file" id="bg-image-input" accept="image/*" class="bg-file-input">
+                <button id="bg-remove-btn" data-i18n="removeBackgroundImage" class="bg-remove-btn">Remove background</button>
+                <div id="bg-preview" class="bg-preview"></div>
+              </div>
+            </div>
+          </div>
+
         </div>
-
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
-
-        <h3 id="display-options-title" data-i18n="displayOptions">Display Options</h3>
-        <label class="checkbox-row">
-          <input type="checkbox" id="show-deleted-toggle">
-          <span data-i18n="showDeletedBookmarks">👁️ Show deleted bookmarks</span>
-        </label>
-        <label class="checkbox-row">
-          <input type="checkbox" id="date-time-toggle">
-          <span data-i18n="showDateTime">🕜 Show date & time</span>
-        </label>
-        <label class="checkbox-row">
-          <input type="checkbox" id="group-count-toggle">
-          <span data-i18n="showGroupBookmarkCount">🔢 Show bookmark count on groups</span>
-        </label>
       </div>
 
       <!-- HouseKeeper Tab -->
       <div id="housekeeper-tab" class="settings-tab-content">
-        <h3 id="cleanup-title" data-i18n="cleanupDeletedRecords">Cleanup Deleted Records</h3>
-        
-        <label id="retention-label" data-i18n="retentionPeriodDays">Retention period (days):</label>
-        <input type="number" id="hk-retention-days" min="1" max="365" value="30">
+        <div class="appearance-grid">
 
-        <label class="checkbox-row">
-          <input type="checkbox" id="hk-auto-cleanup">
-          <span data-i18n="enableAutomaticCleanup">🔄 Enable automatic cleanup</span>
-        </label>
+          <div class="sync-section-card appearance-card">
+            <h3 id="cleanup-title" data-i18n="cleanupDeletedRecords">Cleanup Deleted Records</h3>
+            <div class="appearance-slider-row">
+              <label for="hk-retention-days" id="retention-label" data-i18n="retentionPeriodDays">Retention period (days):</label>
+              <input type="number" id="hk-retention-days" class="appearance-number-input" min="1" max="365" value="30">
+            </div>
+            <div class="appearance-display-list appearance-card-spaced">
+              <label class="checkbox-row">
+                <input type="checkbox" id="hk-auto-cleanup">
+                <span data-i18n="enableAutomaticCleanup">🔄 Enable automatic cleanup</span>
+              </label>
+            </div>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="hk-manual-cleanup" class="icon-btn primary" data-i18n="manualCleanupNow">🗑️ Manual cleanup now</button>
+              </div>
+              <div id="hk-cleanup-status" class="status"></div>
+              <div id="hk-last-cleanup" class="appearance-card-meta"></div>
+            </div>
+          </div>
 
-        <button id="hk-manual-cleanup" class="icon-btn primary" data-i18n="manualCleanupNow">🗑️ Manual cleanup now</button>
+          <div class="sync-section-card appearance-card">
+            <h3 id="icon-autorefresh-title" data-i18n="iconAutoRefresh">Icon Auto Refresh</h3>
+            <p class="appearance-card-desc" data-i18n="iconAutoRefreshDesc">Configure how bookmark icons should be automatically refreshed.</p>
+            <div class="choice-group appearance-choice-group" id="hk-icon-refresh-choice-group">
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-all" value="all">
+                <span class="choice-option-title" data-i18n="iconAutoRefreshAll">Refresh all icons</span>
+              </label>
 
-        <div id="hk-cleanup-status" class="status"></div>
-        <div id="hk-last-cleanup" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-missing" value="missing">
+                <span class="choice-option-title" data-i18n="iconAutoRefreshMissing">Refresh only missing icons</span>
+              </label>
 
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
+              <label class="choice-option choice-option-inline">
+                <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-none" value="none">
+                <span class="choice-option-title" data-i18n="iconAutoRefreshNone">No automatic refresh</span>
+              </label>
+            </div>
+            <div class="appearance-card-footer">
+              <div class="appearance-slider-row">
+                <label for="hk-icon-refresh-hours" data-i18n="iconAutoRefreshFrequency">Refresh frequency (hours):</label>
+                <input type="number" id="hk-icon-refresh-hours" class="appearance-number-input" min="1" max="720" value="24">
+              </div>
+            </div>
+          </div>
 
-        <h3 id="icon-autorefresh-title" data-i18n="iconAutoRefresh">Icon Auto Refresh</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" data-i18n="iconAutoRefreshDesc">Configure how bookmark icons should be automatically refreshed.</p>
+          <div class="sync-section-card appearance-card">
+            <h3 id="link-validation-title" data-i18n="linkValidation">Link Validation</h3>
+            <p class="appearance-card-desc" id="link-validation-desc" data-i18n="linkValidationDesc">Experimental - currently not working</p>
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="hk-enable-link-check">
+                <span data-i18n="enableDeadLinkDetection">✅ Enable dead link detection</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="hk-highlight-dead-links">
+                <span data-i18n="highlightDeadLinks">🔔 Highlight dead links on tiles</span>
+              </label>
+            </div>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="hk-check-links" class="icon-btn primary" data-i18n="checkLinksNow">🔗 Check links now</button>
+                <button id="hk-clear-errors" class="icon-btn" data-i18n="clearDeadLinkFlags">✖️ Clear dead-link flags</button>
+              </div>
+              <div id="hk-link-check-status" class="status"></div>
+              <div id="hk-dead-links-count" class="appearance-card-meta"></div>
+            </div>
+          </div>
 
-        <div class="choice-group" id="hk-icon-refresh-choice-group">
-          <label class="choice-option choice-option-inline">
-            <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-all" value="all">
-            <span class="choice-option-title" data-i18n="iconAutoRefreshAll">Refresh all icons</span>
-          </label>
-
-          <label class="choice-option choice-option-inline">
-            <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-missing" value="missing">
-            <span class="choice-option-title" data-i18n="iconAutoRefreshMissing">Refresh only missing icons</span>
-          </label>
-
-          <label class="choice-option choice-option-inline">
-            <input type="radio" name="hk-icon-refresh-mode" id="hk-icon-refresh-none" value="none">
-            <span class="choice-option-title" data-i18n="iconAutoRefreshNone">No automatic refresh</span>
-          </label>
         </div>
-
-        <label for="hk-icon-refresh-hours" data-i18n="iconAutoRefreshFrequency">Refresh frequency (hours):</label>
-        <input type="number" id="hk-icon-refresh-hours" min="1" max="720" value="24">
-
-        <hr style="margin: 16px 0; border: none; border-top: 1px solid #444;">
-
-        <h3 id="link-validation-title" data-i18n="linkValidation">Link Validation</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="link-validation-desc" data-i18n="linkValidationDesc">Experimental - currently not working</p>
-        
-        <label class="checkbox-row">
-          <input type="checkbox" id="hk-enable-link-check">
-          <span data-i18n="enableDeadLinkDetection">✅ Enable dead link detection</span>
-        </label>
-
-        <label class="checkbox-row">
-          <input type="checkbox" id="hk-highlight-dead-links">
-          <span data-i18n="highlightDeadLinks">🔔 Highlight dead links on tiles</span>
-        </label>
-
-        <button id="hk-check-links" class="icon-btn primary" data-i18n="checkLinksNow">🔗 Check links now</button>
-
-        <button id="hk-clear-errors" class="icon-btn" data-i18n="clearDeadLinkFlags">✖️ Clear dead-link flags</button>
-
-        <div id="hk-link-check-status" class="status"></div>
-        <div id="hk-dead-links-count" style="margin-top: 12px; font-size: 12px; color: #999;"></div>
       </div>
 
       <!-- Advanced tab -->
       <div id="advanced-tab" class="settings-tab-content">
-        <h3 id="debugging-title" data-i18n="debugging">Debugging</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="debugging-desc" data-i18n="debuggingDesc">Experimental - currently not working</p>
-        
-        <label class="checkbox-row">
-          <input type="checkbox" id="enable-favicon-debug-logging">
-          <span data-i18n="faviconDebugLogging">Enable favicon debug logging</span>
-        </label>
-        <label class="checkbox-row">
-          <input type="checkbox" id="enable-dead-link-debug-logging">
-          <span data-i18n="deadLinkDebugLogging">Enable dead link debug logging</span>
-        </label>
-        <label class="checkbox-row">
-          <input type="checkbox" id="enable-sync-debug-logging">
-          <span data-i18n="syncDebugLogging">Enable sync debug logging</span>
-        </label>
-        <label class="checkbox-row">
-          <input type="checkbox" id="enable-i18n-hot-reload">
-          <span data-i18n="i18nHotReload">Reload language files on page refresh (debug)</span>
-        </label>
-        <button id="reset-language-to-browser" class="icon-btn primary" data-i18n="resetLanguageToBrowser">Reset language to browser</button>
+        <div class="appearance-grid">
 
-        <h3 id="experimental-title" data-i18n="experimentalFeatures">Experimental Features</h3>
-        <p style="margin: 8px 0; font-size: 12px; color: #bbb;" id="experimental-desc" data-i18n="experimentalFeaturesDesc">These features are experimental and may not work as expected.</p>
-        
-        <label class="checkbox-row">
-          <input type="checkbox" id="enable-experimental-favicon-fetch-link">
-          <span data-i18n="experimentalFaviconFetchLink">Fetch favicons from HTML link tags. It requires additional permissions!</span>
-        </label>
+          <div class="sync-section-card appearance-card">
+            <h3 id="debugging-title" data-i18n="debugging">Debugging</h3>
+            <p class="appearance-card-desc" id="debugging-desc" data-i18n="debuggingDesc">Experimental - currently not working</p>
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="enable-favicon-debug-logging">
+                <span data-i18n="faviconDebugLogging">Enable favicon debug logging</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="enable-dead-link-debug-logging">
+                <span data-i18n="deadLinkDebugLogging">Enable dead link debug logging</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="enable-sync-debug-logging">
+                <span data-i18n="syncDebugLogging">Enable sync debug logging</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="enable-i18n-hot-reload">
+                <span data-i18n="i18nHotReload">Reload language files on page refresh (debug)</span>
+              </label>
+            </div>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="reset-language-to-browser" class="icon-btn primary" data-i18n="resetLanguageToBrowser">Reset language to browser</button>
+              </div>
+            </div>
+          </div>
 
-        <label class="checkbox-row">
-          <input type="checkbox" id="enable-experimental-favicon-fetch-manifest">
-          <span data-i18n="experimentalFaviconFetchManifest">Fetch favicons from WEB APP manifest. It requires additional permissions!</span>
-        </label>
-        <button id="open-extension-settings" class="icon-btn primary" data-i18n="openExtensionSettings">Open extension settings</button>
+          <div class="sync-section-card appearance-card">
+            <h3 id="experimental-title" data-i18n="experimentalFeatures">Experimental Features</h3>
+            <p class="appearance-card-desc" id="experimental-desc" data-i18n="experimentalFeaturesDesc">These features are experimental and may not work as expected.</p>
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="enable-experimental-favicon-fetch-link">
+                <span data-i18n="experimentalFaviconFetchLink">Fetch favicons from HTML link tags. It requires additional permissions!</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="enable-experimental-favicon-fetch-manifest">
+                <span data-i18n="experimentalFaviconFetchManifest">Fetch favicons from WEB APP manifest. It requires additional permissions!</span>
+              </label>
+            </div>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="open-extension-settings" class="icon-btn primary" data-i18n="openExtensionSettings">Open extension settings</button>
+              </div>
+            </div>
+          </div>
 
+        </div>
       </div>
 
       <!-- Info Tab -->

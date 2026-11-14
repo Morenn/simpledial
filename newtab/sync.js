@@ -940,7 +940,7 @@ function isBootstrapPlaceholderState(groups) {
   }
 
   const [group] = groups;
-  const hasGroupCustomization = Boolean(group.customIcon || group.tileColor || group.colorFromIcon);
+  const hasGroupCustomization = Boolean(group.iconEmoji || group.customIcon || group.tileColor || group.colorFromIcon);
   return !group.deleted && !hasGroupCustomization && (group.items?.length || 0) === 0;
 }
 

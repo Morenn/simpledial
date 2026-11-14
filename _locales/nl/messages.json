@@ -252,9 +252,17 @@
   "newGroup": { "message": "Nieuwe groep" },
   "editGroupTitle": { "message": "Groep bewerken" },
   "groupName": { "message": "Groepsnaam" },
-  "groupIcon": { "message": "Pictogram-URL of emoji (optioneel)" },
+  "groupEmoji": { "message": "Emoji (optioneel)" },
+  "groupIcon": { "message": "Pictogram-URL (optioneel)" },
   "tileColor": { "message": "Tegelkleur (optioneel)" },
   "useCustomColor": { "message": "Aangepaste kleur" },
   "colorFromIcon": { "message": "Automatisch uit pictogram" },
-  "invalidIconUrl": { "message": "Voer een geldige pictogram-URL in." }
+  "invalidIconUrl": { "message": "Voer een geldige pictogram-URL in." },
+  "massTileColorFromIcon": { "message": "Automatische tegelkleur uit pictogram (groepen & bladwijzers):" },
+  "massEnableColorFromIcon": { "message": "Voor alles activeren" },
+  "massDisableColorFromIcon": { "message": "Voor alles deactiveren" },
+  "massColorFromIconActivated": { "message": "Tegelkleur uit pictogram geactiveerd" },
+  "massColorFromIconDeactivated": { "message": "Tegelkleur uit pictogram gedeactiveerd" },
+  "tileSize": { "message": "Tegelgrootte:" },
+  "groupTileSize": { "message": "Groepstegelgrootte:" }
 }

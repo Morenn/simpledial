@@ -46,6 +46,8 @@ export const defaultConfig = {
     backgroundImage: null, // Base64 encoded image or null
     backgroundSize: "stretched", // "stretched", "fill", "fit", "tile", "center", "span"
     tileOpacity: 1, // Bookmark tile opacity: 0 (transparent) to 1 (opaque)
+    tileSize: 1, // Bookmark tile scale: 0.5 (50%) to 1.5 (150%)
+    groupTileSize: 1, // Group tile scale: 0.5 (50%) to 1.5 (150%)
     showDateTime: true,
     showDeleted: false,
     showGroupBookmarkCount: true
