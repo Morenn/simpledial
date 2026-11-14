@@ -474,6 +474,7 @@ main {
 .settings-tab-content .appearance-card {
   margin-bottom: 0;
   padding: 0.75rem;
+  min-width: 0;
 }
 
 .settings-tab-content .appearance-card h3 {
@@ -760,6 +761,7 @@ main {
   font-size: 0.8rem;
   color: #bbb;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .appearance-choice-group {
@@ -1671,7 +1673,7 @@ body.theme-dark .bookmark-title:hover {
 }
 
 #settings-modal .modal-content {
-  width: auto;
+  width: min(95vw, 1000px);
   max-width: 95vw;
   box-sizing: border-box;
   height: 70%;
