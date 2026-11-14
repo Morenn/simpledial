@@ -1,5 +1,7 @@
 import { THEME_KEY } from "./state.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, saveConfig } from "./config.js";
+import { t } from "./i18n.js";
+import { normalizeCustomIconValue, isUrlLikeIcon } from "./color-utils.js";
 
 const BACKGROUND_IMAGE_CACHE_KEY = "myspeeddial-background-image-cache";
 const CUSTOM_THEME_CSS_CACHE_KEY = "myspeeddial-custom-theme-css-cache";
@@ -152,6 +154,52 @@ export async function fetchAndCacheThemeUrl(rawUrl, { saveCache = true } = {}) {
   return { url: parsed.href, css: cssText };
 }
 
+export async function fetchBackgroundImageFromUrl(rawUrl) {
+  const trimmed = String(rawUrl || "").trim();
+  if (!isAllowedThemeUrl(trimmed)) {
+    throw new Error("INVALID_BG_URL");
+  }
+
+  const baseHref = typeof window !== "undefined" && window.location?.href ? window.location.href : undefined;
+  const parsed = new URL(trimmed, baseHref);
+
+  const originPattern = getOriginPattern(parsed.href);
+  if (originPattern && typeof chrome !== "undefined" && chrome.permissions?.request) {
+    try {
+      await chrome.permissions.request({ origins: [originPattern] });
+    } catch {
+      // Proceed to fetch in case host permission is already active or not supported
+    }
+  }
+
+  const response = await fetch(parsed.href, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+  }
+
+  const contentType = response.headers?.get?.("content-type")?.toLowerCase() || "";
+  if (contentType && !contentType.startsWith("image/")) {
+    throw new Error("URL did not return an image");
+  }
+
+  const blob = await response.blob();
+  if (!blob || blob.size === 0) {
+    throw new Error("Image file is empty");
+  }
+  if (blob.size > 5 * 1024 * 1024) {
+    throw new Error("Image file is too large (max 5MB)");
+  }
+
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read image data"));
+    reader.readAsDataURL(blob);
+  });
+
+  return { url: parsed.href, dataUrl };
+}
+
 function removeElementIfPresent(id) {
   const el = document.getElementById(id);
   if (el) {
@@ -300,14 +348,23 @@ export async function loadTheme() {
   // Load background image
   await applyBackground(config);
 
+  // Load background dim overlay
+  await applyBgDim(config);
+
   // Load tile opacity
   await applyTileOpacity(config);
+
+  // Load header & footer opacity
+  await applyBarOpacity(config);
 
   // Load tile size
   await applyTileSize(config);
 
   // Load group tile size
   await applyGroupTileSize(config);
+
+  // Load left/right widget side spaces visibility
+  await applySideSpaces(config);
 }
 
 // ---------- Apply background ----------
@@ -317,8 +374,11 @@ export async function applyBackground(config = null) {
   }
 
   const body = document.body;
-  const cachedBackground = await getBackgroundImageFromCache();
-  const bgImage = config.appearance?.backgroundImage || cachedBackground;
+  const hasExplicitBackgroundField = Boolean(
+    config?.appearance && Object.prototype.hasOwnProperty.call(config.appearance, "backgroundImage")
+  );
+  const cachedBackground = hasExplicitBackgroundField ? null : await getBackgroundImageFromCache();
+  const bgImage = config.appearance?.backgroundImage ?? cachedBackground;
   const bgSize = config.appearance?.backgroundSize || "stretched";
 
   if (config.appearance && bgImage && config.appearance.backgroundImage !== bgImage) {
@@ -403,6 +463,27 @@ export async function applyTileOpacity(config = null) {
   document.body.style.setProperty('--tile-opacity', opacity);
 }
 
+// ---------- Apply header & footer opacity ----------
+export async function applyBarOpacity(config = null) {
+  if (!config) {
+    config = await loadConfig();
+  }
+
+  const opacity = config.appearance?.barOpacity ?? 1;
+  document.body.style.setProperty('--bar-opacity', opacity);
+}
+
+// ---------- Apply background dim overlay ----------
+export async function applyBgDim(config = null) {
+  if (!config) {
+    config = await loadConfig();
+  }
+
+  const raw = Number(config.appearance?.bgDim ?? 0);
+  const dim = Number.isFinite(raw) ? Math.min(0.9, Math.max(0, raw)) : 0;
+  document.body.style.setProperty('--bg-dim', dim);
+}
+
 function clampTileScale(rawSize) {
   const parsed = Number(rawSize);
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(1.5, Math.max(0.5, parsed)) : 1;
@@ -415,6 +496,7 @@ export async function applyTileSize(config = null) {
   }
 
   document.body.style.setProperty('--tile-scale', clampTileScale(config.appearance?.tileSize));
+  document.body.classList.toggle("tall-bookmark-tiles", !!config.appearance?.tallBookmarkTiles);
 }
 
 // ---------- Apply group tile size ----------
@@ -426,8 +508,875 @@ export async function applyGroupTileSize(config = null) {
   document.body.style.setProperty('--group-tile-scale', clampTileScale(config.appearance?.groupTileSize));
 }
 
-// ---------- Toggle theme ----------
+// ---------- Lock/Unlock tile movements ----------
+export async function applyTilesLock(config = null) {
+  if (typeof document === "undefined") return;
+  if (!config) {
+    config = await loadConfig();
+  }
+
+  const isLocked = !!config.appearance?.lockTiles;
+  document.body.classList.toggle("tiles-locked", isLocked);
+
+  const lockBtn = document.getElementById("lock-tiles-btn");
+  if (lockBtn) {
+    lockBtn.textContent = isLocked ? "🔒" : "🔓";
+    lockBtn.classList.toggle("locked", isLocked);
+    const titleKey = isLocked ? "unlockTiles" : "lockTiles";
+    const fallback = isLocked ? "Unlock tile movements" : "Lock tile movements";
+    const translated = t(titleKey);
+    const titleText = translated && translated !== titleKey ? translated : fallback;
+    lockBtn.title = titleText;
+    lockBtn.setAttribute("aria-label", titleText);
+    lockBtn.setAttribute("data-i18n-title-key", titleKey);
+    lockBtn.setAttribute("data-i18n-aria-key", titleKey);
+  }
+}
+
+const VALID_WIDGET_SPACES = new Set(["header", "left", "center", "right", "footer"]);
+export const DEFAULT_WIDGET_ORDER = ["groups", "search", "bookmarks", "dateTime"];
+const VALID_WIDGET_KEYS = new Set(DEFAULT_WIDGET_ORDER);
+
+export function isValidCustomSearchUrlTemplate(rawUrl) {
+  if (typeof rawUrl !== "string") return false;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return false;
+  try {
+    const testUrl = new URL(trimmed.replace(/\{[a-zA-Z0-9_-]+\}/g, "test"));
+    return testUrl.protocol === "http:" || testUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function isValidCustomSearchJsonTemplate(rawJson) {
+  if (typeof rawJson !== "string") return false;
+  const trimmed = rawJson.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed !== null && typeof parsed === "object";
+  } catch {
+    return false;
+  }
+}
+
+const JSON_OMIT_VALUE = Symbol("JSON_OMIT_VALUE");
+
+function resolveJsonTemplateValue(node, valuesMap) {
+  if (typeof node === "string") {
+    const exactMatch = node.match(/^\{([a-zA-Z0-9_-]+)\}$/);
+    if (exactMatch) {
+      const val = valuesMap[exactMatch[1]];
+      if (Array.isArray(val)) {
+        return val.length > 0 ? val : JSON_OMIT_VALUE;
+      }
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        return trimmed ? trimmed : JSON_OMIT_VALUE;
+      }
+      return JSON_OMIT_VALUE;
+    }
+
+    if (/\{[a-zA-Z0-9_-]+\}/.test(node)) {
+      let hasAnyValue = false;
+      const interpolated = node.replace(/\{([a-zA-Z0-9_-]+)\}/g, (_, key) => {
+        const val = valuesMap[key];
+        if (Array.isArray(val) && val.length > 0) {
+          hasAnyValue = true;
+          return val.join(",");
+        }
+        if (typeof val === "string" && val.trim()) {
+          hasAnyValue = true;
+          return val.trim();
+        }
+        return "";
+      });
+      return hasAnyValue ? interpolated : JSON_OMIT_VALUE;
+    }
+
+    return node;
+  }
+
+  if (Array.isArray(node)) {
+    if (node.length === 0) return [];
+    const nextArr = [];
+    for (const item of node) {
+      const resolved = resolveJsonTemplateValue(item, valuesMap);
+      if (resolved !== JSON_OMIT_VALUE) {
+        nextArr.push(resolved);
+      }
+    }
+    return nextArr.length > 0 ? nextArr : JSON_OMIT_VALUE;
+  }
+
+  if (node && typeof node === "object") {
+    const keys = Object.keys(node);
+    if (keys.length === 0) return {};
+    const nextObj = {};
+    let hasKey = false;
+    for (const k of keys) {
+      const resolved = resolveJsonTemplateValue(node[k], valuesMap);
+      if (resolved !== JSON_OMIT_VALUE) {
+        nextObj[k] = resolved;
+        hasKey = true;
+      }
+    }
+    return hasKey ? nextObj : JSON_OMIT_VALUE;
+  }
+
+  return node;
+}
+
+export function buildCustomSearchTargetUrl(widget, valuesMap = {}) {
+  const template = (widget?.urlTemplate || "").trim();
+  const mode = widget?.mode === "json" ? "json" : "simple";
+
+  if (mode === "json") {
+    const parsed = JSON.parse((widget?.jsonTemplate || "{}").trim());
+    const resolved = resolveJsonTemplateValue(parsed, valuesMap);
+    const payload = resolved === JSON_OMIT_VALUE ? {} : resolved;
+    const encodedJson = encodeURIComponent(JSON.stringify(payload));
+    if (/\{json\}/.test(template)) {
+      return template.replace(/\{json\}/g, encodedJson);
+    }
+    return template + encodedJson;
+  }
+
+  if (/\{[a-zA-Z0-9_-]+\}/.test(template)) {
+    return template.replace(/\{([a-zA-Z0-9_-]+)\}/g, (_, key) => {
+      const val = valuesMap[key];
+      if (Array.isArray(val)) return encodeURIComponent(val.join(","));
+      return encodeURIComponent(typeof val === "string" ? val.trim() : "");
+    });
+  }
+
+  const firstVal = Object.values(valuesMap).find(v =>
+    (Array.isArray(v) && v.length > 0) || (typeof v === "string" && v.trim())
+  );
+  const encoded = Array.isArray(firstVal)
+    ? encodeURIComponent(firstVal.join(","))
+    : encodeURIComponent(typeof firstVal === "string" ? firstVal.trim() : "");
+  return template + encoded;
+}
+
+export function buildCustomSearchPreview(widget, valuesMap = {}) {
+  const urlTemplate = (widget?.urlTemplate || "").trim();
+  const mode = widget?.mode === "json" ? "json" : "simple";
+  if (!isValidCustomSearchUrlTemplate(urlTemplate)) {
+    return { valid: false, url: "", jsonString: "", error: "invalid_url" };
+  }
+  if (mode === "json") {
+    const rawJson = (widget?.jsonTemplate || "").trim();
+    if (!isValidCustomSearchJsonTemplate(rawJson)) {
+      return { valid: false, url: "", jsonString: "", error: "invalid_json" };
+    }
+    const parsed = JSON.parse(rawJson);
+    const resolved = resolveJsonTemplateValue(parsed, valuesMap);
+    const payload = resolved === JSON_OMIT_VALUE ? {} : resolved;
+    const jsonString = JSON.stringify(payload, null, 2);
+    const encodedJson = encodeURIComponent(JSON.stringify(payload));
+    const url = /\{json\}/.test(urlTemplate)
+      ? urlTemplate.replace(/\{json\}/g, encodedJson)
+      : urlTemplate + encodedJson;
+    return { valid: true, url, jsonString, error: null };
+  }
+  return {
+    valid: true,
+    url: buildCustomSearchTargetUrl(widget, valuesMap),
+    jsonString: "",
+    error: null
+  };
+}
+
+export function normalizeCustomWidgetVariables(widget) {
+  const vars = Array.isArray(widget?.variables)
+    ? widget.variables
+        .filter(v => v && typeof v.key === "string" && v.key.trim())
+        .map(v => ({
+          key: v.key.trim(),
+          label: (v.label || v.key).trim(),
+          type: ["text", "list", "select", "multi"].includes(v.type) ? v.type : "text",
+          optionsText: typeof v.optionsText === "string" ? v.optionsText : ""
+        }))
+    : [];
+  if (vars.length > 0) return vars;
+  return [{
+    key: "query",
+    label: widget?.name || "Search",
+    type: "text",
+    optionsText: ""
+  }];
+}
+
+function parseVariableOptions(optionsText = "") {
+  return String(optionsText || "")
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const eqIdx = line.indexOf("=");
+      if (eqIdx === -1) return { label: line, value: line };
+      const label = line.slice(0, eqIdx).trim();
+      const value = line.slice(eqIdx + 1).trim();
+      return { label: label || value, value: value || label };
+    });
+}
+
+const VALID_WIDGET_ALIGNS = new Set(["auto", "top", "bottom", "left", "right", "center"]);
+
+export function resolveCustomWidgetIcon(widget) {
+  const rawEmoji = typeof widget?.icon === "string" && widget.icon.trim() ? widget.icon.trim() : "🔎";
+  const rawCustom = typeof widget?.customIcon === "string" ? widget.customIcon.trim() : "";
+
+  if (rawCustom) {
+    const normalized = normalizeCustomIconValue(rawCustom, { allowEmoji: false });
+    if (normalized) {
+      return { emoji: isUrlLikeIcon(rawEmoji) ? "🔎" : rawEmoji, customIcon: normalized };
+    }
+  }
+
+  if (isUrlLikeIcon(rawEmoji)) {
+    const normalized = normalizeCustomIconValue(rawEmoji, { allowEmoji: false });
+    if (normalized) {
+      return { emoji: "🔎", customIcon: normalized };
+    }
+  }
+
+  return { emoji: rawEmoji, customIcon: null };
+}
+
+export function serializeCustomWidgetsExport(widgets = []) {
+  const list = Array.isArray(widgets) ? widgets : [];
+  return {
+    format: "simple-dial-custom-widgets",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    widgets: list.map(w => {
+      const { emoji, customIcon } = resolveCustomWidgetIcon(w);
+      return {
+        id: typeof w?.id === "string" && w.id.trim() ? w.id.trim() : "",
+        type: "custom-search",
+        mode: w?.mode === "json" ? "json" : "simple",
+        name: typeof w?.name === "string" ? w.name.trim() : "",
+        icon: emoji.slice(0, 4),
+        customIcon: customIcon || null,
+        urlTemplate: typeof w?.urlTemplate === "string" ? w.urlTemplate.trim() : "",
+        jsonTemplate: typeof w?.jsonTemplate === "string" ? w.jsonTemplate.trim() : "",
+        openInNewTab: !!w?.openInNewTab,
+        variables: normalizeCustomWidgetVariables(w),
+        space: VALID_WIDGET_SPACES.has(w?.space) ? w.space : "right",
+        align: VALID_WIDGET_ALIGNS.has(w?.align) ? w.align : "auto",
+        newRow: !!w?.newRow,
+        ...(typeof w?.sourceUrl === "string" && isAllowedThemeUrl(w.sourceUrl) ? { sourceUrl: w.sourceUrl.trim() } : {}),
+        ...(typeof w?.sourceUpdatedAt === "string" && w.sourceUpdatedAt ? { sourceUpdatedAt: w.sourceUpdatedAt } : {})
+      };
+    })
+  };
+}
+
+export function parseImportedCustomWidgets(parsed) {
+  let candidates = [];
+  if (Array.isArray(parsed)) {
+    candidates = parsed;
+  } else if (parsed && typeof parsed === "object") {
+    if (Array.isArray(parsed.widgets)) {
+      candidates = parsed.widgets;
+    } else if (Array.isArray(parsed.customWidgets)) {
+      candidates = parsed.customWidgets;
+    } else if (typeof parsed.urlTemplate === "string" || typeof parsed.name === "string") {
+      candidates = [parsed];
+    }
+  } else {
+    return { widgets: [], skipped: 0, validFormat: false };
+  }
+
+  if (
+    !Array.isArray(parsed) &&
+    parsed &&
+    !Array.isArray(parsed.widgets) &&
+    !Array.isArray(parsed.customWidgets) &&
+    typeof parsed.urlTemplate !== "string" &&
+    typeof parsed.name !== "string"
+  ) {
+    return { widgets: [], skipped: 0, validFormat: false };
+  }
+
+  const widgets = [];
+  let skipped = 0;
+
+  for (const raw of candidates) {
+    if (!raw || typeof raw !== "object") {
+      skipped++;
+      continue;
+    }
+    const name = typeof raw.name === "string" ? raw.name.trim() : "";
+    const urlTemplate = typeof raw.urlTemplate === "string" ? raw.urlTemplate.trim() : "";
+    const mode = raw.mode === "json" ? "json" : "simple";
+    const jsonTemplate = typeof raw.jsonTemplate === "string" ? raw.jsonTemplate.trim() : "";
+
+    if (!name || !isValidCustomSearchUrlTemplate(urlTemplate)) {
+      skipped++;
+      continue;
+    }
+    if (mode === "json" && !isValidCustomSearchJsonTemplate(jsonTemplate)) {
+      skipped++;
+      continue;
+    }
+
+    const id = typeof raw.id === "string" && raw.id.trim()
+      ? raw.id.trim()
+      : `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const { emoji, customIcon } = resolveCustomWidgetIcon(raw);
+    const sourceUrl = typeof raw.sourceUrl === "string" && /^https?:\/\//i.test(raw.sourceUrl.trim()) && isAllowedThemeUrl(raw.sourceUrl.trim())
+      ? raw.sourceUrl.trim()
+      : null;
+
+    widgets.push({
+      id,
+      type: "custom-search",
+      mode,
+      name,
+      icon: emoji.slice(0, 4),
+      customIcon,
+      urlTemplate,
+      jsonTemplate,
+      openInNewTab: !!raw.openInNewTab,
+      variables: normalizeCustomWidgetVariables({ ...raw, name }),
+      space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "right",
+      align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
+      newRow: !!raw.newRow,
+      ...(sourceUrl ? { sourceUrl } : {}),
+      ...(typeof raw.sourceUpdatedAt === "string" && raw.sourceUpdatedAt ? { sourceUpdatedAt: raw.sourceUpdatedAt } : {})
+    });
+  }
+
+  return { widgets, skipped, validFormat: true };
+}
+
+export function createCustomWidgetSnapshot(widget) {
+  if (!widget || typeof widget !== "object") return null;
+  const { previousVersion: _ignored, ...rest } = widget;
+  return {
+    ...rest,
+    variables: Array.isArray(rest.variables) ? rest.variables.map(v => ({ ...v })) : []
+  };
+}
+
+export function applyCustomWidgetUpdate(existingWidget, incomingWidget, sourceUrl = null) {
+  const prevSnapshot = createCustomWidgetSnapshot(existingWidget);
+  const resolvedSourceUrl = (typeof sourceUrl === "string" && sourceUrl.trim())
+    ? sourceUrl.trim()
+    : (existingWidget?.sourceUrl || incomingWidget?.sourceUrl || null);
+
+  return {
+    ...incomingWidget,
+    id: existingWidget?.id || incomingWidget.id,
+    space: VALID_WIDGET_SPACES.has(existingWidget?.space) ? existingWidget.space : incomingWidget.space,
+    align: VALID_WIDGET_ALIGNS.has(existingWidget?.align) ? existingWidget.align : incomingWidget.align,
+    newRow: typeof existingWidget?.newRow === "boolean" ? existingWidget.newRow : !!incomingWidget.newRow,
+    ...(resolvedSourceUrl ? { sourceUrl: resolvedSourceUrl } : {}),
+    sourceUpdatedAt: new Date().toISOString(),
+    previousVersion: prevSnapshot
+  };
+}
+
+export function revertCustomWidgetVersion(widget) {
+  if (!widget?.previousVersion || typeof widget.previousVersion !== "object") {
+    return widget;
+  }
+  const restored = createCustomWidgetSnapshot(widget.previousVersion);
+  return {
+    ...restored,
+    id: widget.id,
+    previousVersion: null
+  };
+}
+
+export async function fetchCustomWidgetsFromUrl(rawUrl) {
+  const trimmed = String(rawUrl || "").trim();
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(trimmed);
+  } catch {
+    throw new Error("INVALID_WIDGET_URL");
+  }
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    throw new Error("INVALID_WIDGET_URL");
+  }
+
+  const originPattern = getOriginPattern(parsedUrl.href);
+  if (originPattern && typeof chrome !== "undefined" && chrome.permissions?.request) {
+    try {
+      await chrome.permissions.request({ origins: [originPattern] });
+    } catch {
+      // Proceed in case host permission is already granted or unsupported
+    }
+  }
+
+  const response = await fetch(parsedUrl.href, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+  }
+
+  const json = await response.json();
+  const result = parseImportedCustomWidgets(json);
+  if (!result.validFormat || result.widgets.length === 0) {
+    throw new Error("INVALID_WIDGET_PAYLOAD");
+  }
+
+  return {
+    url: parsedUrl.href,
+    widgets: result.widgets,
+    skipped: result.skipped
+  };
+}
+
+export function normalizeWidgetOrder(rawOrder, customWidgets = []) {
+  const customIds = Array.isArray(customWidgets)
+    ? customWidgets.map(w => w?.id).filter(Boolean)
+    : [];
+  const allowedKeys = new Set([...VALID_WIDGET_KEYS, ...customIds]);
+  const result = [];
+  const seen = new Set();
+  if (Array.isArray(rawOrder)) {
+    for (const key of rawOrder) {
+      if (allowedKeys.has(key) && !seen.has(key)) {
+        seen.add(key);
+        result.push(key);
+      }
+    }
+  }
+  for (const key of DEFAULT_WIDGET_ORDER) {
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(key);
+    }
+  }
+  for (const id of customIds) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  return result;
+}
+
+function syncCustomSearchWidgetElements(customWidgets = []) {
+  const validList = Array.isArray(customWidgets)
+    ? customWidgets.filter(w =>
+        w &&
+        w.id &&
+        w.type === "custom-search" &&
+        isValidCustomSearchUrlTemplate(w.urlTemplate) &&
+        (w.mode !== "json" || isValidCustomSearchJsonTemplate(w.jsonTemplate))
+      )
+    : [];
+  const validIds = new Set(validList.map(w => w.id));
+
+  document.querySelectorAll(".custom-search-widget[data-custom-widget-id]").forEach(el => {
+    if (!validIds.has(el.dataset.customWidgetId)) {
+      el.remove();
+    }
+  });
+
+  const elementMap = {};
+  for (const widget of validList) {
+    const vars = normalizeCustomWidgetVariables(widget);
+    const { emoji: widgetEmoji, customIcon: widgetCustomIcon } = resolveCustomWidgetIcon(widget);
+    const configSig = JSON.stringify({
+      name: widget.name || "",
+      icon: widgetEmoji,
+      customIcon: widgetCustomIcon || "",
+      mode: widget.mode === "json" ? "json" : "simple",
+      urlTemplate: widget.urlTemplate || "",
+      jsonTemplate: widget.jsonTemplate || "",
+      openInNewTab: !!widget.openInNewTab,
+      variables: vars
+    });
+
+    let form = document.querySelector(`.custom-search-widget[data-custom-widget-id="${CSS.escape(widget.id)}"]`);
+    if (!form) {
+      form = document.createElement("form");
+      form.className = "custom-search-widget";
+      form.dataset.customWidgetId = widget.id;
+    }
+
+    if (form.dataset.configSig !== configSig) {
+      form.dataset.configSig = configSig;
+      form.innerHTML = "";
+
+      const mainRow = document.createElement("div");
+      mainRow.className = "custom-search-main-row";
+
+      const iconSpan = document.createElement("span");
+      iconSpan.className = "custom-search-icon";
+      if (widgetCustomIcon) {
+        const iconImg = document.createElement("img");
+        iconImg.className = "custom-search-icon-img";
+        iconImg.src = widgetCustomIcon;
+        iconImg.alt = "";
+        iconImg.addEventListener("error", () => {
+          iconSpan.textContent = widgetEmoji;
+        }, { once: true });
+        iconSpan.appendChild(iconImg);
+      } else {
+        iconSpan.textContent = widgetEmoji;
+      }
+
+      const primaryVar = vars.find(v => v.type === "text" || v.type === "list") || vars[0];
+      const hasFilterPanel = vars.length > 1 || (primaryVar.type !== "text" && primaryVar.type !== "list");
+      const extraVars = hasFilterPanel
+        ? vars.filter(v => !(v === primaryVar && (v.type === "text" || v.type === "list")))
+        : [];
+
+      const valueReaders = {};
+      let primaryInput = null;
+
+      if (primaryVar.type === "text" || primaryVar.type === "list") {
+        primaryInput = document.createElement("input");
+        primaryInput.type = "search";
+        primaryInput.className = "custom-search-input";
+        const placeholder = vars.length === 1 ? (widget.name || primaryVar.label) : `${widget.name || "Search"}: ${primaryVar.label}`;
+        primaryInput.placeholder = placeholder;
+        primaryInput.setAttribute("aria-label", placeholder);
+        valueReaders[primaryVar.key] = () => {
+          const raw = primaryInput.value.trim();
+          if (primaryVar.type === "list") {
+            return raw ? raw.split(",").map(s => s.trim()).filter(Boolean) : [];
+          }
+          return raw;
+        };
+      } else {
+        const titleLabel = document.createElement("span");
+        titleLabel.className = "custom-search-title-label";
+        titleLabel.textContent = widget.name || "Search";
+        mainRow.append(iconSpan, titleLabel);
+      }
+
+      if (primaryInput) {
+        mainRow.append(iconSpan, primaryInput);
+      }
+
+      let filtersPanel = null;
+      if (extraVars.length > 0) {
+        const filterBtn = document.createElement("button");
+        filterBtn.type = "button";
+        filterBtn.className = "custom-search-filter-btn";
+        filterBtn.textContent = "⚙";
+        filterBtn.title = t("customSearchFiltersBtnTitle") || "Filters";
+        filterBtn.setAttribute("aria-expanded", "false");
+
+        const filterBadge = document.createElement("span");
+        filterBadge.className = "custom-search-filter-badge hidden";
+        filterBtn.appendChild(filterBadge);
+
+        filtersPanel = document.createElement("div");
+        filtersPanel.className = "custom-search-filters hidden";
+
+        for (const v of extraVars) {
+          const fieldRow = document.createElement("div");
+          fieldRow.className = "custom-search-filter-field";
+
+          const labelEl = document.createElement("label");
+          labelEl.className = "custom-search-filter-label";
+          labelEl.textContent = v.label;
+          fieldRow.appendChild(labelEl);
+
+          if (v.type === "select") {
+            const sel = document.createElement("select");
+            sel.className = "appearance-select custom-search-filter-select";
+            const emptyOpt = document.createElement("option");
+            emptyOpt.value = "";
+            emptyOpt.textContent = "—";
+            sel.appendChild(emptyOpt);
+            for (const optDef of parseVariableOptions(v.optionsText)) {
+              const opt = document.createElement("option");
+              opt.value = optDef.value;
+              opt.textContent = optDef.label;
+              sel.appendChild(opt);
+            }
+            fieldRow.appendChild(sel);
+            valueReaders[v.key] = () => sel.value;
+          } else if (v.type === "multi") {
+            const listEl = document.createElement("div");
+            listEl.className = "custom-search-multi-list";
+            const checkboxes = [];
+            for (const optDef of parseVariableOptions(v.optionsText)) {
+              const cbLabel = document.createElement("label");
+              cbLabel.className = "checkbox-row custom-search-multi-option";
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.value = optDef.value;
+              const txt = document.createElement("span");
+              txt.textContent = optDef.label;
+              cbLabel.append(cb, txt);
+              listEl.appendChild(cbLabel);
+              checkboxes.push(cb);
+            }
+            fieldRow.appendChild(listEl);
+            valueReaders[v.key] = () => checkboxes.filter(cb => cb.checked).map(cb => cb.value);
+          } else {
+            const txtInput = document.createElement("input");
+            txtInput.type = "text";
+            txtInput.className = "sync-compact-input custom-search-filter-input";
+            txtInput.placeholder = v.type === "list" ? "A, B" : v.label;
+            fieldRow.appendChild(txtInput);
+            valueReaders[v.key] = () => {
+              const raw = txtInput.value.trim();
+              if (v.type === "list") {
+                return raw ? raw.split(",").map(s => s.trim()).filter(Boolean) : [];
+              }
+              return raw;
+            };
+          }
+
+          filtersPanel.appendChild(fieldRow);
+        }
+
+        const syncActiveFilterIndicator = () => {
+          let activeCount = 0;
+          for (const v of extraVars) {
+            const reader = valueReaders[v.key];
+            if (!reader) continue;
+            const val = reader();
+            if (Array.isArray(val) ? val.length > 0 : (typeof val === "string" && val.trim() !== "")) {
+              activeCount++;
+            }
+          }
+          filterBtn.classList.toggle("has-active-filters", activeCount > 0);
+          filterBadge.textContent = activeCount > 0 ? String(activeCount) : "";
+          filterBadge.classList.toggle("hidden", activeCount === 0);
+        };
+
+        filtersPanel.addEventListener("input", syncActiveFilterIndicator);
+        filtersPanel.addEventListener("change", syncActiveFilterIndicator);
+
+        filterBtn.addEventListener("click", () => {
+          const isHidden = filtersPanel.classList.toggle("hidden");
+          filterBtn.setAttribute("aria-expanded", String(!isHidden));
+          filterBtn.classList.toggle("active", !isHidden);
+        });
+
+        mainRow.appendChild(filterBtn);
+      }
+
+      const submitBtn = document.createElement("button");
+      submitBtn.type = "submit";
+      submitBtn.className = "custom-search-submit";
+      submitBtn.textContent = "↵";
+      submitBtn.title = widget.name || "Search";
+      mainRow.appendChild(submitBtn);
+
+      form.appendChild(mainRow);
+      if (filtersPanel) {
+        form.appendChild(filtersPanel);
+      }
+
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const valuesMap = {};
+        let hasAnyValue = false;
+        for (const [k, reader] of Object.entries(valueReaders)) {
+          const val = reader();
+          valuesMap[k] = val;
+          if ((Array.isArray(val) && val.length > 0) || (typeof val === "string" && val.trim())) {
+            hasAnyValue = true;
+          }
+        }
+        if (!hasAnyValue) {
+          if (primaryInput) primaryInput.focus();
+          return;
+        }
+        if (!isValidCustomSearchUrlTemplate(widget.urlTemplate)) return;
+        if (widget.mode === "json" && !isValidCustomSearchJsonTemplate(widget.jsonTemplate)) return;
+        const targetUrl = buildCustomSearchTargetUrl(widget, valuesMap);
+        if (widget.openInNewTab) {
+          window.open(targetUrl, "_blank", "noopener,noreferrer");
+        } else {
+          window.location.href = targetUrl;
+        }
+      };
+    }
+
+    elementMap[widget.id] = form;
+  }
+
+  return elementMap;
+}
+
+function normalizeWidgetSpace(rawSpace, fallback = "header") {
+  return VALID_WIDGET_SPACES.has(rawSpace) ? rawSpace : fallback;
+}
+
+function syncSideSpaceContainer(spaceEl, showEmptySideSpaces, highlightSideSpaces) {
+  if (!spaceEl) return;
+  spaceEl.querySelectorAll(".side-space-placeholder").forEach(el => el.remove());
+
+  const visibleWidgets = Array.from(spaceEl.children).filter(el => el.style.display !== "none");
+  if (visibleWidgets.length === 0 && showEmptySideSpaces && highlightSideSpaces) {
+    const placeholder = document.createElement("div");
+    placeholder.className = "side-space-placeholder";
+    placeholder.setAttribute("data-i18n", "widgetSpacePlaceholder");
+    const label = t("widgetSpacePlaceholder");
+    placeholder.textContent = label && label !== "widgetSpacePlaceholder" ? label : "Widget Space";
+    spaceEl.appendChild(placeholder);
+  }
+
+  spaceEl.classList.toggle("collapsed", !showEmptySideSpaces && visibleWidgets.length === 0);
+}
+
+// ---------- Apply mandatory widget spaces, search field style & display flags ----------
+export async function applySideSpaces(config = null) {
+  if (typeof document === "undefined") return;
+  if (!config) {
+    config = await loadConfig();
+  }
+
+  const appearance = config.appearance || {};
+  const showSideSpaces = !!appearance.showSideSpaces;
+  const highlightSideSpaces = !!appearance.highlightSideSpaces;
+  const groupsSpace = normalizeWidgetSpace(appearance.groupsSpace, "header");
+  const searchSpace = normalizeWidgetSpace(appearance.searchSpace, "header");
+  const dateTimeSpace = (appearance.dateTimeSpace === "disabled" || appearance.showDateTime === false)
+    ? "disabled"
+    : normalizeWidgetSpace(appearance.dateTimeSpace, "footer");
+  const customWidgets = Array.isArray(appearance.customWidgets) ? appearance.customWidgets : [];
+  const customElements = syncCustomSearchWidgetElements(customWidgets);
+  const widgetOrder = normalizeWidgetOrder(appearance.widgetOrder, customWidgets);
+  const rawSearchStyle = appearance.searchStyle;
+  const searchStyle = (rawSearchStyle === "icon" || rawSearchStyle === "hover") ? rawSearchStyle : "full";
+
+  document.body.classList.toggle("tall-bookmark-tiles", !!appearance.tallBookmarkTiles);
+  document.body.classList.toggle("highlight-side-spaces", highlightSideSpaces);
+  await applyTilesLock(config);
+
+  const topBar = document.getElementById("top-bar");
+  const manage = document.getElementById("manage");
+  const leftSpace = document.getElementById("left-space");
+  const rightSpace = document.getElementById("right-space");
+  const centerWidgets = document.getElementById("center-space-widgets");
+  const centerBottomWidgets = document.getElementById("center-space-bottom-widgets");
+  const footerWidgets = document.getElementById("footer-widgets");
+
+  const groupsHeader = document.getElementById("groups-header");
+  const searchWidget = document.getElementById("search-widget");
+  const searchBox = document.getElementById("search-box");
+  const dateTimeDisplay = document.getElementById("date-time-display");
+  const themeToggleBtn = document.getElementById("theme-toggle");
+
+  const widgetElements = {
+    groups: groupsHeader,
+    search: searchWidget,
+    dateTime: dateTimeDisplay,
+    ...customElements
+  };
+  const widgetSpaces = {
+    groups: groupsSpace,
+    search: searchSpace,
+    dateTime: dateTimeSpace
+  };
+  const customAlignMap = {};
+  const customNewRowMap = {};
+  for (const cw of customWidgets) {
+    if (!cw?.id) continue;
+    widgetSpaces[cw.id] = cw.space === "disabled" ? "disabled" : normalizeWidgetSpace(cw.space, "right");
+    if (cw.align) customAlignMap[cw.id] = cw.align;
+    if (cw.newRow) customNewRowMap[cw.id] = true;
+  }
+  const bookmarksIndex = widgetOrder.indexOf("bookmarks");
+
+  const spaceContainers = {
+    left: leftSpace,
+    right: rightSpace,
+    footer: footerWidgets
+  };
+
+  [topBar, manage, centerWidgets, centerBottomWidgets, footerWidgets].forEach(container => {
+    container?.querySelectorAll(".widget-row-break").forEach(el => el.remove());
+  });
+
+  const widgetAlign = { ...customAlignMap, ...(appearance.widgetAlign || {}) };
+  const widgetNewRow = { ...customNewRowMap, ...(appearance.widgetNewRow || {}) };
+  const VALID_ALIGNS = new Set(["top", "bottom", "left", "right", "center"]);
+
+  for (let idx = 0; idx < widgetOrder.length; idx++) {
+    const key = widgetOrder[idx];
+    if (key === "bookmarks") continue;
+    const el = widgetElements[key];
+    if (!el) continue;
+
+    const space = widgetSpaces[key];
+    if (space === "disabled") {
+      el.style.display = "none";
+      el.dataset.space = "disabled";
+      delete el.dataset.widgetAlign;
+      continue;
+    }
+    if (key === "dateTime") {
+      el.style.display = "block";
+    } else if (customElements[key]) {
+      el.style.display = "flex";
+    }
+
+    const align = widgetAlign[key];
+    if (VALID_ALIGNS.has(align)) {
+      el.dataset.widgetAlign = align;
+    } else {
+      delete el.dataset.widgetAlign;
+    }
+
+    if (space === "header") {
+      if (key === "groups" && topBar) {
+        if (el.parentElement !== topBar || (manage && el.nextElementSibling !== manage)) {
+          topBar.insertBefore(el, manage || null);
+        }
+      } else if (manage) {
+        const anchor = themeToggleBtn && themeToggleBtn.parentElement === manage ? themeToggleBtn : null;
+        manage.insertBefore(el, anchor);
+      }
+    } else if (space === "center") {
+      const targetCenter = idx > bookmarksIndex && centerBottomWidgets ? centerBottomWidgets : centerWidgets;
+      if (targetCenter) {
+        if (widgetNewRow[key] && targetCenter.children.length > 0) {
+          const br = document.createElement("div");
+          br.className = "widget-row-break";
+          targetCenter.appendChild(br);
+        }
+        targetCenter.appendChild(el);
+      }
+    } else if (spaceContainers[space]) {
+      const targetContainer = spaceContainers[space];
+      if (space === "footer" && widgetNewRow[key] && targetContainer.children.length > 0) {
+        const br = document.createElement("div");
+        br.className = "widget-row-break";
+        targetContainer.appendChild(br);
+      }
+      targetContainer.appendChild(el);
+    }
+    el.dataset.space = space;
+  }
+
+  if (searchWidget) {
+    searchWidget.classList.toggle("search-mode-icon", searchStyle === "icon" || searchStyle === "hover");
+    searchWidget.classList.toggle("search-mode-hover", searchStyle === "hover");
+    searchWidget.classList.toggle("search-mode-full", searchStyle === "full");
+
+    if (searchStyle === "full") {
+      searchWidget.classList.remove("expanded");
+    } else if (searchBox && searchBox.value.trim() !== "") {
+      searchWidget.classList.add("expanded");
+    }
+  }
+
+  syncSideSpaceContainer(leftSpace, showSideSpaces, highlightSideSpaces);
+  syncSideSpaceContainer(rightSpace, showSideSpaces, highlightSideSpaces);
+}
+
+// ---------- Toggle theme & tile lock ----------
 const themeToggle = typeof document !== "undefined" ? document.getElementById("theme-toggle") : null;
+const lockTilesBtn = typeof document !== "undefined" ? document.getElementById("lock-tiles-btn") : null;
 
 if (themeToggle) {
   themeToggle.addEventListener("click", async () => {
@@ -437,5 +1386,15 @@ if (themeToggle) {
     document.body.classList.remove("theme-light", "theme-dark");
     document.body.classList.add(next);
     await chrome.storage.local.set({ [THEME_KEY]: next });
+  });
+}
+
+if (lockTilesBtn) {
+  lockTilesBtn.addEventListener("click", async () => {
+    const config = await loadConfig();
+    if (!config.appearance) config.appearance = {};
+    config.appearance.lockTiles = !config.appearance.lockTiles;
+    await saveConfig(config);
+    await applyTilesLock(config);
   });
 }

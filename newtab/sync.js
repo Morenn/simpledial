@@ -1,4 +1,4 @@
-import { state, saveState } from "./state.js";
+import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded } from "./state.js";
 import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
 import { importRawKey, deriveKeyFromPassword, decryptWithKey } from './crypto.js';
 import { deadLinkDebugLog, syncDebugLog } from "./debug.js";
@@ -617,7 +617,8 @@ async function syncReadDetailed(cfg = null) {
         ok: true,
         reason: 'ok',
         data: {
-          groups: (stored && stored.groups) ? stored.groups : []
+          groups: (stored && stored.groups) ? stored.groups : [],
+          tags: Array.isArray(stored?.tags) ? stored.tags : []
         }
       };
     } catch (e) {
@@ -703,7 +704,8 @@ async function syncReadDetailed(cfg = null) {
         ok: true,
         reason: 'ok',
         data: {
-          groups: parsed.groups ?? []
+          groups: parsed.groups ?? [],
+          tags: Array.isArray(parsed?.tags) ? parsed.tags : []
         }
       };
     } catch (e) {
@@ -723,16 +725,23 @@ async function syncReadDetailed(cfg = null) {
   }
 }
 
-async function syncWriteDetailed(cfg = null, sourceGroups = null) {
+async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = null) {
   const resolvedCfg = cfg || await loadSyncConfig();
   if (!resolvedCfg) {
     return { ok: false, reason: 'not-configured' };
   }
 
+  const tagsToWrite = Array.isArray(sourceTags)
+    ? sourceTags
+    : (Array.isArray(state.tags) ? state.tags : []);
+
   if (resolvedCfg.type === 'browser') {
     try {
       const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
-      await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: { groups: groupsToWrite } });
+      const syncPayload = tagsToWrite.length > 0
+        ? { groups: groupsToWrite, tags: tagsToWrite }
+        : { groups: groupsToWrite };
+      await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: syncPayload });
       const verified = await chrome.storage.sync.get(CLOUD_STORAGE_KEY);
       if (stableSerialize(verified[CLOUD_STORAGE_KEY]?.groups || []) !== stableSerialize(groupsToWrite)) {
         console.warn('syncWrite(browser): stored data changed during write; keeping local changes for retry');
@@ -761,7 +770,10 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null) {
   const credUser = credentials.username || '';
   const credPass = credentials.password || '';
   const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
-  const writeBody = JSON.stringify({ groups: groupsToWrite });
+  const writePayload = tagsToWrite.length > 0
+    ? { groups: groupsToWrite, tags: tagsToWrite }
+    : { groups: groupsToWrite };
+  const writeBody = JSON.stringify(writePayload);
   const lockRetryDelays = [400, 900, 1500];
 
   try {
@@ -876,26 +888,49 @@ export async function syncRead() {
 //  WRITE
 // ─────────────────────────────────────────────────────────────
 
-export async function syncWrite(sourceState = state) {
+function persistPendingPurgedIdsInConfig(config, purgedIds = []) {
+  if (!config?.sync) return false;
+  const existing = Array.isArray(config.sync.pendingPurgedIds) ? config.sync.pendingPurgedIds : [];
+  const incoming = Array.isArray(purgedIds) ? purgedIds.filter(Boolean) : [];
+  if (incoming.length === 0) return false;
+
+  const mergedSet = new Set([...existing, ...incoming]);
+  if (mergedSet.size === existing.length) return false;
+
+  config.sync.pendingPurgedIds = Array.from(mergedSet);
+  return true;
+}
+
+export async function syncWrite(sourceState = state, options = {}) {
   // do no sync if sync is disabled in config
   const config = await loadConfig();
+  const extraPurgedIds = Array.isArray(options?.purgedIds) ? options.purgedIds.filter(Boolean) : [];
+  if (persistPendingPurgedIdsInConfig(config, extraPurgedIds)) {
+    await saveConfig(config);
+  }
+
   if (!config.sync.enabled) {
     return true; // sync disabled — nothing to do, not an error
   }
 
   const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
+  const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
   const previousGroups = state.groups;
+  const previousTags = state.tags;
   state.groups = groups;
+  state.tags = tags;
 
   const readResult = await syncReadDetailed();
   if (!readResult.ok) {
     state.groups = previousGroups;
+    state.tags = previousTags;
     return false;
   }
 
-  const result = await mergeAndWriteAtomically(config, readResult.data.groups);
+  const result = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, extraPurgedIds);
   if (!result.ok) {
     state.groups = previousGroups;
+    state.tags = previousTags;
   }
   return result.ok;
 }
@@ -941,7 +976,10 @@ function isBootstrapPlaceholderState(groups) {
 
   const [group] = groups;
   const hasGroupCustomization = Boolean(group.iconEmoji || group.customIcon || group.tileColor || group.colorFromIcon);
-  return !group.deleted && !hasGroupCustomization && (group.items?.length || 0) === 0;
+  return !group.deleted
+    && !hasGroupCustomization
+    && (group.items?.length || 0) === 0
+    && (group.sections?.length || 0) === 0;
 }
 
 function hasMeaningfulGroups(groups) {
@@ -953,7 +991,45 @@ function hasMeaningfulGroups(groups) {
     return true;
   }
 
-  return groups.some(group => group.deleted || (group.items?.length || 0) > 0);
+  return groups.some(group =>
+    group.deleted
+    || (group.items?.length || 0) > 0
+    || (group.sections?.length || 0) > 0
+  );
+}
+
+function mergeRecordArrays(localRecords = [], cloudRecords = []) {
+  const localMap = Object.fromEntries((localRecords || []).filter(Boolean).map(r => [r.id, r]));
+  const cloudMap = Object.fromEntries((cloudRecords || []).filter(Boolean).map(r => [r.id, r]));
+  const allIds = new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
+  const merged = [];
+
+  for (const id of allIds) {
+    const localRec = localMap[id];
+    const cloudRec = cloudMap[id];
+    if (localRec && !cloudRec) {
+      merged.push(localRec);
+    } else if (!localRec && cloudRec) {
+      merged.push(cloudRec);
+    } else {
+      merged.push(pickNewerRecord(localRec, cloudRec));
+    }
+  }
+
+  return merged;
+}
+
+function mergeTags(localTags = [], cloudTags = []) {
+  return mergeRecordArrays(localTags, cloudTags);
+}
+
+function mergeStackItems(localStack, cloudStack) {
+  const baseStack = pickNewerRecord(localStack, cloudStack);
+  const mergedChildren = mergeRecordArrays(localStack.children || [], cloudStack.children || []);
+  return {
+    ...baseStack,
+    children: mergedChildren
+  };
 }
 
 function mergeGroups(localGroups, cloudGroups, options = {}) {
@@ -963,7 +1039,7 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
     return cloudGroups;
   }
 
-  // ---- Merge group-level metadata (name, deleted, etc.) ----
+  // ---- Merge group-level metadata (name, sections, deleted, etc.) ----
   const localGroupMap = Object.fromEntries((localGroups || []).map(group => [group.id, group]));
   const cloudGroupMap = Object.fromEntries((cloudGroups || []).map(group => [group.id, group]));
   const allGroupIds = new Set([...Object.keys(localGroupMap), ...Object.keys(cloudGroupMap)]);
@@ -981,26 +1057,48 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
       mergedGroupMeta[id] = { ...cloudGroup, items: [] };
       continue;
     }
-    mergedGroupMeta[id] = { ...pickNewerRecord(localGroup, cloudGroup), items: [] };
+
+    const winningMeta = pickNewerRecord(localGroup, cloudGroup);
+    const nextGroup = { ...winningMeta, items: [] };
+    if (Array.isArray(localGroup.sections) || Array.isArray(cloudGroup.sections)) {
+      nextGroup.sections = mergeRecordArrays(localGroup.sections || [], cloudGroup.sections || []);
+    }
+    mergedGroupMeta[id] = nextGroup;
   }
 
-  // ---- Merge items GLOBALLY by id, tracking which group each belongs to ----
-  // This is what makes cross-group moves (moveBookmarkToGroup) sync correctly
+  // ---- Merge items GLOBALLY by id, tracking stack membership & cross-group moves ----
   const localItemIndex = {};
   const cloudItemIndex = {};
+  const localChildIndex = {};
+  const cloudChildIndex = {};
 
   for (const group of (localGroups || [])) {
     for (const item of (group.items || [])) {
       localItemIndex[item.id] = { item, groupId: group.id };
+      if (isStackItem(item)) {
+        for (const child of (item.children || [])) {
+          if (child?.id) {
+            localChildIndex[child.id] = { child, stackId: item.id, groupId: group.id };
+          }
+        }
+      }
     }
   }
   for (const group of (cloudGroups || [])) {
     for (const item of (group.items || [])) {
       cloudItemIndex[item.id] = { item, groupId: group.id };
+      if (isStackItem(item)) {
+        for (const child of (item.children || [])) {
+          if (child?.id) {
+            cloudChildIndex[child.id] = { child, stackId: item.id, groupId: group.id };
+          }
+        }
+      }
     }
   }
 
   const allItemIds = new Set([...Object.keys(localItemIndex), ...Object.keys(cloudItemIndex)]);
+  const promotedTopLevelBookmarkIds = new Set();
 
   for (const itemId of allItemIds) {
     const localEntry = localItemIndex[itemId];
@@ -1011,19 +1109,53 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
     if (localEntry && !cloudEntry) {
       winner = localEntry.item;
       winningGroupId = localEntry.groupId;
+
+      if (!isStackItem(winner) && cloudChildIndex[itemId]) {
+        const stackedVersion = cloudChildIndex[itemId].child;
+        if (pickNewerRecord(winner, stackedVersion) === stackedVersion) {
+          continue; // Stale top-level bookmark was moved into a stack remotely
+        }
+        promotedTopLevelBookmarkIds.add(itemId);
+      }
     } else if (!localEntry && cloudEntry) {
       winner = cloudEntry.item;
       winningGroupId = cloudEntry.groupId;
+
+      if (!isStackItem(winner) && localChildIndex[itemId]) {
+        const stackedVersion = localChildIndex[itemId].child;
+        if (pickNewerRecord(stackedVersion, winner) === stackedVersion) {
+          continue; // Stale top-level bookmark on remote was moved into a stack locally
+        }
+        promotedTopLevelBookmarkIds.add(itemId);
+      }
     } else {
       const localIsNewer = pickNewerRecord(localEntry.item, cloudEntry.item) === localEntry.item;
-      winner = localIsNewer ? localEntry.item : cloudEntry.item;
-      winningGroupId = localIsNewer ? localEntry.groupId : cloudEntry.groupId;
+      if (isStackItem(localEntry.item) && isStackItem(cloudEntry.item)) {
+        winner = mergeStackItems(localEntry.item, cloudEntry.item);
+        winningGroupId = localIsNewer ? localEntry.groupId : cloudEntry.groupId;
+      } else {
+        winner = localIsNewer ? localEntry.item : cloudEntry.item;
+        winningGroupId = localIsNewer ? localEntry.groupId : cloudEntry.groupId;
+      }
     }
 
-    // Only place the item if its target group actually exists in the merged
-    // result (it always should, but guard against orphaned data).
     if (mergedGroupMeta[winningGroupId]) {
       mergedGroupMeta[winningGroupId].items.push(winner);
+    }
+  }
+
+  // Strip bookmarks that moved back to top-level from any stale stack snapshot,
+  // and remove dissolved empty non-deleted stacks.
+  if (promotedTopLevelBookmarkIds.size > 0) {
+    for (const group of Object.values(mergedGroupMeta)) {
+      group.items = group.items.filter(item => {
+        if (!isStackItem(item)) return true;
+        item.children = (item.children || []).filter(c => !promotedTopLevelBookmarkIds.has(c.id));
+        if (item.children.length === 0 && !item.deleted) {
+          return false;
+        }
+        return true;
+      });
     }
   }
 
@@ -1039,41 +1171,149 @@ function getGroupsFreshness(groups) {
     if (groupUpdated > maxTs) maxTs = groupUpdated;
     if (groupDeleted > maxTs) maxTs = groupDeleted;
 
+    for (const section of (group?.sections || [])) {
+      const secUpdated = section?.updatedAt || 0;
+      const secDeleted = section?.deletedAt || 0;
+      if (secUpdated > maxTs) maxTs = secUpdated;
+      if (secDeleted > maxTs) maxTs = secDeleted;
+    }
+
     for (const item of (group?.items || [])) {
       const itemUpdated = item?.updatedAt || 0;
       const itemDeleted = item?.deletedAt || 0;
       if (itemUpdated > maxTs) maxTs = itemUpdated;
       if (itemDeleted > maxTs) maxTs = itemDeleted;
+
+      if (isStackItem(item)) {
+        for (const child of (item.children || [])) {
+          const childUpdated = child?.updatedAt || 0;
+          const childDeleted = child?.deletedAt || 0;
+          if (childUpdated > maxTs) maxTs = childUpdated;
+          if (childDeleted > maxTs) maxTs = childDeleted;
+        }
+      }
     }
   }
 
   return maxTs;
 }
 
-async function getGroupsHash(groups) {
-  const data = new TextEncoder().encode(JSON.stringify(groups || []));
+async function getGroupsHash(groups, tags = []) {
+  const payload = Array.isArray(tags) && tags.length > 0 ? { groups: groups || [], tags } : (groups || []);
+  const data = new TextEncoder().encode(JSON.stringify(payload));
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetries = 2) {
+function collectLocalRecordIds(groups = [], tags = []) {
+  const ids = new Set();
+  for (const tag of (tags || [])) {
+    if (tag?.id) ids.add(tag.id);
+  }
+  for (const group of (groups || [])) {
+    if (!group) continue;
+    if (group.id) ids.add(group.id);
+    for (const sec of (group.sections || [])) {
+      if (sec?.id) ids.add(sec.id);
+    }
+    for (const item of (group.items || [])) {
+      if (!item) continue;
+      if (item.id) ids.add(item.id);
+      if (Array.isArray(item.children)) {
+        for (const child of item.children) {
+          if (child?.id) ids.add(child.id);
+        }
+      }
+    }
+  }
+  return ids;
+}
+
+function stripPurgedIdsFromCloudData(cloudGroups = [], cloudTags = [], purgedIdSet = new Set()) {
+  if (!purgedIdSet || purgedIdSet.size === 0) {
+    return {
+      groups: Array.isArray(cloudGroups) ? cloudGroups : [],
+      tags: Array.isArray(cloudTags) ? cloudTags : []
+    };
+  }
+
+  const filteredGroups = [];
+  for (const group of (cloudGroups || [])) {
+    if (!group || purgedIdSet.has(group.id)) continue;
+
+    const nextSections = Array.isArray(group.sections)
+      ? group.sections.filter(sec => sec && !purgedIdSet.has(sec.id))
+      : undefined;
+
+    const nextItems = [];
+    for (const item of (group.items || [])) {
+      if (!item || purgedIdSet.has(item.id)) continue;
+      if (isStackItem(item)) {
+        const nextChildren = (item.children || []).filter(child => child && !purgedIdSet.has(child.id));
+        if (nextChildren.length === 0 && !item.deleted) {
+          continue;
+        }
+        nextItems.push({ ...item, children: nextChildren });
+      } else {
+        nextItems.push(item);
+      }
+    }
+
+    const nextGroup = { ...group, items: nextItems };
+    if (nextSections !== undefined) {
+      nextGroup.sections = nextSections;
+    }
+    filteredGroups.push(nextGroup);
+  }
+
+  const filteredTags = (cloudTags || []).filter(tag => tag && !purgedIdSet.has(tag.id));
+  return { groups: filteredGroups, tags: filteredTags };
+}
+
+async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetries = 2, cloudTags = [], extraPurgedIds = []) {
   const previousGroups = state.groups;
+  const previousTags = Array.isArray(state.tags) ? state.tags : [];
+  const resolvedCloudTags = Array.isArray(cloudTags) ? cloudTags : [];
+
+  const combinedPurgedIds = new Set([
+    ...(Array.isArray(config.sync?.pendingPurgedIds) ? config.sync.pendingPurgedIds : []),
+    ...(Array.isArray(extraPurgedIds) ? extraPurgedIds : [])
+  ]);
+  const localIds = collectLocalRecordIds(previousGroups, previousTags);
+  const purgedIdsToStrip = new Set(Array.from(combinedPurgedIds).filter(id => id && !localIds.has(id)));
+
+  const strippedCloud = stripPurgedIdsFromCloudData(cloudGroups || [], resolvedCloudTags, purgedIdsToStrip);
+  const effectiveCloudGroups = strippedCloud.groups;
+  const effectiveCloudTags = strippedCloud.tags;
+
   const localFreshness = getGroupsFreshness(previousGroups);
-  const cloudFreshness = getGroupsFreshness(cloudGroups || []);
+  const cloudFreshness = getGroupsFreshness(effectiveCloudGroups);
   const localIsMoreRecent = localFreshness > cloudFreshness;
 
-  const mergedGroups = mergeGroups(previousGroups, cloudGroups || [], { preferCloudOnBootstrap: true });
-  const changed = JSON.stringify(previousGroups) !== JSON.stringify(mergedGroups);
-  const remoteNeedsUpdate = JSON.stringify(cloudGroups || []) !== JSON.stringify(mergedGroups);
+  const isInitialUnseededSync = !config.sync?.lastSync && !config.sync?.lastSyncedLocalHash && purgedIdsToStrip.size === 0;
+  const mergedGroups = mergeGroups(previousGroups, effectiveCloudGroups, { preferCloudOnBootstrap: isInitialUnseededSync });
+  const mergedTags = mergeTags(previousTags, effectiveCloudTags);
+
+  const groupsChanged = JSON.stringify(previousGroups) !== JSON.stringify(mergedGroups);
+  const tagsChanged = JSON.stringify(previousTags) !== JSON.stringify(mergedTags);
+  const changed = groupsChanged || tagsChanged;
+
+  const remoteGroupsNeedUpdate = JSON.stringify(cloudGroups || []) !== JSON.stringify(mergedGroups);
+  const remoteTagsNeedUpdate = JSON.stringify(resolvedCloudTags) !== JSON.stringify(mergedTags);
+  const remoteNeedsUpdate = remoteGroupsNeedUpdate || remoteTagsNeedUpdate;
 
   if (!changed && !remoteNeedsUpdate) {
-    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups);
+    if (config.sync) config.sync.pendingPurgedIds = [];
+    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
     await updateLastSyncTime(config);
     return { ok: true, reason: 'no-changes', changed: false };
   }
 
-  if (changed) {
+  if (groupsChanged) {
     state.groups = mergedGroups;
+  }
+  if (tagsChanged) {
+    state.tags = mergedTags;
   }
 
   let writeResult = null;
@@ -1083,13 +1323,20 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
     if (!writeResult.ok) {
       // Never keep a merged local state that failed to persist remotely.
       state.groups = previousGroups;
+      state.tags = previousTags;
 
       if (writeResult.reason === 'browser-sync-conflict' && browserConflictRetries > 0) {
         const latestRemote = await syncReadDetailed();
         if (!latestRemote.ok) {
           return latestRemote;
         }
-        return await mergeAndWriteAtomically(config, latestRemote.data.groups, browserConflictRetries - 1);
+        return await mergeAndWriteAtomically(
+          config,
+          latestRemote.data.groups,
+          browserConflictRetries - 1,
+          latestRemote.data.tags,
+          extraPurgedIds
+        );
       }
 
       if (localIsMoreRecent) {
@@ -1103,7 +1350,8 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
   if (changed) {
     await saveState();
   }
-  config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups);
+  if (config.sync) config.sync.pendingPurgedIds = [];
+  config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
   await updateLastSyncTime(config);
   return { ok: true, reason: writeResult?.reason || 'no-changes', changed };
 }
@@ -1202,9 +1450,11 @@ export async function syncNow() {
     return { ok: false, reason: 'not-configured' };
   }
 
-  const localHash = await getGroupsHash(state.groups);
+  const localHash = await getGroupsHash(state.groups, state.tags);
+  const hasPendingPurges = Array.isArray(config.sync.pendingPurgedIds) && config.sync.pendingPurgedIds.length > 0;
   const hasPendingLocalChanges = !config.sync.lastSyncedLocalHash
-    || config.sync.lastSyncedLocalHash !== localHash;
+    || config.sync.lastSyncedLocalHash !== localHash
+    || hasPendingPurges;
   const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config);
   const markerIsReliableForSkip = config.sync.remoteChangeHeaderType === 'sha256'
     || (config.sync.remoteChangeHeaderType === 'etag'
@@ -1219,7 +1469,7 @@ export async function syncNow() {
     return readResult;
   }
 
-  return await mergeAndWriteAtomically(config, readResult.data.groups);
+  return await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1228,27 +1478,86 @@ export async function syncNow() {
 
 export async function cleanupDeletedItems(retentionDays) {
   let deletedCount = 0;
+  const purgedIds = [];
   const cutoffTime = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
 
   for (const group of state.groups) {
+    let groupChanged = false;
     // Filter out permanently deleted items
     const originalLength = group.items.length;
     group.items = group.items.filter(item => {
       if (item.deleted && item.deletedAt && item.deletedAt < cutoffTime) {
         deletedCount++;
+        if (item.id) purgedIds.push(item.id);
+        if (isStackItem(item) && Array.isArray(item.children)) {
+          for (const child of item.children) {
+            if (child?.id) purgedIds.push(child.id);
+          }
+        }
         return false; // Remove this item
+      }
+      if (isStackItem(item) && Array.isArray(item.children)) {
+        const beforeChildren = item.children.length;
+        item.children = item.children.filter(child => {
+          if (child.deleted && child.deletedAt && child.deletedAt < cutoffTime) {
+            deletedCount++;
+            if (child.id) purgedIds.push(child.id);
+            return false;
+          }
+          return true;
+        });
+        if (item.children.length < beforeChildren) {
+          item.updatedAt = Date.now();
+          groupChanged = true;
+        }
       }
       return true;
     });
 
-    if (group.items.length < originalLength) {
+    for (const item of [...group.items]) {
+      if (isStackItem(item)) {
+        const res = cleanupStackIfNeeded(group, item);
+        if (res === "removed" || res === "unwrapped") {
+          if (item.id) purgedIds.push(item.id);
+          groupChanged = true;
+        }
+      }
+    }
+
+    if (Array.isArray(group.sections)) {
+      const beforeSections = group.sections.length;
+      group.sections = group.sections.filter(sec => {
+        if (sec.deleted && sec.deletedAt && sec.deletedAt < cutoffTime) {
+          deletedCount++;
+          if (sec.id) purgedIds.push(sec.id);
+          return false;
+        }
+        return true;
+      });
+      if (group.sections.length < beforeSections) {
+        groupChanged = true;
+      }
+    }
+
+    if (group.items.length < originalLength || groupChanged) {
       group.updatedAt = Date.now();
     }
   }
 
+  if (Array.isArray(state.tags)) {
+    state.tags = state.tags.filter(tag => {
+      if (tag?.deleted && tag.deletedAt && tag.deletedAt < cutoffTime) {
+        deletedCount++;
+        if (tag.id) purgedIds.push(tag.id);
+        return false;
+      }
+      return true;
+    });
+  }
+
   if (deletedCount > 0) {
     await saveState();
-    await syncWrite();
+    await syncWrite(state, { purgedIds });
   }
 
   return deletedCount;
@@ -1353,8 +1662,9 @@ export async function checkDeadLinks() {
 
   // Collect all items with URLs to check
   for (const group of state.groups) {
-    for (const item of group.items) {
-      if (!item.deleted && item.url) {
+    if (group.deleted) continue;
+    for (const item of getAllGroupBookmarks(group, { includeDeleted: false })) {
+      if (item.url) {
         urlsToCheck.push({ item, url: item.url });
       }
     }
@@ -1382,13 +1692,13 @@ export async function checkDeadLinks() {
 
   // Compute total dead links now (after applying changes)
   const totalDead = state.groups.reduce((sum, g) => {
-    return sum + (g.items ? g.items.filter(i => i.hasError).length : 0);
+    return sum + getAllGroupBookmarks(g, { includeDeleted: true }).filter(i => i.hasError).length;
   }, 0);
 
   if (changed) {
     // Update groups timestamp
     for (const group of state.groups) {
-      if (group.items && group.items.some(item => item.hasError)) {
+      if (getAllGroupBookmarks(group, { includeDeleted: true }).some(item => item.hasError)) {
         group.updatedAt = Date.now();
       }
     }

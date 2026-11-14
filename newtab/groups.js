@@ -1,4 +1,4 @@
-import { state, saveState, generateId, saveActiveGroupId } from "./state.js";
+import { state, saveState, generateId, saveActiveGroupId, getAllGroupBookmarks } from "./state.js";
 import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
@@ -25,8 +25,7 @@ function getEffectiveShowGroupCount(config = null) {
 }
 
 function getActiveBookmarkCount(group) {
-  if (!group || !Array.isArray(group.items)) return 0;
-  return group.items.filter(item => !item.deleted && item.url).length;
+  return getAllGroupBookmarks(group, { includeDeleted: false }).filter(item => item.url).length;
 }
 
 function createGroupEmojiSpan(emojiText) {
@@ -247,22 +246,30 @@ export function renderGroups(show = true, config = null) {
 
 // ---------- Check if dropdown is needed ----------
 function shouldUseDropdown(groupCount) {
-  const topBar = document.getElementById("top-bar");
-  if (!topBar) return false;
-  
-  // Available width for groups (accounting for search box and settings)
-  const managePart = document.getElementById("manage");
-  const manageWidth = managePart ? managePart.offsetWidth : 300;
-  const availableWidth = topBar.clientWidth - manageWidth - 20; // Extra padding
-  
+  const groupsHeader = document.getElementById("groups-header");
+  if (!groupsHeader) return false;
+
+  if (groupsHeader.closest("#left-space, #right-space")) {
+    return false;
+  }
+
+  const host = groupsHeader.parentElement || document.getElementById("top-bar");
+  if (!host) return false;
+
+  const isTopBar = host.id === "top-bar";
+  const managePart = isTopBar ? document.getElementById("manage") : null;
+  const manageWidth = managePart ? managePart.offsetWidth : 0;
+  const hostWidth = host.clientWidth || document.getElementById("top-bar")?.clientWidth || 800;
+  const availableWidth = Math.max(180, hostWidth - manageWidth - 20); // Extra padding
+
   // Estimate how many tabs fit per line
   const groupScale = parseFloat(document.body?.style?.getPropertyValue?.("--group-tile-scale") || "") || 1;
   const avgTabWidth = Math.round(120 * groupScale); // Average tab width including gap
   const tabsPerLine = Math.max(1, Math.floor(availableWidth / avgTabWidth));
-  
+
   // Calculate how many lines would be needed
   const linesNeeded = Math.ceil(groupCount / tabsPerLine);
-  
+
   // Use dropdown if more than 3 lines needed
   return linesNeeded > 3;
 }
@@ -434,21 +441,19 @@ function showGroupContextMenu(e, group, optionElement) {
     const confirmMsg = t("confirmDeletePermanentGroup").replace("{0}", group.name);
     if (!confirm(confirmMsg)) return;
 
+    const purgedIds = collectGroupPurgedIds(group);
     const groupIndex = state.groups.findIndex(g => g.id === group.id);
     if (groupIndex > -1) {
       state.groups.splice(groupIndex, 1);
     }
 
-    if (window.activeGroupId === group.id) {
-      const firstActive = state.groups.find(g => !g.deleted);
-      window.activeGroupId = firstActive ? firstActive.id : null;
-      await saveActiveGroupId(window.activeGroupId);
-    }
+    ensureActiveGroupAfterPermanentDelete(group.id);
+    await saveActiveGroupId(window.activeGroupId);
 
     await saveState();
-    await syncWrite();
+    await syncWrite(state, { purgedIds });
     render();
-    document.body.removeChild(menu);
+    if (menu.parentNode) menu.parentNode.removeChild(menu);
   });
 
   // Show/hide buttons based on deleted status
@@ -469,24 +474,73 @@ function showGroupContextMenu(e, group, optionElement) {
   }, 5000);
 }
 
+function collectGroupPurgedIds(group) {
+  const ids = [];
+  if (!group) return ids;
+  if (group.id) ids.push(group.id);
+  for (const sec of (group.sections || [])) {
+    if (sec?.id) ids.push(sec.id);
+  }
+  for (const item of (group.items || [])) {
+    if (!item) continue;
+    if (item.id) ids.push(item.id);
+    if (Array.isArray(item.children)) {
+      for (const child of item.children) {
+        if (child?.id) ids.push(child.id);
+      }
+    }
+  }
+  return ids;
+}
+
+function ensureActiveGroupAfterPermanentDelete(deletedGroupId) {
+  if (state.groups.length === 0) {
+    const defaultGroup = {
+      id: generateId("g"),
+      name: t("defaultGroupName"),
+      sections: [],
+      items: [],
+      updatedAt: Date.now(),
+      deleted: false,
+      deletedAt: null
+    };
+    state.groups.push(defaultGroup);
+    window.activeGroupId = defaultGroup.id;
+    return;
+  }
+
+  if (window.activeGroupId === deletedGroupId || !state.groups.some(g => g.id === window.activeGroupId && !g.deleted)) {
+    const firstActive = state.groups.find(g => !g.deleted);
+    window.activeGroupId = firstActive ? firstActive.id : null;
+  }
+}
+
 // ---------- Group Drag & drop ----------
+let draggedGroupTab = null;
+
 function setupGroupDrag() {
   const groupsHeader = document.getElementById("groups-header");
-  let dragged = null;
+  if (!groupsHeader) return;
 
   groupsHeader.querySelectorAll(".group-tab").forEach(tab => {
     if (tab.classList.contains("add-group")) return;
 
     tab.addEventListener("dragstart", e => {
-      dragged = tab;
+      if (document.body?.classList.contains("tiles-locked")) {
+        e.preventDefault();
+        return;
+      }
+      draggedGroupTab = tab;
       tab.classList.add("dragging");
+      document.body?.classList.add("is-dragging-group");
       e.dataTransfer.effectAllowed = "move";
     });
 
     tab.addEventListener("dragend", async () => {
-      if (!dragged) return;
-      dragged.classList.remove("dragging");
-      dragged = null;
+      document.body?.classList.remove("is-dragging-group");
+      if (!draggedGroupTab) return;
+      draggedGroupTab.classList.remove("dragging");
+      draggedGroupTab = null;
 
       const ids = [...groupsHeader.querySelectorAll(".group-tab")]
         .filter(el => !el.classList.contains("add-group"))
@@ -500,28 +554,37 @@ function setupGroupDrag() {
     });
   });
 
-  groupsHeader.addEventListener("dragover", e => {
-    e.preventDefault();
-    if (!dragged) return;
+  if (groupsHeader.dataset.groupDragBound !== "true") {
+    groupsHeader.dataset.groupDragBound = "true";
+    groupsHeader.addEventListener("dragover", e => {
+      if (!draggedGroupTab) return;
+      e.preventDefault();
 
-    const after = getAfterElementHorizontal(groupsHeader, e.clientX);
-    const addBtn = groupsHeader.querySelector(".add-group");
+      const isVertical = !!groupsHeader.closest("#left-space, #right-space");
+      const after = getAfterGroupTab(groupsHeader, e.clientX, e.clientY, isVertical);
+      const addBtn = groupsHeader.querySelector(".add-group");
 
-    if (!after) {
-      groupsHeader.insertBefore(dragged, addBtn);
-    } else {
-      groupsHeader.insertBefore(dragged, after);
-    }
-  });
+      if (!after) {
+        groupsHeader.insertBefore(draggedGroupTab, addBtn);
+      } else {
+        groupsHeader.insertBefore(draggedGroupTab, after);
+      }
+    });
+  }
 }
 
-function getAfterElementHorizontal(container, mouseX) {
+function getAfterGroupTab(container, mouseX, mouseY, isVertical = false) {
   const els = [...container.querySelectorAll(".group-tab:not(.dragging):not(.add-group)")];
   let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
 
   els.forEach(el => {
     const box = el.getBoundingClientRect();
-    const offset = mouseX - (box.left + box.width / 2);
+    if (!isVertical && (mouseY < box.top || mouseY > box.bottom)) {
+      return;
+    }
+    const offset = isVertical
+      ? mouseY - (box.top + box.height / 2)
+      : mouseX - (box.left + box.width / 2);
     if (offset < 0 && offset > closest.offset) {
       closest = { offset, element: el };
     }
@@ -570,19 +633,17 @@ export async function handleGroupContext(action, el) {
     const confirmMsg = t("confirmDeletePermanentGroup").replace("{0}", group.name);
     if (!confirm(confirmMsg)) return;
 
+    const purgedIds = collectGroupPurgedIds(group);
     const groupIndex = state.groups.findIndex(g => g.id === id);
     if (groupIndex > -1) {
       state.groups.splice(groupIndex, 1);
     }
 
-    if (window.activeGroupId === id) {
-      const firstActive = state.groups.find(g => !g.deleted);
-      window.activeGroupId = firstActive ? firstActive.id : null;
-      await saveActiveGroupId(window.activeGroupId);
-    }
+    ensureActiveGroupAfterPermanentDelete(id);
+    await saveActiveGroupId(window.activeGroupId);
 
     await saveState();
-    await syncWrite();
+    await syncWrite(state, { purgedIds });
     render();
   }
 }

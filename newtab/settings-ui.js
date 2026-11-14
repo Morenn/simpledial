@@ -1,16 +1,17 @@
-﻿import { state, saveState, generateId } from "./state.js";
-import { loadConfig, saveConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
+﻿import { state, saveState, generateId, isStackItem } from "./state.js";
+import { loadConfig, saveConfig, defaultConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
 import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from './bookmarks-api.js';
 import { render, calculateGridLayout } from "./render.js";
-import { applyBackground, applyTileOpacity, applyTileSize, applyGroupTileSize, applyThemeStyle, fetchAndCacheThemeUrl, isAllowedThemeUrl, getCustomThemeUrlCache } from "./theme.js";
+import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTileSize, applyGroupTileSize, applySideSpaces, applyThemeStyle, fetchAndCacheThemeUrl, fetchBackgroundImageFromUrl, isAllowedThemeUrl, getCustomThemeUrlCache, normalizeWidgetOrder, isValidCustomSearchUrlTemplate, isValidCustomSearchJsonTemplate, serializeCustomWidgetsExport, parseImportedCustomWidgets, resolveCustomWidgetIcon, fetchCustomWidgetsFromUrl, applyCustomWidgetUpdate, revertCustomWidgetVersion, buildCustomSearchPreview, normalizeCustomWidgetVariables } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
 import { applyMassTileColorFromIcon } from "./bookmarks.js";
 import { renderGroups } from "./groups.js";
+import { normalizeCustomIconValue } from "./color-utils.js";
 // ======================================================
 // SETTINGS MODAL UI
 // ======================================================
@@ -88,18 +89,65 @@ const themeCustomUrlRow = document.getElementById("theme-custom-url-row");
 const themeCssUrlInput = document.getElementById("theme-css-url-input");
 const themeCssUrlApply = document.getElementById("theme-css-url-apply");
 const themeStatus = document.getElementById("theme-status");
+const themeBackgroundsLink = document.getElementById("theme-backgrounds-link");
+const themeBackgroundsPixabayLink = document.getElementById("theme-backgrounds-pixabay-link");
+const themeBackgroundsPexelsLink = document.getElementById("theme-backgrounds-pexels-link");
 const bgImageInput = document.getElementById("bg-image-input");
+const bgImageUrlInput = document.getElementById("bg-image-url-input");
+const bgImageUrlApply = document.getElementById("bg-image-url-apply");
+const bgImageUrlStatus = document.getElementById("bg-image-url-status");
 const bgSizeSelect = document.getElementById("bg-size-select");
+const bgDimSlider = document.getElementById("bg-dim-slider");
+const bgDimValue = document.getElementById("bg-dim-value");
 const bgPreview = document.getElementById("bg-preview");
 const bgRemoveBtn = document.getElementById("bg-remove-btn");
+const resetAppearanceBtn = document.getElementById("reset-appearance-btn");
 const tileOpacitySlider = document.getElementById("tile-opacity-slider");
 const tileOpacityValue = document.getElementById("tile-opacity-value");
+const barOpacitySlider = document.getElementById("bar-opacity-slider");
+const barOpacityValue = document.getElementById("bar-opacity-value");
 const tileSizeSlider = document.getElementById("tile-size-slider");
 const tileSizeValue = document.getElementById("tile-size-value");
 const groupTileSizeSlider = document.getElementById("group-tile-size-slider");
 const groupTileSizeValue = document.getElementById("group-tile-size-value");
-const dateTimeToggle = document.getElementById("date-time-toggle");
 const groupCountToggle = document.getElementById("group-count-toggle");
+const showSideSpacesToggle = document.getElementById("show-side-spaces-toggle");
+const highlightSideSpacesToggle = document.getElementById("highlight-side-spaces-toggle");
+const tallBookmarkTilesToggle = document.getElementById("tall-bookmark-tiles-toggle");
+const searchStyleSelect = document.getElementById("search-style-select");
+const widgetOrderList = document.getElementById("widget-order-list");
+const customWidgetsList = document.getElementById("custom-widgets-list");
+const customWidgetIconInput = document.getElementById("custom-widget-icon");
+const customWidgetCustomIconInput = document.getElementById("custom-widget-custom-icon");
+const customWidgetIconUploadBtn = document.getElementById("custom-widget-icon-upload-btn");
+const customWidgetIconFile = document.getElementById("custom-widget-icon-file");
+const customWidgetModeSelect = document.getElementById("custom-widget-mode");
+const customWidgetNameInput = document.getElementById("custom-widget-name");
+const customWidgetUrlInput = document.getElementById("custom-widget-url");
+const customWidgetNewTabInput = document.getElementById("custom-widget-newtab");
+const customWidgetJsonRow = document.getElementById("custom-widget-json-row");
+const customWidgetJsonTemplateInput = document.getElementById("custom-widget-json-template");
+const customWidgetVarsList = document.getElementById("custom-widget-vars-list");
+const customWidgetAddVarBtn = document.getElementById("custom-widget-add-var-btn");
+const customWidgetAddBtn = document.getElementById("custom-widget-add-btn");
+const customWidgetCancelEditBtn = document.getElementById("custom-widget-cancel-edit-btn");
+const customWidgetPreviewToggleBtn = document.getElementById("custom-widget-preview-toggle-btn");
+const customWidgetPreviewBox = document.getElementById("custom-widget-preview-box");
+const customWidgetPreviewInputs = document.getElementById("custom-widget-preview-inputs");
+const customWidgetPreviewUrl = document.getElementById("custom-widget-preview-url");
+const customWidgetPreviewJsonRow = document.getElementById("custom-widget-preview-json-row");
+const customWidgetPreviewJson = document.getElementById("custom-widget-preview-json");
+const customWidgetExportBtn = document.getElementById("custom-widget-export-btn");
+const customWidgetImportBtn = document.getElementById("custom-widget-import-btn");
+const customWidgetImportFile = document.getElementById("custom-widget-import-file");
+const customWidgetSourceUrlInput = document.getElementById("custom-widget-source-url");
+const customWidgetLoadUrlBtn = document.getElementById("custom-widget-load-url-btn");
+const customWidgetUpdateAllBtn = document.getElementById("custom-widget-update-all-btn");
+const customWidgetsLibraryStatus = document.getElementById("custom-widgets-library-status");
+const exportWidgetsBtn = document.getElementById("export-widgets-btn");
+const importWidgetsBtn = document.getElementById("import-widgets-btn");
+const widgetsExportStatus = document.getElementById("widgets-export-status");
+const customWidgetStatus = document.getElementById("custom-widget-status");
 const massEnableColorFromIconBtn = document.getElementById("mass-enable-color-from-icon");
 const massDisableColorFromIconBtn = document.getElementById("mass-disable-color-from-icon");
 const massColorFromIconStatus = document.getElementById("mass-color-from-icon-status");
@@ -217,15 +265,6 @@ function initializeSettingsDirtyTracking() {
     el.addEventListener('input', markSettingsDirty);
     el.addEventListener('change', markSettingsDirty);
   });
-  // Explicitly track the date/time toggle state change for robustness
-  const dateTimeToggle = document.getElementById("date-time-toggle");
-  if (dateTimeToggle) {
-    dateTimeToggle.addEventListener('change', () => {
-        markSettingsDirty(); 
-        // Also update visibility when toggled
-        updateDateTimeVisibility(dateTimeToggle.checked);
-    });
-  }
   if (groupCountToggle) {
     groupCountToggle.addEventListener('change', () => {
       markSettingsDirty();
@@ -234,6 +273,1101 @@ function initializeSettingsDirtyTracking() {
         appearanceDraft.showGroupBookmarkCount = groupCountToggle.checked;
       }
       void render();
+    });
+  }
+  const WIDGET_REGISTRY = {
+    groups: { key: "widgetGroups", fallback: "Group selector", field: "groupsSpace", defaultSpace: "header", allowDisabled: false },
+    search: { key: "widgetSearch", fallback: "Search bar", field: "searchSpace", defaultSpace: "header", allowDisabled: false },
+    bookmarks: { key: "widgetBookmarks", fallback: "Bookmarks", field: null, defaultSpace: "center", allowDisabled: false, fixedSpace: true },
+    dateTime: { key: "widgetDateTime", fallback: "Date & Time", field: "dateTimeSpace", defaultSpace: "footer", allowDisabled: true }
+  };
+
+  const renderWidgetOrderList = (appearance = null) => {
+    if (!widgetOrderList) return;
+    const resolvedAppearance = appearance || appearanceDraft || {};
+    const customWidgets = Array.isArray(resolvedAppearance.customWidgets) ? resolvedAppearance.customWidgets : [];
+    const customWidgetMap = new Map(customWidgets.filter(w => w?.id).map(w => [w.id, w]));
+    const order = normalizeWidgetOrder(resolvedAppearance.widgetOrder, customWidgets);
+    const spaceKeyMap = {
+      disabled: "spaceDisabled",
+      header: "spaceHeader",
+      left: "spaceLeft",
+      center: "spaceCenter",
+      right: "spaceRight",
+      footer: "spaceFooter"
+    };
+    const spaceLabels = {
+      disabled: t("spaceDisabled") || "Disabled",
+      header: t("spaceHeader") || "Header",
+      left: t("spaceLeft") || "Left space",
+      center: t("spaceCenter") || "Center space",
+      right: t("spaceRight") || "Right space",
+      footer: t("spaceFooter") || "Footer"
+    };
+    const dateTimeSpace = (resolvedAppearance.dateTimeSpace === "disabled" || resolvedAppearance.showDateTime === false)
+      ? "disabled"
+      : (resolvedAppearance.dateTimeSpace || "footer");
+
+    const alignKeyMap = {
+      auto: "alignAuto",
+      top: "alignTop",
+      bottom: "alignBottom",
+      left: "alignLeft",
+      right: "alignRight",
+      center: "alignCenter"
+    };
+    const alignLabels = {
+      auto: t("alignAuto") || "Auto",
+      top: t("alignTop") || "Top",
+      bottom: t("alignBottom") || "Bottom",
+      left: t("alignLeft") || "Left",
+      right: t("alignRight") || "Right",
+      center: t("alignCenter") || "Center"
+    };
+    const widgetAlign = resolvedAppearance.widgetAlign || {};
+    const widgetNewRow = resolvedAppearance.widgetNewRow || {};
+
+    widgetOrderList.innerHTML = "";
+    order.forEach((key, idx) => {
+      const builtInDef = WIDGET_REGISTRY[key];
+      const customDef = customWidgetMap.get(key);
+      if (!builtInDef && !customDef) return;
+      const isCustom = !!customDef;
+      const def = builtInDef || {
+        key: null,
+        fallback: `${customDef.icon || "🔎"} ${customDef.name || "Search"}`,
+        field: null,
+        defaultSpace: "right",
+        allowDisabled: true,
+        fixedSpace: false
+      };
+      const currentSpace = isCustom
+        ? (customDef.space || "right")
+        : (key === "dateTime"
+          ? dateTimeSpace
+          : (def.field ? (resolvedAppearance[def.field] || def.defaultSpace) : def.defaultSpace));
+
+      const row = document.createElement("div");
+      row.className = "widget-order-item";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "widget-order-name";
+      if (def.key) {
+        nameEl.setAttribute("data-i18n", def.key);
+        nameEl.textContent = t(def.key) || def.fallback;
+      } else {
+        nameEl.textContent = def.fallback;
+        nameEl.title = customDef.urlTemplate || "";
+      }
+
+      let spaceControl;
+      let alignControl = null;
+      if (def.fixedSpace) {
+        spaceControl = document.createElement("span");
+        spaceControl.className = "widget-order-space";
+        if (spaceKeyMap[currentSpace]) {
+          spaceControl.setAttribute("data-i18n", spaceKeyMap[currentSpace]);
+        }
+        spaceControl.textContent = spaceLabels[currentSpace] || currentSpace;
+      } else {
+        spaceControl = document.createElement("select");
+        spaceControl.className = "appearance-select widget-order-space-select";
+        spaceControl.setAttribute("aria-label", nameEl.textContent);
+        const spaceOptions = def.allowDisabled
+          ? ["disabled", "header", "left", "center", "right", "footer"]
+          : ["header", "left", "center", "right", "footer"];
+        spaceOptions.forEach(optVal => {
+          const opt = document.createElement("option");
+          opt.value = optVal;
+          opt.setAttribute("data-i18n", spaceKeyMap[optVal]);
+          opt.textContent = spaceLabels[optVal] || optVal;
+          spaceControl.appendChild(opt);
+        });
+        spaceControl.value = currentSpace;
+        spaceControl.addEventListener("change", async () => {
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          if (isCustom) {
+            draft.customWidgets = (draft.customWidgets || []).map(w =>
+              w.id === key ? { ...w, space: spaceControl.value } : w
+            );
+          } else {
+            draft[def.field] = spaceControl.value;
+            if (key === "dateTime") {
+              draft.showDateTime = spaceControl.value !== "disabled";
+              updateDateTimeVisibility(draft.showDateTime);
+            }
+          }
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        });
+
+        alignControl = document.createElement("select");
+        alignControl.className = "appearance-select widget-order-align-select";
+        alignControl.setAttribute("aria-label", `${nameEl.textContent} align`);
+        ["auto", "top", "bottom", "left", "right", "center"].forEach(alignVal => {
+          const opt = document.createElement("option");
+          opt.value = alignVal;
+          opt.setAttribute("data-i18n", alignKeyMap[alignVal]);
+          opt.textContent = alignLabels[alignVal] || alignVal;
+          alignControl.appendChild(opt);
+        });
+        alignControl.value = alignKeyMap[widgetAlign[key]] ? widgetAlign[key] : "auto";
+        alignControl.addEventListener("change", async () => {
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          draft.widgetAlign = { ...(draft.widgetAlign || {}), [key]: alignControl.value };
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        });
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "widget-order-actions";
+
+      if (!def.fixedSpace) {
+        const newRowBtn = document.createElement("button");
+        newRowBtn.type = "button";
+        const isNewRow = !!widgetNewRow[key];
+        newRowBtn.className = `widget-order-btn widget-newrow-btn${isNewRow ? " active" : ""}`;
+        newRowBtn.textContent = "↵";
+        newRowBtn.title = t("widgetNewRowTitle") || "Start on new row";
+        newRowBtn.setAttribute("aria-pressed", String(isNewRow));
+        newRowBtn.addEventListener("click", async () => {
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          const nextVal = !(draft.widgetNewRow && draft.widgetNewRow[key]);
+          draft.widgetNewRow = { ...(draft.widgetNewRow || {}), [key]: nextVal };
+          renderWidgetOrderList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        });
+        actions.appendChild(newRowBtn);
+      }
+
+      const upBtn = document.createElement("button");
+      upBtn.type = "button";
+      upBtn.className = "widget-order-btn";
+      upBtn.textContent = "↑";
+      upBtn.title = t("moveWidgetUp") || "Move up";
+      upBtn.disabled = idx === 0;
+      upBtn.addEventListener("click", async () => {
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        const nextOrder = normalizeWidgetOrder(draft.widgetOrder, draft.customWidgets);
+        if (idx <= 0) return;
+        [nextOrder[idx - 1], nextOrder[idx]] = [nextOrder[idx], nextOrder[idx - 1]];
+        draft.widgetOrder = nextOrder;
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      });
+
+      const downBtn = document.createElement("button");
+      downBtn.type = "button";
+      downBtn.className = "widget-order-btn";
+      downBtn.textContent = "↓";
+      downBtn.title = t("moveWidgetDown") || "Move down";
+      downBtn.disabled = idx === order.length - 1;
+      downBtn.addEventListener("click", async () => {
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        const nextOrder = normalizeWidgetOrder(draft.widgetOrder, draft.customWidgets);
+        if (idx >= nextOrder.length - 1) return;
+        [nextOrder[idx], nextOrder[idx + 1]] = [nextOrder[idx + 1], nextOrder[idx]];
+        draft.widgetOrder = nextOrder;
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      });
+
+      actions.append(upBtn, downBtn);
+      if (alignControl) {
+        row.append(nameEl, spaceControl, alignControl, actions);
+      } else {
+        row.append(nameEl, spaceControl, actions);
+      }
+      widgetOrderList.appendChild(row);
+    });
+    renderCustomWidgetsList(appearance);
+  };
+
+  const renderCustomWidgetsList = (appearance = null) => {
+    if (!customWidgetsList) return;
+    const customList = Array.isArray(appearance?.customWidgets) ? appearance.customWidgets : [];
+    customWidgetsList.innerHTML = "";
+    if (customWidgetUpdateAllBtn) {
+      customWidgetUpdateAllBtn.classList.toggle("hidden", !customList.some(w => !!w?.sourceUrl));
+    }
+
+    if (customList.length === 0) {
+      const emptyEl = document.createElement("div");
+      emptyEl.className = "custom-widgets-empty";
+      emptyEl.textContent = t("customWidgetsLibraryEmpty") || "No custom widgets yet. Create or import one above.";
+      customWidgetsList.appendChild(emptyEl);
+      return;
+    }
+
+    customList.forEach(customDef => {
+      if (!customDef?.id) return;
+      const row = document.createElement("div");
+      row.className = "widget-order-item custom-widget-library-item";
+
+      const { emoji, customIcon } = resolveCustomWidgetIcon(customDef);
+      const iconWrap = document.createElement("span");
+      iconWrap.className = "custom-search-icon";
+      if (customIcon) {
+        const img = document.createElement("img");
+        img.className = "widget-order-icon-img";
+        img.src = customIcon;
+        img.alt = "";
+        img.addEventListener("error", () => {
+          iconWrap.textContent = emoji;
+        }, { once: true });
+        iconWrap.appendChild(img);
+      } else {
+        iconWrap.textContent = emoji;
+      }
+
+      const info = document.createElement("div");
+      info.className = "custom-widget-library-info";
+      const titleEl = document.createElement("div");
+      titleEl.className = "custom-widget-library-name";
+      titleEl.textContent = customDef.name || customDef.id;
+      const badge = document.createElement("span");
+      badge.className = "custom-widget-mode-badge";
+      badge.textContent = customDef.mode === "json" ? "JSON" : "Simple";
+      titleEl.appendChild(badge);
+
+      const urlEl = document.createElement("div");
+      urlEl.className = "custom-widget-library-url";
+      urlEl.textContent = customDef.urlTemplate || "";
+      info.append(titleEl, urlEl);
+      if (customDef.sourceUrl) {
+        const sourceEl = document.createElement("div");
+        sourceEl.className = "custom-widget-library-source";
+        sourceEl.textContent = customDef.sourceUrl;
+        info.appendChild(sourceEl);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "widget-order-actions";
+
+      if (customDef.sourceUrl) {
+        const updateBtn = document.createElement("button");
+        updateBtn.type = "button";
+        updateBtn.className = "widget-order-btn";
+        updateBtn.textContent = "🔄";
+        updateBtn.title = t("customSearchUpdateWidgetTitle") || "Update from URL";
+        updateBtn.addEventListener("click", async () => {
+          await updateSingleCustomWidgetFromUrl(customDef.id);
+        });
+        actions.appendChild(updateBtn);
+      }
+
+      if (customDef.previousVersion) {
+        const revertBtn = document.createElement("button");
+        revertBtn.type = "button";
+        revertBtn.className = "widget-order-btn";
+        revertBtn.textContent = "↩️";
+        revertBtn.title = t("customSearchRevertWidgetTitle") || "Revert to previous version";
+        revertBtn.addEventListener("click", async () => {
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w.id === customDef.id ? revertCustomWidgetVersion(w) : w
+          );
+          if (editingCustomWidgetId === customDef.id) {
+            const reverted = draft.customWidgets.find(w => w.id === customDef.id);
+            if (reverted) loadCustomWidgetIntoForm(reverted);
+          }
+          renderWidgetOrderList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+          if (customWidgetsLibraryStatus) {
+            customWidgetsLibraryStatus.textContent = "↩️ " + (t("customSearchRevertedSuccess") || "Reverted to previous version (click Save to persist).");
+          }
+        });
+        actions.appendChild(revertBtn);
+      }
+
+      const exportOneBtn = document.createElement("button");
+      exportOneBtn.type = "button";
+      exportOneBtn.className = "widget-order-btn";
+      exportOneBtn.textContent = "📥";
+      exportOneBtn.title = t("exportWidgetTitle") || "Export widget";
+      exportOneBtn.addEventListener("click", () => {
+        const slug = (customDef.name || "widget").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "widget";
+        exportCustomWidgetsLibrary([customDef], `simple-dial-widget-${slug}`, customWidgetStatus);
+      });
+
+      const dupBtn = document.createElement("button");
+      dupBtn.type = "button";
+      dupBtn.className = "widget-order-btn";
+      dupBtn.textContent = "📋";
+      dupBtn.title = t("customSearchDuplicateWidgetTitle") || "Duplicate widget";
+      dupBtn.addEventListener("click", async () => {
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        const copyLabel = t("customSearchCopySuffix") || "Copy";
+        const cloned = {
+          ...customDef,
+          id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          name: `${customDef.name || "Widget"} (${copyLabel})`,
+          variables: Array.isArray(customDef.variables) ? customDef.variables.map(v => ({ ...v })) : []
+        };
+        delete cloned.sourceUrl;
+        delete cloned.sourceUpdatedAt;
+        delete cloned.previousVersion;
+        draft.customWidgets = [...(draft.customWidgets || []), cloned];
+        draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), cloned.id], draft.customWidgets);
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      });
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "widget-order-btn";
+      editBtn.textContent = "✏️";
+      editBtn.title = t("edit") || "Edit";
+      editBtn.addEventListener("click", () => {
+        loadCustomWidgetIntoForm(customDef);
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "widget-order-btn widget-delete-btn";
+      delBtn.textContent = "🗑️";
+      delBtn.title = t("deleteWidgetTitle") || "Delete widget";
+      delBtn.addEventListener("click", async () => {
+        markSettingsDirty();
+        if (editingCustomWidgetId === customDef.id) {
+          resetCustomWidgetForm();
+        }
+        const draft = await ensureAppearanceDraft();
+        draft.customWidgets = (draft.customWidgets || []).filter(w => w.id !== customDef.id);
+        draft.widgetOrder = normalizeWidgetOrder(
+          (draft.widgetOrder || []).filter(id => id !== customDef.id),
+          draft.customWidgets
+        );
+        if (draft.widgetAlign) delete draft.widgetAlign[customDef.id];
+        if (draft.widgetNewRow) delete draft.widgetNewRow[customDef.id];
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      });
+
+      actions.append(exportOneBtn, dupBtn, editBtn, delBtn);
+      row.append(iconWrap, info, actions);
+      customWidgetsList.appendChild(row);
+    });
+  };
+  window.renderCustomWidgetsList = renderCustomWidgetsList;
+  window.renderWidgetOrderList = renderWidgetOrderList;
+
+  let editingCustomWidgetId = null;
+  let customWidgetVarsDraft = [{ key: "query", label: "Search", type: "text", optionsText: "" }];
+
+  const syncCustomWidgetModeUI = () => {
+    const isJson = customWidgetModeSelect?.value === "json";
+    if (customWidgetJsonRow) {
+      customWidgetJsonRow.classList.toggle("hidden", !isJson);
+    }
+    if (customWidgetUrlInput) {
+      customWidgetUrlInput.placeholder = isJson
+        ? "https://example.com/search/"
+        : (t("customSearchUrlPlaceholder") || "https://www.google.com/search?q={query}");
+    }
+  };
+
+  const renderCustomWidgetVarsEditor = () => {
+    if (!customWidgetVarsList) return;
+    customWidgetVarsList.innerHTML = "";
+    customWidgetVarsDraft.forEach((varItem, idx) => {
+      const row = document.createElement("div");
+      row.className = "custom-widget-var-row";
+
+      const keyInput = document.createElement("input");
+      keyInput.type = "text";
+      keyInput.className = "sync-compact-input custom-widget-var-key";
+      keyInput.value = varItem.key || "";
+      keyInput.placeholder = "key (e.g. query)";
+      keyInput.addEventListener("input", () => {
+        varItem.key = keyInput.value;
+      });
+
+      const labelInput = document.createElement("input");
+      labelInput.type = "text";
+      labelInput.className = "sync-compact-input custom-widget-var-label";
+      labelInput.value = varItem.label || "";
+      labelInput.placeholder = t("customSearchVarLabelPlaceholder") || "Label";
+      labelInput.addEventListener("input", () => {
+        varItem.label = labelInput.value;
+      });
+
+      const typeSelect = document.createElement("select");
+      typeSelect.className = "appearance-select custom-widget-var-type";
+      [
+        { value: "text", key: "customSearchVarTypeText", fallback: "Text" },
+        { value: "list", key: "customSearchVarTypeList", fallback: "Comma list" },
+        { value: "select", key: "customSearchVarTypeSelect", fallback: "Dropdown" },
+        { value: "multi", key: "customSearchVarTypeMulti", fallback: "Multi-select" }
+      ].forEach(optDef => {
+        const opt = document.createElement("option");
+        opt.value = optDef.value;
+        opt.textContent = t(optDef.key) || optDef.fallback;
+        typeSelect.appendChild(opt);
+      });
+      typeSelect.value = varItem.type || "text";
+
+      const optionsInput = document.createElement("textarea");
+      optionsInput.className = "sync-compact-input custom-widget-var-options";
+      optionsInput.rows = 2;
+      optionsInput.value = varItem.optionsText || "";
+      optionsInput.placeholder = t("customSearchVarOptionsPlaceholder") || "Label=Value (one per line)";
+      optionsInput.classList.toggle("hidden", typeSelect.value !== "select" && typeSelect.value !== "multi");
+      optionsInput.addEventListener("input", () => {
+        varItem.optionsText = optionsInput.value;
+      });
+
+      typeSelect.addEventListener("change", () => {
+        varItem.type = typeSelect.value;
+        optionsInput.classList.toggle("hidden", typeSelect.value !== "select" && typeSelect.value !== "multi");
+      });
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "widget-order-btn widget-delete-btn";
+      removeBtn.textContent = "🗑️";
+      removeBtn.disabled = customWidgetVarsDraft.length <= 1;
+      removeBtn.addEventListener("click", () => {
+        if (customWidgetVarsDraft.length <= 1) return;
+        customWidgetVarsDraft.splice(idx, 1);
+        renderCustomWidgetVarsEditor();
+      });
+
+      row.append(keyInput, labelInput, typeSelect, removeBtn, optionsInput);
+      customWidgetVarsList.appendChild(row);
+    });
+    renderCustomWidgetPreviewInputs?.();
+  };
+
+  let customWidgetPreviewValues = {};
+
+  function updateCustomWidgetPreviewOutput() {
+    if (!customWidgetPreviewBox || customWidgetPreviewBox.classList.contains("hidden")) return;
+    const mode = customWidgetModeSelect?.value === "json" ? "json" : "simple";
+    const urlTemplate = (customWidgetUrlInput?.value || "").trim();
+    const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
+    const variables = normalizeCustomWidgetVariables({
+      name: (customWidgetNameInput?.value || "").trim() || "Search",
+      variables: customWidgetVarsDraft
+    });
+
+    const previewWidget = { mode, urlTemplate, jsonTemplate, variables };
+    const result = buildCustomSearchPreview(previewWidget, customWidgetPreviewValues);
+
+    if (customWidgetPreviewUrl) {
+      if (!result.valid) {
+        customWidgetPreviewUrl.textContent = result.error === "invalid_json"
+          ? ("⚠️ " + (t("customSearchInvalidJson") || "Enter a valid JSON template."))
+          : ("⚠️ " + (t("customSearchInvalidUrl") || "Enter a valid http(s) URL template."));
+      } else {
+        customWidgetPreviewUrl.textContent = result.url || "";
+      }
+    }
+
+    if (customWidgetPreviewJsonRow && customWidgetPreviewJson) {
+      const showJson = mode === "json" && result.valid;
+      customWidgetPreviewJsonRow.classList.toggle("hidden", !showJson);
+      customWidgetPreviewJson.textContent = showJson ? result.jsonString : "";
+    }
+  }
+
+  function renderCustomWidgetPreviewInputs() {
+    if (!customWidgetPreviewInputs || !customWidgetPreviewBox || customWidgetPreviewBox.classList.contains("hidden")) {
+      return;
+    }
+    const vars = normalizeCustomWidgetVariables({
+      name: (customWidgetNameInput?.value || "").trim() || "Search",
+      variables: customWidgetVarsDraft
+    });
+    customWidgetPreviewInputs.innerHTML = "";
+
+    vars.forEach(v => {
+      const field = document.createElement("div");
+      field.className = "custom-widget-preview-field";
+      const lbl = document.createElement("label");
+      lbl.textContent = `${v.label || v.key} (${v.key})`;
+      field.appendChild(lbl);
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "sync-compact-input";
+      input.placeholder = (v.type === "list" || v.type === "multi") ? "A, B" : (v.label || v.key);
+      const currentVal = customWidgetPreviewValues[v.key];
+      input.value = Array.isArray(currentVal) ? currentVal.join(", ") : (typeof currentVal === "string" ? currentVal : "");
+      input.addEventListener("input", () => {
+        const raw = input.value;
+        if (v.type === "list" || v.type === "multi") {
+          customWidgetPreviewValues[v.key] = raw.split(",").map(s => s.trim()).filter(Boolean);
+        } else {
+          customWidgetPreviewValues[v.key] = raw;
+        }
+        updateCustomWidgetPreviewOutput();
+      });
+      field.appendChild(input);
+      customWidgetPreviewInputs.appendChild(field);
+    });
+
+    updateCustomWidgetPreviewOutput();
+  }
+
+  const resetCustomWidgetForm = () => {
+    editingCustomWidgetId = null;
+    if (customWidgetIconInput) customWidgetIconInput.value = "🔎";
+    if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = "";
+    if (customWidgetModeSelect) customWidgetModeSelect.value = "simple";
+    if (customWidgetNameInput) customWidgetNameInput.value = "";
+    if (customWidgetUrlInput) customWidgetUrlInput.value = "";
+    if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = "";
+    if (customWidgetNewTabInput) customWidgetNewTabInput.checked = false;
+    if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("customSearchAddBtn") || "+ Add";
+    if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.add("hidden");
+    if (customWidgetStatus) customWidgetStatus.textContent = "";
+    customWidgetVarsDraft = [{ key: "query", label: "Search", type: "text", optionsText: "" }];
+    syncCustomWidgetModeUI();
+    renderCustomWidgetVarsEditor();
+  };
+
+  const loadCustomWidgetIntoForm = (widget) => {
+    if (!widget) return;
+    editingCustomWidgetId = widget.id;
+    if (customWidgetIconInput) customWidgetIconInput.value = widget.icon || "🔎";
+    if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = widget.customIcon || "";
+    if (customWidgetModeSelect) customWidgetModeSelect.value = widget.mode === "json" ? "json" : "simple";
+    if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
+    if (customWidgetUrlInput) customWidgetUrlInput.value = widget.urlTemplate || "";
+    if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = widget.jsonTemplate || "";
+    if (customWidgetNewTabInput) customWidgetNewTabInput.checked = !!widget.openInNewTab;
+    if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
+    if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.remove("hidden");
+    if (customWidgetStatus) customWidgetStatus.textContent = "";
+    customWidgetVarsDraft = Array.isArray(widget.variables) && widget.variables.length > 0
+      ? widget.variables.map(v => ({ ...v }))
+      : [{ key: "query", label: widget.name || "Search", type: "text", optionsText: "" }];
+    syncCustomWidgetModeUI();
+    renderCustomWidgetVarsEditor();
+  };
+
+  syncCustomWidgetModeUI();
+  renderCustomWidgetVarsEditor();
+
+  if (customWidgetModeSelect) {
+    customWidgetModeSelect.addEventListener("change", () => {
+      syncCustomWidgetModeUI();
+      updateCustomWidgetPreviewOutput();
+    });
+  }
+
+  if (customWidgetUrlInput) {
+    customWidgetUrlInput.addEventListener("input", updateCustomWidgetPreviewOutput);
+  }
+  if (customWidgetJsonTemplateInput) {
+    customWidgetJsonTemplateInput.addEventListener("input", updateCustomWidgetPreviewOutput);
+  }
+  if (customWidgetVarsList) {
+    customWidgetVarsList.addEventListener("input", renderCustomWidgetPreviewInputs);
+    customWidgetVarsList.addEventListener("change", renderCustomWidgetPreviewInputs);
+  }
+  if (customWidgetPreviewToggleBtn && customWidgetPreviewBox) {
+    customWidgetPreviewToggleBtn.addEventListener("click", () => {
+      const isHidden = customWidgetPreviewBox.classList.toggle("hidden");
+      if (!isHidden) {
+        renderCustomWidgetPreviewInputs();
+      }
+    });
+  }
+
+  if (customWidgetAddVarBtn) {
+    customWidgetAddVarBtn.addEventListener("click", () => {
+      customWidgetVarsDraft.push({
+        key: `var${customWidgetVarsDraft.length + 1}`,
+        label: `Filter ${customWidgetVarsDraft.length + 1}`,
+        type: "text",
+        optionsText: ""
+      });
+      renderCustomWidgetVarsEditor();
+    });
+  }
+
+  if (customWidgetCancelEditBtn) {
+    customWidgetCancelEditBtn.addEventListener("click", resetCustomWidgetForm);
+  }
+
+  if (customWidgetIconUploadBtn && customWidgetIconFile) {
+    customWidgetIconUploadBtn.addEventListener("click", () => {
+      customWidgetIconFile.value = "";
+      customWidgetIconFile.click();
+    });
+    customWidgetIconFile.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file || !customWidgetCustomIconInput) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        if (!dataUrl) return;
+        if (file.type === "image/svg+xml" || dataUrl.length <= 24000) {
+          customWidgetCustomIconInput.value = dataUrl;
+          return;
+        }
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 64;
+          const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round((img.width || maxDim) * scale));
+          canvas.height = Math.max(1, Math.round((img.height || maxDim) * scale));
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            customWidgetCustomIconInput.value = canvas.toDataURL("image/png");
+          } else {
+            customWidgetCustomIconInput.value = dataUrl;
+          }
+        };
+        img.onerror = () => {
+          customWidgetCustomIconInput.value = dataUrl;
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const handleSpaceOrSearchStylePreview = async () => {
+    markSettingsDirty();
+    const draft = await ensureAppearanceDraft();
+    if (showSideSpacesToggle) draft.showSideSpaces = showSideSpacesToggle.checked;
+    if (highlightSideSpacesToggle) draft.highlightSideSpaces = highlightSideSpacesToggle.checked;
+    if (searchStyleSelect) draft.searchStyle = searchStyleSelect.value;
+    renderWidgetOrderList(draft);
+    await applySideSpaces({ appearance: draft });
+    await render();
+    calculateGridLayout();
+  };
+
+  if (showSideSpacesToggle) {
+    showSideSpacesToggle.addEventListener('change', handleSpaceOrSearchStylePreview);
+  }
+  if (highlightSideSpacesToggle) {
+    highlightSideSpacesToggle.addEventListener('change', handleSpaceOrSearchStylePreview);
+  }
+  if (tallBookmarkTilesToggle) {
+    tallBookmarkTilesToggle.addEventListener('change', async () => {
+      markSettingsDirty();
+      const draft = await ensureAppearanceDraft();
+      draft.tallBookmarkTiles = tallBookmarkTilesToggle.checked;
+      await applyTileSize({ appearance: draft });
+      await render();
+      calculateGridLayout();
+    });
+  }
+  if (searchStyleSelect) {
+    searchStyleSelect.addEventListener('change', handleSpaceOrSearchStylePreview);
+  }
+  if (customWidgetAddBtn) {
+    customWidgetAddBtn.addEventListener('click', async () => {
+      const mode = customWidgetModeSelect?.value === "json" ? "json" : "simple";
+      const name = (customWidgetNameInput?.value || "").trim();
+      const urlTemplate = (customWidgetUrlInput?.value || "").trim();
+      const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
+      const icon = (customWidgetIconInput?.value || "🔎").trim() || "🔎";
+      const rawCustomIcon = (customWidgetCustomIconInput?.value || "").trim();
+      let customIcon = null;
+      if (rawCustomIcon) {
+        customIcon = normalizeCustomIconValue(rawCustomIcon, { allowEmoji: false });
+        if (!customIcon) {
+          if (customWidgetStatus) {
+            customWidgetStatus.textContent = "❌ " + (t("customSearchInvalidIcon") || "Enter a valid icon URL or upload an image.");
+          }
+          return;
+        }
+      }
+      const openInNewTab = !!customWidgetNewTabInput?.checked;
+      const variables = customWidgetVarsDraft
+        .map(v => ({
+          key: (v.key || "").trim(),
+          label: (v.label || v.key || "").trim(),
+          type: v.type || "text",
+          optionsText: v.optionsText || ""
+        }))
+        .filter(v => v.key);
+
+      if (!name || !isValidCustomSearchUrlTemplate(urlTemplate)) {
+        if (customWidgetStatus) {
+          customWidgetStatus.textContent = "❌ " + (t("customSearchInvalidUrl") || "Enter a name and valid http(s) URL template.");
+        }
+        return;
+      }
+      if (mode === "json" && !isValidCustomSearchJsonTemplate(jsonTemplate)) {
+        if (customWidgetStatus) {
+          customWidgetStatus.textContent = "❌ " + (t("customSearchInvalidJson") || "Enter a valid JSON template.");
+        }
+        return;
+      }
+
+      if (customWidgetStatus) customWidgetStatus.textContent = "";
+      markSettingsDirty();
+      const draft = await ensureAppearanceDraft();
+      if (editingCustomWidgetId) {
+        draft.customWidgets = (draft.customWidgets || []).map(w =>
+          w.id === editingCustomWidgetId
+            ? { ...w, mode, name, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables }
+            : w
+        );
+      } else {
+        const newWidget = {
+          id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          type: "custom-search",
+          mode,
+          name,
+          icon,
+          customIcon,
+          urlTemplate,
+          jsonTemplate,
+          openInNewTab,
+          variables,
+          space: "right",
+          align: "auto",
+          newRow: false
+        };
+        draft.customWidgets = [...(draft.customWidgets || []), newWidget];
+        draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
+      }
+
+      resetCustomWidgetForm();
+      renderWidgetOrderList(draft);
+      await applySideSpaces({ appearance: draft });
+      await render();
+      calculateGridLayout();
+    });
+  }
+
+  function exportCustomWidgetsLibrary(widgets, filenamePrefix = "simple-dial-search-widgets", statusEl = customWidgetStatus) {
+    const list = Array.isArray(widgets) ? widgets : [];
+    if (list.length === 0) {
+      if (statusEl) {
+        statusEl.textContent = t("customSearchExportEmpty") || "No custom search widgets to export.";
+      }
+      return;
+    }
+    const payload = serializeCustomWidgetsExport(list);
+    const dataStr = JSON.stringify(payload, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${filenamePrefix}-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    if (statusEl) {
+      statusEl.textContent = "✅ " + (t("customSearchExportSuccess") || "Exported") + ` (${list.length})`;
+    }
+  }
+
+  let activeWidgetImportStatusEl = customWidgetStatus;
+
+  const triggerCustomWidgetExport = async (statusEl) => {
+    const draft = await ensureAppearanceDraft();
+    exportCustomWidgetsLibrary(draft.customWidgets || [], "simple-dial-search-widgets", statusEl);
+  };
+
+  const customWidgetTrustModal = document.getElementById("custom-widget-trust-modal");
+  const customWidgetTrustSource = document.getElementById("custom-widget-trust-source");
+  const customWidgetTrustCheckbox = document.getElementById("custom-widget-trust-checkbox");
+  const customWidgetTrustConfirmBtn = document.getElementById("custom-widget-trust-confirm");
+  const customWidgetTrustCancelBtn = document.getElementById("custom-widget-trust-cancel");
+
+  const confirmTrustedWidgetSource = (sourceLabel) => {
+    if (!customWidgetTrustModal || !customWidgetTrustCheckbox || !customWidgetTrustConfirmBtn || !customWidgetTrustCancelBtn) {
+      return Promise.resolve(confirm(t("customSearchTrustedSourceConfirm") || "Only import or load custom search widgets from sources you trust. Continue?"));
+    }
+
+    return new Promise((resolve) => {
+      if (customWidgetTrustSource) {
+        customWidgetTrustSource.textContent = sourceLabel || "";
+        customWidgetTrustSource.classList.toggle("hidden", !sourceLabel);
+      }
+      customWidgetTrustCheckbox.checked = false;
+      customWidgetTrustConfirmBtn.disabled = true;
+      customWidgetTrustModal.classList.remove("hidden");
+
+      const cleanup = (result) => {
+        customWidgetTrustModal.classList.add("hidden");
+        customWidgetTrustCheckbox.removeEventListener("change", onCheckChange);
+        customWidgetTrustConfirmBtn.removeEventListener("click", onConfirm);
+        customWidgetTrustCancelBtn.removeEventListener("click", onCancel);
+        document.removeEventListener("keydown", onKeyDown);
+        resolve(result);
+      };
+
+      const onCheckChange = () => {
+        customWidgetTrustConfirmBtn.disabled = !customWidgetTrustCheckbox.checked;
+      };
+      const onConfirm = () => {
+        if (!customWidgetTrustCheckbox.checked) return;
+        cleanup(true);
+      };
+      const onCancel = () => cleanup(false);
+      const onKeyDown = (ev) => {
+        if (ev.key === "Escape") {
+          ev.stopPropagation();
+          cleanup(false);
+        }
+      };
+
+      customWidgetTrustCheckbox.addEventListener("change", onCheckChange);
+      customWidgetTrustConfirmBtn.addEventListener("click", onConfirm);
+      customWidgetTrustCancelBtn.addEventListener("click", onCancel);
+      document.addEventListener("keydown", onKeyDown);
+    });
+  };
+
+  const triggerCustomWidgetImport = (statusEl) => {
+    activeWidgetImportStatusEl = statusEl || customWidgetStatus;
+    if (customWidgetImportFile) {
+      customWidgetImportFile.value = "";
+      customWidgetImportFile.click();
+    }
+  };
+
+  if (customWidgetExportBtn) {
+    customWidgetExportBtn.addEventListener("click", () => triggerCustomWidgetExport(customWidgetStatus));
+  }
+  if (exportWidgetsBtn) {
+    exportWidgetsBtn.addEventListener("click", () => triggerCustomWidgetExport(widgetsExportStatus));
+  }
+  if (customWidgetImportBtn) {
+    customWidgetImportBtn.addEventListener("click", () => triggerCustomWidgetImport(customWidgetStatus));
+  }
+  if (importWidgetsBtn) {
+    importWidgetsBtn.addEventListener("click", () => triggerCustomWidgetImport(widgetsExportStatus));
+  }
+  const mergeImportedCustomWidgets = async (importedWidgets, { sourceUrl = null } = {}) => {
+    markSettingsDirty();
+    const draft = await ensureAppearanceDraft();
+    const existing = Array.isArray(draft.customWidgets) ? [...draft.customWidgets] : [];
+    const existingIndexById = new Map(existing.map((w, idx) => [w.id, idx]));
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    const nowIso = new Date().toISOString();
+
+    for (const w of importedWidgets) {
+      if (existingIndexById.has(w.id)) {
+        const idx = existingIndexById.get(w.id);
+        existing[idx] = applyCustomWidgetUpdate(existing[idx], w, sourceUrl || existing[idx].sourceUrl || null);
+        updatedCount++;
+      } else {
+        const nextWidget = sourceUrl
+          ? { ...w, sourceUrl, sourceUpdatedAt: nowIso }
+          : w;
+        existingIndexById.set(nextWidget.id, existing.length);
+        existing.push(nextWidget);
+        addedCount++;
+      }
+    }
+
+    draft.customWidgets = existing;
+    draft.widgetOrder = normalizeWidgetOrder(
+      [...(draft.widgetOrder || []), ...existing.map(w => w.id)],
+      draft.customWidgets
+    );
+
+    renderWidgetOrderList(draft);
+    await applySideSpaces({ appearance: draft });
+    await render();
+    calculateGridLayout();
+    return { addedCount, updatedCount, total: addedCount + updatedCount };
+  };
+
+  async function updateSingleCustomWidgetFromUrl(widgetId) {
+    const draft = await ensureAppearanceDraft();
+    const target = (draft.customWidgets || []).find(w => w.id === widgetId);
+    if (!target?.sourceUrl) return;
+    if (customWidgetsLibraryStatus) {
+      customWidgetsLibraryStatus.textContent = "⏳ " + (t("customSearchUpdatingStatus") || "Updating from URL...");
+    }
+    try {
+      const { url, widgets } = await fetchCustomWidgetsFromUrl(target.sourceUrl);
+      const match =
+        widgets.find(w => w.id === target.id) ||
+        widgets.find(w => w.name && target.name && w.name.toLowerCase() === target.name.toLowerCase()) ||
+        (widgets.length === 1 ? widgets[0] : null);
+      if (!match) {
+        if (customWidgetsLibraryStatus) {
+          customWidgetsLibraryStatus.textContent = "❌ " + (t("customSearchUpdateNotFound") || "Matching widget not found at source URL.");
+        }
+        return;
+      }
+      markSettingsDirty();
+      draft.customWidgets = (draft.customWidgets || []).map(w =>
+        w.id === target.id ? applyCustomWidgetUpdate(w, match, url) : w
+      );
+      if (editingCustomWidgetId === target.id) {
+        const updated = draft.customWidgets.find(w => w.id === target.id);
+        if (updated) loadCustomWidgetIntoForm(updated);
+      }
+      renderWidgetOrderList(draft);
+      await applySideSpaces({ appearance: draft });
+      await render();
+      calculateGridLayout();
+      if (customWidgetsLibraryStatus) {
+        customWidgetsLibraryStatus.textContent = "✅ " + (t("customSearchUpdateSuccess") || "Widget updated (you can revert with ↩️; click Save to persist).");
+      }
+    } catch (err) {
+      if (customWidgetsLibraryStatus) {
+        const detail = err?.message === "INVALID_WIDGET_URL"
+          ? (t("customSearchInvalidSourceUrl") || "Enter a valid http(s) URL.")
+          : (err?.message || "Failed to update from URL.");
+        customWidgetsLibraryStatus.textContent = "❌ " + detail;
+      }
+    }
+  }
+
+  if (customWidgetImportFile) {
+    customWidgetImportFile.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const statusEl = activeWidgetImportStatusEl || customWidgetStatus;
+      const trusted = await confirmTrustedWidgetSource(file.name);
+      if (!trusted) {
+        customWidgetImportFile.value = "";
+        return;
+      }
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const { widgets: importedWidgets, validFormat } = parseImportedCustomWidgets(parsed);
+        if (!validFormat || importedWidgets.length === 0) {
+          if (statusEl) {
+            statusEl.textContent = "❌ " + (t("customSearchImportInvalid") || "No valid custom search widgets found in file.");
+          }
+          return;
+        }
+
+        const { total } = await mergeImportedCustomWidgets(importedWidgets);
+        if (statusEl) {
+          statusEl.textContent = "✅ " + (t("customSearchImportSuccess") || "Imported") + ` (${total})`;
+        }
+      } catch {
+        if (statusEl) {
+          statusEl.textContent = "❌ " + (t("customSearchImportInvalid") || "No valid custom search widgets found in file.");
+        }
+      } finally {
+        customWidgetImportFile.value = "";
+      }
+    });
+  }
+
+  if (customWidgetLoadUrlBtn && customWidgetSourceUrlInput) {
+    customWidgetLoadUrlBtn.addEventListener("click", async () => {
+      const rawUrl = customWidgetSourceUrlInput.value.trim();
+      if (!rawUrl) {
+        if (customWidgetStatus) {
+          customWidgetStatus.textContent = "❌ " + (t("customSearchInvalidSourceUrl") || "Enter a valid http(s) URL.");
+        }
+        return;
+      }
+      const trusted = await confirmTrustedWidgetSource(rawUrl);
+      if (!trusted) return;
+      if (customWidgetStatus) {
+        customWidgetStatus.textContent = "⏳ " + (t("customSearchLoadingUrlStatus") || "Loading widgets from URL...");
+      }
+      try {
+        const { url, widgets } = await fetchCustomWidgetsFromUrl(rawUrl);
+        const { total } = await mergeImportedCustomWidgets(widgets, { sourceUrl: url });
+        customWidgetSourceUrlInput.value = "";
+        if (customWidgetStatus) {
+          customWidgetStatus.textContent = "✅ " + (t("customSearchImportSuccess") || "Imported") + ` (${total})`;
+        }
+      } catch (err) {
+        if (customWidgetStatus) {
+          const msg = err?.message === "INVALID_WIDGET_URL"
+            ? (t("customSearchInvalidSourceUrl") || "Enter a valid http(s) URL.")
+            : err?.message === "INVALID_WIDGET_PAYLOAD"
+              ? (t("customSearchImportInvalid") || "No valid custom search widgets found at URL.")
+              : (err?.message || "Failed to load from URL.");
+          customWidgetStatus.textContent = "❌ " + msg;
+        }
+      }
+    });
+  }
+
+  if (customWidgetUpdateAllBtn) {
+    customWidgetUpdateAllBtn.addEventListener("click", async () => {
+      const draft = await ensureAppearanceDraft();
+      const urlWidgets = (draft.customWidgets || []).filter(w => !!w?.sourceUrl);
+      if (urlWidgets.length === 0) return;
+
+      if (customWidgetsLibraryStatus) {
+        customWidgetsLibraryStatus.textContent = "⏳ " + (t("customSearchUpdatingStatus") || "Updating from URL...");
+      }
+
+      const uniqueUrls = [...new Set(urlWidgets.map(w => w.sourceUrl))];
+      let updatedCount = 0;
+      let errorCount = 0;
+      const fetchedByUrl = new Map();
+
+      for (const sourceUrl of uniqueUrls) {
+        try {
+          const res = await fetchCustomWidgetsFromUrl(sourceUrl);
+          fetchedByUrl.set(sourceUrl, res);
+        } catch {
+          errorCount++;
+        }
+      }
+
+      if (fetchedByUrl.size > 0) {
+        markSettingsDirty();
+        draft.customWidgets = (draft.customWidgets || []).map(w => {
+          if (!w?.sourceUrl || !fetchedByUrl.has(w.sourceUrl)) return w;
+          const { url, widgets } = fetchedByUrl.get(w.sourceUrl);
+          const match =
+            widgets.find(item => item.id === w.id) ||
+            widgets.find(item => item.name && w.name && item.name.toLowerCase() === w.name.toLowerCase()) ||
+            (widgets.length === 1 ? widgets[0] : null);
+          if (!match) return w;
+          updatedCount++;
+          return applyCustomWidgetUpdate(w, match, url);
+        });
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      }
+
+      if (customWidgetsLibraryStatus) {
+        if (updatedCount > 0 && errorCount === 0) {
+          customWidgetsLibraryStatus.textContent = "✅ " + (t("customSearchUpdateSuccess") || "Updated") + ` (${updatedCount})`;
+        } else if (updatedCount > 0) {
+          customWidgetsLibraryStatus.textContent = "⚠️ " + (t("customSearchUpdateSuccess") || "Updated") + ` (${updatedCount}), ${errorCount} failed`;
+        } else {
+          customWidgetsLibraryStatus.textContent = "❌ " + (t("customSearchUpdateNotFound") || "Failed to update widgets from URL.");
+        }
+      }
     });
   }
 }
@@ -288,17 +1422,18 @@ function updateHousekeeperIconRefreshFrequencyEnabled() {
 
 async function revertDateTimePreviewToSaved() {
   try {
-    const config = await loadConfig();
-    const persistedValue = config.appearance?.showDateTime ?? true;
-    if (dateTimeToggle) {
-      dateTimeToggle.checked = persistedValue;
-    }
     if (typeof window.clearDateTimePreview === "function") {
       window.clearDateTimePreview();
     }
   } catch (err) {
     console.warn("Failed to revert date/time preview", err);
   }
+}
+
+const SEASONAL_BACKGROUND_THEMES = new Set(["spring", "summer", "autumn", "winter"]);
+
+function getThemeBackgroundQuery(themeValue) {
+  return encodeURIComponent(SEASONAL_BACKGROUND_THEMES.has(themeValue) ? themeValue : "wallpaper");
 }
 
 function updateThemeCustomRowsVisibility(themeValue) {
@@ -308,6 +1443,22 @@ function updateThemeCustomRowsVisibility(themeValue) {
   if (themeCustomUrlRow) {
     themeCustomUrlRow.classList.toggle("hidden", themeValue !== "custom-url");
   }
+  const query = getThemeBackgroundQuery(themeValue);
+  if (themeBackgroundsLink) {
+    themeBackgroundsLink.href = `https://unsplash.com/s/photos/${query}?license=free`;
+  }
+  if (themeBackgroundsPixabayLink) {
+    themeBackgroundsPixabayLink.href = `https://pixabay.com/photos/search/${query}`;
+  }
+  if (themeBackgroundsPexelsLink) {
+    themeBackgroundsPexelsLink.href = `https://www.pexels.com/search/?q=${query}&orientation=landscape`;
+  }
+}
+
+function setBackgroundUrlStatusMessage(message = "", isError = false) {
+  if (!bgImageUrlStatus) return;
+  bgImageUrlStatus.textContent = message;
+  bgImageUrlStatus.style.color = message ? (isError ? "#e53935" : "#4caf50") : "";
 }
 
 function setThemeStatusMessage(message = "", isError = false) {
@@ -334,13 +1485,29 @@ function createAppearanceDraftFromConfig(config) {
     customThemeFileName: appearance.customThemeFileName || "",
     customThemeUrl: appearance.customThemeUrl || "",
     backgroundImage: appearance.backgroundImage ?? null,
+    backgroundImageUrl: appearance.backgroundImageUrl || "",
     backgroundSize: appearance.backgroundSize || 'stretched',
+    bgDim: appearance.bgDim ?? 0,
     tileOpacity: appearance.tileOpacity ?? 1,
+    barOpacity: appearance.barOpacity ?? 1,
     tileSize: appearance.tileSize ?? 1,
     groupTileSize: appearance.groupTileSize ?? 1,
     showDateTime: appearance.showDateTime ?? true,
     showDeleted: appearance.showDeleted ?? false,
-    showGroupBookmarkCount: appearance.showGroupBookmarkCount ?? true
+    showGroupBookmarkCount: appearance.showGroupBookmarkCount ?? true,
+    showSideSpaces: appearance.showSideSpaces ?? false,
+    highlightSideSpaces: appearance.highlightSideSpaces ?? false,
+    tallBookmarkTiles: appearance.tallBookmarkTiles ?? false,
+    dateTimeSpace: (appearance.dateTimeSpace === "disabled" || appearance.showDateTime === false)
+      ? "disabled"
+      : (appearance.dateTimeSpace || "footer"),
+    groupsSpace: appearance.groupsSpace || "header",
+    searchSpace: appearance.searchSpace || "header",
+    searchStyle: appearance.searchStyle || "full",
+    customWidgets: Array.isArray(appearance.customWidgets) ? appearance.customWidgets.map(w => ({ ...w })) : [],
+    widgetOrder: normalizeWidgetOrder(appearance.widgetOrder, appearance.customWidgets),
+    widgetAlign: { ...(appearance.widgetAlign || {}) },
+    widgetNewRow: { ...(appearance.widgetNewRow || {}) }
   };
 }
 
@@ -352,6 +1519,81 @@ async function ensureAppearanceDraft() {
   return appearanceDraft;
 }
 
+function syncAppearanceControlsFromDraft(draft) {
+  applyThemeDraftToControls(draft);
+
+  if (bgSizeSelect) bgSizeSelect.value = draft.backgroundSize;
+
+  if (bgDimSlider) {
+    const dimPercent = Math.round((draft.bgDim ?? 0) * 100);
+    bgDimSlider.value = dimPercent;
+    if (bgDimValue) bgDimValue.textContent = `${dimPercent}%`;
+  }
+
+  if (tileOpacitySlider) {
+    const opacityPercent = Math.round((draft.tileOpacity ?? 1) * 100);
+    tileOpacitySlider.value = opacityPercent;
+    if (tileOpacityValue) tileOpacityValue.textContent = `${opacityPercent}%`;
+  }
+
+  if (barOpacitySlider) {
+    const barOpacityPercent = Math.round((draft.barOpacity ?? 1) * 100);
+    barOpacitySlider.value = barOpacityPercent;
+    if (barOpacityValue) barOpacityValue.textContent = `${barOpacityPercent}%`;
+  }
+
+  if (tileSizeSlider) {
+    const sizePercent = Math.round((draft.tileSize ?? 1) * 100);
+    tileSizeSlider.value = sizePercent;
+    if (tileSizeValue) tileSizeValue.textContent = `${sizePercent}%`;
+  }
+
+  if (groupTileSizeSlider) {
+    const groupSizePercent = Math.round((draft.groupTileSize ?? 1) * 100);
+    groupTileSizeSlider.value = groupSizePercent;
+    if (groupTileSizeValue) groupTileSizeValue.textContent = `${groupSizePercent}%`;
+  }
+
+  if (showDeletedToggle) {
+    showDeletedToggle.checked = !!draft.showDeleted;
+    showDeletedToggle.dispatchEvent(new Event("change"));
+    updateShowDeletedButtonAppearance();
+  }
+
+  if (groupCountToggle) {
+    groupCountToggle.checked = !!draft.showGroupBookmarkCount;
+  }
+  window.groupCountPreviewEnabled = null;
+
+  if (showSideSpacesToggle) {
+    showSideSpacesToggle.checked = !!draft.showSideSpaces;
+  }
+  if (highlightSideSpacesToggle) {
+    highlightSideSpacesToggle.checked = !!draft.highlightSideSpaces;
+  }
+  if (tallBookmarkTilesToggle) {
+    tallBookmarkTilesToggle.checked = !!draft.tallBookmarkTiles;
+  }
+  if (searchStyleSelect) {
+    searchStyleSelect.value = draft.searchStyle || "full";
+  }
+  window.renderWidgetOrderList?.(draft);
+
+  if (bgPreview) {
+    if (draft.backgroundImage) {
+      bgPreview.style.backgroundImage = `url('${draft.backgroundImage}')`;
+      bgPreview.style.display = 'block';
+    } else {
+      bgPreview.style.backgroundImage = '';
+      bgPreview.style.display = 'none';
+    }
+  }
+
+  if (bgImageInput) bgImageInput.value = "";
+  if (bgImageUrlInput) bgImageUrlInput.value = draft.backgroundImageUrl || "";
+  setBackgroundUrlStatusMessage("");
+}
+
 async function revertAppearancePreviewToSaved() {
   try {
     const config = await loadConfig();
@@ -359,60 +1601,16 @@ async function revertAppearancePreviewToSaved() {
     appearancePreviewUrlCss = "";
     appearancePreviewUrlTarget = "";
 
-    applyThemeDraftToControls(appearanceDraft);
-
-    if (bgSizeSelect) bgSizeSelect.value = appearanceDraft.backgroundSize;
-
-    if (tileOpacitySlider) {
-      const opacityPercent = Math.round((appearanceDraft.tileOpacity ?? 1) * 100);
-      tileOpacitySlider.value = opacityPercent;
-      if (tileOpacityValue) tileOpacityValue.textContent = `${opacityPercent}%`;
-    }
-
-    if (tileSizeSlider) {
-      const sizePercent = Math.round((appearanceDraft.tileSize ?? 1) * 100);
-      tileSizeSlider.value = sizePercent;
-      if (tileSizeValue) tileSizeValue.textContent = `${sizePercent}%`;
-    }
-
-    if (groupTileSizeSlider) {
-      const groupSizePercent = Math.round((appearanceDraft.groupTileSize ?? 1) * 100);
-      groupTileSizeSlider.value = groupSizePercent;
-      if (groupTileSizeValue) groupTileSizeValue.textContent = `${groupSizePercent}%`;
-    }
-
-    if (showDeletedToggle) {
-      showDeletedToggle.checked = !!appearanceDraft.showDeleted;
-      showDeletedToggle.dispatchEvent(new Event("change"));
-      updateShowDeletedButtonAppearance();
-    }
-
-    if (dateTimeToggle) {
-      dateTimeToggle.checked = !!appearanceDraft.showDateTime;
-    }
-
-    if (groupCountToggle) {
-      groupCountToggle.checked = !!appearanceDraft.showGroupBookmarkCount;
-    }
-    window.groupCountPreviewEnabled = null;
-
-    if (bgPreview) {
-      if (appearanceDraft.backgroundImage) {
-        bgPreview.style.backgroundImage = `url('${appearanceDraft.backgroundImage}')`;
-        bgPreview.style.display = 'block';
-      } else {
-        bgPreview.style.backgroundImage = '';
-        bgPreview.style.display = 'none';
-      }
-    }
-
-    if (bgImageInput) bgImageInput.value = "";
+    syncAppearanceControlsFromDraft(appearanceDraft);
 
     await applyThemeStyle(config);
     await applyBackground(config);
+    await applyBgDim(config);
     await applyTileOpacity(config);
+    await applyBarOpacity(config);
     await applyTileSize(config);
     await applyGroupTileSize(config);
+    await applySideSpaces(config);
     await revertDateTimePreviewToSaved();
     await render();
   } catch (err) {
@@ -536,6 +1734,17 @@ settingsBtn.addEventListener("click", async () => {
   if (bgSizeSelect) {
     bgSizeSelect.value = config.appearance?.backgroundSize || 'stretched';
   }
+  if (bgDimSlider) {
+    const dimPercent = Math.round((config.appearance?.bgDim ?? 0) * 100);
+    bgDimSlider.value = dimPercent;
+    if (bgDimValue) {
+      bgDimValue.textContent = `${dimPercent}%`;
+    }
+  }
+  if (bgImageUrlInput) {
+    bgImageUrlInput.value = config.appearance?.backgroundImageUrl || "";
+  }
+  setBackgroundUrlStatusMessage("");
   if (config.appearance?.backgroundImage && bgPreview) {
     bgPreview.style.backgroundImage = `url('${config.appearance.backgroundImage}')`;
     bgPreview.style.display = 'block';
@@ -549,6 +1758,15 @@ settingsBtn.addEventListener("click", async () => {
     tileOpacitySlider.value = opacityPercent;
     if (tileOpacityValue) {
       tileOpacityValue.textContent = `${opacityPercent}%`;
+    }
+  }
+
+  // Load header & footer opacity settings
+  if (barOpacitySlider) {
+    const barOpacityPercent = Math.round((config.appearance?.barOpacity ?? 1) * 100);
+    barOpacitySlider.value = barOpacityPercent;
+    if (barOpacityValue) {
+      barOpacityValue.textContent = `${barOpacityPercent}%`;
     }
   }
 
@@ -570,16 +1788,24 @@ settingsBtn.addEventListener("click", async () => {
     }
   }
 
-  // Load date & time display toggle state
-  if (dateTimeToggle) {
-    const isVisible = config.appearance?.showDateTime ?? true;
-    dateTimeToggle.checked = isVisible;
-  }
-
   // Load group bookmark count display toggle state
   if (groupCountToggle) {
     groupCountToggle.checked = config.appearance?.showGroupBookmarkCount ?? true;
   }
+
+  if (showSideSpacesToggle) {
+    showSideSpacesToggle.checked = config.appearance?.showSideSpaces ?? false;
+  }
+  if (highlightSideSpacesToggle) {
+    highlightSideSpacesToggle.checked = config.appearance?.highlightSideSpaces ?? false;
+  }
+  if (tallBookmarkTilesToggle) {
+    tallBookmarkTilesToggle.checked = config.appearance?.tallBookmarkTiles ?? false;
+  }
+  if (searchStyleSelect) {
+    searchStyleSelect.value = config.appearance?.searchStyle || "full";
+  }
+  window.renderWidgetOrderList?.(config.appearance || {});
 
   // Load advanced settings
   applyAdvancedSettingsToControls(config.advanced || {});
@@ -1089,9 +2315,44 @@ if (syncDownloadBtn) {
 }
 
 // ---------- Export ----------
+function serializeExportBookmarkItem(i) {
+  if (isStackItem(i)) {
+    return {
+      id: i.id,
+      type: "stack",
+      title: i.title || t("defaultStackName") || "Stack",
+      sectionId: i.sectionId || null,
+      tileColor: i.tileColor || null,
+      updatedAt: i.updatedAt,
+      deleted: i.deleted || false,
+      deletedAt: i.deletedAt || null,
+      children: (i.children || []).map(serializeExportBookmarkItem)
+    };
+  }
+
+  return {
+    id: i.id,
+    title: i.title,
+    url: i.url,
+    customIcon: i.customIcon || null,
+    notes: i.notes || null,
+    tags: Array.isArray(i.tags) ? [...i.tags] : [],
+    sectionId: i.sectionId || null,
+    tileColor: i.tileColor || null,
+    colorFromIcon: !!i.colorFromIcon,
+    customIconCache: i.customIconCache || null,
+    iconRefreshedAt: Number(i.iconRefreshedAt || 0),
+    updatedAt: i.updatedAt,
+    deleted: i.deleted || false,
+    deletedAt: i.deletedAt || null,
+    hasError: !!i.hasError
+  };
+}
+
 exportBtn.addEventListener("click", async () => {
   // Export a clean copy of state ensuring hasError flag and customization fields are present
   const exportData = {
+    tags: Array.isArray(state.tags) ? state.tags.map(tag => ({ ...tag })) : [],
     groups: state.groups.map(g => ({
       id: g.id,
       name: g.name,
@@ -1099,24 +2360,11 @@ exportBtn.addEventListener("click", async () => {
       customIcon: g.customIcon || null,
       tileColor: g.tileColor || null,
       colorFromIcon: !!g.colorFromIcon,
+      sections: Array.isArray(g.sections) ? g.sections.map(s => ({ ...s })) : [],
       updatedAt: g.updatedAt,
       deleted: g.deleted,
       deletedAt: g.deletedAt,
-      items: (g.items || []).map(i => ({
-        id: i.id,
-        title: i.title,
-        url: i.url,
-        customIcon: i.customIcon || null,
-        notes: i.notes || null,
-        tileColor: i.tileColor || null,
-        colorFromIcon: !!i.colorFromIcon,
-        customIconCache: i.customIconCache || null,
-        iconRefreshedAt: Number(i.iconRefreshedAt || 0),
-        updatedAt: i.updatedAt,
-        deleted: i.deleted || false,
-        deletedAt: i.deletedAt || null,
-        hasError: !!i.hasError
-      }))
+      items: (g.items || []).map(serializeExportBookmarkItem)
     }))
   };
 
@@ -1158,7 +2406,12 @@ importFile.addEventListener("change", async (e) => {
       config.browserBookmarksAutoSync = false;
       await saveConfig(config);
 
-      state.groups = imported.groups;
+      state.groups = imported.groups.map(g => ({
+        ...g,
+        sections: Array.isArray(g.sections) ? g.sections : [],
+        items: Array.isArray(g.items) ? g.items : []
+      }));
+      state.tags = Array.isArray(imported.tags) ? imported.tags : [];
       await saveState();
       alert(t('importedSuccessfully') + "\n\n" + t('syncDisabledAfterImport'));
       
@@ -1238,11 +2491,25 @@ function serializeNetscapeBookmarks(groups) {
     lines.push(`<DT><H3 ADD_DATE=\"${groupDate}\">${groupName}</H3>`);
     lines.push("<DL><p>");
 
-    for (const item of (group.items || []).filter(i => !i.deleted && i.url)) {
-      const title = escapeHtml(item.title || item.url);
-      const href = escapeHtml(item.url);
-      const itemDate = formatDate(item.updatedAt);
-      lines.push(`<DT><A HREF=\"${href}\" ADD_DATE=\"${itemDate}\">${title}</A>`);
+    for (const item of (group.items || []).filter(i => !i.deleted)) {
+      if (isStackItem(item)) {
+        const stackTitle = escapeHtml(item.title || "Stack");
+        const stackDate = formatDate(item.updatedAt);
+        lines.push(`<DT><H3 ADD_DATE=\"${stackDate}\">${stackTitle}</H3>`);
+        lines.push("<DL><p>");
+        for (const child of (item.children || []).filter(c => !c.deleted && c.url)) {
+          const title = escapeHtml(child.title || child.url);
+          const href = escapeHtml(child.url);
+          const itemDate = formatDate(child.updatedAt);
+          lines.push(`<DT><A HREF=\"${href}\" ADD_DATE=\"${itemDate}\">${title}</A>`);
+        }
+        lines.push("</DL><p>");
+      } else if (item.url) {
+        const title = escapeHtml(item.title || item.url);
+        const href = escapeHtml(item.url);
+        const itemDate = formatDate(item.updatedAt);
+        lines.push(`<DT><A HREF=\"${href}\" ADD_DATE=\"${itemDate}\">${title}</A>`);
+      }
     }
 
     lines.push("</DL><p>");
@@ -1485,17 +2752,11 @@ if (bgImageInput) {
     reader.onload = async (event) => {
       try {
         const base64Data = event.target.result;
-        if (!appearanceDraft) {
-          const config = await loadConfig();
-          appearanceDraft = {
-            backgroundImage: config.appearance?.backgroundImage ?? null,
-            backgroundSize: config.appearance?.backgroundSize || 'stretched',
-            tileOpacity: config.appearance?.tileOpacity ?? 1,
-            showDateTime: config.appearance?.showDateTime ?? true,
-            showDeleted: config.appearance?.showDeleted ?? false
-          };
-        }
-        appearanceDraft.backgroundImage = base64Data;
+        const draft = await ensureAppearanceDraft();
+        draft.backgroundImage = base64Data;
+        draft.backgroundImageUrl = "";
+        if (bgImageUrlInput) bgImageUrlInput.value = "";
+        setBackgroundUrlStatusMessage("");
         
         // Show preview
         if (bgPreview) {
@@ -1503,7 +2764,7 @@ if (bgImageInput) {
           bgPreview.style.display = 'block';
         }
 
-        const previewConfig = { appearance: { ...appearanceDraft } };
+        const previewConfig = { appearance: { ...draft } };
         await applyBackground(previewConfig);
         markSettingsDirty();
       } catch (error) {
@@ -1516,23 +2777,60 @@ if (bgImageInput) {
   });
 }
 
+async function applyBackgroundFromUrlInput() {
+  if (!bgImageUrlInput) return;
+  const rawUrl = bgImageUrlInput.value.trim();
+  if (!isAllowedThemeUrl(rawUrl)) {
+    setBackgroundUrlStatusMessage(t("invalidBackgroundUrl") || "Please enter a valid image URL.", true);
+    return;
+  }
+
+  try {
+    setBackgroundUrlStatusMessage("...");
+    const { url, dataUrl } = await fetchBackgroundImageFromUrl(rawUrl);
+    const draft = await ensureAppearanceDraft();
+    draft.backgroundImage = dataUrl;
+    draft.backgroundImageUrl = url;
+    bgImageUrlInput.value = url;
+    if (bgImageInput) bgImageInput.value = "";
+
+    if (bgPreview) {
+      bgPreview.style.backgroundImage = `url('${dataUrl}')`;
+      bgPreview.style.display = "block";
+    }
+
+    await applyBackground({ appearance: { ...draft } });
+    setBackgroundUrlStatusMessage("✅");
+    markSettingsDirty();
+  } catch (err) {
+    setBackgroundUrlStatusMessage(err?.message || t("invalidBackgroundUrl") || "Failed to load image URL.", true);
+  }
+}
+
+if (bgImageUrlApply) {
+  bgImageUrlApply.addEventListener("click", () => {
+    void applyBackgroundFromUrlInput();
+  });
+}
+
+if (bgImageUrlInput) {
+  bgImageUrlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void applyBackgroundFromUrlInput();
+    }
+  });
+}
+
 if (bgRemoveBtn) {
   bgRemoveBtn.addEventListener("click", async () => {
-    if (!confirm("Are you sure you want to remove the background image?")) {
+    if (!confirm(t("confirmRemoveBackgroundImage") || "Are you sure you want to remove the background image?")) {
       return;
     }
 
-    if (!appearanceDraft) {
-      const config = await loadConfig();
-      appearanceDraft = {
-        backgroundImage: config.appearance?.backgroundImage ?? null,
-        backgroundSize: config.appearance?.backgroundSize || 'stretched',
-        tileOpacity: config.appearance?.tileOpacity ?? 1,
-        showDateTime: config.appearance?.showDateTime ?? true,
-        showDeleted: config.appearance?.showDeleted ?? false
-      };
-    }
-    appearanceDraft.backgroundImage = null;
+    const draft = await ensureAppearanceDraft();
+    draft.backgroundImage = null;
+    draft.backgroundImageUrl = "";
 
     if (bgPreview) {
       bgPreview.style.backgroundImage = "";
@@ -1541,9 +2839,59 @@ if (bgRemoveBtn) {
     if (bgImageInput) {
       bgImageInput.value = "";
     }
+    if (bgImageUrlInput) {
+      bgImageUrlInput.value = "";
+    }
+    setBackgroundUrlStatusMessage("");
+
+    const previewConfig = { appearance: { ...draft } };
+    await applyBackground(previewConfig);
+    markSettingsDirty();
+  });
+}
+
+if (bgDimSlider) {
+  bgDimSlider.addEventListener("input", async (e) => {
+    const value = Number(e.target.value) || 0;
+    if (bgDimValue) {
+      bgDimValue.textContent = `${value}%`;
+    }
+    const dimValue = value / 100;
+    document.body.style.setProperty('--bg-dim', dimValue);
+
+    const draft = await ensureAppearanceDraft();
+    draft.bgDim = dimValue;
+    markSettingsDirty();
+  });
+}
+
+if (resetAppearanceBtn) {
+  resetAppearanceBtn.addEventListener("click", async () => {
+    if (!confirm(t("confirmResetAppearance") || "Reset all appearance settings to defaults?")) {
+      return;
+    }
+
+    appearanceDraft = createAppearanceDraftFromConfig({
+      appearance: { ...defaultConfig.appearance }
+    });
+    appearancePreviewUrlCss = "";
+    appearancePreviewUrlTarget = "";
+    setThemeStatusMessage("");
+
+    syncAppearanceControlsFromDraft(appearanceDraft);
 
     const previewConfig = { appearance: { ...appearanceDraft } };
+    await applyThemeStyle(previewConfig);
     await applyBackground(previewConfig);
+    await applyBgDim(previewConfig);
+    await applyTileOpacity(previewConfig);
+    await applyBarOpacity(previewConfig);
+    await applyTileSize(previewConfig);
+    await applyGroupTileSize(previewConfig);
+    await applySideSpaces(previewConfig);
+    updateDateTimeVisibility(true);
+    await render();
+    calculateGridLayout();
     markSettingsDirty();
   });
 }
@@ -1719,6 +3067,23 @@ if (tileOpacitySlider) {
 
     if (appearanceDraft) {
       appearanceDraft.tileOpacity = opacityValue;
+    }
+    markSettingsDirty();
+  });
+}
+
+// ---------- Header & Footer Opacity Settings ----------
+if (barOpacitySlider) {
+  barOpacitySlider.addEventListener("input", (e) => {
+    const value = e.target.value;
+    if (barOpacityValue) {
+      barOpacityValue.textContent = `${value}%`;
+    }
+    const opacityValue = value / 100;
+    document.body.style.setProperty('--bar-opacity', opacityValue);
+
+    if (appearanceDraft) {
+      appearanceDraft.barOpacity = opacityValue;
     }
     markSettingsDirty();
   });
@@ -1920,8 +3285,16 @@ async function persistSettings(closeAfterSave = false) {
   if (bgSizeSelect) {
     config.appearance.backgroundSize = bgSizeSelect.value || 'stretched';
   }
+  if (bgDimSlider) {
+    config.appearance.bgDim = (Number(bgDimSlider.value) || 0) / 100;
+    await applyBgDim(config);
+  }
   if (tileOpacitySlider) {
     config.appearance.tileOpacity = tileOpacitySlider.value / 100;
+  }
+  if (barOpacitySlider) {
+    config.appearance.barOpacity = barOpacitySlider.value / 100;
+    await applyBarOpacity(config);
   }
   if (tileSizeSlider) {
     config.appearance.tileSize = tileSizeSlider.value / 100;
@@ -1933,11 +3306,7 @@ async function persistSettings(closeAfterSave = false) {
   }
   if (appearanceDraft) {
     config.appearance.backgroundImage = appearanceDraft.backgroundImage ?? null;
-  }
-
-  // Save date & time display toggle state
-  if (dateTimeToggle) {
-    config.appearance.showDateTime = dateTimeToggle.checked;
+    config.appearance.backgroundImageUrl = appearanceDraft.backgroundImageUrl || "";
   }
 
   if (showDeletedToggle) {
@@ -1948,6 +3317,39 @@ async function persistSettings(closeAfterSave = false) {
     config.appearance.showGroupBookmarkCount = groupCountToggle.checked;
   }
   window.groupCountPreviewEnabled = null;
+
+  if (showSideSpacesToggle) {
+    config.appearance.showSideSpaces = showSideSpacesToggle.checked;
+  }
+  if (highlightSideSpacesToggle) {
+    config.appearance.highlightSideSpaces = highlightSideSpacesToggle.checked;
+  }
+  if (tallBookmarkTilesToggle) {
+    config.appearance.tallBookmarkTiles = tallBookmarkTilesToggle.checked;
+  }
+  if (appearanceDraft) {
+    config.appearance.dateTimeSpace = appearanceDraft.dateTimeSpace || "footer";
+    config.appearance.showDateTime = config.appearance.dateTimeSpace !== "disabled";
+    config.appearance.groupsSpace = appearanceDraft.groupsSpace || "header";
+    config.appearance.searchSpace = appearanceDraft.searchSpace || "header";
+  }
+  if (searchStyleSelect) {
+    config.appearance.searchStyle = searchStyleSelect.value || "full";
+  }
+  if (appearanceDraft?.customWidgets) {
+    config.appearance.customWidgets = appearanceDraft.customWidgets.map(w => ({ ...w }));
+  }
+  if (appearanceDraft?.widgetOrder) {
+    config.appearance.widgetOrder = normalizeWidgetOrder(appearanceDraft.widgetOrder, config.appearance.customWidgets);
+  }
+  if (appearanceDraft?.widgetAlign) {
+    config.appearance.widgetAlign = { ...appearanceDraft.widgetAlign };
+  }
+  if (appearanceDraft?.widgetNewRow) {
+    config.appearance.widgetNewRow = { ...appearanceDraft.widgetNewRow };
+  }
+  await applyTileSize(config);
+  await applySideSpaces(config);
 
   // Save advanced settings
   config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;
@@ -1973,8 +3375,8 @@ async function persistSettings(closeAfterSave = false) {
     render();
   } catch (e) {}
 
-  if (dateTimeToggle && typeof window.applySavedDateTimeEnabled === "function") {
-    window.applySavedDateTimeEnabled(dateTimeToggle.checked);
+  if (typeof window.applySavedDateTimeEnabled === "function") {
+    window.applySavedDateTimeEnabled(config.appearance.dateTimeSpace !== "disabled");
   } else if (typeof window.clearDateTimePreview === "function") {
     window.clearDateTimePreview();
   }

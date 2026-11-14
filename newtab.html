@@ -15,8 +15,15 @@
     <div id="groups-header">
     </div>
     <div id="manage">
-      <input id="search-box" type="text" placeholder="Search...">
+      <div id="search-widget" class="search-widget search-mode-full">
+        <button type="button" id="search-toggle-btn" class="icon-btn search-toggle-btn" title="searchPlaceholder" aria-label="searchPlaceholder">🔍</button>
+        <div class="search-input-wrap">
+          <input id="search-box" type="text" placeholder="Search...">
+          <button type="button" id="search-clear-btn" class="search-clear-btn hidden" title="clearSearch" aria-label="clearSearch">✕</button>
+        </div>
+      </div>
       <button id="theme-toggle" title="Switch theme">🌓</button>
+      <button id="lock-tiles-btn" class="icon-btn" type="button" title="lockTiles" aria-label="lockTiles">🔓</button>
       <button id="show-deleted-btn" class="icon-btn" title="Show deleted">👁️</button>
       <button id="manual-sync-btn" class="icon-btn hidden" title="Sync now">⬆️</button>
       <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
@@ -24,10 +31,22 @@
   </header>
   
   <!-- Main section -->
-  <main>
-    <div id="bookmarks-grid">
-      <!-- Bookmarks are rendered dynamically -->
+  <main id="workspace-main">
+    <aside id="left-space" class="workspace-side-space collapsed" aria-label="Left space"></aside>
+    <div id="center-space" class="workspace-center-space">
+      <div id="workspace-toolbar" class="workspace-toolbar">
+        <div id="center-space-widgets" class="center-space-widgets"></div>
+        <button id="add-section-btn" class="workspace-action-btn" type="button" title="addSection">
+          <span>+</span> <span data-i18n="addSection">Section</span>
+        </button>
+      </div>
+      <div id="sections-container" class="sections-container hidden"></div>
+      <div id="bookmarks-grid">
+        <!-- Bookmarks are rendered dynamically -->
+      </div>
+      <div id="center-space-bottom-widgets" class="center-space-widgets center-space-bottom-widgets"></div>
     </div>
+    <aside id="right-space" class="workspace-side-space collapsed" aria-label="Right space"></aside>
   </main>
   <!-- Date and Time display -->
   <div class="noselect time" id="date-time-display"></div>
@@ -38,15 +57,31 @@
       <span id="footer-sync-dot" class="footer-status-dot disabled"></span>
       <span id="footer-sync-text"></span>
     </div>
+    <div id="footer-widgets" class="footer-widgets"></div>
     <div id="footer-right" class="footer-right">
       <span id="footer-bookmarks-total" class="footer-bookmarks-total"></span>
     </div>
   </footer>
 
+  <!-- Floating Stack Popover -->
+  <div id="stack-popover" class="stack-popover-backdrop hidden">
+    <div id="stack-popover-card" class="stack-popover-card" role="dialog" aria-modal="true">
+      <div class="stack-popover-header">
+        <input type="text" id="stack-popover-title" class="stack-popover-title-input" maxlength="60">
+        <span id="stack-popover-count" class="stack-popover-count">0</span>
+        <button type="button" id="stack-popover-close" class="icon-btn stack-popover-close" title="close">✕</button>
+      </div>
+      <div id="stack-popover-grid" class="stack-popover-grid"></div>
+      <div class="stack-popover-hint" data-i18n="stackDragOutHint">Drag a bookmark outside to remove it from this stack</div>
+    </div>
+  </div>
+
   <!-- Context menu -->
   <div id="context-menu" class="hidden">
     <div data-action="open-new-tab">Open in new tab</div>
     <div data-action="edit">Edit</div>
+    <div data-action="remove-from-stack" class="hidden" data-i18n="removeFromStack">Remove from stack</div>
+    <div data-action="unstack" class="hidden" data-i18n="dissolveStack">Unstack items</div>
     <div data-action="delete">Delete</div>
     <div data-action="restore" class="hidden">Restore</div>
     <div data-action="delete-permanent" class="hidden">Delete permanently</div>
@@ -74,6 +109,16 @@
       <label for="bm-notes" data-i18n="bookmarkNotes">Notes (optional)</label>
       <textarea id="bm-notes" rows="4" maxlength="100"></textarea>
       <div id="bm-notes-counter" class="bookmark-notes-counter">0/100</div>
+
+      <label data-i18n="bookmarkTags">Tags (optional)</label>
+      <div class="bm-tags-editor">
+        <div id="bm-tags-list" class="bm-tags-list"></div>
+        <div class="bm-tags-create-row">
+          <input type="text" id="bm-new-tag-name" maxlength="24" placeholder="New tag..." data-i18n-placeholder="newTagPlaceholder">
+          <input type="color" id="bm-new-tag-color" value="#10b981" title="Tag color">
+          <button type="button" id="bm-add-tag-btn" class="secondary-btn" data-i18n="addTag">+ Tag</button>
+        </div>
+      </div>
 
       <label data-i18n="tileColor">Tile color (optional)</label>
       <div class="tile-color-controls">
@@ -144,6 +189,7 @@
         <button class="settings-tab-btn" data-tab="backups" data-i18n="backups">💾 Backups</button>
         <button class="settings-tab-btn" data-tab="export" data-i18n="exportImport">📤 Export/Import</button>
         <button class="settings-tab-btn" data-tab="appearance" data-i18n="appearance">🎨 Appearance</button>
+        <button class="settings-tab-btn" data-tab="widgets" data-i18n="customWidgetsTab">🧩 Custom Widgets</button>
         <button class="settings-tab-btn" data-tab="housekeeper" data-i18n="housekeeper">🏠 HouseKeeper</button>
         <button class="settings-tab-btn" data-tab="advanced" data-i18n="advancedFeatures">🧪 Advanced</button>
         <button class="settings-tab-btn" data-tab="info" data-i18n="info">ℹ️ Info</button>
@@ -382,6 +428,19 @@
               </div>
             </div>
           </div>
+
+          <div class="sync-section-card appearance-card">
+            <h3 data-i18n="customSearchWidgetsExportTitle">Custom Search Widgets</h3>
+            <p class="appearance-card-desc" data-i18n="customSearchWidgetsExportDesc">Export and import your custom search widget library as JSON to share or back up.</p>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="export-widgets-btn" class="icon-btn primary" data-i18n="export">📥 Export</button>
+                <button id="import-widgets-btn" class="icon-btn primary" data-i18n="import">📤 Import</button>
+              </div>
+              <div class="custom-widget-trust-warning" data-i18n="customSearchTrustedSourceWarning">⚠️ Only import or load custom widgets from sources you trust.</div>
+              <div id="widgets-export-status" class="status"></div>
+            </div>
+          </div>
         </div>
 
         <input type="file" id="import-file" accept=".json" style="display: none;">
@@ -392,6 +451,7 @@
       <div id="appearance-tab" class="settings-tab-content">
         <div class="appearance-grid">
 
+          <!-- Card 1: Language & Theme -->
           <div class="sync-section-card appearance-card">
             <h3 id="language-title" data-i18n="language">🅰️ Language</h3>
             <div class="language-selector appearance-slider-row">
@@ -428,27 +488,98 @@
             </div>
           </div>
 
+          <!-- Card 2: Background Picture -->
           <div class="sync-section-card appearance-card">
-            <h3 id="display-options-title" data-i18n="displayOptions">Display Options</h3>
-            <div class="appearance-display-list">
-              <label class="checkbox-row">
-                <input type="checkbox" id="show-deleted-toggle">
-                <span data-i18n="showDeletedBookmarks">👁️ Show deleted bookmarks</span>
-              </label>
-              <label class="checkbox-row">
-                <input type="checkbox" id="date-time-toggle">
-                <span data-i18n="showDateTime">🕜 Show date &amp; time</span>
-              </label>
-              <label class="checkbox-row">
-                <input type="checkbox" id="group-count-toggle">
-                <span data-i18n="showGroupBookmarkCount">🔢 Show bookmark count on groups</span>
-              </label>
+            <h3 id="background-title" data-i18n="backgroundSettings">🖼️ Background Picture</h3>
+            <div class="background-settings">
+              <div id="theme-backgrounds-link-row" class="appearance-theme-backgrounds-row">
+                <span class="theme-backgrounds-label" data-i18n="browseThemeBackgrounds">🖼️ Browse free backgrounds:</span>
+                <div class="theme-backgrounds-links">
+                  <a id="theme-backgrounds-link" class="theme-backgrounds-link" href="https://unsplash.com/s/photos/wallpaper?license=free" target="_blank" rel="noopener noreferrer">Unsplash ↗</a>
+                  <a id="theme-backgrounds-pixabay-link" class="theme-backgrounds-link" href="https://pixabay.com/photos/search/wallpaper" target="_blank" rel="noopener noreferrer">Pixabay ↗</a>
+                  <a id="theme-backgrounds-pexels-link" class="theme-backgrounds-link" href="https://www.pexels.com/search/?q=wallpaper&orientation=landscape" target="_blank" rel="noopener noreferrer">Pexels ↗</a>
+                </div>
+              </div>
+              <div class="appearance-slider-row">
+                <label for="bg-size-select" id="bg-size-label" class="sr-only" data-i18n="backgroundSize">Background size:</label>
+                <select id="bg-size-select" class="bg-size-select">
+                  <option value="stretched" data-i18n="bgStretch">Stretched (fill entire screen)</option>
+                  <option value="fill" data-i18n="bgFill">Fill (cover screen, may crop)</option>
+                  <option value="fit" data-i18n="bgFit">Fit (entire image visible, black bars)</option>
+                  <option value="tile" data-i18n="bgTile">Tile (repeat pattern)</option>
+                  <option value="center" data-i18n="bgCenter">Center (original size, border)</option>
+                  <option value="span" data-i18n="bgSpan">Span (across multiple monitors)</option>
+                </select>
+              </div>
+              <div class="appearance-slider-row">
+                <label for="bg-dim-slider" id="bg-dim-label" data-i18n="bgDim">Background dim:</label>
+                <div class="opacity-slider-container">
+                  <input type="range" id="bg-dim-slider" min="0" max="90" value="0">
+                  <span id="bg-dim-value" class="opacity-value">0%</span>
+                </div>
+              </div>
+              <div class="appearance-bg-actions-block">
+                <div class="appearance-bg-url-row">
+                  <input type="url" id="bg-image-url-input" class="sync-compact-input bg-url-input" placeholder="https://example.com/wallpaper.jpg">
+                  <button type="button" id="bg-image-url-apply" class="icon-btn primary" data-i18n="applyThemeUrl">Apply</button>
+                </div>
+                <div id="bg-image-url-status" class="status"></div>
+                <label for="bg-image-input" id="bg-upload-label" class="icon-btn bg-upload-btn" data-i18n="uploadBackgroundImage">Upload background image:</label>
+                <input type="file" id="bg-image-input" accept="image/*" class="bg-file-input">
+                <button id="bg-remove-btn" data-i18n="removeBackgroundImage" class="bg-remove-btn">Remove background</button>
+                <div id="bg-preview" class="bg-preview"></div>
+              </div>
             </div>
           </div>
 
+          <!-- Card 3: Layout -->
+          <div class="sync-section-card appearance-card">
+            <h3 id="display-options-title" data-i18n="layoutWidgetsSettings">📐 Layout</h3>
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="show-side-spaces-toggle">
+                <span data-i18n="showSideSpaces">📐 Show side widget spaces</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="highlight-side-spaces-toggle">
+                <span data-i18n="highlightSideSpaces">🔲 Highlight side widget spaces</span>
+              </label>
+              <div class="appearance-slider-row">
+                <label for="bar-opacity-slider" id="bar-opacity-label" data-i18n="barOpacity">Header &amp; footer transparency:</label>
+                <div class="opacity-slider-container">
+                  <input type="range" id="bar-opacity-slider" min="0" max="100" value="100">
+                  <span id="bar-opacity-value" class="opacity-value">100%</span>
+                </div>
+              </div>
+              <div class="appearance-slider-row">
+                <label for="search-style-select" data-i18n="searchFieldStyle">Search bar style:</label>
+                <select id="search-style-select" class="appearance-select">
+                  <option value="full" data-i18n="searchStyleFull">Always expanded</option>
+                  <option value="icon" data-i18n="searchStyleIcon">Expand on icon click</option>
+                  <option value="hover" data-i18n="searchStyleHover">Expand on icon hover</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Bookmark Tiles & Display -->
           <div class="sync-section-card appearance-card">
             <h3 id="tiles-title" data-i18n="tileSettings">🎯 Bookmark Tiles</h3>
             <div class="tile-settings">
+              <div class="appearance-display-list">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="show-deleted-toggle">
+                  <span data-i18n="showDeletedBookmarks">👁️ Show deleted bookmarks</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="group-count-toggle">
+                  <span data-i18n="showGroupBookmarkCount">🔢 Show bookmark count on groups</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="tall-bookmark-tiles-toggle">
+                  <span data-i18n="tallBookmarkTiles">↕️ Taller bookmark tiles (tags under name)</span>
+                </label>
+              </div>
               <div class="appearance-slider-row">
                 <label id="tile-opacity-label" data-i18n="tileOpacity">Tile transparency:</label>
                 <div class="opacity-slider-container">
@@ -481,29 +612,98 @@
             </div>
           </div>
 
-          <div class="sync-section-card appearance-card">
-            <h3 id="background-title" data-i18n="backgroundSettings">🖼️ Background Picture</h3>
-            <div class="background-settings">
-              <div class="appearance-slider-row">
-                <label for="bg-size-select" id="bg-size-label" class="sr-only" data-i18n="backgroundSize">Background size:</label>
-                <select id="bg-size-select" class="bg-size-select">
-                  <option value="stretched" data-i18n="bgStretch">Stretched (fill entire screen)</option>
-                  <option value="fill" data-i18n="bgFill">Fill (cover screen, may crop)</option>
-                  <option value="fit" data-i18n="bgFit">Fit (entire image visible, black bars)</option>
-                  <option value="tile" data-i18n="bgTile">Tile (repeat pattern)</option>
-                  <option value="center" data-i18n="bgCenter">Center (original size, border)</option>
-                  <option value="span" data-i18n="bgSpan">Span (across multiple monitors)</option>
+          <!-- Card 5: Widgets (Placement & Order) -->
+          <div class="sync-section-card appearance-card appearance-card-wide">
+            <h3 id="widgets-title" data-i18n="widgetsSectionTitle">🧩 Widgets</h3>
+            <div id="widget-order-list" class="widget-order-list"></div>
+          </div>
+
+        </div>
+        <div class="appearance-reset-bar">
+          <button type="button" id="reset-appearance-btn" class="icon-btn" data-i18n="resetAppearance">↺ Reset appearance to defaults</button>
+        </div>
+      </div>
+
+      <!-- Custom Widgets Tab -->
+      <div id="widgets-tab" class="settings-tab-content">
+        <div class="appearance-grid">
+          <div class="sync-section-card appearance-card appearance-card-wide">
+            <div class="custom-widget-add-block custom-widget-add-block-tab">
+              <div class="custom-widget-add-header">
+                <div class="custom-widget-add-title" data-i18n="customSearchAddTitle">Add Custom Search Widget</div>
+                <select id="custom-widget-mode" class="appearance-select custom-widget-mode-select" aria-label="Search type">
+                  <option value="simple" data-i18n="customSearchModeSimple">Simple string search</option>
+                  <option value="json" data-i18n="customSearchModeJson">JSON search</option>
                 </select>
               </div>
-              <div class="appearance-bg-actions-block">
-                <label for="bg-image-input" id="bg-upload-label" class="icon-btn bg-upload-btn" data-i18n="uploadBackgroundImage">Upload background image:</label>
-                <input type="file" id="bg-image-input" accept="image/*" class="bg-file-input">
-                <button id="bg-remove-btn" data-i18n="removeBackgroundImage" class="bg-remove-btn">Remove background</button>
-                <div id="bg-preview" class="bg-preview"></div>
+              <div class="custom-widget-add-row">
+                <input type="text" id="custom-widget-icon" class="sync-compact-input custom-widget-icon-input" value="🔎" maxlength="4" aria-label="Widget icon">
+                <div class="custom-widget-custom-icon-group">
+                  <input type="text" id="custom-widget-custom-icon" class="sync-compact-input custom-widget-custom-icon-input" data-i18n-placeholder="customSearchCustomIconPlaceholder" placeholder="Icon URL or upload (optional)" aria-label="Custom icon URL">
+                  <button type="button" id="custom-widget-icon-upload-btn" class="icon-btn custom-widget-icon-upload-btn" data-i18n-title="customSearchUploadIconTitle" title="Upload icon image">🖼️</button>
+                  <input type="file" id="custom-widget-icon-file" accept="image/*" style="display: none;">
+                </div>
+                <input type="text" id="custom-widget-name" class="sync-compact-input custom-widget-name-input" data-i18n-placeholder="customSearchNamePlaceholder" placeholder="Name (e.g. Google)">
+                <input type="url" id="custom-widget-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customSearchUrlPlaceholder" placeholder="https://www.google.com/search?q={query}">
+                <label class="checkbox-row custom-widget-newtab-label">
+                  <input type="checkbox" id="custom-widget-newtab">
+                  <span data-i18n="customSearchNewTab">New tab</span>
+                </label>
               </div>
+              <div id="custom-widget-json-row" class="custom-widget-json-row hidden">
+                <label for="custom-widget-json-template" class="custom-widget-sub-label" data-i18n="customSearchJsonTemplateLabel">JSON template:</label>
+                <textarea id="custom-widget-json-template" class="sync-compact-input custom-widget-json-textarea" rows="2" placeholder='{"q":"{query}","tab":"All"}'></textarea>
+              </div>
+              <div class="custom-widget-vars-section">
+                <div class="custom-widget-vars-header">
+                  <span class="custom-widget-sub-label" data-i18n="customSearchVariablesLabel">Variables:</span>
+                  <button type="button" id="custom-widget-add-var-btn" class="icon-btn" data-i18n="customSearchAddVarBtn">+ Add variable</button>
+                </div>
+                <div id="custom-widget-vars-list" class="custom-widget-vars-list"></div>
+              </div>
+              <div id="custom-widget-preview-box" class="custom-widget-preview-box hidden">
+                <div class="custom-widget-preview-header">
+                  <span class="custom-widget-sub-label" data-i18n="customSearchPreviewTitle">Test / Preview</span>
+                </div>
+                <div id="custom-widget-preview-inputs" class="custom-widget-preview-inputs"></div>
+                <div class="custom-widget-preview-output">
+                  <div class="custom-widget-preview-row">
+                    <span class="custom-widget-sub-label" data-i18n="customSearchPreviewUrlLabel">Generated URL:</span>
+                    <code id="custom-widget-preview-url" class="custom-widget-preview-code"></code>
+                  </div>
+                  <div id="custom-widget-preview-json-row" class="custom-widget-preview-row hidden">
+                    <span class="custom-widget-sub-label" data-i18n="customSearchPreviewJsonLabel">JSON payload:</span>
+                    <pre id="custom-widget-preview-json" class="custom-widget-preview-pre"></pre>
+                  </div>
+                </div>
+              </div>
+              <div class="custom-widget-submit-row">
+                <button type="button" id="custom-widget-add-btn" class="icon-btn primary" data-i18n="customSearchAddBtn">+ Add</button>
+                <button type="button" id="custom-widget-cancel-edit-btn" class="icon-btn hidden" data-i18n="cancel">Cancel</button>
+                <button type="button" id="custom-widget-preview-toggle-btn" class="icon-btn" data-i18n="customSearchPreviewBtn">🧪 Test / Preview</button>
+                <div class="custom-widget-library-actions">
+                  <button type="button" id="custom-widget-export-btn" class="icon-btn" data-i18n="export">📥 Export</button>
+                  <button type="button" id="custom-widget-import-btn" class="icon-btn" data-i18n="import">📤 Import</button>
+                </div>
+                <input type="file" id="custom-widget-import-file" accept=".json" style="display: none;">
+              </div>
+              <div class="custom-widget-url-import-row">
+                <input type="url" id="custom-widget-source-url" class="sync-compact-input custom-widget-source-url-input" data-i18n-placeholder="customSearchSourceUrlPlaceholder" placeholder="https://example.com/custom-widgets.json" aria-label="Widget JSON URL">
+                <button type="button" id="custom-widget-load-url-btn" class="icon-btn" data-i18n="customSearchLoadUrlBtn">🌐 Load from URL</button>
+              </div>
+              <div class="custom-widget-trust-warning" data-i18n="customSearchTrustedSourceWarning">⚠️ Only import or load custom widgets from sources you trust.</div>
+              <div id="custom-widget-status" class="status"></div>
             </div>
           </div>
 
+          <div class="sync-section-card appearance-card appearance-card-wide">
+            <div class="custom-widgets-library-header">
+              <h3 data-i18n="customWidgetsLibraryTitle">Saved Custom Widgets</h3>
+              <button type="button" id="custom-widget-update-all-btn" class="icon-btn hidden" data-i18n="customSearchUpdateAllBtn">🔄 Update from URL</button>
+            </div>
+            <div id="custom-widgets-library-status" class="status"></div>
+            <div id="custom-widgets-list" class="widget-order-list"></div>
+          </div>
         </div>
       </div>
 
@@ -685,6 +885,23 @@
         <button id="settings-save" class="icon-btn primary" data-i18n="save">💾 Save</button>
         <span id="settings-unsaved-indicator" class="settings-unsaved-indicator hidden" data-i18n="syncUnsavedChanges">Unsaved changes</span>
         <button id="settings-cancel" class="icon-btn danger" data-i18n="cancel">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Widget Trusted Source Confirmation Modal -->
+  <div id="custom-widget-trust-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="custom-widget-trust-title">
+    <div class="modal-content custom-widget-trust-modal-content">
+      <h2 id="custom-widget-trust-title" data-i18n="customSearchTrustModalTitle">⚠️ Untrusted Source Warning</h2>
+      <p class="custom-widget-trust-modal-body" data-i18n="customSearchTrustModalBody">Only import or load custom search widgets from sources you trust. Untrusted widgets could direct your searches to unexpected websites.</p>
+      <div id="custom-widget-trust-source" class="custom-widget-trust-source"></div>
+      <label class="checkbox-row custom-widget-trust-checkbox-row">
+        <input type="checkbox" id="custom-widget-trust-checkbox">
+        <span data-i18n="customSearchTrustModalCheckbox">I trust this source and want to continue</span>
+      </label>
+      <div class="modal-buttons">
+        <button type="button" id="custom-widget-trust-confirm" class="icon-btn primary" data-i18n="customSearchTrustModalContinue" disabled>Continue</button>
+        <button type="button" id="custom-widget-trust-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>

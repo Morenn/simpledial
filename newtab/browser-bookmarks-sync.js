@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { state, isStackItem } from "./state.js";
 import { loadConfig } from "./config.js";
 import { findOrCreateSimpleDialFolder, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } from "./bookmarks-api.js";
 import { formatGroupFolderTitle } from "./color-utils.js";
@@ -22,13 +22,29 @@ export async function syncBrowserBookmarks({ force = false } = {}) {
       parentId: folder.id,
       title: formatGroupFolderTitle(group)
     });
-    const itemsToExport = (group.items || []).filter(item => !item.deleted && item.url);
+    const itemsToExport = (group.items || []).filter(item => !item.deleted);
     for (const item of itemsToExport) {
-      await createBookmarkNode({
-        parentId: groupFolder.id,
-        title: item.title || item.url,
-        url: item.url
-      });
+      if (isStackItem(item)) {
+        const activeChildren = (item.children || []).filter(child => !child.deleted && child.url);
+        if (activeChildren.length === 0) continue;
+        const stackFolder = await createBookmarkNode({
+          parentId: groupFolder.id,
+          title: item.title || "Stack"
+        });
+        for (const child of activeChildren) {
+          await createBookmarkNode({
+            parentId: stackFolder.id,
+            title: child.title || child.url,
+            url: child.url
+          });
+        }
+      } else if (item.url) {
+        await createBookmarkNode({
+          parentId: groupFolder.id,
+          title: item.title || item.url,
+          url: item.url
+        });
+      }
     }
   }
 

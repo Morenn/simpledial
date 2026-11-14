@@ -1,8 +1,9 @@
-import { state } from "./state.js";
+import { state, saveState, isStackItem, getAllGroupBookmarks } from "./state.js";
 import { renderGroups } from "./groups.js";
-import { createBookmarkTile, openBookmarkModal } from "./bookmarks.js";
+import { createBookmarkTile, createStackTile, openBookmarkModal, refreshOpenStackPopover, closeStackPopover } from "./bookmarks.js";
 import { setupBookmarkDrag } from "./dragdrop.js";
 import { loadConfig } from "./config.js";
+import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
 
 // ======================================================
@@ -29,10 +30,17 @@ export function calculateGridLayout() {
   if (!main) return;
 
   const grid = document.getElementById("bookmarks-grid");
+  const sectionsContainer = document.getElementById("sections-container");
+  const centerBottomWidgets = document.getElementById("center-space-bottom-widgets");
+  const sectionsHeight = (sectionsContainer && !sectionsContainer.classList.contains("hidden"))
+    ? sectionsContainer.offsetHeight
+    : 0;
+  const bottomWidgetsHeight = centerBottomWidgets ? centerBottomWidgets.offsetHeight : 0;
   const availableWidth = grid.clientWidth || main.clientWidth - 48; // Account for padding
-  const availableHeight = main.clientHeight - 40; // Subtract some padding
+  const availableHeight = Math.max(220, main.clientHeight - sectionsHeight - bottomWidgetsHeight - 80); // Subtract padding & sections height
   const scale = getEffectiveTileScale();
-  const tileHeight = Math.round(40 * scale) + 3;
+  const baseTileHeight = document.body?.classList?.contains("tall-bookmark-tiles") ? 60 : 40;
+  const tileHeight = Math.round(baseTileHeight * scale) + 3;
   const columnWidth = Math.round(COLUMN_WIDTH * scale);
   const columnGap = Math.round(16 * scale);
 
@@ -135,7 +143,7 @@ export async function updateFooter(providedConfig = null) {
   if (footerBookmarksTotal) {
     const totalBookmarks = (state.groups || [])
       .filter(g => !g.deleted)
-      .reduce((sum, g) => sum + (g.items || []).filter(i => !i.deleted && i.url).length, 0);
+      .reduce((sum, g) => sum + getAllGroupBookmarks(g, { includeDeleted: false }).filter(i => i.url).length, 0);
 
     footerBookmarksTotal.textContent = t("footerTotalBookmarks").replace("{0}", String(totalBookmarks));
   }
@@ -155,104 +163,268 @@ export async function render() {
 }
 
 // ======================================================
+// SECTION RENDERING HELPER
+// ======================================================
+function renderTileForEntry(item, config) {
+  const tile = isStackItem(item)
+    ? createStackTile(item, config)
+    : createBookmarkTile(item, config);
+  if (item.deleted) tile.classList.add("deleted");
+  return tile;
+}
+
+function buildSectionCard(group, section, sectionItems, config) {
+  const sectionEl = document.createElement("section");
+  sectionEl.className = "bookmark-section";
+  sectionEl.dataset.sectionId = section.id;
+
+  const header = document.createElement("div");
+  header.className = "section-header";
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "section-title-wrap";
+
+  const titleEl = document.createElement("h3");
+  titleEl.className = "section-title";
+  titleEl.textContent = section.name || t("defaultSectionName") || "Section";
+
+  const countBadge = document.createElement("span");
+  countBadge.className = "section-count";
+  countBadge.textContent = (t("itemsCount") || "{0} items").replace("{0}", String(sectionItems.length));
+
+  const renameSectionHandler = async () => {
+    const entered = prompt(t("renameSection") || "Rename section", section.name || "");
+    if (entered === null) return;
+    const trimmed = entered.trim();
+    if (!trimmed) return;
+    const now = Date.now();
+    section.name = trimmed;
+    section.updatedAt = now;
+    group.updatedAt = now;
+    await saveState();
+    await syncWrite();
+    render();
+  };
+
+  titleEl.addEventListener("dblclick", renameSectionHandler);
+
+  titleWrap.appendChild(titleEl);
+  titleWrap.appendChild(countBadge);
+
+  const actions = document.createElement("div");
+  actions.className = "section-actions";
+
+  const addBmBtn = document.createElement("button");
+  addBmBtn.type = "button";
+  addBmBtn.className = "section-action-btn section-add-bm-btn";
+  addBmBtn.textContent = "+";
+  addBmBtn.title = t("newBookmark") || "New bookmark";
+  addBmBtn.addEventListener("click", () => {
+    openBookmarkModal(null, { sectionId: section.id });
+  });
+
+  const renameBtn = document.createElement("button");
+  renameBtn.type = "button";
+  renameBtn.className = "section-action-btn section-rename-btn";
+  renameBtn.textContent = "✎";
+  renameBtn.title = t("renameSection") || "Rename section";
+  renameBtn.addEventListener("click", renameSectionHandler);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "section-action-btn section-delete-btn";
+  deleteBtn.textContent = "×";
+  deleteBtn.title = t("deleteSection") || "Delete section";
+  deleteBtn.addEventListener("click", async () => {
+    const confirmMsg = (t("deleteSectionConfirm") || "Delete section \"{0}\"?").replace("{0}", section.name || "");
+    if (!confirm(confirmMsg)) return;
+
+    const now = Date.now();
+    section.deleted = true;
+    section.deletedAt = now;
+    section.updatedAt = now;
+
+    for (const item of (group.items || [])) {
+      if (item && item.sectionId === section.id) {
+        item.sectionId = null;
+        item.updatedAt = now;
+      }
+    }
+    group.updatedAt = now;
+
+    await saveState();
+    await syncWrite();
+    render();
+  });
+
+  actions.appendChild(addBmBtn);
+  actions.appendChild(renameBtn);
+  actions.appendChild(deleteBtn);
+
+  header.appendChild(titleWrap);
+  header.appendChild(actions);
+
+  const sectionGrid = document.createElement("div");
+  sectionGrid.className = "section-grid";
+  sectionGrid.dataset.sectionId = section.id;
+
+  sectionItems.forEach(item => {
+    sectionGrid.appendChild(renderTileForEntry(item, config));
+  });
+
+  sectionEl.appendChild(header);
+  sectionEl.appendChild(sectionGrid);
+  return sectionEl;
+}
+
+// ======================================================
 // RENDER BOOKMARKS
 // ======================================================
 async function renderBookmarks(providedConfig = null) {
   const config = providedConfig || await loadConfig();
   await updateFooter(config);
   const grid = document.getElementById("bookmarks-grid");
+  const sectionsContainer = document.getElementById("sections-container");
+  const workspaceToolbar = document.getElementById("workspace-toolbar");
+  const addSectionBtn = document.getElementById("add-section-btn");
+  const centerSpaceWidgets = document.getElementById("center-space-widgets");
   grid.innerHTML = "";
+  if (sectionsContainer) sectionsContainer.innerHTML = "";
 
-  const showDeleted = document.getElementById("show-deleted-toggle").checked;
+  const hasCenterWidgets = !!(
+    centerSpaceWidgets &&
+    Array.from(centerSpaceWidgets.children).some(el => !el.classList.contains("side-space-placeholder") && el.style.display !== "none")
+  );
+  const showDeleted = !!document.getElementById("show-deleted-toggle")?.checked;
   const searchText = document.getElementById("search-box")?.value.trim().toLowerCase() || "";
 
-  let items = [];
-
   // ============================================
-  // 1) Global search across all groups if there's search text
+  // 1) Global search across all groups (including stack children & tags)
   // ============================================
   if (searchText) {
-    // Collect all items from all groups
-    state.groups.forEach(group => {
-      group.items.forEach(item => {
-        items.push({
-          ...item,
-          _groupName: group.name   // to display group name in search results
-        });
+    closeStackPopover();
+    if (sectionsContainer) sectionsContainer.classList.add("hidden");
+    if (addSectionBtn) addSectionBtn.classList.add("hidden");
+    if (workspaceToolbar) workspaceToolbar.classList.toggle("hidden", !hasCenterWidgets);
+
+    const activeTagById = new Map();
+    for (const tag of (state.tags || [])) {
+      if (tag && !tag.deleted && tag.id) {
+        activeTagById.set(tag.id, (tag.name || "").toLowerCase());
+      }
+    }
+
+    const searchEntries = [];
+    (state.groups || []).forEach(group => {
+      if (!group) return;
+      (group.items || []).forEach(item => {
+        if (!item) return;
+        if (isStackItem(item)) {
+          (item.children || []).forEach(child => {
+            if (!child) return;
+            searchEntries.push({
+              ...child,
+              deleted: !!(item.deleted || child.deleted),
+              _groupName: group.name || "",
+              _stackTitle: item.title || ""
+            });
+          });
+        } else {
+          searchEntries.push({
+            ...item,
+            _groupName: group.name || "",
+            _stackTitle: ""
+          });
+        }
       });
     });
 
-    // Filter based on search text and deleted status
-    items = items.filter(i => {
+    const filtered = searchEntries.filter(i => {
       if (i.deleted && !showDeleted) return false;
 
-      const title = i.title.toLowerCase();
-      const url = i.url.toLowerCase();
-      const groupName = i._groupName.toLowerCase();
+      const title = (i.title || "").toLowerCase();
+      const url = (i.url || "").toLowerCase();
+      const groupName = (i._groupName || "").toLowerCase();
+      const stackTitle = (i._stackTitle || "").toLowerCase();
+      const tagMatches = Array.isArray(i.tags)
+        && i.tags.some(tid => (activeTagById.get(tid) || "").includes(searchText));
 
       return (
         title.includes(searchText) ||
         url.includes(searchText) ||
-        groupName.includes(searchText)
+        groupName.includes(searchText) ||
+        (stackTitle && stackTitle.includes(searchText)) ||
+        tagMatches
       );
     });
 
-  } else {
-    // ============================================
-    // 2) Display items from active group if no search text
-    // ============================================
-    const group = state.groups.find(g => g.id === window.activeGroupId);
-
-    if (!group) {
-      const emptyInfo = document.createElement("div");
-      emptyInfo.className = "empty-info";
-      emptyInfo.textContent = t("noActiveGroup");
-      grid.appendChild(emptyInfo);
-      return;
-    }
-
-    items = group.items.filter(i => {
-      if (i.deleted && !showDeleted) return false;
-      return true;
+    filtered.forEach(item => {
+      const tile = createBookmarkTile(item, config);
+      if (item.deleted) tile.classList.add("deleted");
+      tile.classList.add("search-result");
+      tile.setAttribute("data-group", item._stackTitle ? `${item._groupName} / ${item._stackTitle}` : item._groupName);
+      grid.appendChild(tile);
     });
+    return;
   }
 
   // ============================================
-  // Render results (either search results or active group items)
+  // 2) Normal workspace view for active group
   // ============================================
+  const group = state.groups.find(g => g.id === window.activeGroupId);
 
-  items.forEach(item => {
-    const tile = createBookmarkTile(item, config);
-    if (item.deleted) tile.classList.add("deleted");
+  if (!group) {
+    if (sectionsContainer) sectionsContainer.classList.add("hidden");
+    if (addSectionBtn) addSectionBtn.classList.add("hidden");
+    if (workspaceToolbar) workspaceToolbar.classList.toggle("hidden", !hasCenterWidgets);
+    const emptyInfo = document.createElement("div");
+    emptyInfo.className = "empty-info";
+    emptyInfo.textContent = t("noActiveGroup");
+    grid.appendChild(emptyInfo);
+    return;
+  }
 
-    // Display group name in search results
-    if (searchText) {
-      tile.classList.add("search-result");
-      tile.setAttribute("data-group", item._groupName);
-    }
+  if (addSectionBtn) addSectionBtn.classList.remove("hidden");
+  if (workspaceToolbar) workspaceToolbar.classList.remove("hidden");
 
-    grid.appendChild(tile);
+  const activeSections = (Array.isArray(group.sections) ? group.sections : []).filter(s => s && !s.deleted);
+  const activeSectionIds = new Set(activeSections.map(s => s.id));
+  const visibleItems = (group.items || []).filter(i => {
+    if (!i) return false;
+    if (i.deleted && !showDeleted) return false;
+    return true;
   });
 
-  // Button to add new bookmark (only if not searching, to avoid confusion)
-  if (!searchText) {
-    const addTile = document.createElement("div");
-    addTile.className = "bookmark-tile add-bookmark";
-    addTile.textContent = "+";
-    addTile.title = "Pridať záložku";
-
-    addTile.addEventListener("click", () => {
-      openBookmarkModal(null);
-    });
-
-    grid.appendChild(addTile);
+  if (sectionsContainer) {
+    if (activeSections.length > 0) {
+      sectionsContainer.classList.remove("hidden");
+      activeSections.forEach(section => {
+        const sectionItems = visibleItems.filter(i => i.sectionId === section.id);
+        sectionsContainer.appendChild(buildSectionCard(group, section, sectionItems, config));
+      });
+    } else {
+      sectionsContainer.classList.add("hidden");
+    }
   }
 
-  // Allow drag-and-drop only when not searching, to avoid confusion
-  if (!searchText) {
-    setupBookmarkDrag();
-  }
+  const unsectionedItems = visibleItems.filter(i => !i.sectionId || !activeSectionIds.has(i.sectionId));
+  unsectionedItems.forEach(item => {
+    grid.appendChild(renderTileForEntry(item, config));
+  });
 
+  const addTile = document.createElement("div");
+  addTile.className = "bookmark-tile add-bookmark";
+  addTile.textContent = "+";
+  addTile.title = t("newBookmark") || "New bookmark";
+
+  addTile.addEventListener("click", () => {
+    openBookmarkModal(null, { sectionId: null });
+  });
+
+  grid.appendChild(addTile);
+
+  await refreshOpenStackPopover(config);
+  setupBookmarkDrag();
 }
 
 // ======================================================
@@ -264,26 +436,108 @@ document.getElementById("show-deleted-toggle").addEventListener("change", () => 
 });
 
 // ======================================================
-// REACTION TO MANUAL SYNC BUTTON
+// SEARCH INPUT, EXPAND TOGGLE, CLEAR BUTTON & ESCAPE
 // ======================================================
 
+function updateSearchClearButton() {
+  const search = document.getElementById("search-box");
+  const clearBtn = document.getElementById("search-clear-btn");
+  if (!search || !clearBtn) return;
+  clearBtn.classList.toggle("hidden", search.value.length === 0);
+}
+
 const searchInput = document.getElementById("search-box");
+const searchWidget = document.getElementById("search-widget");
+const searchToggleBtn = document.getElementById("search-toggle-btn");
+const searchClearBtn = document.getElementById("search-clear-btn");
+
 if (searchInput) {
+  updateSearchClearButton();
   searchInput.addEventListener("input", () => {
+    updateSearchClearButton();
     render();
   });
 }
 
+if (searchClearBtn && searchInput) {
+  searchClearBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    updateSearchClearButton();
+    render();
+    searchInput.focus();
+  });
+}
+
+if (searchToggleBtn && searchWidget && searchInput) {
+  searchToggleBtn.addEventListener("click", () => {
+    if (!searchWidget.classList.contains("expanded")) {
+      searchWidget.classList.add("expanded");
+      searchInput.focus();
+    } else if (searchInput.value.trim() === "") {
+      searchWidget.classList.remove("expanded");
+    } else {
+      searchInput.focus();
+    }
+  });
+
+  let searchHoverCollapseTimer = null;
+
+  searchWidget.addEventListener("mouseenter", () => {
+    if (!searchWidget.classList.contains("search-mode-hover")) return;
+    if (searchHoverCollapseTimer) {
+      clearTimeout(searchHoverCollapseTimer);
+      searchHoverCollapseTimer = null;
+    }
+    searchWidget.classList.add("expanded");
+    searchInput.focus();
+  });
+
+  searchWidget.addEventListener("mouseleave", () => {
+    if (!searchWidget.classList.contains("search-mode-hover")) return;
+    if (searchHoverCollapseTimer) {
+      clearTimeout(searchHoverCollapseTimer);
+    }
+    searchHoverCollapseTimer = setTimeout(() => {
+      searchHoverCollapseTimer = null;
+      if (searchWidget.classList.contains("search-mode-hover") && searchInput.value.trim() === "") {
+        searchWidget.classList.remove("expanded");
+        if (document.activeElement === searchInput) {
+          searchInput.blur();
+        }
+      }
+    }, 160);
+  });
+}
+
+document.addEventListener("click", e => {
+  if (!searchWidget || !searchInput) return;
+  if (!searchWidget.classList.contains("search-mode-icon") || !searchWidget.classList.contains("expanded")) {
+    return;
+  }
+  if (!searchWidget.contains(e.target) && searchInput.value.trim() === "") {
+    searchWidget.classList.remove("expanded");
+  }
+});
+
 // ======================================================
-// DELETE SEARCH TEXT ON ESCAPE KEY
+// DELETE SEARCH TEXT & COLLAPSE SEARCH ON ESCAPE KEY
 // ======================================================
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     const search = document.getElementById("search-box");
+    const widget = document.getElementById("search-widget");
     if (search && search.value.trim() !== "") {
       search.value = "";
+      updateSearchClearButton();
       render();
+    } else if (search && search.value !== "") {
+      search.value = "";
+      updateSearchClearButton();
+    }
+    if (widget && widget.classList.contains("search-mode-icon") && widget.classList.contains("expanded")) {
+      widget.classList.remove("expanded");
+      search?.blur();
     }
   }
 });

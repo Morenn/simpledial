@@ -1,358 +1,660 @@
-import { state, saveState } from "./state.js";
+import {
+  state,
+  saveState,
+  generateId,
+  isStackItem,
+  findBookmarkLocation,
+  cleanupStackIfNeeded
+} from "./state.js";
 import { render } from "./render.js";
 import { syncWrite } from "./sync.js";
+import { moveBookmarkToGroup } from "./bookmarks.js";
+import { t } from "./i18n.js";
 
 // ======================================================
-// DRAG & DROP PRE BOOKMARKY
+// UNIFIED DRAG & DROP FOR BOOKMARKS, SECTIONS & STACKS
 // ======================================================
 
-export function setupBookmarkDrag() {
-  const bookmarksGrid = document.getElementById("bookmarks-grid");
-  let dragged = null;
-  let lastDragOverTime = 0;
-  let dropIndicator = null;
-  let dragPlaceholder = null;
-  let autoScrollInterval = null;
-  let lastTargetIndex = -1;
+const EMPTY_DRAG_IMAGE = new Image();
+let dragListenersInitialized = false;
+let dragSession = null;
+let autoScrollInterval = null;
+let lastAutoScrollClientY = 0;
 
-  // Create drop indicator element
-  function createDropIndicator() {
-    if (dropIndicator) return;
-    dropIndicator = document.createElement("div");
-    dropIndicator.className = "drop-indicator";
-    dropIndicator.style.display = "none";
-    bookmarksGrid.appendChild(dropIndicator);
-  }
+function toElement(node) {
+  if (!node) return null;
+  return node instanceof Element ? node : node.parentElement;
+}
 
-  // Create drag placeholder (ghost element)
-  function createDragPlaceholder(element) {
-    dragPlaceholder = element.cloneNode(true);
-    dragPlaceholder.classList.add("drag-placeholder");
-    dragPlaceholder.classList.remove("dragging");
-    dragPlaceholder.style.pointerEvents = "none";
-    dragPlaceholder.style.opacity = "0.4";
-  }
+function getWorkspaceScrollContainer() {
+  return document.getElementById("center-space") || document.getElementById("workspace-main") || document.querySelector("main");
+}
 
-  // Remove drag placeholder
-  function removeDragPlaceholder() {
-    if (dragPlaceholder && dragPlaceholder.parentNode) {
-      dragPlaceholder.remove();
-      dragPlaceholder = null;
+function startAutoScroll(clientY) {
+  lastAutoScrollClientY = clientY;
+  if (autoScrollInterval) return;
+
+  const main = getWorkspaceScrollContainer();
+  if (!main) return;
+
+  const SCROLL_THRESHOLD = 80;
+  const SCROLL_SPEED = 6;
+
+  autoScrollInterval = setInterval(() => {
+    const mainRect = main.getBoundingClientRect();
+    const distanceFromBottom = mainRect.bottom - lastAutoScrollClientY;
+    const distanceFromTop = lastAutoScrollClientY - mainRect.top;
+
+    if (distanceFromBottom < SCROLL_THRESHOLD && main.scrollHeight > main.clientHeight) {
+      main.scrollBy(0, SCROLL_SPEED);
+    } else if (distanceFromTop < SCROLL_THRESHOLD && main.scrollTop > 0) {
+      main.scrollBy(0, -SCROLL_SPEED);
     }
+  }, 16);
+}
+
+function stopAutoScroll() {
+  if (autoScrollInterval) {
+    clearInterval(autoScrollInterval);
+    autoScrollInterval = null;
   }
+}
 
-  // Auto-scroll function
-  function startAutoScroll(e) {
-    stopAutoScroll();
-    
-    const main = document.querySelector("main");
-    if (!main) return;
+function createDragPlaceholder(tile) {
+  const placeholder = tile.cloneNode(true);
+  placeholder.classList.add("drag-placeholder");
+  placeholder.classList.remove("dragging");
+  placeholder.draggable = false;
+  placeholder.removeAttribute("data-bookmark-id");
+  placeholder.style.pointerEvents = "none";
+  return placeholder;
+}
 
-    const SCROLL_THRESHOLD = 80; // pixels from edge
-    const SCROLL_SPEED = 5; // pixels per frame
-
-    autoScrollInterval = setInterval(() => {
-      const mainRect = main.getBoundingClientRect();
-      const distanceFromBottom = mainRect.bottom - e.clientY;
-      const distanceFromTop = e.clientY - mainRect.top;
-
-      if (distanceFromBottom < SCROLL_THRESHOLD && main.scrollHeight > main.clientHeight) {
-        main.scrollBy(0, SCROLL_SPEED);
-      } else if (distanceFromTop < SCROLL_THRESHOLD && main.scrollTop > 0) {
-        main.scrollBy(0, -SCROLL_SPEED);
-      }
-    }, 16); // ~60fps
-  }
-
-  function stopAutoScroll() {
-    if (autoScrollInterval) {
-      clearInterval(autoScrollInterval);
-      autoScrollInterval = null;
-    }
-  }
-
-  // Update drop indicator position
-  function updateDropIndicator(targetIndex) {
-    if (!dropIndicator || targetIndex === -1) {
-      dropIndicator.style.display = "none";
-      return;
-    }
-
-    const allTiles = [...bookmarksGrid.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark)")];
-    if (targetIndex >= allTiles.length) {
-      dropIndicator.style.display = "none";
-      return;
-    }
-
-    const targetElement = allTiles[targetIndex];
-    const gridRect = bookmarksGrid.getBoundingClientRect();
-    const rect = targetElement.getBoundingClientRect();
-
-    // Show indicator before the target element
-    dropIndicator.style.left = (rect.left - gridRect.left - 2) + "px";
-    dropIndicator.style.top = (rect.top - gridRect.top - 4) + "px";
-    dropIndicator.style.width = "3px";
-    dropIndicator.style.height = rect.height + 8 + "px";
-    dropIndicator.style.display = "block";
-  }
-
-  // Hide drop indicator
-  function hideDropIndicator() {
-    if (dropIndicator) {
-      dropIndicator.style.display = "none";
-    }
-  }
-
-  // Move placeholder to target position
-  function movePlaceholder(targetIndex) {
-    if (!dragPlaceholder) return;
-
-    const allTiles = [...bookmarksGrid.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark)")];
-    const addTile = bookmarksGrid.querySelector(".add-bookmark");
-
-    if (targetIndex === -1 || targetIndex >= allTiles.length) {
-      // Move to end (before add-bookmark)
-      bookmarksGrid.insertBefore(dragPlaceholder, addTile);
-    } else {
-      // Move before target element
-      bookmarksGrid.insertBefore(dragPlaceholder, allTiles[targetIndex]);
-    }
-  }
-
-  bookmarksGrid.querySelectorAll(".bookmark-tile").forEach(tile => {
-    if (tile.classList.contains("add-bookmark")) return;
-
-    tile.addEventListener("dragstart", e => {
-      createDropIndicator();
-      createDragPlaceholder(tile);
-      dragged = tile;
-      tile.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setDragImage(new Image(), 0, 0); // Hide default ghost image
-    });
-
-    tile.addEventListener("dragend", async () => {
-      if (!dragged) return;
-
-      stopAutoScroll();
-      hideDropIndicator();
-      
-      // Move dragged item to placeholder's position before removing it
-      if (dragPlaceholder && dragPlaceholder.parentNode) {
-        bookmarksGrid.insertBefore(dragged, dragPlaceholder);
-      }
-      
-      removeDragPlaceholder();
-      lastTargetIndex = -1;
-      
-      tile.classList.remove("dragging");
-      dragged = null;
-
-      const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
-      if (!group) {
-        console.warn("dragend: group not found", window.activeGroupId);
-        return;
-      }
-
-      // Get IDs of bookmark elements in their current DOM order
-      const ids = [...bookmarksGrid.querySelectorAll(".bookmark-tile")]
-        .filter(el => !el.classList.contains("add-bookmark"))
-        .map(el => el.dataset.bookmarkId);
-
-      // Reorder items array to match DOM order
-      group.items.sort((a, b) => {
-        const indexA = ids.indexOf(a.id);
-        const indexB = ids.indexOf(b.id);
-        
-        // Handle items that might not be in the DOM
-        if (indexA === -1) return 1;  // Move to end
-        if (indexB === -1) return -1; // Move to end
-        
-        return indexA - indexB;
-      });
-
-      // Update the updatedAt timestamp for the group when items are reordered
-      group.updatedAt = Date.now();
-
-      // Save state immediately to local storage
-      await saveState();
-      // Re-render UI
-      await render();
-      // Sync to remote server (non-blocking)
-      syncWrite();
-    });
+function clearStackDropTarget() {
+  document.querySelectorAll(".stack-drop-target").forEach(el => {
+    el.classList.remove("stack-drop-target");
   });
+  if (dragSession) {
+    dragSession.stackTargetTile = null;
+  }
+}
 
-  bookmarksGrid.addEventListener("dragover", e => {
-    e.preventDefault();
-    if (!dragged) return;
-
-    // Start auto-scroll
-    startAutoScroll(e);
-
-    // Throttle dragover events to reduce DOM operations
-    const now = Date.now();
-    if (now - lastDragOverTime < 16) return; // ~60fps
-    lastDragOverTime = now;
-
-    const targetIndex = getDropIndex(bookmarksGrid, e.clientX, e.clientY);
-    
-    // Only move placeholder if target changed
-    if (targetIndex !== lastTargetIndex) {
-      lastTargetIndex = targetIndex;
-      movePlaceholder(targetIndex);
-      updateDropIndicator(targetIndex);
-    }
-  });
-
-  // Hide indicator when dragging leaves the grid
-  bookmarksGrid.addEventListener("dragleave", e => {
-    // Only hide if we're actually leaving the grid (not just moving over children)
-    if (!bookmarksGrid.contains(e.relatedTarget)) {
-      stopAutoScroll();
-      hideDropIndicator();
-    }
+function clearContainerHighlights() {
+  document.querySelectorAll(".section-drop-active, .grid-drop-active").forEach(el => {
+    el.classList.remove("section-drop-active", "grid-drop-active");
   });
 }
 
-function getDropIndex(container, mouseX, mouseY) {
-  const allTiles = [...container.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark)")];
+function clearHoveredGroupTab() {
+  document.querySelectorAll(".group-drop-target").forEach(el => {
+    el.classList.remove("group-drop-target");
+  });
+  if (dragSession) {
+    dragSession.hoveredGroupTab = null;
+  }
+}
 
-  if (allTiles.length === 0) return -1;
+function removeDragPlaceholder() {
+  if (dragSession?.placeholder?.parentNode) {
+    dragSession.placeholder.remove();
+  }
+  document.querySelectorAll(".bookmark-tile.drag-placeholder").forEach(el => el.remove());
+}
 
-  // Find which element the mouse is over
-  let hoveredElement = null;
-  for (const el of allTiles) {
+function resetDragVisuals() {
+  stopAutoScroll();
+  clearStackDropTarget();
+  clearContainerHighlights();
+  clearHoveredGroupTab();
+  removeDragPlaceholder();
+  document.body?.classList.remove("is-dragging-bookmark");
+
+  const stackPopover = document.getElementById("stack-popover");
+  if (stackPopover) {
+    stackPopover.classList.remove("dragging-outside");
+  }
+
+  if (dragSession?.tile) {
+    dragSession.tile.classList.remove("dragging");
+  }
+}
+
+function findTileAtPoint(container, clientX, clientY) {
+  const tiles = container.querySelectorAll(
+    ".bookmark-tile:not(.dragging):not(.add-bookmark):not(.drag-placeholder)"
+  );
+  for (const el of tiles) {
     const box = el.getBoundingClientRect();
-    if (mouseX >= box.left && mouseX <= box.right &&
-        mouseY >= box.top && mouseY <= box.bottom) {
-      hoveredElement = el;
-      break;
+    if (
+      clientX >= box.left &&
+      clientX <= box.right &&
+      clientY >= box.top &&
+      clientY <= box.bottom
+    ) {
+      return el;
     }
   }
+  return null;
+}
 
-  if (hoveredElement) {
-    const box = hoveredElement.getBoundingClientRect();
-    const centerX = box.left + box.width / 2;
+function getInsertionPointForEmptySpace(container, clientX, clientY) {
+  const tiles = [...container.querySelectorAll(
+    ".bookmark-tile:not(.dragging):not(.add-bookmark):not(.drag-placeholder)"
+  )];
+  if (tiles.length === 0) return null;
 
-    // Simple left/right detection
-    if (mouseX < centerX) {
-      // Insert before this element
-      return allTiles.indexOf(hoveredElement);
-    } else {
-      // Insert after this element
-      return allTiles.indexOf(hoveredElement) + 1;
-    }
-  }
-
-  // Mouse not over any element - find closest
-  let closest = { distance: Number.MAX_VALUE, index: -1 };
-
-  allTiles.forEach((el, index) => {
+  let closest = { distance: Number.POSITIVE_INFINITY, tile: null, insertAfter: false };
+  for (const el of tiles) {
     const box = el.getBoundingClientRect();
     const centerX = box.left + box.width / 2;
     const centerY = box.top + box.height / 2;
-
-    const distance = Math.sqrt(Math.pow(mouseX - centerX, 2) + Math.pow(mouseY - centerY, 2));
-
+    const dx = clientX < box.left ? box.left - clientX : (clientX > box.right ? clientX - box.right : 0);
+    const dy = clientY < box.top ? box.top - clientY : (clientY > box.bottom ? clientY - box.bottom : 0);
+    const distance = Math.hypot(dx * 2, dy);
     if (distance < closest.distance) {
-      closest = { distance, index };
+      const insertAfter = clientY > centerY || (Math.abs(clientY - centerY) <= box.height / 2 && clientX > centerX);
+      closest = { distance, tile: el, insertAfter };
+    }
+  }
+
+  if (!closest.tile) return null;
+  return closest.insertAfter ? closest.tile.nextElementSibling : closest.tile;
+}
+
+function insertPlaceholderInContainer(container, beforeNode, placeholder) {
+  if (!container || !placeholder) return;
+
+  const addTile = container.querySelector(".add-bookmark");
+  let targetBefore = beforeNode;
+  if (addTile && (!targetBefore || targetBefore === addTile.nextElementSibling)) {
+    targetBefore = addTile;
+  }
+
+  if (targetBefore && targetBefore.parentNode === container) {
+    if (targetBefore.previousElementSibling === placeholder) return;
+    if (targetBefore === placeholder) return;
+    container.insertBefore(placeholder, targetBefore);
+  } else if (addTile && addTile.parentNode === container) {
+    if (addTile.previousElementSibling === placeholder) return;
+    container.insertBefore(placeholder, addTile);
+  } else {
+    if (container.lastElementChild === placeholder) return;
+    container.appendChild(placeholder);
+  }
+}
+
+function collectOrderedIdsFromDom(extraReplacedId = null) {
+  const orderedIds = [];
+  const containers = [
+    ...document.querySelectorAll("#sections-container .section-grid"),
+    document.getElementById("bookmarks-grid")
+  ].filter(Boolean);
+
+  for (const grid of containers) {
+    for (const child of Array.from(grid.children)) {
+      if (child.classList.contains("drag-placeholder")) {
+        if (extraReplacedId) orderedIds.push(extraReplacedId);
+        continue;
+      }
+      if (
+        child.classList.contains("bookmark-tile") &&
+        !child.classList.contains("dragging") &&
+        !child.classList.contains("add-bookmark") &&
+        child.dataset.bookmarkId
+      ) {
+        orderedIds.push(child.dataset.bookmarkId);
+      }
+    }
+  }
+  return orderedIds;
+}
+
+function findClosestSectionGrid(clientX, clientY) {
+  const sections = document.querySelectorAll("#sections-container .bookmark-section");
+  let closestGrid = null;
+  let minDistance = Number.POSITIVE_INFINITY;
+
+  for (const section of sections) {
+    const rect = section.getBoundingClientRect();
+    const dx = clientX < rect.left ? rect.left - clientX : (clientX > rect.right ? clientX - rect.right : 0);
+    const dy = clientY < rect.top ? rect.top - clientY : (clientY > rect.bottom ? clientY - rect.bottom : 0);
+    const distance = Math.hypot(dx, dy);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestGrid = section.querySelector(".section-grid");
+    }
+  }
+
+  return closestGrid;
+}
+
+function resolveWorkspaceTargetGrid(targetEl, clientX, clientY) {
+  const directSectionGrid = targetEl.closest(".section-grid");
+  if (directSectionGrid) return directSectionGrid;
+
+  const sectionCard = targetEl.closest(".bookmark-section");
+  if (sectionCard) return sectionCard.querySelector(".section-grid");
+
+  if (targetEl.closest("#sections-container")) {
+    return findClosestSectionGrid(clientX, clientY);
+  }
+
+  const bookmarksGrid = document.getElementById("bookmarks-grid");
+  if (targetEl.closest("#bookmarks-grid")) return bookmarksGrid;
+
+  if (targetEl.closest("#center-space") || targetEl.closest("#workspace-main")) {
+    const sectionsContainer = document.getElementById("sections-container");
+    if (
+      sectionsContainer &&
+      !sectionsContainer.classList.contains("hidden") &&
+      sectionsContainer.querySelector(".bookmark-section")
+    ) {
+      const sectionsRect = sectionsContainer.getBoundingClientRect();
+      if (clientY <= sectionsRect.bottom) {
+        return findClosestSectionGrid(clientX, clientY) || bookmarksGrid;
+      }
+    }
+    return bookmarksGrid;
+  }
+
+  return null;
+}
+
+function isInCenterStackZone(box, clientX, clientY) {
+  const relX = (clientX - box.left) / Math.max(1, box.width);
+  const relY = (clientY - box.top) / Math.max(1, box.height);
+  return relX >= 0.28 && relX <= 0.72 && relY >= 0.22 && relY <= 0.78;
+}
+
+function handleDragOverDocument(e) {
+  if (!dragSession) return;
+  e.preventDefault();
+
+  const targetEl = toElement(e.target);
+  if (!targetEl) return;
+
+  // Allow dragging a child bookmark outside of an open Stack popover
+  const stackPopover = document.getElementById("stack-popover");
+  const stackCard = document.getElementById("stack-popover-card");
+  if (
+    dragSession.sourceStackId &&
+    stackPopover &&
+    !stackPopover.classList.contains("hidden") &&
+    stackCard
+  ) {
+    const rect = stackCard.getBoundingClientRect();
+    const isInsideCard =
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom;
+    stackPopover.classList.toggle("dragging-outside", !isInsideCard);
+  }
+
+  // 1) Dropping onto another Group tab in top bar
+  const groupTab = targetEl.closest(".group-tab:not(.add-group)");
+  if (groupTab && groupTab.dataset.groupId && groupTab.dataset.groupId !== window.activeGroupId) {
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    clearStackDropTarget();
+    clearContainerHighlights();
+    removeDragPlaceholder();
+    clearHoveredGroupTab();
+    groupTab.classList.add("group-drop-target");
+    dragSession.hoveredGroupTab = groupTab;
+    return;
+  }
+  clearHoveredGroupTab();
+
+  // 2) Reordering inside the open Stack popover
+  const popoverGrid = document.getElementById("stack-popover-grid");
+  if (
+    dragSession.sourceStackId &&
+    stackPopover &&
+    !stackPopover.classList.contains("hidden") &&
+    !stackPopover.classList.contains("dragging-outside") &&
+    popoverGrid &&
+    targetEl.closest("#stack-popover-card")
+  ) {
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    clearStackDropTarget();
+    clearContainerHighlights();
+
+    const hoveredTile = findTileAtPoint(popoverGrid, e.clientX, e.clientY);
+    let beforeNode = null;
+    if (hoveredTile) {
+      const box = hoveredTile.getBoundingClientRect();
+      beforeNode = e.clientX > box.left + box.width / 2 ? hoveredTile.nextElementSibling : hoveredTile;
+    } else {
+      beforeNode = getInsertionPointForEmptySpace(popoverGrid, e.clientX, e.clientY);
+    }
+    insertPlaceholderInContainer(popoverGrid, beforeNode, dragSession.placeholder);
+    return;
+  }
+
+  // 3) Reordering / Stacking / Moving between Sections and Unsectioned Grid
+  const containerGrid = resolveWorkspaceTargetGrid(targetEl, e.clientX, e.clientY);
+  if (!containerGrid) return;
+
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+  startAutoScroll(e.clientY);
+
+  const hoveredTile = findTileAtPoint(containerGrid, e.clientX, e.clientY);
+  if (hoveredTile) {
+    const box = hoveredTile.getBoundingClientRect();
+    const canStack = !dragSession.isStack && hoveredTile.dataset.bookmarkId !== dragSession.bookmarkId;
+
+    if (canStack && isInCenterStackZone(box, e.clientX, e.clientY)) {
+      clearContainerHighlights();
+      removeDragPlaceholder();
+      if (dragSession.stackTargetTile !== hoveredTile) {
+        clearStackDropTarget();
+        hoveredTile.classList.add("stack-drop-target");
+        dragSession.stackTargetTile = hoveredTile;
+      }
+      return;
+    }
+
+    clearStackDropTarget();
+    const relX = (e.clientX - box.left) / Math.max(1, box.width);
+    const relY = (e.clientY - box.top) / Math.max(1, box.height);
+    const insertAfter = relX > 0.72 || (relY > 0.78 && relX >= 0.28);
+    const beforeNode = insertAfter ? hoveredTile.nextElementSibling : hoveredTile;
+    insertPlaceholderInContainer(containerGrid, beforeNode, dragSession.placeholder);
+  } else {
+    clearStackDropTarget();
+    const beforeNode = getInsertionPointForEmptySpace(containerGrid, e.clientX, e.clientY);
+    insertPlaceholderInContainer(containerGrid, beforeNode, dragSession.placeholder);
+  }
+
+  clearContainerHighlights();
+  if (containerGrid.classList.contains("section-grid")) {
+    containerGrid.closest(".bookmark-section")?.classList.add("section-drop-active");
+  } else if (containerGrid.id === "bookmarks-grid") {
+    containerGrid.classList.add("grid-drop-active");
+  }
+}
+
+async function commitActiveDragSession() {
+  if (!dragSession || dragSession.dropHandled) return;
+
+  const session = dragSession;
+  session.dropHandled = true;
+
+  const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
+  if (!group) {
+    resetDragVisuals();
+    dragSession = null;
+    return;
+  }
+
+  // Case 1: Dropped onto a different Group tab
+  if (session.hoveredGroupTab) {
+    const targetGroupId = session.hoveredGroupTab.dataset.groupId;
+    resetDragVisuals();
+    dragSession = null;
+    if (targetGroupId && targetGroupId !== group.id) {
+      await moveBookmarkToGroup(session.bookmarkId, targetGroupId);
+    }
+    return;
+  }
+
+  // Case 2: Dropped onto the center of another bookmark/stack -> Create or join a Stack
+  if (session.stackTargetTile && !session.isStack) {
+    const targetId = session.stackTargetTile.dataset.bookmarkId;
+    const draggedLoc = findBookmarkLocation(session.bookmarkId, group);
+    const targetLoc = findBookmarkLocation(targetId, group);
+
+    resetDragVisuals();
+    dragSession = null;
+
+    if (!draggedLoc || !targetLoc || draggedLoc.item.id === targetLoc.item.id || targetLoc.parentStack) {
+      return;
+    }
+
+    const [draggedItem] = draggedLoc.list.splice(draggedLoc.index, 1);
+    const liveTargetIdx = group.items.findIndex(i => i && i.id === targetId);
+    if (liveTargetIdx === -1) {
+      draggedLoc.list.splice(draggedLoc.index, 0, draggedItem);
+      return;
+    }
+
+    const targetItem = group.items[liveTargetIdx];
+    const now = Date.now();
+    draggedItem.updatedAt = now;
+
+    if (isStackItem(targetItem)) {
+      draggedItem.sectionId = targetItem.sectionId ?? null;
+      if (!Array.isArray(targetItem.children)) targetItem.children = [];
+      targetItem.children.push(draggedItem);
+      targetItem.updatedAt = now;
+    } else {
+      targetItem.updatedAt = now;
+      const targetSectionId = targetItem.sectionId ?? null;
+      draggedItem.sectionId = targetSectionId;
+      const newStack = {
+        id: generateId("s"),
+        type: "stack",
+        title: t("defaultStackName") || "Stack",
+        sectionId: targetSectionId,
+        tileColor: null,
+        children: [targetItem, draggedItem],
+        updatedAt: now,
+        deleted: false,
+        deletedAt: null
+      };
+      group.items.splice(liveTargetIdx, 1, newStack);
+    }
+
+    const purgedIds = [];
+    if (draggedLoc.parentStack) {
+      draggedLoc.parentStack.updatedAt = now;
+      const cleanupOutcome = cleanupStackIfNeeded(group, draggedLoc.parentStack);
+      if (cleanupOutcome === "removed" || cleanupOutcome === "unwrapped") {
+        purgedIds.push(draggedLoc.parentStack.id);
+      }
+    }
+    group.updatedAt = now;
+
+    await saveState();
+    await render();
+    syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
+    return;
+  }
+
+  // Case 3: Dropped into an insertion placeholder slot
+  if (session.placeholder && session.placeholder.parentNode) {
+    const targetGrid = session.placeholder.parentNode;
+    const draggedLoc = findBookmarkLocation(session.bookmarkId, group);
+    if (!draggedLoc) {
+      resetDragVisuals();
+      dragSession = null;
+      return;
+    }
+
+    // 3a) Reordering within the open Stack popover
+    if (targetGrid.id === "stack-popover-grid" && session.sourceStackId) {
+      targetGrid.insertBefore(session.tile, session.placeholder);
+      const childOrder = [...targetGrid.querySelectorAll(".bookmark-tile")]
+        .filter(el => !el.classList.contains("drag-placeholder") && el.dataset.bookmarkId)
+        .map(el => el.dataset.bookmarkId);
+
+      resetDragVisuals();
+      dragSession = null;
+
+      if (draggedLoc.parentStack) {
+        draggedLoc.parentStack.children.sort((a, b) => {
+          const idxA = childOrder.indexOf(a.id);
+          const idxB = childOrder.indexOf(b.id);
+          if (idxA === -1) return 1;
+          if (idxB === -1) return -1;
+          return idxA - idxB;
+        });
+        const now = Date.now();
+        draggedLoc.parentStack.updatedAt = now;
+        group.updatedAt = now;
+        await saveState();
+        await render();
+        syncWrite();
+      }
+      return;
+    }
+
+    // 3b) Reordering / Moving across sections or dragging OUT of a Stack
+    const targetSectionId = targetGrid.classList.contains("section-grid")
+      ? (targetGrid.dataset.sectionId || null)
+      : null;
+
+    const orderedIds = collectOrderedIdsFromDom(session.bookmarkId);
+    resetDragVisuals();
+    dragSession = null;
+
+    const now = Date.now();
+    let movedItem = draggedLoc.item;
+    const purgedIds = [];
+
+    if (draggedLoc.parentStack) {
+      const [spliced] = draggedLoc.list.splice(draggedLoc.index, 1);
+      if (spliced) movedItem = spliced;
+      const sourceStack = draggedLoc.parentStack;
+      sourceStack.updatedAt = now;
+      group.items.push(movedItem);
+
+      const soleChildCandidate = sourceStack.children.length === 1 ? sourceStack.children[0] : null;
+      const cleanupOutcome = cleanupStackIfNeeded(group, sourceStack);
+      if (cleanupOutcome === "removed" || cleanupOutcome === "unwrapped") {
+        purgedIds.push(sourceStack.id);
+      }
+      if (cleanupOutcome === "unwrapped" && soleChildCandidate) {
+        const oldStackIdx = orderedIds.indexOf(sourceStack.id);
+        if (oldStackIdx !== -1) {
+          orderedIds[oldStackIdx] = soleChildCandidate.id;
+        }
+      }
+    }
+
+    movedItem.sectionId = targetSectionId;
+    movedItem.updatedAt = now;
+
+    group.items.sort((a, b) => {
+      const idxA = orderedIds.indexOf(a.id);
+      const idxB = orderedIds.indexOf(b.id);
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    });
+    group.updatedAt = now;
+
+    await saveState();
+    await render();
+    syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
+    return;
+  }
+
+  resetDragVisuals();
+  dragSession = null;
+}
+
+async function handleDropDocument(e) {
+  if (!dragSession) return;
+  e.preventDefault();
+  await commitActiveDragSession();
+}
+
+function initializeGlobalDragListeners() {
+  if (dragListenersInitialized) return;
+  dragListenersInitialized = true;
+
+  document.addEventListener("dragstart", e => {
+    if (document.body?.classList.contains("tiles-locked")) {
+      e.preventDefault();
+      return;
+    }
+
+    const targetEl = toElement(e.target);
+    if (!targetEl) return;
+
+    // Group tab reordering has its own listener in groups.js
+    if (targetEl.closest(".group-tab")) return;
+
+    const tile = targetEl.closest(".bookmark-tile");
+    if (!tile || tile.classList.contains("add-bookmark") || tile.classList.contains("drag-placeholder")) {
+      return;
+    }
+
+    const bookmarkId = tile.dataset.bookmarkId;
+    if (!bookmarkId) return;
+
+    const popoverGrid = tile.closest("#stack-popover-grid");
+    const sourceStackId = popoverGrid
+      ? (tile.dataset.parentStackId || popoverGrid.dataset.stackId || null)
+      : null;
+
+    dragSession = {
+      tile,
+      bookmarkId,
+      isStack: tile.dataset.isStack === "true",
+      sourceStackId,
+      placeholder: createDragPlaceholder(tile),
+      stackTargetTile: null,
+      hoveredGroupTab: null,
+      dropHandled: false,
+      cancelled: false
+    };
+
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", bookmarkId);
+      try {
+        e.dataTransfer.setDragImage(EMPTY_DRAG_IMAGE, 0, 0);
+      } catch {
+        // Ignore if synthetic DragEvent in tests
+      }
+    }
+
+    requestAnimationFrame(() => {
+      if (dragSession?.tile === tile) {
+        tile.classList.add("dragging");
+        document.body?.classList.add("is-dragging-bookmark");
+      }
+    });
+  });
+
+  document.addEventListener("dragover", handleDragOverDocument);
+  document.addEventListener("drop", handleDropDocument);
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && dragSession) {
+      dragSession.cancelled = true;
+      resetDragVisuals();
     }
   });
 
-  return closest.index;
+  document.addEventListener("dragend", () => {
+    if (!dragSession) return;
+    if (
+      !dragSession.dropHandled &&
+      !dragSession.cancelled &&
+      (dragSession.placeholder?.parentNode || dragSession.stackTargetTile || dragSession.hoveredGroupTab)
+    ) {
+      void commitActiveDragSession();
+      return;
+    }
+    resetDragVisuals();
+    dragSession = null;
+  });
 }
 
-function getAfterElementVertical(container, mouseY) {
-  const els = [...container.querySelectorAll(".bookmark-tile:not(.dragging):not(.add-bookmark):not(.drag-placeholder)")];
-  let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+export function setupBookmarkDrag() {
+  initializeGlobalDragListeners();
 
-  els.forEach(el => {
-    const box = el.getBoundingClientRect();
-    const offset = mouseY - (box.top + box.height / 2);
-
-    if (offset < 0 && offset > closest.offset) {
-      closest = { offset, element: el };
+  // Prevent nested <a> links from initiating native URL-link drags instead of tile drags
+  document.querySelectorAll(".bookmark-tile .bookmark-title").forEach(link => {
+    if (link instanceof HTMLAnchorElement) {
+      link.draggable = false;
     }
   });
-
-  return closest.element;
 }
-
-// ======================================================
-// DRAG & DROP FOR GROUPS IS IN groups.js
-// ======================================================
 
 export function setupGroupDrag() {
-  const groupsHeader = document.getElementById("groups-header");
-  let dragged = null;
-
-  groupsHeader.querySelectorAll(".group-tab").forEach(tab => {
-    if (tab.classList.contains("add-group")) return;
-
-    tab.addEventListener("dragstart", e => {
-      dragged = tab;
-      tab.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-    });
-
-    tab.addEventListener("dragend", async () => {
-      if (!dragged) return;
-
-      tab.classList.remove("dragging");
-      dragged = null;
-
-      const ids = [...groupsHeader.querySelectorAll(".group-tab")]
-        .filter(el => !el.classList.contains("add-group"))
-        .map(el => el.dataset.groupId);
-
-      state.groups.sort((a, b) => {
-        const indexA = ids.indexOf(a.id);
-        const indexB = ids.indexOf(b.id);
-        
-        // Handle groups that might not be in the DOM
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        
-        return indexA - indexB;
-      });
-
-      // Save state immediately to local storage
-      await saveState();
-      // Re-render UI
-      await render();
-      // Sync to remote server (non-blocking)
-      syncWrite();
-    });
-  });
-
-  groupsHeader.addEventListener("dragover", e => {
-    e.preventDefault();
-    if (!dragged) return;
-
-    const after = getAfterElementHorizontal(groupsHeader, e.clientX);
-    const addBtn = groupsHeader.querySelector(".add-group");
-
-    if (!after) {
-      groupsHeader.insertBefore(dragged, addBtn);
-    } else {
-      groupsHeader.insertBefore(dragged, after);
-    }
-  });
-}
-
-function getAfterElementHorizontal(container, mouseX) {
-  const els = [...container.querySelectorAll(".group-tab:not(.dragging):not(.add-group)")];
-  let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
-
-  els.forEach(el => {
-    const box = el.getBoundingClientRect();
-    const offset = mouseX - (box.left + box.width / 2);
-
-    if (offset < 0 && offset > closest.offset) {
-      closest = { offset, element: el };
-    }
-  });
-
-  return closest.element;
+  // Kept for compatibility; active group tab drag-and-drop lives in groups.js
 }

@@ -25,7 +25,8 @@ export const defaultConfig = {
     remoteChangeHeaderType: null, // null=unknown, false=unsupported, or 'sha256'|'etag'|'last-modified'
     lastSeenRemoteMarker: "",
     lastRemoteMarkerCheck: 0,
-    lastMarkerCheckUrl: "" // serverUrl the remote marker was last checked against
+    lastMarkerCheckUrl: "", // serverUrl the remote marker was last checked against
+    pendingPurgedIds: []
   },
   housekeeper: {
     retentionDays: 30,
@@ -48,13 +49,28 @@ export const defaultConfig = {
     customThemeFileName: "",
     customThemeUrl: "",
     backgroundImage: null, // Base64 encoded image or null
+    backgroundImageUrl: "",
     backgroundSize: "stretched", // "stretched", "fill", "fit", "tile", "center", "span"
+    bgDim: 0, // Background dim overlay: 0 (none) to 0.9 (90% dark scrim)
     tileOpacity: 1, // Bookmark tile opacity: 0 (transparent) to 1 (opaque)
+    barOpacity: 1, // Header & footer opacity: 0 (transparent) to 1 (opaque)
     tileSize: 1, // Bookmark tile scale: 0.5 (50%) to 1.5 (150%)
     groupTileSize: 1, // Group tile scale: 0.5 (50%) to 1.5 (150%)
     showDateTime: true,
+    dateTimeSpace: "footer", // "disabled", "header", "left", "center", "right", "footer"
     showDeleted: false,
-    showGroupBookmarkCount: true
+    showGroupBookmarkCount: true,
+    showSideSpaces: false,
+    highlightSideSpaces: false,
+    tallBookmarkTiles: false,
+    lockTiles: false,
+    groupsSpace: "header", // "header", "left", "center", "right", "footer"
+    searchSpace: "header", // "header", "left", "center", "right", "footer"
+    searchStyle: "full", // "full", "icon", or "hover"
+    widgetOrder: ["groups", "search", "bookmarks", "dateTime"],
+    widgetAlign: {}, // Per-widget alignment: "auto" | "top" | "bottom" | "left" | "right" | "center"
+    widgetNewRow: {}, // Per-widget row break flag: { [widgetKey]: boolean }
+    customWidgets: [] // User-defined declarative widgets (e.g. custom search)
   },
   advanced: {
     faviconDebugLogging: false,

@@ -1,4 +1,4 @@
-import { state, saveState } from "./state.js";
+import { state, saveState, isStackItem } from "./state.js";
 import { loadConfig, saveConfig } from "./config.js";
 import { render } from "./render.js";
 
@@ -46,15 +46,22 @@ function normalizeBackupFrequencyHours(config) {
 export async function createBackup() {
   const timestamp = Date.now();
   const groups = Array.isArray(state.groups) ? state.groups : [];
+  const tags = Array.isArray(state.tags) ? state.tags : [];
   const groupCount = groups.length;
   const bookmarkCount = groups.reduce((sum, group) => {
     const items = Array.isArray(group?.items)
       ? group.items
       : (Array.isArray(group?.bookmarks) ? group.bookmarks : []);
-    return sum + items.length;
+    return sum + items.reduce((itemSum, item) => {
+      if (isStackItem(item)) {
+        return itemSum + (Array.isArray(item.children) ? item.children.length : 0);
+      }
+      return itemSum + 1;
+    }, 0);
   }, 0);
   const payload = {
-    groups
+    groups,
+    tags
   };
   const json = JSON.stringify(payload, null, 2);
   const sizeBytes = new Blob([json], { type: "application/json" }).size;
@@ -129,6 +136,7 @@ export async function restoreBackup(file) {
   await saveConfig(config);
 
   state.groups = parsedData.groups;
+  state.tags = Array.isArray(parsedData.tags) ? parsedData.tags : [];
   await saveState();
   await render();
 

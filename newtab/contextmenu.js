@@ -1,6 +1,6 @@
 import { handleGroupContext } from "./groups.js";
 import { handleBookmarkContext, moveBookmarkToGroup } from "./bookmarks.js";
-import { state } from "./state.js";
+import { state, isStackItem, findBookmarkLocation } from "./state.js";
 
 // ---------- Context menu ----------
 const contextMenu = document.getElementById("context-menu");
@@ -87,8 +87,9 @@ document.addEventListener("contextmenu", e => {
 function updateContextMenuForBookmark(bookmarkTile) {
   const bookmarkId = bookmarkTile.dataset.bookmarkId;
 
-  const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
-  const item = group?.items.find(i => i.id === bookmarkId);
+  const group = state.groups.find(g => g.id === window.activeGroupId);
+  const loc = (group && findBookmarkLocation(bookmarkId, group)) || findBookmarkLocation(bookmarkId);
+  const item = loc?.item;
 
   const deleteBtn = contextMenu.querySelector('[data-action="delete"]');
   const restoreBtn = contextMenu.querySelector('[data-action="restore"]');
@@ -96,11 +97,17 @@ function updateContextMenuForBookmark(bookmarkTile) {
   const editBtn = contextMenu.querySelector('[data-action="edit"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
   const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
+  const removeFromStackBtn = contextMenu.querySelector('[data-action="remove-from-stack"]');
+  const unstackBtn = contextMenu.querySelector('[data-action="unstack"]');
 
   if (!item) return;
 
+  const isStack = isStackItem(item);
+  const isChildInStack = !!loc?.parentStack;
+  const isDeleted = !!(item.deleted || loc?.parentStack?.deleted || loc?.group?.deleted);
+
   // Show/hide based on deleted status
-  if (item.deleted) {
+  if (isDeleted) {
     // Item is deleted: show restore and delete-permanent, hide delete
     if (deleteBtn) deleteBtn.classList.add("hidden");
     if (restoreBtn) restoreBtn.classList.remove("hidden");
@@ -108,6 +115,8 @@ function updateContextMenuForBookmark(bookmarkTile) {
     if (editBtn) editBtn.classList.add("hidden");
     if (refreshIconBtn) refreshIconBtn.classList.add("hidden");
     if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
+    if (removeFromStackBtn) removeFromStackBtn.classList.add("hidden");
+    if (unstackBtn) unstackBtn.classList.add("hidden");
     if (moveToItem) moveToItem.classList.add("hidden");
   } else {
     // Item is not deleted: show delete and edit, hide restore and delete-permanent
@@ -115,19 +124,21 @@ function updateContextMenuForBookmark(bookmarkTile) {
     if (restoreBtn) restoreBtn.classList.add("hidden");
     if (deletePermanentBtn) deletePermanentBtn.classList.add("hidden");
     if (editBtn) editBtn.classList.remove("hidden");
-    if (refreshIconBtn) refreshIconBtn.classList.remove("hidden");
+    if (refreshIconBtn) refreshIconBtn.classList.toggle("hidden", isStack);
     if (openNewTabBtn) openNewTabBtn.classList.remove("hidden");
+    if (removeFromStackBtn) removeFromStackBtn.classList.toggle("hidden", !isChildInStack);
+    if (unstackBtn) unstackBtn.classList.toggle("hidden", !isStack);
     if (moveToItem) moveToItem.classList.remove("hidden");
-    populateMoveToSubmenu(bookmarkId);
+    populateMoveToSubmenu(bookmarkId, loc?.group?.id || window.activeGroupId);
   }
 }
 
-// Populate the "Move to" submenu with all non-deleted groups except the current one
-function populateMoveToSubmenu(bookmarkId) {
+// Populate the "Move to" submenu with all non-deleted groups except the item's current one
+function populateMoveToSubmenu(bookmarkId, sourceGroupId = window.activeGroupId) {
   if (!moveToSubmenu) return;
   moveToSubmenu.innerHTML = "";
 
-  const availableGroups = state.groups.filter(g => !g.deleted && g.id !== window.activeGroupId);
+  const availableGroups = state.groups.filter(g => !g.deleted && g.id !== sourceGroupId);
 
   if (availableGroups.length === 0) {
     const empty = document.createElement("div");
@@ -164,11 +175,15 @@ function updateContextMenuForGroup(groupTab) {
   const deletePermanentBtn = contextMenu.querySelector('[data-action="delete-permanent"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
   const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
+  const removeFromStackBtn = contextMenu.querySelector('[data-action="remove-from-stack"]');
+  const unstackBtn = contextMenu.querySelector('[data-action="unstack"]');
 
   if (!group) return;
 
   if (moveToItem) moveToItem.classList.add("hidden");
   if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
+  if (removeFromStackBtn) removeFromStackBtn.classList.add("hidden");
+  if (unstackBtn) unstackBtn.classList.add("hidden");
 
   // Show/hide based on deleted status
   if (group.deleted) {
@@ -199,7 +214,8 @@ document.addEventListener("click", e => {
 
 // Click on menu item
 contextMenu.addEventListener("click", async e => {
-  const action = e.target.dataset.action;
+  const actionEl = e.target.closest("[data-action]");
+  const action = actionEl?.dataset.action;
   if (!action || !contextTarget) return;
 
   if (contextTarget.classList.contains("group-tab")) {

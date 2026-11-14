@@ -1,9 +1,9 @@
-import { loadState } from "./state.js";
-import { loadTheme } from "./theme.js";
+import { state, saveState, generateId, loadState } from "./state.js";
+import { loadTheme, applySideSpaces } from "./theme.js";
 import { render, updateFooter } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
-import { syncNow, startSyncLoop, cleanupDeletedItems } from "./sync.js";
+import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { runBackupInitCheck } from "./backup.js";
 import "./browser-bookmarks-sync.js";
@@ -30,7 +30,8 @@ function applyDateTimeVisibility() {
 }
 
 function updateDateTimeEnabledFromConfig(config) {
-  isDateTimeEnabled = (config?.appearance?.showDateTime ?? true);
+  const appearance = config?.appearance || {};
+  isDateTimeEnabled = appearance.dateTimeSpace !== "disabled" && (appearance.showDateTime ?? true);
   applyDateTimeVisibility();
 }
 
@@ -96,6 +97,11 @@ window.addEventListener("keydown", e => {
   if (ctrl && e.key.toLowerCase() === "f") {
     e.preventDefault();
 
+    const searchWidget = document.getElementById("search-widget");
+    if (searchWidget && searchWidget.classList.contains("search-mode-icon")) {
+      searchWidget.classList.add("expanded");
+    }
+
     const search = document.getElementById("search-box");
     if (search) {
       search.focus();
@@ -137,6 +143,7 @@ function startIconRefreshLoop() {
 
   const config = await loadConfig();
   updateDateTimeEnabledFromConfig(config);
+  await applySideSpaces(config);
 
   const showDeletedToggle = document.getElementById("show-deleted-toggle");
   if (showDeletedToggle) {
@@ -210,9 +217,38 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (!configChange || !configChange.newValue) return;
 
   updateDateTimeEnabledFromConfig(configChange.newValue);
+  void applySideSpaces(configChange.newValue).then(() => render());
   updateClock();
   void updateFooter(configChange.newValue);
 });
+
+const addSectionBtn = document.getElementById("add-section-btn");
+if (addSectionBtn) {
+  addSectionBtn.addEventListener("click", async () => {
+    const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
+    if (!group) return;
+
+    const suggested = t("defaultSectionName") || "New section";
+    const entered = prompt(t("newSectionName") || "New section name:", suggested);
+    if (entered === null) return;
+    const name = entered.trim() || suggested;
+
+    if (!Array.isArray(group.sections)) group.sections = [];
+    const now = Date.now();
+    group.sections.push({
+      id: generateId("sec"),
+      name,
+      updatedAt: now,
+      deleted: false,
+      deletedAt: null
+    });
+    group.updatedAt = now;
+
+    await saveState();
+    await syncWrite();
+    render();
+  });
+}
 
 // Language selector setup
 export function setupLanguageSelector() {
@@ -300,9 +336,39 @@ export function updateClock() {
 
 // Update all UI text elements
 export function updateUIText() {
-  // Search box
+  // Search box & search controls
   const searchBox = document.getElementById("search-box");
   if (searchBox) searchBox.placeholder = t("searchPlaceholder");
+
+  const searchToggleBtn = document.getElementById("search-toggle-btn");
+  if (searchToggleBtn) {
+    const searchTitle = t("searchPlaceholder");
+    searchToggleBtn.title = searchTitle;
+    searchToggleBtn.setAttribute("aria-label", searchTitle);
+    searchToggleBtn.setAttribute("data-i18n-title-key", "searchPlaceholder");
+    searchToggleBtn.setAttribute("data-i18n-aria-key", "searchPlaceholder");
+  }
+
+  const searchClearBtn = document.getElementById("search-clear-btn");
+  if (searchClearBtn) {
+    const clearTitle = t("clearSearch");
+    searchClearBtn.title = clearTitle;
+    searchClearBtn.setAttribute("aria-label", clearTitle);
+    searchClearBtn.setAttribute("data-i18n-title-key", "clearSearch");
+    searchClearBtn.setAttribute("data-i18n-aria-key", "clearSearch");
+  }
+
+  // Lock tiles button
+  const lockTilesBtn = document.getElementById("lock-tiles-btn");
+  if (lockTilesBtn) {
+    const locked = document.body.classList.contains("tiles-locked");
+    const lockKey = locked ? "unlockTiles" : "lockTiles";
+    const lockTitle = t(lockKey);
+    lockTilesBtn.title = lockTitle;
+    lockTilesBtn.setAttribute("aria-label", lockTitle);
+    lockTilesBtn.setAttribute("data-i18n-title-key", lockKey);
+    lockTilesBtn.setAttribute("data-i18n-aria-key", lockKey);
+  }
 
   // Theme toggle
   const themeToggle = document.getElementById("theme-toggle");
@@ -427,7 +493,7 @@ function updateSettingsModalText() {
     const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
     const emoji = emojiMatch ? emojiMatch[0] : '';
     
-    if (emoji) {
+    if (emoji && !text.startsWith(emoji.trim())) {
       el.textContent = emoji + text;
     } else {
       el.textContent = text;
@@ -452,7 +518,7 @@ function updateSettingsModalText() {
     const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
     const emoji = emojiMatch ? emojiMatch[0] : '';
     
-    if (emoji) {
+    if (emoji && !text.startsWith(emoji.trim())) {
       btn.textContent = emoji + text;
     } else {
       btn.textContent = text;
@@ -485,6 +551,13 @@ function updateSettingsModalText() {
     label.textContent = text;
   });
 
+  // Update inputs with data-i18n-placeholder
+  const placeholderEls = document.querySelectorAll('[data-i18n-placeholder]');
+  placeholderEls.forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (key) el.placeholder = t(key);
+  });
+
   // Update translatable title/aria-label attributes while keeping key for future language switches.
   const attributeMappings = [
     { selector: '[title]', attr: 'title', keyAttr: 'data-i18n-title-key' },
@@ -510,6 +583,10 @@ function updateSettingsModalText() {
       }
     });
   });
+
+  if (typeof window.renderWidgetOrderList === "function") {
+    window.renderWidgetOrderList();
+  }
 }
 
 // Show notification when sync server is unavailable

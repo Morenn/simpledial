@@ -1,4 +1,12 @@
-import { state, saveState, generateId } from "./state.js";
+import {
+  state,
+  saveState,
+  generateId,
+  isStackItem,
+  getAllGroupBookmarks,
+  findBookmarkLocation,
+  cleanupStackIfNeeded
+} from "./state.js";
 import { render } from "./render.js";
 import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
@@ -184,12 +192,49 @@ async function getChromeFaviconIfReal(pageUrl, size = 32) {
 }
 
 function findBookmarkInState(bookmarkId) {
-  if (!bookmarkId) return null;
-  for (const g of state.groups) {
-    const found = (g.items || []).find(i => i.id === bookmarkId);
-    if (found) return found;
+  return findBookmarkLocation(bookmarkId)?.item || null;
+}
+
+function getActiveTagMap() {
+  const map = new Map();
+  for (const tag of (state.tags || [])) {
+    if (tag && !tag.deleted && tag.id) {
+      map.set(tag.id, tag);
+    }
   }
-  return null;
+  return map;
+}
+
+function createTagBadgeElements(tagIds, maxVisible = 3) {
+  if (!Array.isArray(tagIds) || tagIds.length === 0) return null;
+
+  const tagMap = getActiveTagMap();
+  const resolved = tagIds.map(id => tagMap.get(id)).filter(Boolean);
+  if (resolved.length === 0) return null;
+
+  const container = document.createElement("div");
+  container.className = "bookmark-tags";
+
+  const visible = resolved.slice(0, maxVisible);
+  visible.forEach(tag => {
+    const badge = document.createElement("span");
+    badge.className = "bookmark-tag-badge";
+    badge.textContent = tag.name;
+    badge.title = tag.name;
+    const badgeColor = isValidHexColor(tag.color) ? tag.color : "#4a6bff";
+    badge.style.setProperty("--tag-color", badgeColor);
+    container.appendChild(badge);
+  });
+
+  if (resolved.length > maxVisible) {
+    const more = document.createElement("span");
+    more.className = "bookmark-tag-badge bookmark-tag-more";
+    more.textContent = `+${resolved.length - maxVisible}`;
+    more.title = resolved.slice(maxVisible).map(tag => tag.name).join(", ");
+    container.appendChild(more);
+  }
+
+  return container;
 }
 
 async function syncBookmarkColorFromIcon(item, tile, iconSrc) {
@@ -217,6 +262,7 @@ export function createBookmarkTile(item, config = null) {
 
   const icon = document.createElement("img");
   icon.className = "bookmark-favicon";
+  icon.draggable = false;
   icon.loading = "lazy";
   icon.decoding = "async";
 
@@ -236,6 +282,7 @@ export function createBookmarkTile(item, config = null) {
 
   const link = document.createElement("a");
   link.className = "bookmark-title";
+  link.draggable = false;
   link.href = item.url;
   link.textContent = item.title || item.url;
 
@@ -258,8 +305,17 @@ export function createBookmarkTile(item, config = null) {
     }
   });
 
+  const body = document.createElement("div");
+  body.className = "bookmark-body";
+  body.appendChild(link);
+
+  const tagsEl = createTagBadgeElements(item.tags);
+  if (tagsEl) {
+    body.appendChild(tagsEl);
+  }
+
   tile.appendChild(icon);
-  tile.appendChild(link);
+  tile.appendChild(body);
 
   // Add dead link indicator only if:
   // 1. Link has errors (hasError flag is true)
@@ -274,6 +330,219 @@ export function createBookmarkTile(item, config = null) {
 
   return tile;
 }
+
+// ---------- Create stack tile ("siblings") ----------
+export function createStackTile(stackItem, config = null) {
+  const showDeleted = !!document.getElementById("show-deleted-toggle")?.checked;
+  const visibleChildren = (stackItem.children || []).filter(c => showDeleted || !c.deleted);
+  const stackTitleText = stackItem.title || t("defaultStackName") || "Stack";
+
+  const tile = document.createElement("div");
+  tile.className = "bookmark-tile stack-tile";
+  tile.draggable = true;
+  tile.dataset.bookmarkId = stackItem.id;
+  tile.dataset.isStack = "true";
+  tile.title = `${stackTitleText} (${visibleChildren.length})`;
+
+  applyTileColorStyle(tile, stackItem.tileColor || null);
+
+  const iconGrid = document.createElement("div");
+  iconGrid.className = "stack-icon-grid";
+
+  const previewChildren = visibleChildren.filter(c => !c.deleted).slice(0, 4);
+  for (let i = 0; i < 4; i++) {
+    const child = previewChildren[i];
+    if (child) {
+      const mini = document.createElement("img");
+      mini.className = "stack-mini-icon";
+      mini.draggable = false;
+      mini.alt = "";
+      mini.loading = "lazy";
+      mini.decoding = "async";
+      mini.src = getImmediateIconSrc(child);
+      scheduleDeferredIconHydration(mini, child);
+      iconGrid.appendChild(mini);
+    } else {
+      const slot = document.createElement("span");
+      slot.className = "stack-mini-slot";
+      iconGrid.appendChild(slot);
+    }
+  }
+
+  const label = document.createElement("span");
+  label.className = "bookmark-title stack-title";
+  label.textContent = stackTitleText;
+
+  const badge = document.createElement("span");
+  badge.className = "stack-badge";
+
+  const countSpan = document.createElement("span");
+  countSpan.className = "stack-badge-count";
+  countSpan.textContent = String(visibleChildren.length);
+
+  const chevronSpan = document.createElement("span");
+  chevronSpan.className = "stack-badge-chevron";
+  chevronSpan.textContent = "›";
+
+  badge.appendChild(countSpan);
+  badge.appendChild(chevronSpan);
+
+  tile.appendChild(iconGrid);
+  tile.appendChild(label);
+  tile.appendChild(badge);
+
+  tile.addEventListener("click", e => {
+    e.preventDefault();
+    openStackPopover(stackItem.id);
+  });
+
+  tile.addEventListener("auxclick", e => {
+    if (e.button === 1) {
+      e.preventDefault();
+      openStackPopover(stackItem.id);
+    }
+  });
+
+  return tile;
+}
+
+// ---------- Floating Stack Popover ----------
+let activeStackPopoverId = null;
+
+export function getActiveStackPopoverId() {
+  return activeStackPopoverId;
+}
+
+export function closeStackPopover() {
+  const backdrop = document.getElementById("stack-popover");
+  if (!backdrop) return;
+  backdrop.classList.add("hidden");
+  backdrop.classList.remove("dragging-outside");
+  activeStackPopoverId = null;
+}
+
+function populateStackPopover(stackItem, config = null) {
+  const titleInput = document.getElementById("stack-popover-title");
+  const countBadge = document.getElementById("stack-popover-count");
+  const grid = document.getElementById("stack-popover-grid");
+  if (!grid || !stackItem) return;
+
+  const showDeleted = !!document.getElementById("show-deleted-toggle")?.checked;
+  const visibleChildren = (stackItem.children || []).filter(c => showDeleted || !c.deleted);
+
+  if (titleInput) {
+    titleInput.placeholder = t("defaultStackName") || "Stack";
+    if (document.activeElement !== titleInput) {
+      titleInput.value = stackItem.title || "";
+    }
+  }
+  if (countBadge) {
+    countBadge.textContent = String(visibleChildren.length);
+  }
+
+  grid.innerHTML = "";
+  grid.dataset.stackId = stackItem.id;
+
+  visibleChildren.forEach(child => {
+    const childTile = createBookmarkTile(child, config);
+    childTile.dataset.parentStackId = stackItem.id;
+    if (child.deleted) childTile.classList.add("deleted");
+    grid.appendChild(childTile);
+  });
+}
+
+export async function refreshOpenStackPopover(config = null) {
+  if (!activeStackPopoverId) return;
+  const backdrop = document.getElementById("stack-popover");
+  if (!backdrop || backdrop.classList.contains("hidden")) {
+    activeStackPopoverId = null;
+    return;
+  }
+
+  const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
+  const loc = group ? findBookmarkLocation(activeStackPopoverId, group) : null;
+  if (!loc || !isStackItem(loc.item)) {
+    closeStackPopover();
+    return;
+  }
+
+  populateStackPopover(loc.item, config);
+  import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+}
+
+export async function openStackPopover(stackId, options = {}) {
+  const backdrop = document.getElementById("stack-popover");
+  const titleInput = document.getElementById("stack-popover-title");
+  if (!backdrop) return;
+
+  const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
+  const loc = group ? findBookmarkLocation(stackId, group) : null;
+  if (!loc || !isStackItem(loc.item)) return;
+
+  activeStackPopoverId = stackId;
+  const config = await loadConfig();
+  populateStackPopover(loc.item, config);
+
+  backdrop.classList.remove("hidden");
+  backdrop.classList.remove("dragging-outside");
+
+  import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+
+  if (options.focusTitle && titleInput) {
+    titleInput.focus();
+    titleInput.select();
+  }
+}
+
+(() => {
+  const backdrop = document.getElementById("stack-popover");
+  const closeBtn = document.getElementById("stack-popover-close");
+  const titleInput = document.getElementById("stack-popover-title");
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeStackPopover);
+  }
+  if (backdrop) {
+    backdrop.addEventListener("click", e => {
+      if (e.target === backdrop) {
+        closeStackPopover();
+      }
+    });
+  }
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && activeStackPopoverId) {
+      closeStackPopover();
+    }
+  });
+  if (titleInput) {
+    titleInput.addEventListener("input", () => {
+      if (!activeStackPopoverId) return;
+      const loc = findBookmarkLocation(activeStackPopoverId);
+      if (!loc || !isStackItem(loc.item)) return;
+      const nextTitle = titleInput.value.trim() || (t("defaultStackName") || "Stack");
+      loc.item.title = titleInput.value;
+      loc.item.updatedAt = Date.now();
+      const tileLabel = document.querySelector(`.stack-tile[data-bookmark-id="${activeStackPopoverId}"] .stack-title`);
+      if (tileLabel) tileLabel.textContent = nextTitle;
+    });
+    titleInput.addEventListener("change", async () => {
+      if (!activeStackPopoverId) return;
+      const loc = findBookmarkLocation(activeStackPopoverId);
+      if (!loc || !isStackItem(loc.item)) return;
+      loc.item.title = titleInput.value.trim() || (t("defaultStackName") || "Stack");
+      loc.item.updatedAt = Date.now();
+      await saveState();
+      await syncWrite();
+      render();
+    });
+    titleInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        titleInput.blur();
+      }
+    });
+  }
+})();
 
 export function openBookmark(url, e, forceNewTab = false) {
   if (forceNewTab || e.ctrlKey || e.metaKey) {
@@ -624,8 +893,7 @@ export async function refreshBookmarkIconsIfNeeded(options = {}) {
   for (const group of state.groups) {
     if (group.deleted) continue;
 
-    for (const item of (group.items || [])) {
-      if (item.deleted) continue;
+    for (const item of getAllGroupBookmarks(group, { includeDeleted: false })) {
       if (bookmarkId && item.id !== bookmarkId) continue;
 
       tasks.push(() => refreshBookmarkIcon(item, { force, mode, frequencyHours }));
@@ -675,8 +943,7 @@ export async function applyMassTileColorFromIcon(enable) {
         groupsUpdated++;
       }
 
-      for (const item of (group.items || [])) {
-        if (item.deleted) continue;
+      for (const item of getAllGroupBookmarks(group, { includeDeleted: false })) {
         if (item.colorFromIcon) {
           item.colorFromIcon = false;
           item.tileColor = null;
@@ -724,8 +991,8 @@ export async function applyMassTileColorFromIcon(enable) {
       });
     }
 
-    for (const item of (group.items || [])) {
-      if (item.deleted || !item.url) continue;
+    for (const item of getAllGroupBookmarks(group, { includeDeleted: false })) {
+      if (!item.url) continue;
 
       tasks.push(async () => {
         item.colorFromIcon = true;
@@ -788,10 +1055,126 @@ const bmNotesCounter = document.getElementById("bm-notes-counter");
 const bmColor = document.getElementById("bm-color");
 const bmColorCustom = document.getElementById("bm-color-custom");
 const bmColorFromIcon = document.getElementById("bm-color-from-icon");
+const bmTagsList = document.getElementById("bm-tags-list");
+const bmNewTagName = document.getElementById("bm-new-tag-name");
+const bmNewTagColor = document.getElementById("bm-new-tag-color");
+const bmAddTagBtn = document.getElementById("bm-add-tag-btn");
 const bmSave = document.getElementById("bm-save");
 const bmCancel = document.getElementById("bm-cancel");
 
+const DEFAULT_TAG_PALETTE = ["#10b981", "#4a6bff", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444"];
 let editingBookmark = null;
+let selectedTagIds = new Set();
+let pendingSectionIdForNewBookmark = null;
+
+function renderModalTagsList() {
+  if (!bmTagsList) return;
+  bmTagsList.innerHTML = "";
+
+  const activeTags = (state.tags || []).filter(tag => tag && !tag.deleted);
+  activeTags.forEach(tag => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "bm-tag-chip" + (selectedTagIds.has(tag.id) ? " active" : "");
+    chip.style.setProperty("--tag-color", isValidHexColor(tag.color) ? tag.color : "#4a6bff");
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "bm-tag-chip-name";
+    nameSpan.textContent = tag.name;
+
+    const deleteSpan = document.createElement("span");
+    deleteSpan.className = "bm-tag-delete";
+    deleteSpan.textContent = "×";
+    deleteSpan.title = t("delete") || "Delete";
+
+    deleteSpan.addEventListener("click", async e => {
+      e.stopPropagation();
+      const now = Date.now();
+      tag.deleted = true;
+      tag.deletedAt = now;
+      tag.updatedAt = now;
+      selectedTagIds.delete(tag.id);
+
+      for (const group of (state.groups || [])) {
+        for (const item of getAllGroupBookmarks(group, { includeDeleted: true })) {
+          if (Array.isArray(item.tags) && item.tags.includes(tag.id)) {
+            item.tags = item.tags.filter(id => id !== tag.id);
+            item.updatedAt = now;
+          }
+        }
+      }
+
+      renderModalTagsList();
+      await saveState();
+      void syncWrite();
+      render();
+    });
+
+    chip.addEventListener("click", () => {
+      if (selectedTagIds.has(tag.id)) {
+        selectedTagIds.delete(tag.id);
+      } else {
+        selectedTagIds.add(tag.id);
+      }
+      renderModalTagsList();
+    });
+
+    chip.appendChild(nameSpan);
+    chip.appendChild(deleteSpan);
+    bmTagsList.appendChild(chip);
+  });
+}
+
+function createOrSelectTagFromInput() {
+  if (!bmNewTagName) return;
+  const rawName = bmNewTagName.value.trim();
+  if (!rawName) return;
+
+  if (!Array.isArray(state.tags)) {
+    state.tags = [];
+  }
+
+  const existing = state.tags.find(
+    tag => tag && !tag.deleted && tag.name.toLowerCase() === rawName.toLowerCase()
+  );
+
+  if (existing) {
+    selectedTagIds.add(existing.id);
+  } else {
+    const color = isValidHexColor(bmNewTagColor?.value) ? bmNewTagColor.value : "#10b981";
+    const newTag = {
+      id: generateId("t"),
+      name: rawName,
+      color,
+      updatedAt: Date.now(),
+      deleted: false,
+      deletedAt: null
+    };
+    state.tags.push(newTag);
+    selectedTagIds.add(newTag.id);
+
+    if (bmNewTagColor) {
+      const nextColor = DEFAULT_TAG_PALETTE[state.tags.filter(t => !t.deleted).length % DEFAULT_TAG_PALETTE.length];
+      bmNewTagColor.value = nextColor;
+    }
+  }
+
+  bmNewTagName.value = "";
+  renderModalTagsList();
+}
+
+if (bmAddTagBtn) {
+  bmAddTagBtn.addEventListener("click", createOrSelectTagFromInput);
+}
+if (bmNewTagName) {
+  bmNewTagName.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      createOrSelectTagFromInput();
+    }
+  });
+}
 
 if (bmColor && bmColorCustom && bmColorFromIcon) {
   bmColor.addEventListener("input", () => {
@@ -818,8 +1201,9 @@ function updateNotesCounter() {
 
 bmNotes.addEventListener("input", updateNotesCounter);
 
-export function openBookmarkModal(data = null) {
+export function openBookmarkModal(data = null, options = {}) {
   editingBookmark = data;
+  pendingSectionIdForNewBookmark = options?.sectionId ?? null;
   const fallbackHex = "#4a6bff";
 
   if (data) {
@@ -828,6 +1212,7 @@ export function openBookmarkModal(data = null) {
     bmUrl.value = data.url;
     bmIcon.value = data.customIcon || "";
     bmNotes.value = data.notes || "";
+    selectedTagIds = new Set(Array.isArray(data.tags) ? data.tags : []);
     if (bmColor) {
       bmColor.value = isValidHexColor(data.tileColor) ? data.tileColor : fallbackHex;
     }
@@ -839,11 +1224,14 @@ export function openBookmarkModal(data = null) {
     bmUrl.value = "";
     bmIcon.value = "";
     bmNotes.value = "";
+    selectedTagIds = new Set();
     if (bmColor) bmColor.value = fallbackHex;
     if (bmColorFromIcon) bmColorFromIcon.checked = false;
     if (bmColorCustom) bmColorCustom.checked = false;
   }
 
+  if (bmNewTagName) bmNewTagName.value = "";
+  renderModalTagsList();
   updateNotesCounter();
 
   modal.classList.remove("hidden");
@@ -853,6 +1241,8 @@ export function openBookmarkModal(data = null) {
 function closeBookmarkModal() {
   modal.classList.add("hidden");
   editingBookmark = null;
+  pendingSectionIdForNewBookmark = null;
+  selectedTagIds = new Set();
 }
 
 bmCancel.addEventListener("click", closeBookmarkModal);
@@ -901,11 +1291,16 @@ bmSave.addEventListener("click", async () => {
   let iconChanged = false;
   let isNewBookmark = false;
 
+  // Commit any typed tag name if the user clicked Save without pressing "+ Tag"
+  if (bmNewTagName && bmNewTagName.value.trim()) {
+    createOrSelectTagFromInput();
+  }
+
   // EDIT
   if (editingBookmark) {
-    // 🔥 Look up item by ID instead of using stale reference
-    // (sync loop may have replaced state.groups while modal was open)
-    const currentItem = group.items.find(i => i.id === editingBookmark.id);
+    // 🔥 Look up item by ID (including items nested inside stacks) instead of using stale reference
+    const loc = findBookmarkLocation(editingBookmark.id, group) || findBookmarkLocation(editingBookmark.id);
+    const currentItem = loc?.item;
     if (currentItem) {
       const previousCustomIcon = currentItem.customIcon || null;
       const nextCustomIcon = icon || null;
@@ -915,6 +1310,7 @@ bmSave.addEventListener("click", async () => {
       currentItem.url = url;
       currentItem.customIcon = nextCustomIcon;
       currentItem.notes = notes || null;
+      currentItem.tags = Array.from(selectedTagIds);
       currentItem.colorFromIcon = wantColorFromIcon;
       if (wantColorFromIcon) {
         if (iconChanged) {
@@ -930,6 +1326,9 @@ bmSave.addEventListener("click", async () => {
         clearFaviconCacheEntry(currentItem); // reset cached icon + timestamp
       }
       currentItem.updatedAt = Date.now();
+      if (loc.parentStack) {
+        loc.parentStack.updatedAt = currentItem.updatedAt;
+      }
       targetBookmark = currentItem;
     }
 
@@ -942,6 +1341,8 @@ bmSave.addEventListener("click", async () => {
       url,
       customIcon: icon || null,
       notes: notes || null,
+      tags: Array.from(selectedTagIds),
+      sectionId: pendingSectionIdForNewBookmark || null,
       tileColor: wantCustomColor ? pickedColor : null,
       colorFromIcon: wantColorFromIcon,
       updatedAt: Date.now(),
@@ -1009,41 +1410,111 @@ bmSave.addEventListener("click", async () => {
 // ---------- Context menu – bookmarks ----------
 export async function handleBookmarkContext(action, el) {
   const bookmarkId = el.dataset.bookmarkId;
-  const group = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
-  if (!group) return;
-
-  const item = group.items.find(i => i.id === bookmarkId);
-  if (!item) return;
+  const activeGroup = state.groups.find(g => g.id === window.activeGroupId);
+  const loc = (activeGroup && findBookmarkLocation(bookmarkId, activeGroup)) || findBookmarkLocation(bookmarkId);
+  if (!loc) return;
+  const { group, item, parentStack, list, index } = loc;
+  const stackItem = isStackItem(item);
 
   if (action === "edit") {
-    openBookmarkModal(item);
+    if (stackItem) {
+      openStackPopover(item.id, { focusTitle: true });
+    } else {
+      openBookmarkModal(item);
+    }
+    return;
   }
 
   if (action === "open-new-tab") {
-    openBookmark(item.url, null, true);
+    if (stackItem) {
+      for (const child of (item.children || [])) {
+        if (!child.deleted && child.url) {
+          openBookmark(child.url, null, true);
+        }
+      }
+    } else {
+      openBookmark(item.url, null, true);
+    }
+    return;
+  }
+
+  if (action === "remove-from-stack" && parentStack) {
+    list.splice(index, 1);
+    const now = Date.now();
+    item.sectionId = parentStack.sectionId ?? null;
+    item.updatedAt = now;
+    parentStack.updatedAt = now;
+
+    const stackIndex = group.items.findIndex(i => i && i.id === parentStack.id);
+    if (stackIndex !== -1) {
+      group.items.splice(stackIndex + 1, 0, item);
+    } else {
+      group.items.push(item);
+    }
+
+    const cleanupOutcome = cleanupStackIfNeeded(group, parentStack);
+    const purgedIds = (cleanupOutcome === "removed" || cleanupOutcome === "unwrapped") ? [parentStack.id] : [];
+    group.updatedAt = now;
+
+    await saveState();
+    await syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
+    render();
+    return;
+  }
+
+  if (action === "unstack" && stackItem) {
+    const now = Date.now();
+    const unwrapped = (item.children || []).filter(Boolean).map(child => ({
+      ...child,
+      sectionId: item.sectionId ?? null,
+      updatedAt: now
+    }));
+    group.items.splice(index, 1, ...unwrapped);
+    group.updatedAt = now;
+
+    if (activeStackPopoverId === item.id) {
+      closeStackPopover();
+    }
+
+    await saveState();
+    await syncWrite(state, { purgedIds: [item.id] });
+    render();
+    return;
   }
 
   if (action === "delete") {
+    const now = Date.now();
     item.deleted = true;
-    item.deletedAt = Date.now();
-    item.updatedAt = Date.now();
+    item.deletedAt = now;
+    item.updatedAt = now;
+    if (parentStack) parentStack.updatedAt = now;
 
     await saveState();
     await syncWrite();
     render();
+    return;
   }
 
   if (action === "restore") {
+    const now = Date.now();
     item.deleted = false;
     item.deletedAt = null;
-    item.updatedAt = Date.now();
+    item.updatedAt = now;
+    if (parentStack) {
+      parentStack.updatedAt = now;
+      if (parentStack.deleted) {
+        parentStack.deleted = false;
+        parentStack.deletedAt = null;
+      }
+    }
 
     await saveState();
     await syncWrite();
     render();
+    return;
   }
 
-  if (action === "refresh-icon") {
+  if (action === "refresh-icon" && !stackItem) {
     item.customIcon = null;
     clearFaviconCacheEntry(item);
 
@@ -1059,49 +1530,87 @@ export async function handleBookmarkContext(action, el) {
       sync: false
     });
     item.updatedAt = Date.now();
+    if (parentStack) parentStack.updatedAt = item.updatedAt;
 
     await saveState();
     await syncWrite();
     render();
+    return;
   }
 
   if (action === "delete-permanent") {
-    const confirmMsg = t("confirmDeletePermanentBookmark").replace("{0}", item.title);
+    const itemLabel = item.title || (stackItem ? (t("defaultStackName") || "Stack") : item.url);
+    const confirmMsg = t("confirmDeletePermanentBookmark").replace("{0}", itemLabel);
     if (!confirm(confirmMsg)) return;
 
-    clearFaviconCacheEntry(item); // drop any cached icon for this bookmark
+    const purgedIds = [item.id];
+    if (stackItem) {
+      for (const child of (item.children || [])) {
+        if (child?.id) purgedIds.push(child.id);
+        clearFaviconCacheEntry(child);
+      }
+      if (activeStackPopoverId === item.id) {
+        closeStackPopover();
+      }
+    } else {
+      clearFaviconCacheEntry(item); // drop any cached icon for this bookmark
+    }
 
-    // Permanently remove from array
-    const index = group.items.indexOf(item);
     if (index > -1) {
-      group.items.splice(index, 1);
+      list.splice(index, 1);
+    }
+    if (parentStack) {
+      parentStack.updatedAt = Date.now();
+      const cleanupOutcome = cleanupStackIfNeeded(group, parentStack);
+      if (cleanupOutcome === "removed" || cleanupOutcome === "unwrapped") {
+        purgedIds.push(parentStack.id);
+      }
     }
     group.updatedAt = Date.now();
 
     await saveState();
-    await syncWrite();
+    await syncWrite(state, { purgedIds });
     render();
   }
 }
 
 // ---------- Move bookmark to another group ----------
 export async function moveBookmarkToGroup(bookmarkId, targetGroupId) {
-  const sourceGroup = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
+  const activeGroup = state.groups.find(g => g.id === window.activeGroupId && !g.deleted);
+  const loc = (activeGroup && findBookmarkLocation(bookmarkId, activeGroup)) || findBookmarkLocation(bookmarkId);
+  const sourceGroup = loc?.group;
   const targetGroup = state.groups.find(g => g.id === targetGroupId && !g.deleted);
 
   if (!sourceGroup || !targetGroup || sourceGroup.id === targetGroup.id) return;
 
-  const itemIndex = sourceGroup.items.findIndex(i => i.id === bookmarkId);
-  if (itemIndex === -1) return;
-
-  const [item] = sourceGroup.items.splice(itemIndex, 1);
-  item.updatedAt = Date.now();
+  const { list, index, parentStack } = loc;
+  const [item] = list.splice(index, 1);
+  const now = Date.now();
+  item.sectionId = null;
+  item.updatedAt = now;
+  if (isStackItem(item)) {
+    for (const child of (item.children || [])) {
+      child.sectionId = null;
+      child.updatedAt = now;
+    }
+    if (activeStackPopoverId === item.id) {
+      closeStackPopover();
+    }
+  }
+  const purgedIds = [];
+  if (parentStack) {
+    parentStack.updatedAt = now;
+    const cleanupOutcome = cleanupStackIfNeeded(sourceGroup, parentStack);
+    if (cleanupOutcome === "removed" || cleanupOutcome === "unwrapped") {
+      purgedIds.push(parentStack.id);
+    }
+  }
   targetGroup.items.push(item);
 
-  sourceGroup.updatedAt = Date.now();
-  targetGroup.updatedAt = Date.now();
+  sourceGroup.updatedAt = now;
+  targetGroup.updatedAt = now;
 
   await saveState();
-  await syncWrite();
+  await syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
   render();
 }
