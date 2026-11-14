@@ -264,5 +264,16 @@
   "massColorFromIconActivated": { "message": "Tegelkleur uit pictogram geactiveerd" },
   "massColorFromIconDeactivated": { "message": "Tegelkleur uit pictogram gedeactiveerd" },
   "tileSize": { "message": "Tegelgrootte:" },
-  "groupTileSize": { "message": "Groepstegelgrootte:" }
+  "groupTileSize": { "message": "Groepstegelgrootte:" },
+  "themeSelect": { "message": "Thema:" },
+  "themeDefault": { "message": "Standaard" },
+  "themeSpring": { "message": "Lente" },
+  "themeSummer": { "message": "Zomer" },
+  "themeAutumn": { "message": "Herfst" },
+  "themeWinter": { "message": "Winter" },
+  "themeCustomFile": { "message": "Aangepaste CSS (bestand)" },
+  "themeCustomUrl": { "message": "Aangepaste CSS (URL)" },
+  "uploadThemeCss": { "message": "CSS uploaden" },
+  "applyThemeUrl": { "message": "Toepassen" },
+  "invalidThemeUrl": { "message": "Voer een geldige CSS-URL in." }
 }

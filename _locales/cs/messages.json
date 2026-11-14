@@ -264,5 +264,16 @@
   "massColorFromIconActivated": { "message": "Barva dlaždic podle ikony byla aktivována" },
   "massColorFromIconDeactivated": { "message": "Barva dlaždic podle ikony byla deaktivována" },
   "tileSize": { "message": "Velikost dlaždic:" },
-  "groupTileSize": { "message": "Velikost dlaždic skupin:" }
+  "groupTileSize": { "message": "Velikost dlaždic skupin:" },
+  "themeSelect": { "message": "Motiv:" },
+  "themeDefault": { "message": "Výchozí" },
+  "themeSpring": { "message": "Jaro" },
+  "themeSummer": { "message": "Léto" },
+  "themeAutumn": { "message": "Podzim" },
+  "themeWinter": { "message": "Zima" },
+  "themeCustomFile": { "message": "Vlastní CSS (soubor)" },
+  "themeCustomUrl": { "message": "Vlastní CSS (URL)" },
+  "uploadThemeCss": { "message": "Nahrát CSS" },
+  "applyThemeUrl": { "message": "Použít" },
+  "invalidThemeUrl": { "message": "Zadejte prosím platnou URL adresu CSS." }
 }

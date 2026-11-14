@@ -266,5 +266,16 @@
   "massColorFromIconActivated": { "message": "Tile color from icon activated" },
   "massColorFromIconDeactivated": { "message": "Tile color from icon deactivated" },
   "tileSize": { "message": "Tile size:" },
-  "groupTileSize": { "message": "Group tile size:" }
+  "groupTileSize": { "message": "Group tile size:" },
+  "themeSelect": { "message": "Theme:" },
+  "themeDefault": { "message": "Default" },
+  "themeSpring": { "message": "Spring" },
+  "themeSummer": { "message": "Summer" },
+  "themeAutumn": { "message": "Autumn" },
+  "themeWinter": { "message": "Winter" },
+  "themeCustomFile": { "message": "Custom CSS (file)" },
+  "themeCustomUrl": { "message": "Custom CSS (URL)" },
+  "uploadThemeCss": { "message": "Upload CSS" },
+  "applyThemeUrl": { "message": "Apply" },
+  "invalidThemeUrl": { "message": "Please enter a valid CSS URL." }
 }

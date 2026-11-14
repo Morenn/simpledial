@@ -5,7 +5,7 @@ import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from './bookmarks-api.js';
 import { render, calculateGridLayout } from "./render.js";
-import { applyBackground, applyTileOpacity, applyTileSize, applyGroupTileSize } from "./theme.js";
+import { applyBackground, applyTileOpacity, applyTileSize, applyGroupTileSize, applyThemeStyle, fetchAndCacheThemeUrl, isAllowedThemeUrl, getCustomThemeUrlCache } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
@@ -80,6 +80,14 @@ const browserBookmarksAutoSync = document.getElementById("browser-bookmarks-auto
 // Appearance Elements
 const showDeletedToggle = document.getElementById("show-deleted-toggle");
 const languageSelect = document.getElementById("language-select");
+const themeSelect = document.getElementById("theme-select");
+const themeCustomFileRow = document.getElementById("theme-custom-file-row");
+const themeCssFileInput = document.getElementById("theme-css-file-input");
+const themeCssFileName = document.getElementById("theme-css-file-name");
+const themeCustomUrlRow = document.getElementById("theme-custom-url-row");
+const themeCssUrlInput = document.getElementById("theme-css-url-input");
+const themeCssUrlApply = document.getElementById("theme-css-url-apply");
+const themeStatus = document.getElementById("theme-status");
 const bgImageInput = document.getElementById("bg-image-input");
 const bgSizeSelect = document.getElementById("bg-size-select");
 const bgPreview = document.getElementById("bg-preview");
@@ -158,6 +166,8 @@ const tabContents = document.querySelectorAll(".settings-tab-content");
 let isInitializingSettingsForm = false;
 let settingsDirty = false;
 let appearanceDraft = null;
+let appearancePreviewUrlCss = "";
+let appearancePreviewUrlTarget = "";
 
 function updateChoiceOptionStates() {
   document.querySelectorAll('.choice-option').forEach(option => {
@@ -291,21 +301,65 @@ async function revertDateTimePreviewToSaved() {
   }
 }
 
+function updateThemeCustomRowsVisibility(themeValue) {
+  if (themeCustomFileRow) {
+    themeCustomFileRow.classList.toggle("hidden", themeValue !== "custom-file");
+  }
+  if (themeCustomUrlRow) {
+    themeCustomUrlRow.classList.toggle("hidden", themeValue !== "custom-url");
+  }
+}
+
+function setThemeStatusMessage(message = "", isError = false) {
+  if (!themeStatus) return;
+  themeStatus.textContent = message;
+  themeStatus.style.color = message ? (isError ? "#e53935" : "#4caf50") : "";
+}
+
+function applyThemeDraftToControls(draft) {
+  if (!draft) return;
+  if (themeSelect) themeSelect.value = draft.theme;
+  if (themeCssFileName) themeCssFileName.textContent = draft.customThemeFileName;
+  if (themeCssUrlInput) themeCssUrlInput.value = draft.customThemeUrl;
+  if (themeCssFileInput) themeCssFileInput.value = "";
+  setThemeStatusMessage("");
+  updateThemeCustomRowsVisibility(draft.theme);
+}
+
+function createAppearanceDraftFromConfig(config) {
+  const appearance = config?.appearance || {};
+  return {
+    theme: appearance.theme || "default",
+    customThemeCss: appearance.customThemeCss || "",
+    customThemeFileName: appearance.customThemeFileName || "",
+    customThemeUrl: appearance.customThemeUrl || "",
+    backgroundImage: appearance.backgroundImage ?? null,
+    backgroundSize: appearance.backgroundSize || 'stretched',
+    tileOpacity: appearance.tileOpacity ?? 1,
+    tileSize: appearance.tileSize ?? 1,
+    groupTileSize: appearance.groupTileSize ?? 1,
+    showDateTime: appearance.showDateTime ?? true,
+    showDeleted: appearance.showDeleted ?? false,
+    showGroupBookmarkCount: appearance.showGroupBookmarkCount ?? true
+  };
+}
+
+async function ensureAppearanceDraft() {
+  if (!appearanceDraft) {
+    const config = await loadConfig();
+    appearanceDraft = createAppearanceDraftFromConfig(config);
+  }
+  return appearanceDraft;
+}
+
 async function revertAppearancePreviewToSaved() {
   try {
     const config = await loadConfig();
-    const appearance = config.appearance || {};
+    appearanceDraft = createAppearanceDraftFromConfig(config);
+    appearancePreviewUrlCss = "";
+    appearancePreviewUrlTarget = "";
 
-    appearanceDraft = {
-      backgroundImage: appearance.backgroundImage ?? null,
-      backgroundSize: appearance.backgroundSize || 'stretched',
-      tileOpacity: appearance.tileOpacity ?? 1,
-      tileSize: appearance.tileSize ?? 1,
-      groupTileSize: appearance.groupTileSize ?? 1,
-      showDateTime: appearance.showDateTime ?? true,
-      showDeleted: appearance.showDeleted ?? false,
-      showGroupBookmarkCount: appearance.showGroupBookmarkCount ?? true
-    };
+    applyThemeDraftToControls(appearanceDraft);
 
     if (bgSizeSelect) bgSizeSelect.value = appearanceDraft.backgroundSize;
 
@@ -354,6 +408,7 @@ async function revertAppearancePreviewToSaved() {
 
     if (bgImageInput) bgImageInput.value = "";
 
+    await applyThemeStyle(config);
     await applyBackground(config);
     await applyTileOpacity(config);
     await applyTileSize(config);
@@ -538,16 +593,10 @@ settingsBtn.addEventListener("click", async () => {
     updateShowDeletedButtonAppearance();
   }
 
-  appearanceDraft = {
-    backgroundImage: config.appearance?.backgroundImage ?? null,
-    backgroundSize: config.appearance?.backgroundSize || 'stretched',
-    tileOpacity: config.appearance?.tileOpacity ?? 1,
-    tileSize: config.appearance?.tileSize ?? 1,
-    groupTileSize: config.appearance?.groupTileSize ?? 1,
-    showDateTime: config.appearance?.showDateTime ?? true,
-    showDeleted: config.appearance?.showDeleted ?? false,
-    showGroupBookmarkCount: config.appearance?.showGroupBookmarkCount ?? true
-  };
+  appearanceDraft = createAppearanceDraftFromConfig(config);
+  appearancePreviewUrlCss = "";
+  appearancePreviewUrlTarget = "";
+  applyThemeDraftToControls(appearanceDraft);
 
   // Load backups settings
   if (backupRetentionDays) {
@@ -1519,6 +1568,144 @@ if (bgSizeSelect) {
   });
 }
 
+// ---------- Theme Settings ----------
+async function handleApplyThemeUrlPreview() {
+  const rawUrl = themeCssUrlInput ? themeCssUrlInput.value.trim() : "";
+  if (!isAllowedThemeUrl(rawUrl)) {
+    setThemeStatusMessage("❌ " + t("invalidThemeUrl"), true);
+    return false;
+  }
+
+  if (themeCssUrlApply) {
+    themeCssUrlApply.disabled = true;
+  }
+  setThemeStatusMessage("⏳ ...");
+
+  try {
+    const fetched = await fetchAndCacheThemeUrl(rawUrl, { saveCache: false });
+    const draft = await ensureAppearanceDraft();
+    draft.theme = "custom-url";
+    draft.customThemeUrl = fetched.url;
+    appearancePreviewUrlCss = fetched.css;
+    appearancePreviewUrlTarget = fetched.url;
+
+    if (themeSelect) {
+      themeSelect.value = "custom-url";
+    }
+    if (themeCssUrlInput) {
+      themeCssUrlInput.value = fetched.url;
+    }
+    updateThemeCustomRowsVisibility("custom-url");
+
+    await applyThemeStyle(
+      { appearance: { ...draft } },
+      { persistCache: false, previewUrlCss: fetched.css }
+    );
+    setThemeStatusMessage(`✅ ${fetched.url}`);
+    markSettingsDirty();
+    return true;
+  } catch (error) {
+    const detail = error?.message === "INVALID_THEME_URL" || !error?.message
+      ? t("invalidThemeUrl")
+      : error.message;
+    setThemeStatusMessage("❌ " + detail, true);
+    return false;
+  } finally {
+    if (themeCssUrlApply) {
+      themeCssUrlApply.disabled = false;
+    }
+  }
+}
+
+if (themeSelect) {
+  themeSelect.addEventListener("change", async () => {
+    const draft = await ensureAppearanceDraft();
+    draft.theme = themeSelect.value || "default";
+    updateThemeCustomRowsVisibility(draft.theme);
+    setThemeStatusMessage("");
+
+    const previewOptions = { persistCache: false };
+    const currentUrl = (draft.customThemeUrl || "").trim();
+    if (draft.theme === "custom-url" && appearancePreviewUrlCss && appearancePreviewUrlTarget === currentUrl) {
+      previewOptions.previewUrlCss = appearancePreviewUrlCss;
+    }
+
+    await applyThemeStyle({ appearance: { ...draft } }, previewOptions);
+    markSettingsDirty();
+  });
+}
+
+if (themeCssFileInput) {
+  themeCssFileInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const cssText = typeof ev.target?.result === "string" ? ev.target.result : "";
+        if (!cssText.trim()) {
+          setThemeStatusMessage("❌ Theme CSS file is empty", true);
+          return;
+        }
+
+        const draft = await ensureAppearanceDraft();
+        draft.theme = "custom-file";
+        draft.customThemeCss = cssText;
+        draft.customThemeFileName = file.name || "custom.css";
+
+        if (themeSelect) {
+          themeSelect.value = "custom-file";
+        }
+        if (themeCssFileName) {
+          themeCssFileName.textContent = draft.customThemeFileName;
+        }
+        updateThemeCustomRowsVisibility("custom-file");
+
+        await applyThemeStyle({ appearance: { ...draft } }, { persistCache: false });
+        setThemeStatusMessage(`✅ ${draft.customThemeFileName}`);
+        markSettingsDirty();
+      } catch (error) {
+        setThemeStatusMessage("❌ " + (error?.message || "Failed to load CSS file"), true);
+        console.error("Theme CSS load error", error);
+      } finally {
+        themeCssFileInput.value = "";
+      }
+    };
+
+    reader.onerror = () => {
+      setThemeStatusMessage("❌ Failed to read CSS file", true);
+      themeCssFileInput.value = "";
+    };
+
+    reader.readAsText(file);
+  });
+}
+
+if (themeCssUrlApply) {
+  themeCssUrlApply.addEventListener("click", () => {
+    void handleApplyThemeUrlPreview();
+  });
+}
+
+if (themeCssUrlInput) {
+  themeCssUrlInput.addEventListener("input", () => {
+    const enteredUrl = themeCssUrlInput.value.trim();
+    if (appearanceDraft) {
+      appearanceDraft.customThemeUrl = enteredUrl;
+    }
+    if (appearancePreviewUrlTarget !== enteredUrl) {
+      appearancePreviewUrlCss = "";
+    }
+  });
+  themeCssUrlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void handleApplyThemeUrlPreview();
+    }
+  });
+}
+
 // ---------- Tile Opacity Settings ----------
 if (tileOpacitySlider) {
   tileOpacitySlider.addEventListener("input", (e) => {
@@ -1677,6 +1864,59 @@ async function persistSettings(closeAfterSave = false) {
   config.backups.frequencyHours = Math.max(1, parseInt(backupFrequencyHours?.value, 10) || 24);
 
   // Save appearance settings
+  const selectedTheme = themeSelect
+    ? (themeSelect.value || "default")
+    : (appearanceDraft?.theme || config.appearance.theme || "default");
+  config.appearance.theme = selectedTheme;
+  if (appearanceDraft) {
+    config.appearance.customThemeCss = appearanceDraft.customThemeCss || "";
+    config.appearance.customThemeFileName = appearanceDraft.customThemeFileName || "";
+    config.appearance.customThemeUrl = themeCssUrlInput
+      ? themeCssUrlInput.value.trim()
+      : (appearanceDraft.customThemeUrl || "");
+  } else if (themeCssUrlInput) {
+    config.appearance.customThemeUrl = themeCssUrlInput.value.trim();
+  }
+
+  let themePreviewCssForSave = "";
+  if (selectedTheme === "custom-url") {
+    const targetUrl = (config.appearance.customThemeUrl || "").trim();
+    if (!isAllowedThemeUrl(targetUrl)) {
+      setThemeStatusMessage("❌ " + t("invalidThemeUrl"), true);
+      if (syncStatus) syncStatus.textContent = "❌ " + t("invalidThemeUrl");
+      return false;
+    }
+
+    if (appearancePreviewUrlCss && appearancePreviewUrlTarget === targetUrl) {
+      themePreviewCssForSave = appearancePreviewUrlCss;
+    } else {
+      const cachedEntry = await getCustomThemeUrlCache();
+      if (!cachedEntry || cachedEntry.url !== targetUrl || !cachedEntry.css) {
+        try {
+          const fetched = await fetchAndCacheThemeUrl(targetUrl, { saveCache: true });
+          config.appearance.customThemeUrl = fetched.url;
+          if (appearanceDraft) appearanceDraft.customThemeUrl = fetched.url;
+          if (themeCssUrlInput) themeCssUrlInput.value = fetched.url;
+          themePreviewCssForSave = fetched.css;
+        } catch (error) {
+          const detail = error?.message === "INVALID_THEME_URL" || !error?.message
+            ? t("invalidThemeUrl")
+            : error.message;
+          setThemeStatusMessage("❌ " + detail, true);
+          if (syncStatus) syncStatus.textContent = "❌ " + detail;
+          return false;
+        }
+      }
+    }
+  }
+
+  await applyThemeStyle(config, {
+    persistCache: true,
+    previewUrlCss: themePreviewCssForSave
+  });
+  appearancePreviewUrlCss = "";
+  appearancePreviewUrlTarget = "";
+
   if (bgSizeSelect) {
     config.appearance.backgroundSize = bgSizeSelect.value || 'stretched';
   }
@@ -2295,12 +2535,23 @@ if (hkHighlightDeadLinks) {
   });
 });
 
-// open browser native extension settings in a new tab
-document.getElementById('open-extension-settings').addEventListener('click', () => {
-  const extensionId = chrome.runtime.id; 
-  const settingsUrl = `chrome://extensions/?id=${extensionId}`;
-  chrome.tabs.create({ url: settingsUrl });
-});
+// open browser native extension settings in a new tab (Chromium only; hidden on Gecko/Firefox)
+const openExtensionSettingsBtn = document.getElementById('open-extension-settings');
+if (openExtensionSettingsBtn) {
+  const isGecko = (typeof browser !== 'undefined' && typeof browser.runtime?.getBrowserInfo === 'function')
+    || /\b(?:Firefox|Gecko)\/\d+/i.test(navigator.userAgent || '');
+  if (isGecko) {
+    const footer = openExtensionSettingsBtn.closest('.appearance-card-footer');
+    if (footer) footer.style.display = 'none';
+    openExtensionSettingsBtn.style.display = 'none';
+  } else {
+    openExtensionSettingsBtn.addEventListener('click', () => {
+      const extensionId = chrome.runtime.id;
+      const settingsUrl = `chrome://extensions/?id=${extensionId}`;
+      chrome.tabs.create({ url: settingsUrl });
+    });
+  }
+}
 
 // button to reset language to browser default
 document.getElementById('reset-language-to-browser').addEventListener('click', async () => {

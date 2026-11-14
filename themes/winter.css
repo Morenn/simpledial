@@ -1,0 +1,48 @@
+/* =====================================================
+   Winter Theme Override (Dark + Light)
+   ===================================================== */
+
+body.theme-dark {
+  --bg: #0b1320;
+  --bg2: #121d2f;
+  --bg3: #192840;
+  --bg-hover: #233757;
+  --text: #e6f0fa;
+  --accent: #38bdf8;
+  --accent-text: #061826;
+  --border: #283f61;
+  --footer-accent: #7dd3fc;
+
+  --tile-bg: #152338;
+  --tile-bg-hover: #1e314d;
+  --tile-bg-active: #101c2d;
+  --tile-text: #eaf3fc;
+  --tile-border: #2a4366;
+  --tile-pulse-color: var(--accent);
+  --tile-shadow: inset 0 0 4px rgba(4, 10, 20, 0.5);
+  --tile-shadow-hover: inset 0 0 6px rgba(4, 10, 20, 0.65),
+                       0 0 6px rgba(56, 189, 248, 0.18);
+  --tile-shadow-active: inset 0 0 8px rgba(4, 10, 20, 0.8);
+}
+
+body.theme-light {
+  --bg: #f0f6fc;
+  --bg2: #ffffff;
+  --bg3: #dfeaf5;
+  --bg-hover: #cfe0f0;
+  --text: #132238;
+  --accent: #2563eb;
+  --accent-text: #ffffff;
+  --border: #c5d6e8;
+  --footer-accent: #0284c7;
+
+  --tile-bg: #ffffff;
+  --tile-bg-hover: #e8f1fa;
+  --tile-bg-active: #d9e7f5;
+  --tile-text: #132238;
+  --tile-border: #c5d6e8;
+  --tile-pulse-color: var(--accent);
+  --tile-shadow: inset 0 0 3px rgba(19, 34, 56, 0.09);
+  --tile-shadow-hover: inset 0 0 5px rgba(37, 99, 235, 0.14);
+  --tile-shadow-active: inset 0 0 6px rgba(19, 34, 56, 0.18);
+}

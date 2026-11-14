@@ -264,5 +264,16 @@
   "massColorFromIconActivated": { "message": "Kachelfarbe aus Symbol aktiviert" },
   "massColorFromIconDeactivated": { "message": "Kachelfarbe aus Symbol deaktiviert" },
   "tileSize": { "message": "Kachelgröße:" },
-  "groupTileSize": { "message": "Gruppenkachelgröße:" }
+  "groupTileSize": { "message": "Gruppenkachelgröße:" },
+  "themeSelect": { "message": "Design:" },
+  "themeDefault": { "message": "Standard" },
+  "themeSpring": { "message": "Frühling" },
+  "themeSummer": { "message": "Sommer" },
+  "themeAutumn": { "message": "Herbst" },
+  "themeWinter": { "message": "Winter" },
+  "themeCustomFile": { "message": "Benutzerdefiniertes CSS (Datei)" },
+  "themeCustomUrl": { "message": "Benutzerdefiniertes CSS (URL)" },
+  "uploadThemeCss": { "message": "CSS hochladen" },
+  "applyThemeUrl": { "message": "Anwenden" },
+  "invalidThemeUrl": { "message": "Bitte geben Sie eine gültige CSS-URL ein." }
 }

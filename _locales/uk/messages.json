@@ -264,5 +264,16 @@
   "massColorFromIconActivated": { "message": "Колір плиток з іконки активовано" },
   "massColorFromIconDeactivated": { "message": "Колір плиток з іконки деактивовано" },
   "tileSize": { "message": "Розмір плиток:" },
-  "groupTileSize": { "message": "Розмір плиток груп:" }
+  "groupTileSize": { "message": "Розмір плиток груп:" },
+  "themeSelect": { "message": "Тема:" },
+  "themeDefault": { "message": "Стандартна" },
+  "themeSpring": { "message": "Весна" },
+  "themeSummer": { "message": "Літо" },
+  "themeAutumn": { "message": "Осінь" },
+  "themeWinter": { "message": "Зима" },
+  "themeCustomFile": { "message": "Власний CSS (файл)" },
+  "themeCustomUrl": { "message": "Власний CSS (URL)" },
+  "uploadThemeCss": { "message": "Завантажити CSS" },
+  "applyThemeUrl": { "message": "Застосувати" },
+  "invalidThemeUrl": { "message": "Будь ласка, введіть дійсну URL-адресу CSS." }
 }

@@ -264,5 +264,16 @@
   "massColorFromIconActivated": { "message": "Couleur des tuiles depuis l'icône activée" },
   "massColorFromIconDeactivated": { "message": "Couleur des tuiles depuis l'icône désactivée" },
   "tileSize": { "message": "Taille des tuiles :" },
-  "groupTileSize": { "message": "Taille des tuiles de groupe :" }
+  "groupTileSize": { "message": "Taille des tuiles de groupe :" },
+  "themeSelect": { "message": "Thème :" },
+  "themeDefault": { "message": "Par défaut" },
+  "themeSpring": { "message": "Printemps" },
+  "themeSummer": { "message": "Été" },
+  "themeAutumn": { "message": "Automne" },
+  "themeWinter": { "message": "Hiver" },
+  "themeCustomFile": { "message": "CSS personnalisé (fichier)" },
+  "themeCustomUrl": { "message": "CSS personnalisé (URL)" },
+  "uploadThemeCss": { "message": "Importer CSS" },
+  "applyThemeUrl": { "message": "Appliquer" },
+  "invalidThemeUrl": { "message": "Veuillez saisir une URL CSS valide." }
 }

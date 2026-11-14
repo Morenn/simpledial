@@ -264,5 +264,16 @@
   "massColorFromIconActivated": { "message": "Ruudun väri kuvakkeesta aktivoitu" },
   "massColorFromIconDeactivated": { "message": "Ruudun väri kuvakkeesta poistettu käytöstä" },
   "tileSize": { "message": "Ruutujen koko:" },
-  "groupTileSize": { "message": "Ryhmäruutujen koko:" }
+  "groupTileSize": { "message": "Ryhmäruutujen koko:" },
+  "themeSelect": { "message": "Teema:" },
+  "themeDefault": { "message": "Oletus" },
+  "themeSpring": { "message": "Kevät" },
+  "themeSummer": { "message": "Kesä" },
+  "themeAutumn": { "message": "Syksy" },
+  "themeWinter": { "message": "Talvi" },
+  "themeCustomFile": { "message": "Mukautettu CSS (tiedosto)" },
+  "themeCustomUrl": { "message": "Mukautettu CSS (URL)" },
+  "uploadThemeCss": { "message": "Lataa CSS" },
+  "applyThemeUrl": { "message": "Käytä" },
+  "invalidThemeUrl": { "message": "Anna kelvollinen CSS-URL-osoite." }
 }
