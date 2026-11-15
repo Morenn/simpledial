@@ -1126,5 +1126,8 @@
   },
   "customSearchCopySuffix": {
     "message": "Kopie"
+  },
+  "clickableTags": {
+    "message": "Klikbare bladwijzerlabels (klik om te zoeken)"
   }
 }

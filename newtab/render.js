@@ -459,6 +459,19 @@ if (searchInput) {
   });
 }
 
+export function searchByBookmarkTag(tagName) {
+  if (!searchInput || typeof tagName !== "string") return;
+  const trimmed = tagName.trim();
+  if (!trimmed) return;
+  if (searchWidget && !searchWidget.classList.contains("expanded")) {
+    searchWidget.classList.add("expanded");
+  }
+  searchInput.value = trimmed;
+  updateSearchClearButton();
+  render();
+}
+window.searchByBookmarkTag = searchByBookmarkTag;
+
 if (searchClearBtn && searchInput) {
   searchClearBtn.addEventListener("click", () => {
     searchInput.value = "";

@@ -114,6 +114,7 @@ const groupCountToggle = document.getElementById("group-count-toggle");
 const showSideSpacesToggle = document.getElementById("show-side-spaces-toggle");
 const highlightSideSpacesToggle = document.getElementById("highlight-side-spaces-toggle");
 const tallBookmarkTilesToggle = document.getElementById("tall-bookmark-tiles-toggle");
+const clickableTagsToggle = document.getElementById("clickable-tags-toggle");
 const searchStyleSelect = document.getElementById("search-style-select");
 const widgetOrderList = document.getElementById("widget-order-list");
 const customWidgetsList = document.getElementById("custom-widgets-list");
@@ -982,6 +983,14 @@ function initializeSettingsDirtyTracking() {
       calculateGridLayout();
     });
   }
+  if (clickableTagsToggle) {
+    clickableTagsToggle.addEventListener('change', async () => {
+      markSettingsDirty();
+      const draft = await ensureAppearanceDraft();
+      draft.clickableTags = clickableTagsToggle.checked;
+      await applyTileSize({ appearance: draft });
+    });
+  }
   if (searchStyleSelect) {
     searchStyleSelect.addEventListener('change', handleSpaceOrSearchStylePreview);
   }
@@ -1498,6 +1507,7 @@ function createAppearanceDraftFromConfig(config) {
     showSideSpaces: appearance.showSideSpaces ?? false,
     highlightSideSpaces: appearance.highlightSideSpaces ?? false,
     tallBookmarkTiles: appearance.tallBookmarkTiles ?? false,
+    clickableTags: appearance.clickableTags ?? true,
     dateTimeSpace: (appearance.dateTimeSpace === "disabled" || appearance.showDateTime === false)
       ? "disabled"
       : (appearance.dateTimeSpace || "footer"),
@@ -1573,6 +1583,9 @@ function syncAppearanceControlsFromDraft(draft) {
   }
   if (tallBookmarkTilesToggle) {
     tallBookmarkTilesToggle.checked = !!draft.tallBookmarkTiles;
+  }
+  if (clickableTagsToggle) {
+    clickableTagsToggle.checked = draft.clickableTags !== false;
   }
   if (searchStyleSelect) {
     searchStyleSelect.value = draft.searchStyle || "full";
@@ -1801,6 +1814,9 @@ settingsBtn.addEventListener("click", async () => {
   }
   if (tallBookmarkTilesToggle) {
     tallBookmarkTilesToggle.checked = config.appearance?.tallBookmarkTiles ?? false;
+  }
+  if (clickableTagsToggle) {
+    clickableTagsToggle.checked = config.appearance?.clickableTags ?? true;
   }
   if (searchStyleSelect) {
     searchStyleSelect.value = config.appearance?.searchStyle || "full";
@@ -3326,6 +3342,9 @@ async function persistSettings(closeAfterSave = false) {
   }
   if (tallBookmarkTilesToggle) {
     config.appearance.tallBookmarkTiles = tallBookmarkTilesToggle.checked;
+  }
+  if (clickableTagsToggle) {
+    config.appearance.clickableTags = clickableTagsToggle.checked;
   }
   if (appearanceDraft) {
     config.appearance.dateTimeSpace = appearanceDraft.dateTimeSpace || "footer";

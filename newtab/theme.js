@@ -497,6 +497,7 @@ export async function applyTileSize(config = null) {
 
   document.body.style.setProperty('--tile-scale', clampTileScale(config.appearance?.tileSize));
   document.body.classList.toggle("tall-bookmark-tiles", !!config.appearance?.tallBookmarkTiles);
+  document.body.classList.toggle("clickable-bookmark-tags", config.appearance?.clickableTags !== false);
 }
 
 // ---------- Apply group tile size ----------
@@ -1249,6 +1250,7 @@ export async function applySideSpaces(config = null) {
   const searchStyle = (rawSearchStyle === "icon" || rawSearchStyle === "hover") ? rawSearchStyle : "full";
 
   document.body.classList.toggle("tall-bookmark-tiles", !!appearance.tallBookmarkTiles);
+  document.body.classList.toggle("clickable-bookmark-tags", appearance.clickableTags !== false);
   document.body.classList.toggle("highlight-side-spaces", highlightSideSpaces);
   await applyTilesLock(config);
 

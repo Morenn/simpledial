@@ -221,8 +221,15 @@ function createTagBadgeElements(tagIds, maxVisible = 3) {
     badge.className = "bookmark-tag-badge";
     badge.textContent = tag.name;
     badge.title = tag.name;
+    badge.dataset.tagName = tag.name;
     const badgeColor = isValidHexColor(tag.color) ? tag.color : "#4a6bff";
     badge.style.setProperty("--tag-color", badgeColor);
+    badge.addEventListener("click", (e) => {
+      if (!document.body.classList.contains("clickable-bookmark-tags")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      window.searchByBookmarkTag?.(tag.name);
+    });
     container.appendChild(badge);
   });
 

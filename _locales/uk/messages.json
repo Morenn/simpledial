@@ -1126,5 +1126,8 @@
   },
   "customSearchCopySuffix": {
     "message": "Копія"
+  },
+  "clickableTags": {
+    "message": "Клікабельні теги закладок (натисніть для пошуку)"
   }
 }

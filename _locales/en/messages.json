@@ -1129,5 +1129,8 @@
   },
   "customSearchCopySuffix": {
     "message": "Copy"
+  },
+  "clickableTags": {
+    "message": "Clickable bookmark tags (click to search)"
   }
 }

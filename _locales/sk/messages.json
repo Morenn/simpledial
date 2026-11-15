@@ -1126,5 +1126,8 @@
   },
   "customSearchCopySuffix": {
     "message": "Kópia"
+  },
+  "clickableTags": {
+    "message": "Klikateľné štítky záložiek (kliknutím vyhľadať)"
   }
 }

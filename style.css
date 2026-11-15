@@ -3504,6 +3504,16 @@ body.tiles-locked .stack-tile {
   color: var(--tile-text, var(--text));
 }
 
+body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more) {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
+  filter: brightness(1.18);
+  border-color: var(--tag-color, var(--accent));
+}
+
 .bookmark-tag-more {
   font-size: calc(0.68rem * var(--tile-scale, 1));
   opacity: 0.72;

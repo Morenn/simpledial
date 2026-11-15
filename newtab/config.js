@@ -63,6 +63,7 @@ export const defaultConfig = {
     showSideSpaces: false,
     highlightSideSpaces: false,
     tallBookmarkTiles: false,
+    clickableTags: true,
     lockTiles: false,
     groupsSpace: "header", // "header", "left", "center", "right", "footer"
     searchSpace: "header", // "header", "left", "center", "right", "footer"
