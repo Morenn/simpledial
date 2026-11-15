@@ -1,4 +1,4 @@
-import { state, saveState, isStackItem, getAllGroupBookmarks } from "./state.js";
+import { state, saveState, isStackItem, getAllGroupBookmarks, SYSTEM_TAGS, getBookmarkSystemTagIds } from "./state.js";
 import { renderGroups } from "./groups.js";
 import { createBookmarkTile, createStackTile, openBookmarkModal, refreshOpenStackPopover, closeStackPopover } from "./bookmarks.js";
 import { setupBookmarkDrag } from "./dragdrop.js";
@@ -308,6 +308,9 @@ async function renderBookmarks(providedConfig = null) {
     if (workspaceToolbar) workspaceToolbar.classList.toggle("hidden", !hasCenterWidgets);
 
     const activeTagById = new Map();
+    for (const tag of SYSTEM_TAGS) {
+      activeTagById.set(tag.id, tag.name.toLowerCase());
+    }
     for (const tag of (state.tags || [])) {
       if (tag && !tag.deleted && tag.id) {
         activeTagById.set(tag.id, (tag.name || "").toLowerCase());
@@ -346,8 +349,11 @@ async function renderBookmarks(providedConfig = null) {
       const url = (i.url || "").toLowerCase();
       const groupName = (i._groupName || "").toLowerCase();
       const stackTitle = (i._stackTitle || "").toLowerCase();
-      const tagMatches = Array.isArray(i.tags)
-        && i.tags.some(tid => (activeTagById.get(tid) || "").includes(searchText));
+      const allTagIds = [
+        ...getBookmarkSystemTagIds(i.id),
+        ...(Array.isArray(i.tags) ? i.tags : [])
+      ];
+      const tagMatches = allTagIds.some(tid => (activeTagById.get(tid) || "").includes(searchText));
 
       return (
         title.includes(searchText) ||

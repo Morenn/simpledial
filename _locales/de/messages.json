@@ -14,9 +14,6 @@
   "showDeleted": {
     "message": "Gelöschte anzeigen"
   },
-  "newGroupName": {
-    "message": "Name der neuen Gruppe:"
-  },
   "defaultGroupName": {
     "message": "Meine Lesezeichen"
   },
@@ -278,9 +275,6 @@
   "syncBehaviorHint": {
     "message": "Legen Sie fest, wann die Synchronisierung ausgelöst wird."
   },
-  "syncInterval": {
-    "message": "Synchronisationsintervall"
-  },
   "immediateSyncWarning": {
     "message": "Sofortige Synchronisierung (bei jeder Änderung)"
   },
@@ -350,14 +344,8 @@
   "browserSyncUnavailable": {
     "message": "Der Browser-Synchronisierungsspeicher ist nicht verfügbar. Bitte prüfen Sie den Status der Browsersynchronisierung."
   },
-  "exportDescription": {
-    "message": "Lesezeichen als JSON-Datei exportieren"
-  },
   "export": {
     "message": "Exportieren"
-  },
-  "importDescription": {
-    "message": "Lesezeichen aus einer JSON-Datei importieren"
   },
   "import": {
     "message": "Importieren"
@@ -455,20 +443,11 @@
   "backupTabConfig": {
     "message": "Addon-Konfiguration"
   },
-  "backupTabWidgets": {
-    "message": "Benutzerdefinierte Widgets"
-  },
   "confirmRestoreConfigBackup": {
     "message": "Diese Addon-Konfigurationssicherung wiederherstellen? Die aktuellen Darstellungseinstellungen werden ersetzt (Synchronisierungseinstellungen bleiben unverändert)."
   },
-  "confirmRestoreWidgetsBackup": {
-    "message": "Diese Sicherung der benutzerdefinierten Widgets wiederherstellen? Aktuelle benutzerdefinierte Widgets werden ersetzt."
-  },
   "backupConfigRestored": {
     "message": "Addon-Konfiguration aus Sicherung wiederhergestellt."
-  },
-  "backupWidgetsRestored": {
-    "message": "Benutzerdefinierte Widgets aus Sicherung wiederhergestellt."
   },
   "confirmDeleteBackup": {
     "message": "Diese Sicherung dauerhaft löschen?"
@@ -545,9 +524,6 @@
   "languageSelect": {
     "message": "Sprache:"
   },
-  "displayOptions": {
-    "message": "Anzeigeoptionen"
-  },
   "showDeletedBookmarks": {
     "message": "Gelöschte Lesezeichen anzeigen"
   },
@@ -593,14 +569,11 @@
   "enableDeadLinkDetection": {
     "message": "Erkennung toter Links aktivieren"
   },
-  "highlightDeadLinks": {
-    "message": "Tote Links auf Kacheln markieren"
-  },
   "checkLinksNow": {
-    "message": "Links jetzt prüfen"
+    "message": "Tote Links jetzt prüfen"
   },
   "clearDeadLinkFlags": {
-    "message": "Markierungen für tote Links löschen"
+    "message": "Tote-Link-Tags löschen"
   },
   "hkRetentionDays": {
     "message": "Aufbewahrungsdauer (Tage):"
@@ -616,9 +589,6 @@
   },
   "hkCleanupCompleted": {
     "message": "Bereinigung abgeschlossen – {0} Einträge dauerhaft gelöscht."
-  },
-  "hkLinkValidation": {
-    "message": "Linkprüfung"
   },
   "hkEnableLinkCheck": {
     "message": "Auf tote Links prüfen"
@@ -644,9 +614,6 @@
   "faviconDebugLogging": {
     "message": "Debug-Protokollierung für Favicons aktivieren"
   },
-  "faviconDebugLoggingDesc": {
-    "message": "Aktiviert detaillierte Fehleranalyse beim Wiederherstellen von Favicons. Die Protokolle erscheinen in der Browser-Konsole."
-  },
   "deadLinkDebugLogging": {
     "message": "Debug-Protokollierung für tote Links aktivieren"
   },
@@ -670,9 +637,6 @@
   },
   "advancedFeatures": {
     "message": "Erweiterte Funktionen"
-  },
-  "advancedFeaturesDesc": {
-    "message": "Diese Funktionen sind experimentell und funktionieren möglicherweise nicht wie erwartet."
   },
   "openExtensionSettings": {
     "message": "Erweiterungseinstellungen öffnen"
@@ -857,12 +821,6 @@
   "itemsCount": {
     "message": "{0} Einträge"
   },
-  "groupsWidgetSpace": {
-    "message": "Bereich für Gruppenauswahl:"
-  },
-  "searchWidgetSpace": {
-    "message": "Bereich für Suchfeld:"
-  },
   "searchFieldStyle": {
     "message": "Suchfeld-Stil:"
   },
@@ -902,14 +860,8 @@
   "unlockTiles": {
     "message": "Kachel-Verschiebung entsperren"
   },
-  "dateTimeWidgetSpace": {
-    "message": "Bereich für Datum & Uhrzeit:"
-  },
   "highlightSideSpaces": {
     "message": "Seitliche Widget-Bereiche hervorheben"
-  },
-  "widgetOrderLabel": {
-    "message": "Widget-Reihenfolge:"
   },
   "widgetGroups": {
     "message": "Gruppenauswahl"
@@ -1207,5 +1159,20 @@
   },
   "headerSingleRow": {
     "message": "Kopfzeilen-Widgets in einer Zeile halten"
+  },
+  "checkHttpBookmarks": {
+    "message": "HTTP-Lesezeichen prüfen"
+  },
+  "checkHttpBookmarksChecking": {
+    "message": "HTTP-Lesezeichen werden geprüft..."
+  },
+  "checkHttpBookmarksNone": {
+    "message": "Keine HTTP-Lesezeichen gefunden."
+  },
+  "checkHttpBookmarksFound": {
+    "message": "{count} HTTP-Lesezeichen gefunden ({tagged} neu getaggt)."
+  },
+  "checkHttpBookmarksFailed": {
+    "message": "Prüfung der HTTP-Lesezeichen fehlgeschlagen."
   }
 }

@@ -14,9 +14,6 @@
   "showDeleted": {
     "message": "Afficher les éléments supprimés"
   },
-  "newGroupName": {
-    "message": "Nom du nouveau groupe :"
-  },
   "defaultGroupName": {
     "message": "Mes favoris"
   },
@@ -278,9 +275,6 @@
   "syncBehaviorHint": {
     "message": "Déterminez quand la synchronisation doit être déclenchée."
   },
-  "syncInterval": {
-    "message": "Intervalle de synchronisation"
-  },
   "immediateSyncWarning": {
     "message": "Synchronisation immédiate (à chaque modification)"
   },
@@ -350,14 +344,8 @@
   "browserSyncUnavailable": {
     "message": "Le stockage de synchronisation du navigateur est indisponible. Vérifiez l'état de synchronisation du navigateur."
   },
-  "exportDescription": {
-    "message": "Exporter les favoris dans un fichier JSON"
-  },
   "export": {
     "message": "Exporter"
-  },
-  "importDescription": {
-    "message": "Importer les favoris depuis un fichier JSON"
   },
   "import": {
     "message": "Importer"
@@ -455,20 +443,11 @@
   "backupTabConfig": {
     "message": "Configuration de l'extension"
   },
-  "backupTabWidgets": {
-    "message": "Widgets personnalisés"
-  },
   "confirmRestoreConfigBackup": {
     "message": "Restaurer cette sauvegarde de configuration ? Les paramètres d'apparence actuels seront remplacés (les paramètres de synchronisation ne seront pas modifiés)."
   },
-  "confirmRestoreWidgetsBackup": {
-    "message": "Restaurer cette sauvegarde de widgets personnalisés ? Les widgets personnalisés actuels seront remplacés."
-  },
   "backupConfigRestored": {
     "message": "Configuration de l'extension restaurée depuis la sauvegarde."
-  },
-  "backupWidgetsRestored": {
-    "message": "Widgets personnalisés restaurés depuis la sauvegarde."
   },
   "confirmDeleteBackup": {
     "message": "Supprimer définitivement cette sauvegarde ?"
@@ -545,9 +524,6 @@
   "languageSelect": {
     "message": "Langue :"
   },
-  "displayOptions": {
-    "message": "Options d'affichage"
-  },
   "showDeletedBookmarks": {
     "message": "Afficher les favoris supprimés"
   },
@@ -593,14 +569,11 @@
   "enableDeadLinkDetection": {
     "message": "Activer la détection des liens morts"
   },
-  "highlightDeadLinks": {
-    "message": "Mettre en évidence les liens morts sur les tuiles"
-  },
   "checkLinksNow": {
-    "message": "Vérifier les liens maintenant"
+    "message": "Vérifier les liens morts maintenant"
   },
   "clearDeadLinkFlags": {
-    "message": "Effacer les indicateurs de liens morts"
+    "message": "Effacer les étiquettes de liens morts"
   },
   "hkRetentionDays": {
     "message": "Durée de conservation (jours) :"
@@ -616,9 +589,6 @@
   },
   "hkCleanupCompleted": {
     "message": "Nettoyage terminé – {0} enregistrements supprimés définitivement."
-  },
-  "hkLinkValidation": {
-    "message": "Validation des liens"
   },
   "hkEnableLinkCheck": {
     "message": "Vérifier les liens morts"
@@ -644,9 +614,6 @@
   "faviconDebugLogging": {
     "message": "Activer le journal de débogage des favicons"
   },
-  "faviconDebugLoggingDesc": {
-    "message": "Active un débogage détaillé du processus de récupération des favicons. Les journaux apparaissent dans la console du navigateur."
-  },
   "deadLinkDebugLogging": {
     "message": "Activer le journal de débogage des liens morts"
   },
@@ -670,9 +637,6 @@
   },
   "advancedFeatures": {
     "message": "Fonctions avancées"
-  },
-  "advancedFeaturesDesc": {
-    "message": "Ces fonctionnalités sont expérimentales et peuvent ne pas fonctionner comme prévu."
   },
   "openExtensionSettings": {
     "message": "Ouvrir les paramètres de l'extension"
@@ -857,12 +821,6 @@
   "itemsCount": {
     "message": "{0} éléments"
   },
-  "groupsWidgetSpace": {
-    "message": "Espace du sélecteur de groupes :"
-  },
-  "searchWidgetSpace": {
-    "message": "Espace de la barre de recherche :"
-  },
   "searchFieldStyle": {
     "message": "Style de la barre de recherche :"
   },
@@ -902,14 +860,8 @@
   "unlockTiles": {
     "message": "Déverrouiller le déplacement des tuiles"
   },
-  "dateTimeWidgetSpace": {
-    "message": "Espace du widget date et heure :"
-  },
   "highlightSideSpaces": {
     "message": "Mettre en évidence les espaces latéraux"
-  },
-  "widgetOrderLabel": {
-    "message": "Ordre des widgets :"
   },
   "widgetGroups": {
     "message": "Sélecteur de groupes"
@@ -1207,5 +1159,20 @@
   },
   "headerSingleRow": {
     "message": "Garder les widgets d'en-tête sur une seule ligne"
+  },
+  "checkHttpBookmarks": {
+    "message": "Vérifier les favoris HTTP"
+  },
+  "checkHttpBookmarksChecking": {
+    "message": "Vérification des favoris HTTP..."
+  },
+  "checkHttpBookmarksNone": {
+    "message": "Aucun favori HTTP trouvé."
+  },
+  "checkHttpBookmarksFound": {
+    "message": "{count} favori(s) HTTP trouvé(s) ({tagged} nouvellement étiqueté(s))."
+  },
+  "checkHttpBookmarksFailed": {
+    "message": "Échec de la vérification des favoris HTTP."
   }
 }

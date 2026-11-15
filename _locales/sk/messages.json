@@ -14,9 +14,6 @@
   "showDeleted": {
     "message": "Zobraziť zmazané"
   },
-  "newGroupName": {
-    "message": "Názov novej skupiny:"
-  },
   "defaultGroupName": {
     "message": "Moje záložky"
   },
@@ -278,9 +275,6 @@
   "syncBehaviorHint": {
     "message": "Nastavte, kedy sa má synchronizácia spúšťať."
   },
-  "syncInterval": {
-    "message": "Interval synchronizácie"
-  },
   "immediateSyncWarning": {
     "message": "Okamžitá synchronizácia (po každej zmene)"
   },
@@ -350,14 +344,8 @@
   "browserSyncUnavailable": {
     "message": "Synchronizačné úložisko prehliadača nie je dostupné. Skontrolujte stav synchronizácie prehliadača."
   },
-  "exportDescription": {
-    "message": "Exportovať záložky ako JSON súbor"
-  },
   "export": {
     "message": "Export"
-  },
-  "importDescription": {
-    "message": "Importovať záložky z JSON súboru"
   },
   "import": {
     "message": "Import"
@@ -455,20 +443,11 @@
   "backupTabConfig": {
     "message": "Konfigurácia doplnku"
   },
-  "backupTabWidgets": {
-    "message": "Vlastné widgety"
-  },
   "confirmRestoreConfigBackup": {
     "message": "Obnoviť túto zálohu konfigurácie doplnku? Aktuálne nastavenia vzhľadu budú nahradené (nastavenia synchronizácie sa nezmenia)."
   },
-  "confirmRestoreWidgetsBackup": {
-    "message": "Obnoviť túto zálohu vlastných widgetov? Aktuálne vlastné widgety budú nahradené."
-  },
   "backupConfigRestored": {
     "message": "Konfigurácia doplnku bola obnovená zo zálohy."
-  },
-  "backupWidgetsRestored": {
-    "message": "Vlastné widgety boli obnovené zo zálohy."
   },
   "confirmDeleteBackup": {
     "message": "Zmazať túto zálohu natrvalo?"
@@ -545,9 +524,6 @@
   "languageSelect": {
     "message": "Jazyk:"
   },
-  "displayOptions": {
-    "message": "Možnosti zobrazenia"
-  },
   "showDeletedBookmarks": {
     "message": "Zobraziť zmazané záložky"
   },
@@ -593,14 +569,11 @@
   "enableDeadLinkDetection": {
     "message": "Zapnúť zisťovanie nefunkčných odkazov"
   },
-  "highlightDeadLinks": {
-    "message": "Zvýrazniť nefunkčné odkazy"
-  },
   "checkLinksNow": {
-    "message": "Skontrolovať odkazy teraz"
+    "message": "Skontrolovať nefunkčné odkazy"
   },
   "clearDeadLinkFlags": {
-    "message": "Vymazať príznaky nefunkčných odkazov"
+    "message": "Vymazať štítky nefunkčných odkazov"
   },
   "hkRetentionDays": {
     "message": "Doba uchovávania (dni):"
@@ -616,9 +589,6 @@
   },
   "hkCleanupCompleted": {
     "message": "Čistenie dokončené - {0} záznamov bolo trvalo odstránených."
-  },
-  "hkLinkValidation": {
-    "message": "Validácia odkazov"
   },
   "hkEnableLinkCheck": {
     "message": "Kontrolovať nefunkčné odkazy"
@@ -644,9 +614,6 @@
   "faviconDebugLogging": {
     "message": "Povoliť ladenie favicon"
   },
-  "faviconDebugLoggingDesc": {
-    "message": "Zapne podrobné ladenie pre proces obnovy favicon. Záznamy sa zobrazia v konzole prehliadača."
-  },
   "deadLinkDebugLogging": {
     "message": "Povoliť ladenie kontroly nefunkčných odkazov"
   },
@@ -670,9 +637,6 @@
   },
   "advancedFeatures": {
     "message": "Pokročilé funkcie"
-  },
-  "advancedFeaturesDesc": {
-    "message": "Tieto funkcie sú experimentálne a nemusia fungovať podľa očakávania."
   },
   "openExtensionSettings": {
     "message": "Otvoriť nastavenia rozšírenia"
@@ -857,12 +821,6 @@
   "itemsCount": {
     "message": "{0} položiek"
   },
-  "groupsWidgetSpace": {
-    "message": "Priestor výberu skupín:"
-  },
-  "searchWidgetSpace": {
-    "message": "Priestor vyhľadávania:"
-  },
   "searchFieldStyle": {
     "message": "Štýl vyhľadávacieho poľa:"
   },
@@ -902,14 +860,8 @@
   "unlockTiles": {
     "message": "Odomknúť presúvanie dlaždíc"
   },
-  "dateTimeWidgetSpace": {
-    "message": "Priestor miniaplikácie dátumu a času:"
-  },
   "highlightSideSpaces": {
     "message": "Zvýrazniť bočné priestory pre miniaplikácie"
-  },
-  "widgetOrderLabel": {
-    "message": "Poradie miniaplikácií:"
   },
   "widgetGroups": {
     "message": "Výber skupín"
@@ -1207,5 +1159,20 @@
   },
   "headerSingleRow": {
     "message": "Udržať widgety hlavičky na jednom riadku"
+  },
+  "checkHttpBookmarks": {
+    "message": "Skontrolovať HTTP záložky"
+  },
+  "checkHttpBookmarksChecking": {
+    "message": "Kontrolujú sa HTTP záložky..."
+  },
+  "checkHttpBookmarksNone": {
+    "message": "Nenašli sa žiadne HTTP záložky."
+  },
+  "checkHttpBookmarksFound": {
+    "message": "Nájdených {count} HTTP záložiek ({tagged} novo označených)."
+  },
+  "checkHttpBookmarksFailed": {
+    "message": "Kontrola HTTP záložiek zlyhala."
   }
 }

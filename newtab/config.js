@@ -33,7 +33,6 @@ export const defaultConfig = {
     autoCleanupEnabled: false,
     lastCleanup: 0,
     enableLinkCheck: false,
-    highlightDeadLinks: true,
     lastLinkCheck: 0,
     iconAutoRefreshMode: "missing", // "all", "missing", "none"
     iconAutoRefreshHours: 24

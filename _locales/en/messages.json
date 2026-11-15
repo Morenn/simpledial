@@ -17,9 +17,6 @@
   "showDeleted": {
     "message": "Show deleted"
   },
-  "newGroupName": {
-    "message": "New group name:"
-  },
   "defaultGroupName": {
     "message": "My bookmarks"
   },
@@ -281,9 +278,6 @@
   "syncBehaviorHint": {
     "message": "Control when synchronization is triggered."
   },
-  "syncInterval": {
-    "message": "Sync Interval"
-  },
   "immediateSyncWarning": {
     "message": "Immediate sync (on every change)"
   },
@@ -353,14 +347,8 @@
   "browserSyncUnavailable": {
     "message": "Browser sync storage is unavailable. Check browser sync status."
   },
-  "exportDescription": {
-    "message": "Export bookmarks as JSON file"
-  },
   "export": {
     "message": "Export"
-  },
-  "importDescription": {
-    "message": "Import bookmarks from JSON file"
   },
   "import": {
     "message": "Import"
@@ -458,20 +446,11 @@
   "backupTabConfig": {
     "message": "Addon configuration"
   },
-  "backupTabWidgets": {
-    "message": "Custom widgets"
-  },
   "confirmRestoreConfigBackup": {
     "message": "Restore this Addon configuration backup? Current appearance settings will be replaced (sync settings will not be changed)."
   },
-  "confirmRestoreWidgetsBackup": {
-    "message": "Restore this Custom widgets backup? Current custom widgets will be replaced."
-  },
   "backupConfigRestored": {
     "message": "Addon configuration restored from backup."
-  },
-  "backupWidgetsRestored": {
-    "message": "Custom widgets restored from backup."
   },
   "confirmDeleteBackup": {
     "message": "Delete this backup permanently?"
@@ -548,9 +527,6 @@
   "languageSelect": {
     "message": "Language:"
   },
-  "displayOptions": {
-    "message": "Display Options"
-  },
   "showDeletedBookmarks": {
     "message": "Show deleted bookmarks"
   },
@@ -596,14 +572,11 @@
   "enableDeadLinkDetection": {
     "message": "Enable dead link detection"
   },
-  "highlightDeadLinks": {
-    "message": "Highlight dead links on tiles"
-  },
   "checkLinksNow": {
-    "message": "Check links now"
+    "message": "Check dead links now"
   },
   "clearDeadLinkFlags": {
-    "message": "Clear dead-link flags"
+    "message": "Clear dead-link tags"
   },
   "hkRetentionDays": {
     "message": "Retention period (days):"
@@ -619,9 +592,6 @@
   },
   "hkCleanupCompleted": {
     "message": "Cleanup completed - {0} records permanently deleted."
-  },
-  "hkLinkValidation": {
-    "message": "Link Validation"
   },
   "hkEnableLinkCheck": {
     "message": "Check for dead links"
@@ -647,9 +617,6 @@
   "faviconDebugLogging": {
     "message": "Enable favicon debug logging"
   },
-  "faviconDebugLoggingDesc": {
-    "message": "Enables detailed debugging for the favicon recovery process. Logs will appear in the browser console."
-  },
   "deadLinkDebugLogging": {
     "message": "Enable dead link debug logging"
   },
@@ -673,9 +640,6 @@
   },
   "advancedFeatures": {
     "message": "Advanced Features"
-  },
-  "advancedFeaturesDesc": {
-    "message": "These features are experimental and may not work as expected."
   },
   "openExtensionSettings": {
     "message": "Open extension settings"
@@ -860,12 +824,6 @@
   "itemsCount": {
     "message": "{0} items"
   },
-  "groupsWidgetSpace": {
-    "message": "Group selector space:"
-  },
-  "searchWidgetSpace": {
-    "message": "Search bar space:"
-  },
   "searchFieldStyle": {
     "message": "Search bar style:"
   },
@@ -905,14 +863,8 @@
   "unlockTiles": {
     "message": "Unlock tile movement"
   },
-  "dateTimeWidgetSpace": {
-    "message": "Date & Time widget space:"
-  },
   "highlightSideSpaces": {
     "message": "Highlight side widget spaces"
-  },
-  "widgetOrderLabel": {
-    "message": "Widget order:"
   },
   "widgetGroups": {
     "message": "Group selector"
@@ -1210,5 +1162,20 @@
   },
   "headerSingleRow": {
     "message": "Keep header widgets in a single row"
+  },
+  "checkHttpBookmarks": {
+    "message": "Check HTTP Bookmarks"
+  },
+  "checkHttpBookmarksChecking": {
+    "message": "Checking HTTP bookmarks..."
+  },
+  "checkHttpBookmarksNone": {
+    "message": "No HTTP bookmarks found."
+  },
+  "checkHttpBookmarksFound": {
+    "message": "Found {count} HTTP bookmark(s) ({tagged} newly tagged)."
+  },
+  "checkHttpBookmarksFailed": {
+    "message": "HTTP bookmark check failed."
   }
 }

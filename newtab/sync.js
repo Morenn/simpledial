@@ -1,6 +1,6 @@
-import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded } from "./state.js";
+import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded, SYSTEM_TAG_DEAD_LINK_ID, getBookmarkSystemTagIds, setBookmarkSystemTag, saveSystemTags } from "./state.js";
 import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
-import { importRawKey, deriveKeyFromPassword, decryptWithKey } from './crypto.js';
+import { importRawKey, decryptWithKey } from './crypto.js';
 import { deadLinkDebugLog, syncDebugLog } from "./debug.js";
 
 function ensureNoTrailingSlash(url) {
@@ -1656,13 +1656,12 @@ export async function validateSingleLink(url) {
 }
 
 export async function checkDeadLinks() {
-  let newlyDetectedDead = 0;
   let changed = false;
   const urlsToCheck = [];
 
   // Collect all items with URLs to check
-  for (const group of state.groups) {
-    if (group.deleted) continue;
+  for (const group of (state.groups || [])) {
+    if (!group || group.deleted) continue;
     for (const item of getAllGroupBookmarks(group, { includeDeleted: false })) {
       if (item.url) {
         urlsToCheck.push({ item, url: item.url });
@@ -1674,39 +1673,26 @@ export async function checkDeadLinks() {
   for (let i = 0; i < urlsToCheck.length; i += 5) {
     const batch = urlsToCheck.slice(i, i + 5);
     const results = await Promise.all(
-      batch.map(({ item, url }) => validateLink(url))
+      batch.map(({ url }) => validateLink(url))
     );
 
     results.forEach((isValid, index) => {
       const itemData = batch[index].item;
-      const hasError = !isValid;
-
-      if (itemData.hasError !== hasError) {
-        itemData.hasError = hasError;
-        itemData.updatedAt = Date.now();
+      if (setBookmarkSystemTag(itemData.id, SYSTEM_TAG_DEAD_LINK_ID, !isValid)) {
         changed = true;
-        if (hasError) newlyDetectedDead++;
       }
     });
   }
 
-  // Compute total dead links now (after applying changes)
-  const totalDead = state.groups.reduce((sum, g) => {
-    return sum + getAllGroupBookmarks(g, { includeDeleted: true }).filter(i => i.hasError).length;
+  const totalDead = (state.groups || []).reduce((sum, g) => {
+    if (!g || g.deleted) return sum;
+    return sum + getAllGroupBookmarks(g, { includeDeleted: false })
+      .filter(i => getBookmarkSystemTagIds(i.id).includes(SYSTEM_TAG_DEAD_LINK_ID)).length;
   }, 0);
 
   if (changed) {
-    // Update groups timestamp
-    for (const group of state.groups) {
-      if (getAllGroupBookmarks(group, { includeDeleted: true }).some(item => item.hasError)) {
-        group.updatedAt = Date.now();
-      }
-    }
-
-    await saveState();
-    await syncWrite();
+    await saveSystemTags();
   }
 
-  // Return the total number of dead links (consistent with stored state)
   return totalDead;
 }

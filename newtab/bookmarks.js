@@ -5,7 +5,13 @@ import {
   isStackItem,
   getAllGroupBookmarks,
   findBookmarkLocation,
-  cleanupStackIfNeeded
+  cleanupStackIfNeeded,
+  SYSTEM_TAGS,
+  SYSTEM_TAG_DEAD_LINK_ID,
+  getBookmarkSystemTagIds,
+  setBookmarkSystemTag,
+  saveSystemTags,
+  isReservedSystemTagName
 } from "./state.js";
 import { render } from "./render.js";
 import { syncWrite, validateSingleLink } from "./sync.js";
@@ -197,6 +203,9 @@ function findBookmarkInState(bookmarkId) {
 
 function getActiveTagMap() {
   const map = new Map();
+  for (const tag of SYSTEM_TAGS) {
+    map.set(tag.id, tag);
+  }
   for (const tag of (state.tags || [])) {
     if (tag && !tag.deleted && tag.id) {
       map.set(tag.id, tag);
@@ -316,24 +325,17 @@ export function createBookmarkTile(item, config = null) {
   body.className = "bookmark-body";
   body.appendChild(link);
 
-  const tagsEl = createTagBadgeElements(item.tags);
+  const combinedTagIds = [
+    ...getBookmarkSystemTagIds(item.id),
+    ...(Array.isArray(item.tags) ? item.tags : [])
+  ];
+  const tagsEl = createTagBadgeElements(combinedTagIds);
   if (tagsEl) {
     body.appendChild(tagsEl);
   }
 
   tile.appendChild(icon);
   tile.appendChild(body);
-
-  // Add dead link indicator only if:
-  // 1. Link has errors (hasError flag is true)
-  // 2. Dead link highlighting is enabled in config
-  if (item.hasError && config?.housekeeper?.highlightDeadLinks !== false) {
-    const errorIndicator = document.createElement("div");
-    errorIndicator.className = "bookmark-error-indicator";
-    errorIndicator.textContent = "✗";
-    errorIndicator.title = "This link is not responding";
-    tile.appendChild(errorIndicator);
-  }
 
   return tile;
 }
@@ -551,11 +553,22 @@ export async function openStackPopover(stackId, options = {}) {
   }
 })();
 
+const ALLOWED_BOOKMARK_PROTOCOLS = new Set(["http:", "https:", "ftp:", "file:"]);
+
 export function openBookmark(url, e, forceNewTab = false) {
-  if (forceNewTab || e.ctrlKey || e.metaKey) {
-    window.open(url, "_blank");
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+  if (!ALLOWED_BOOKMARK_PROTOCOLS.has(parsed.protocol)) {
+    return;
+  }
+  if (forceNewTab || e?.ctrlKey || e?.metaKey) {
+    window.open(parsed.href, "_blank", "noopener,noreferrer");
   } else {
-    window.location.href = url;
+    window.location.href = parsed.href;
   }
 }
 
@@ -1135,7 +1148,10 @@ function renderModalTagsList() {
 function createOrSelectTagFromInput() {
   if (!bmNewTagName) return;
   const rawName = bmNewTagName.value.trim();
-  if (!rawName) return;
+  if (!rawName || isReservedSystemTagName(rawName)) {
+    bmNewTagName.value = "";
+    return;
+  }
 
   if (!Array.isArray(state.tags)) {
     state.tags = [];
@@ -1399,13 +1415,9 @@ bmSave.addEventListener("click", async () => {
   if (itemToCheck && itemToCheck.url) {
     try {
       const isValid = await validateSingleLink(itemToCheck.url);
-      const newHasError = !isValid;
       const liveItem = findBookmarkInState(targetBookmarkId);
-      if (liveItem && liveItem.hasError !== newHasError) {
-        liveItem.hasError = newHasError;
-        liveItem.updatedAt = Date.now();
-        await saveState();
-        await syncWrite();
+      if (liveItem && setBookmarkSystemTag(liveItem.id, SYSTEM_TAG_DEAD_LINK_ID, !isValid)) {
+        await saveSystemTags();
         render();
       }
     } catch (e) {

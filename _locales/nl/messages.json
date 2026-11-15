@@ -14,9 +14,6 @@
   "showDeleted": {
     "message": "Verwijderde items tonen"
   },
-  "newGroupName": {
-    "message": "Naam van nieuwe groep:"
-  },
   "defaultGroupName": {
     "message": "Mijn bladwijzers"
   },
@@ -278,9 +275,6 @@
   "syncBehaviorHint": {
     "message": "Bepaal wanneer synchronisatie wordt gestart."
   },
-  "syncInterval": {
-    "message": "Sync-interval"
-  },
   "immediateSyncWarning": {
     "message": "Directe synchronisatie (bij elke wijziging)"
   },
@@ -350,14 +344,8 @@
   "browserSyncUnavailable": {
     "message": "Browser-syncopslag is niet beschikbaar. Controleer de synchronisatie-status van de browser."
   },
-  "exportDescription": {
-    "message": "Bladwijzers exporteren als JSON-bestand"
-  },
   "export": {
     "message": "Exporteren"
-  },
-  "importDescription": {
-    "message": "Bladwijzers importeren uit een JSON-bestand"
   },
   "import": {
     "message": "Importeren"
@@ -455,20 +443,11 @@
   "backupTabConfig": {
     "message": "Add-onconfiguratie"
   },
-  "backupTabWidgets": {
-    "message": "Aangepaste widgets"
-  },
   "confirmRestoreConfigBackup": {
     "message": "Deze back-up van de add-onconfiguratie herstellen? De huidige weergave-instellingen worden vervangen (synchronisatie-instellingen worden niet gewijzigd)."
   },
-  "confirmRestoreWidgetsBackup": {
-    "message": "Deze back-up van aangepaste widgets herstellen? Huidige aangepaste widgets worden vervangen."
-  },
   "backupConfigRestored": {
     "message": "Add-onconfiguratie hersteld vanuit back-up."
-  },
-  "backupWidgetsRestored": {
-    "message": "Aangepaste widgets hersteld vanuit back-up."
   },
   "confirmDeleteBackup": {
     "message": "Deze back-up definitief verwijderen?"
@@ -545,9 +524,6 @@
   "languageSelect": {
     "message": "Taal:"
   },
-  "displayOptions": {
-    "message": "Weergaveopties"
-  },
   "showDeletedBookmarks": {
     "message": "Verwijderde bladwijzers tonen"
   },
@@ -593,14 +569,11 @@
   "enableDeadLinkDetection": {
     "message": "Detectie van dode links inschakelen"
   },
-  "highlightDeadLinks": {
-    "message": "Dode links markeren op tegels"
-  },
   "checkLinksNow": {
-    "message": "Links nu controleren"
+    "message": "Dode links nu controleren"
   },
   "clearDeadLinkFlags": {
-    "message": "Markeringen van dode links wissen"
+    "message": "Dode-linktags wissen"
   },
   "hkRetentionDays": {
     "message": "Bewaarperiode (dagen):"
@@ -616,9 +589,6 @@
   },
   "hkCleanupCompleted": {
     "message": "Opschoning voltooid – {0} records permanent verwijderd."
-  },
-  "hkLinkValidation": {
-    "message": "Linkvalidatie"
   },
   "hkEnableLinkCheck": {
     "message": "Controleer op dode links"
@@ -644,9 +614,6 @@
   "faviconDebugLogging": {
     "message": "Debuglogging voor favicon inschakelen"
   },
-  "faviconDebugLoggingDesc": {
-    "message": "Schakelt gedetailleerde debugging in voor het herstel van de favicon. De logboeken verschijnen in de browserconsole."
-  },
   "deadLinkDebugLogging": {
     "message": "Debuglogging voor dode links inschakelen"
   },
@@ -670,9 +637,6 @@
   },
   "advancedFeatures": {
     "message": "Geavanceerde functies"
-  },
-  "advancedFeaturesDesc": {
-    "message": "Deze functies zijn experimenteel en werken mogelijk niet zoals verwacht."
   },
   "openExtensionSettings": {
     "message": "Extensie-instellingen openen"
@@ -857,12 +821,6 @@
   "itemsCount": {
     "message": "{0} items"
   },
-  "groupsWidgetSpace": {
-    "message": "Ruimte voor groepskiezer:"
-  },
-  "searchWidgetSpace": {
-    "message": "Ruimte voor zoekbalk:"
-  },
   "searchFieldStyle": {
     "message": "Stijl van zoekbalk:"
   },
@@ -902,14 +860,8 @@
   "unlockTiles": {
     "message": "Tegelverplaatsing ontgrendelen"
   },
-  "dateTimeWidgetSpace": {
-    "message": "Ruimte voor datum- en tijdwidget:"
-  },
   "highlightSideSpaces": {
     "message": "Zijruimten voor widgets markeren"
-  },
-  "widgetOrderLabel": {
-    "message": "Widgetvolgorde:"
   },
   "widgetGroups": {
     "message": "Groepskiezer"
@@ -1207,5 +1159,20 @@
   },
   "headerSingleRow": {
     "message": "Koptekstwidgets op één rij houden"
+  },
+  "checkHttpBookmarks": {
+    "message": "HTTP-bladwijzers controleren"
+  },
+  "checkHttpBookmarksChecking": {
+    "message": "HTTP-bladwijzers controleren..."
+  },
+  "checkHttpBookmarksNone": {
+    "message": "Geen HTTP-bladwijzers gevonden."
+  },
+  "checkHttpBookmarksFound": {
+    "message": "{count} HTTP-bladwijzer(s) gevonden ({tagged} nieuw getagd)."
+  },
+  "checkHttpBookmarksFailed": {
+    "message": "Controle van HTTP-bladwijzers mislukt."
   }
 }

@@ -14,9 +14,6 @@
   "showDeleted": {
     "message": "Zobrazit smazané"
   },
-  "newGroupName": {
-    "message": "Název nové skupiny:"
-  },
   "defaultGroupName": {
     "message": "Moje záložky"
   },
@@ -278,9 +275,6 @@
   "syncBehaviorHint": {
     "message": "Určete, kdy se synchronizace spouští."
   },
-  "syncInterval": {
-    "message": "Interval synchronizace"
-  },
   "immediateSyncWarning": {
     "message": "Okamžitá synchronizace (při každé změně)"
   },
@@ -350,14 +344,8 @@
   "browserSyncUnavailable": {
     "message": "Synchronizační úložiště prohlížeče není dostupné. Zkontrolujte stav synchronizace prohlížeče."
   },
-  "exportDescription": {
-    "message": "Exportovat záložky jako JSON soubor"
-  },
   "export": {
     "message": "Export"
-  },
-  "importDescription": {
-    "message": "Importovat záložky z JSON souboru"
   },
   "import": {
     "message": "Import"
@@ -455,20 +443,11 @@
   "backupTabConfig": {
     "message": "Nastavení doplňku"
   },
-  "backupTabWidgets": {
-    "message": "Vlastní widgety"
-  },
   "confirmRestoreConfigBackup": {
     "message": "Obnovit tuto zálohu nastavení doplňku? Aktuální nastavení vzhledu bude nahrazeno (nastavení synchronizace zůstane beze změny)."
   },
-  "confirmRestoreWidgetsBackup": {
-    "message": "Obnovit tuto zálohu vlastních widgetů? Aktuální vlastní widgety budou nahrazeny."
-  },
   "backupConfigRestored": {
     "message": "Nastavení doplňku bylo obnoveno ze zálohy."
-  },
-  "backupWidgetsRestored": {
-    "message": "Vlastní widgety byly obnoveny ze zálohy."
   },
   "confirmDeleteBackup": {
     "message": "Smazat tuto zálohu trvale?"
@@ -545,9 +524,6 @@
   "languageSelect": {
     "message": "Jazyk:"
   },
-  "displayOptions": {
-    "message": "Možnosti zobrazení"
-  },
   "showDeletedBookmarks": {
     "message": "Zobrazit smazané záložky"
   },
@@ -593,14 +569,11 @@
   "enableDeadLinkDetection": {
     "message": "Povolit kontrolu nefunkčních odkazů"
   },
-  "highlightDeadLinks": {
-    "message": "Zvýraznit nefunkční odkazy na dlaždicích"
-  },
   "checkLinksNow": {
-    "message": "Zkontrolovat odkazy nyní"
+    "message": "Zkontrolovat nefunkční odkazy"
   },
   "clearDeadLinkFlags": {
-    "message": "Vymazat označení nefunkčních odkazů"
+    "message": "Vymazat štítky nefunkčních odkazů"
   },
   "hkRetentionDays": {
     "message": "Doba uchování (dny):"
@@ -616,9 +589,6 @@
   },
   "hkCleanupCompleted": {
     "message": "Čištění dokončeno – {0} záznamů bylo trvale smazáno."
-  },
-  "hkLinkValidation": {
-    "message": "Validace odkazů"
   },
   "hkEnableLinkCheck": {
     "message": "Kontrolovat nefunkční odkazy"
@@ -644,9 +614,6 @@
   "faviconDebugLogging": {
     "message": "Povolit protokolování favicon"
   },
-  "faviconDebugLoggingDesc": {
-    "message": "Povolí podrobné ladění procesu obnovy favicon. Záznamy se zobrazí v konzoli prohlížeče."
-  },
   "deadLinkDebugLogging": {
     "message": "Povolit ladění nefunkčních odkazů"
   },
@@ -670,9 +637,6 @@
   },
   "advancedFeatures": {
     "message": "Pokročilé funkce"
-  },
-  "advancedFeaturesDesc": {
-    "message": "Tyto funkce jsou experimentální a nemusí fungovat podle očekávání."
   },
   "openExtensionSettings": {
     "message": "Otevřít nastavení rozšíření"
@@ -857,12 +821,6 @@
   "itemsCount": {
     "message": "{0} položek"
   },
-  "groupsWidgetSpace": {
-    "message": "Prostor výběru skupin:"
-  },
-  "searchWidgetSpace": {
-    "message": "Prostor vyhledávání:"
-  },
   "searchFieldStyle": {
     "message": "Styl vyhledávacího pole:"
   },
@@ -902,14 +860,8 @@
   "unlockTiles": {
     "message": "Odemknout přesouvání dlaždic"
   },
-  "dateTimeWidgetSpace": {
-    "message": "Prostor widgetu data a času:"
-  },
   "highlightSideSpaces": {
     "message": "Zvýraznit boční prostory pro widgety"
-  },
-  "widgetOrderLabel": {
-    "message": "Pořadí widgetů:"
   },
   "widgetGroups": {
     "message": "Výběr skupin"
@@ -1207,5 +1159,20 @@
   },
   "headerSingleRow": {
     "message": "Udržet widgety hlavičky na jednom řádku"
+  },
+  "checkHttpBookmarks": {
+    "message": "Zkontrolovat HTTP záložky"
+  },
+  "checkHttpBookmarksChecking": {
+    "message": "Kontroluji HTTP záložky..."
+  },
+  "checkHttpBookmarksNone": {
+    "message": "Nebyly nalezeny žádné HTTP záložky."
+  },
+  "checkHttpBookmarksFound": {
+    "message": "Nalezeno {count} HTTP záložek ({tagged} nově označeno)."
+  },
+  "checkHttpBookmarksFailed": {
+    "message": "Kontrola HTTP záložek selhala."
   }
 }

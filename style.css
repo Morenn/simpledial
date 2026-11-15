@@ -1253,21 +1253,6 @@ main::-webkit-scrollbar-thumb:hover,
   position: relative;
 }
 
-.bookmark-error-indicator {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-  color: #f44336;
-  font-weight: bold;
-  z-index: 10;
-  text-shadow: 0 0 2px rgba(0,0,0,0.3);
-  min-width: 16px;
-  text-align: center;
-  pointer-events: none;
-}
-
 /* ─────────────────────────────────────────────
   BOOKMARK CONTENT
 ───────────────────────────────────────────── */

@@ -1,5 +1,5 @@
-﻿import { state, saveState, generateId, isStackItem } from "./state.js";
-import { loadConfig, saveConfig, defaultConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
+﻿import { state, saveState, generateId, isStackItem, getAllGroupBookmarks, SYSTEM_TAG_HTTP_ID, SYSTEM_TAG_DEAD_LINK_ID, setBookmarkSystemTag, clearSystemTagFromAllBookmarks, saveSystemTags } from "./state.js";
+import { loadConfig, saveConfig, defaultConfig } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
 import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLanguageOverride } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
@@ -176,8 +176,8 @@ const hkManualCleanup = document.getElementById("hk-manual-cleanup");
 const hkCleanupStatus = document.getElementById("hk-cleanup-status");
 const hkLastCleanup = document.getElementById("hk-last-cleanup");
 const hkEnableLinkCheck = document.getElementById("hk-enable-link-check");
-const hkHighlightDeadLinks = document.getElementById("hk-highlight-dead-links");
 const hkCheckLinks = document.getElementById("hk-check-links");
+const hkCheckHttpBookmarks = document.getElementById("hk-check-http-bookmarks");
 const hkLinkCheckStatus = document.getElementById("hk-link-check-status");
 const hkDeadLinksCount = document.getElementById("hk-dead-links-count");
 const hkClearErrors = document.getElementById("hk-clear-errors");
@@ -2808,13 +2808,12 @@ function serializeExportBookmarkItem(i) {
     iconRefreshedAt: Number(i.iconRefreshedAt || 0),
     updatedAt: i.updatedAt,
     deleted: i.deleted || false,
-    deletedAt: i.deletedAt || null,
-    hasError: !!i.hasError
+    deletedAt: i.deletedAt || null
   };
 }
 
 exportBtn.addEventListener("click", async () => {
-  // Export a clean copy of state ensuring hasError flag and customization fields are present
+  // Export a clean copy of state ensuring customization fields are present
   const exportData = {
     tags: Array.isArray(state.tags) ? state.tags.map(tag => ({ ...tag })) : [],
     groups: state.groups.map(g => ({
@@ -2859,7 +2858,7 @@ importFile.addEventListener("change", async (e) => {
       const imported = JSON.parse(event.target.result);
 
       if (!imported.groups || !Array.isArray(imported.groups)) {
-        alert("Invalid file format");
+        alert(t("invalidFileFormat"));
         return;
       }
 
@@ -2883,7 +2882,7 @@ importFile.addEventListener("change", async (e) => {
       // Re-render UI to show imported data
       window.location.reload();
     } catch (error) {
-      alert("Failed to parse file: " + error.message);
+      alert(`${t("failedToParse")} ${error.message}`);
     }
   };
 
@@ -2905,7 +2904,7 @@ importNetscapeFile?.addEventListener("change", async (e) => {
       const importedGroups = parseNetscapeBookmarks(content);
 
       if (!importedGroups || importedGroups.length === 0) {
-        alert("Invalid file format");
+        alert(t("invalidFileFormat"));
         return;
       }
 
@@ -2924,7 +2923,7 @@ importNetscapeFile?.addEventListener("change", async (e) => {
       settingsModal.classList.add("hidden");
       window.location.reload();
     } catch (error) {
-      alert("Failed to parse file: " + error.message);
+      alert(`${t("failedToParse")} ${error.message}`);
     }
   };
 
@@ -3020,8 +3019,7 @@ function parseNetscapeBookmarks(content) {
             iconRefreshedAt: 0,
             updatedAt: Date.now(),
             deleted: false,
-            deletedAt: null,
-            hasError: false
+            deletedAt: null
           });
         }
         i += 1;
@@ -3049,8 +3047,7 @@ function parseNetscapeBookmarks(content) {
         iconRefreshedAt: 0,
         updatedAt: Date.now(),
         deleted: false,
-        deletedAt: null,
-        hasError: false
+        deletedAt: null
       });
     }
   }
@@ -3135,8 +3132,7 @@ importBookmarksBtn?.addEventListener("click", async () => {
           iconRefreshedAt: 0,
           updatedAt: Date.now(),
           deleted: false,
-          deletedAt: null,
-          hasError: false
+          deletedAt: null
         });
       }
 
@@ -3165,8 +3161,7 @@ importBookmarksBtn?.addEventListener("click", async () => {
           iconRefreshedAt: 0,
           updatedAt: Date.now(),
           deleted: false,
-          deletedAt: null,
-          hasError: false
+          deletedAt: null
         })),
         updatedAt: Date.now(),
         deleted: false,
@@ -3693,7 +3688,6 @@ async function persistSettings(closeAfterSave = false) {
   config.housekeeper.retentionDays = parseInt(hkRetentionDays.value) || 30;
   config.housekeeper.autoCleanupEnabled = hkAutoCleanup.checked;
   config.housekeeper.enableLinkCheck = hkEnableLinkCheck.checked;
-  config.housekeeper.highlightDeadLinks = hkHighlightDeadLinks ? !!hkHighlightDeadLinks.checked : true;
   config.housekeeper.iconAutoRefreshMode = getHousekeeperIconRefreshMode();
   config.housekeeper.iconAutoRefreshHours = Math.max(1, parseInt(hkIconRefreshHours?.value, 10) || 24);
 
@@ -3938,7 +3932,7 @@ if (hkManualCleanup) {
       config.housekeeper.lastCleanup = Date.now();
       await saveConfig(config);
 
-      hkCleanupStatus.textContent = `✅ Cleanup completed - ${deletedCount} records permanently deleted.`;
+      hkCleanupStatus.textContent = `✅ ${t("hkCleanupCompleted").replace("{0}", String(deletedCount))}`;
       hkCleanupStatus.style.color = "#4caf50";
 
       updateHouseKeeperInfo(config);
@@ -3957,7 +3951,7 @@ if (hkManualCleanup) {
 if (hkCheckLinks) {
   hkCheckLinks.addEventListener("click", async () => {
     hkCheckLinks.disabled = true;
-    hkLinkCheckStatus.textContent = "🔍 Checking links...";
+    hkLinkCheckStatus.textContent = `🔍 ${t("hkLinkCheckRunning")}`;
     hkLinkCheckStatus.style.color = "#999";
 
     try {
@@ -3982,38 +3976,20 @@ if (hkCheckLinks) {
   });
 }
 
-  // ---------- HouseKeeper - Clear Dead-Link Flags ----------
+  // ---------- HouseKeeper - Clear Dead-Link Tags ----------
   if (hkClearErrors) {
     hkClearErrors.addEventListener('click', async () => {
       hkClearErrors.disabled = true;
-      hkLinkCheckStatus.textContent = "🔄 Clearing dead-link flags...";
+      hkLinkCheckStatus.textContent = "🔄 Clearing dead-link tags...";
       hkLinkCheckStatus.style.color = "#999";
 
       try {
-        let cleared = 0;
-        let changed = false;
-
-        for (const group of state.groups) {
-          for (const item of group.items) {
-            if (item.hasError) {
-              item.hasError = false;
-              item.updatedAt = Date.now();
-              cleared++;
-              changed = true;
-            }
-          }
-
-          if (changed) {
-            group.updatedAt = Date.now();
-          }
+        const cleared = clearSystemTagFromAllBookmarks(SYSTEM_TAG_DEAD_LINK_ID);
+        if (cleared > 0) {
+          await saveSystemTags();
         }
 
-        if (changed) {
-          await saveState();
-          try { await syncWrite(); } catch (e) { console.warn('syncWrite failed', e); }
-        }
-
-        hkLinkCheckStatus.textContent = `✅ Cleared ${cleared} dead-link flags.`;
+        hkLinkCheckStatus.textContent = `✅ Cleared ${cleared} dead-link tag(s).`;
         hkLinkCheckStatus.style.color = "#4caf50";
         hkDeadLinksCount.textContent = `Dead links found: 0`;
 
@@ -4021,9 +3997,77 @@ if (hkCheckLinks) {
       } catch (error) {
         hkLinkCheckStatus.textContent = "❌ Clearing failed";
         hkLinkCheckStatus.style.color = "#f44336";
-        console.error("Clear dead-link flags error:", error);
+        console.error("Clear dead-link tags error:", error);
       } finally {
         hkClearErrors.disabled = false;
+      }
+    });
+  }
+
+  // ---------- HouseKeeper - Check HTTP Bookmarks ----------
+  function isHttpBookmarkUrl(url) {
+    if (typeof url !== "string" || !url.trim()) return false;
+    try {
+      return new URL(url.trim()).protocol === "http:";
+    } catch {
+      return false;
+    }
+  }
+
+  if (hkCheckHttpBookmarks) {
+    hkCheckHttpBookmarks.addEventListener("click", async () => {
+      hkCheckHttpBookmarks.disabled = true;
+      hkLinkCheckStatus.textContent = `🔍 ${t("checkHttpBookmarksChecking")}`;
+      hkLinkCheckStatus.style.color = "#999";
+
+      try {
+        let httpCount = 0;
+        let newlyTagged = 0;
+        let untagged = 0;
+        let changed = false;
+
+        for (const group of (state.groups || [])) {
+          if (!group || group.deleted) continue;
+
+          for (const item of getAllGroupBookmarks(group)) {
+            const isHttp = isHttpBookmarkUrl(item.url);
+            if (isHttp) {
+              httpCount++;
+              if (setBookmarkSystemTag(item.id, SYSTEM_TAG_HTTP_ID, true)) {
+                newlyTagged++;
+                changed = true;
+              }
+            } else if (setBookmarkSystemTag(item.id, SYSTEM_TAG_HTTP_ID, false)) {
+              untagged++;
+              changed = true;
+            }
+          }
+        }
+
+        if (changed) {
+          await saveSystemTags();
+          try { render(); } catch (e) {}
+        }
+
+        if (httpCount === 0) {
+          const baseMsg = t("checkHttpBookmarksNone");
+          hkLinkCheckStatus.textContent = untagged > 0
+            ? `✅ ${baseMsg} (${untagged})`
+            : `✅ ${baseMsg}`;
+          hkLinkCheckStatus.style.color = "#4caf50";
+        } else {
+          const msg = t("checkHttpBookmarksFound")
+            .replace("{count}", String(httpCount))
+            .replace("{tagged}", String(newlyTagged));
+          hkLinkCheckStatus.textContent = `⚠️ ${msg}`;
+          hkLinkCheckStatus.style.color = "#f59e0b";
+        }
+      } catch (error) {
+        hkLinkCheckStatus.textContent = `❌ ${t("checkHttpBookmarksFailed")}`;
+        hkLinkCheckStatus.style.color = "#f44336";
+        console.error("Check HTTP bookmarks error:", error);
+      } finally {
+        hkCheckHttpBookmarks.disabled = false;
       }
     });
   }
@@ -4133,16 +4177,6 @@ function updateHouseKeeperInfo(config) {
   // Update link check checkbox
   if (hkEnableLinkCheck) {
     hkEnableLinkCheck.checked = config.housekeeper.enableLinkCheck || false;
-  }
-
-  // Update highlight dead links checkbox
-  if (hkHighlightDeadLinks) {
-    // default to true when not present
-    if (typeof config.housekeeper.highlightDeadLinks === 'boolean') {
-      hkHighlightDeadLinks.checked = config.housekeeper.highlightDeadLinks;
-    } else {
-      hkHighlightDeadLinks.checked = true;
-    }
   }
 
   const iconRefreshMode = config.housekeeper.iconAutoRefreshMode || "all";
@@ -4450,13 +4484,6 @@ if (document.readyState === "loading") {
 } else {
   // DOM already loaded
   setTimeout(initializeManualSyncButton, 0);
-}
-
-// Re-render when highlight checkbox toggles so indicators show/hide immediately
-if (hkHighlightDeadLinks) {
-  hkHighlightDeadLinks.addEventListener('change', () => {
-    try { render(); } catch (e) {}
-  });
 }
 
 [hkIconRefreshAll, hkIconRefreshMissing, hkIconRefreshNone].forEach(input => {

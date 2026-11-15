@@ -1,6 +1,18 @@
 export const STORAGE_KEY = "myspeeddial-data";
 export const THEME_KEY = "myspeeddial-theme";
 export const ACTIVE_GROUP_KEY = "myspeeddial-active-group";
+export const SYSTEM_TAGS_KEY = "myspeeddial-system-tags";
+
+export const SYSTEM_TAG_HTTP_ID = "sys_http";
+export const SYSTEM_TAG_DEAD_LINK_ID = "sys_dead_link";
+
+export const SYSTEM_TAGS = [
+  { id: SYSTEM_TAG_HTTP_ID, name: "⚠️ HTTP", color: "#f59e0b", system: true },
+  { id: SYSTEM_TAG_DEAD_LINK_ID, name: "⛔Dead link", color: "#ef4444", system: true }
+];
+
+const SYSTEM_TAG_ID_SET = new Set(SYSTEM_TAGS.map(tag => tag.id));
+let systemBookmarkTags = {};
 
 import { t } from "./i18n.js";
 
@@ -124,7 +136,81 @@ export async function loadActiveGroupId() {
   }
 }
 
+export function isReservedSystemTagName(name) {
+  if (typeof name !== "string") return false;
+  const normalized = name.trim().toLowerCase();
+  return SYSTEM_TAGS.some(tag => tag.name.toLowerCase() === normalized);
+}
+
+export function getBookmarkSystemTagIds(bookmarkId) {
+  if (!bookmarkId) return [];
+  const tags = systemBookmarkTags[bookmarkId];
+  return Array.isArray(tags) ? tags : [];
+}
+
+export function setBookmarkSystemTag(bookmarkId, systemTagId, enabled) {
+  if (!bookmarkId || !SYSTEM_TAG_ID_SET.has(systemTagId)) return false;
+  const current = Array.isArray(systemBookmarkTags[bookmarkId]) ? systemBookmarkTags[bookmarkId] : [];
+  const hasTag = current.includes(systemTagId);
+
+  if (enabled && !hasTag) {
+    systemBookmarkTags[bookmarkId] = [...current, systemTagId];
+    return true;
+  }
+  if (!enabled && hasTag) {
+    const next = current.filter(id => id !== systemTagId);
+    if (next.length > 0) {
+      systemBookmarkTags[bookmarkId] = next;
+    } else {
+      delete systemBookmarkTags[bookmarkId];
+    }
+    return true;
+  }
+  return false;
+}
+
+export function clearSystemTagFromAllBookmarks(systemTagId) {
+  if (!SYSTEM_TAG_ID_SET.has(systemTagId)) return 0;
+  let cleared = 0;
+  for (const bookmarkId of Object.keys(systemBookmarkTags)) {
+    if (setBookmarkSystemTag(bookmarkId, systemTagId, false)) {
+      cleared++;
+    }
+  }
+  return cleared;
+}
+
+export async function loadSystemTags() {
+  try {
+    const res = await chrome.storage.local.get(SYSTEM_TAGS_KEY);
+    const raw = res?.[SYSTEM_TAGS_KEY];
+    const sanitized = {};
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      for (const [bookmarkId, tagIds] of Object.entries(raw)) {
+        if (!bookmarkId || !Array.isArray(tagIds)) continue;
+        const validIds = [...new Set(tagIds.filter(id => SYSTEM_TAG_ID_SET.has(id)))];
+        if (validIds.length > 0) {
+          sanitized[bookmarkId] = validIds;
+        }
+      }
+    }
+    systemBookmarkTags = sanitized;
+  } catch (err) {
+    console.warn("Failed to load system tags", err);
+    systemBookmarkTags = {};
+  }
+}
+
+export async function saveSystemTags() {
+  try {
+    await chrome.storage.local.set({ [SYSTEM_TAGS_KEY]: systemBookmarkTags });
+  } catch (err) {
+    console.warn("Failed to save system tags", err);
+  }
+}
+
 export async function loadState() {
+  await loadSystemTags();
   const res = await chrome.storage.local.get(STORAGE_KEY);
   const stored = res[STORAGE_KEY];
 
