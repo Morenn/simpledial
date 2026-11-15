@@ -6,7 +6,7 @@
     "message": "Simple SpeedDial stores and syncs bookmarks via WebDAV or any HTTP server with JSON GET/PUT."
   },
   "searchPlaceholder": {
-    "message": "Search..."
+    "message": "Search in bookmarks..."
   },
   "themeToggle": {
     "message": "Toggle theme"
@@ -1132,5 +1132,17 @@
   },
   "clickableTags": {
     "message": "Clickable bookmark tags (click to search)"
+  },
+  "customSearchGroupPlaceholder": {
+    "message": "Group (optional)"
+  },
+  "customSearchDefaultInGroup": {
+    "message": "Default in group"
+  },
+  "customSearchSwitchEngineTitle": {
+    "message": "Switch search engine"
+  },
+  "customSearchSetDefaultTitle": {
+    "message": "Set as default in group"
   }
 }

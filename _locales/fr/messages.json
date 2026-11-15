@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "searchPlaceholder": {
-    "message": "Rechercher..."
+    "message": "Rechercher dans les favoris..."
   },
   "extensionDescription": {
     "message": "Extension SpeedDial simple pour enregistrer et synchroniser les favoris via WebDAV ou HTTP avec JSON GET/PUT."
@@ -1129,5 +1129,17 @@
   },
   "clickableTags": {
     "message": "Étiquettes de favoris cliquables (cliquer pour rechercher)"
+  },
+  "customSearchGroupPlaceholder": {
+    "message": "Groupe (optionnel)"
+  },
+  "customSearchDefaultInGroup": {
+    "message": "Par défaut dans le groupe"
+  },
+  "customSearchSwitchEngineTitle": {
+    "message": "Changer de moteur de recherche"
+  },
+  "customSearchSetDefaultTitle": {
+    "message": "Définir par défaut dans le groupe"
   }
 }

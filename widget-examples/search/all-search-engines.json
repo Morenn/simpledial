@@ -1,0 +1,126 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-google",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "Google",
+      "groupName": "Web Search",
+      "isDefault": true,
+      "icon": "🔍",
+      "customIcon": "https://www.google.com/favicon.ico",
+      "urlTemplate": "https://www.google.com/search?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    },
+    {
+      "id": "cw-example-brave",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "Brave Search",
+      "groupName": "Web Search",
+      "isDefault": false,
+      "icon": "🦁",
+      "customIcon": "https://search.brave.com/favicon.ico",
+      "urlTemplate": "https://search.brave.com/search?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    },
+    {
+      "id": "cw-example-duckduckgo",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "DuckDuckGo",
+      "groupName": "Web Search",
+      "isDefault": false,
+      "icon": "🦆",
+      "customIcon": "https://duckduckgo.com/favicon.ico",
+      "urlTemplate": "https://duckduckgo.com/?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    },
+    {
+      "id": "cw-example-bing",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "Bing",
+      "groupName": "Web Search",
+      "isDefault": false,
+      "icon": "🅱️",
+      "customIcon": "https://www.bing.com/favicon.ico",
+      "urlTemplate": "https://www.bing.com/search?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    },
+    {
+      "id": "cw-example-ecosia",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "Ecosia",
+      "groupName": "Web Search",
+      "isDefault": false,
+      "icon": "🌱",
+      "customIcon": "https://www.ecosia.org/static/icons/favicon.ico",
+      "urlTemplate": "https://www.ecosia.org/search?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

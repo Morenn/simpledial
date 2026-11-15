@@ -1,0 +1,28 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-brave",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "Brave Search",
+      "icon": "🦁",
+      "customIcon": "https://search.brave.com/favicon.ico",
+      "urlTemplate": "https://search.brave.com/search?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

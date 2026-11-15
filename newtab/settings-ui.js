@@ -5,7 +5,7 @@ import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from './bookmarks-api.js';
 import { render, calculateGridLayout } from "./render.js";
-import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTileSize, applyGroupTileSize, applySideSpaces, applyThemeStyle, fetchAndCacheThemeUrl, fetchBackgroundImageFromUrl, isAllowedThemeUrl, getCustomThemeUrlCache, normalizeWidgetOrder, isValidCustomSearchUrlTemplate, isValidCustomSearchJsonTemplate, serializeCustomWidgetsExport, parseImportedCustomWidgets, resolveCustomWidgetIcon, fetchCustomWidgetsFromUrl, applyCustomWidgetUpdate, revertCustomWidgetVersion, buildCustomSearchPreview, normalizeCustomWidgetVariables } from "./theme.js";
+import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTileSize, applyGroupTileSize, applySideSpaces, applyThemeStyle, fetchAndCacheThemeUrl, fetchBackgroundImageFromUrl, isAllowedThemeUrl, getCustomThemeUrlCache, normalizeWidgetOrder, groupCustomSearchWidgets, isValidCustomSearchUrlTemplate, isValidCustomSearchJsonTemplate, serializeCustomWidgetsExport, parseImportedCustomWidgets, resolveCustomWidgetIcon, fetchCustomWidgetsFromUrl, applyCustomWidgetUpdate, revertCustomWidgetVersion, buildCustomSearchPreview, normalizeCustomWidgetVariables } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
@@ -124,8 +124,10 @@ const customWidgetIconUploadBtn = document.getElementById("custom-widget-icon-up
 const customWidgetIconFile = document.getElementById("custom-widget-icon-file");
 const customWidgetModeSelect = document.getElementById("custom-widget-mode");
 const customWidgetNameInput = document.getElementById("custom-widget-name");
+const customWidgetGroupInput = document.getElementById("custom-widget-group");
 const customWidgetUrlInput = document.getElementById("custom-widget-url");
 const customWidgetNewTabInput = document.getElementById("custom-widget-newtab");
+const customWidgetDefaultInput = document.getElementById("custom-widget-default");
 const customWidgetJsonRow = document.getElementById("custom-widget-json-row");
 const customWidgetJsonTemplateInput = document.getElementById("custom-widget-json-template");
 const customWidgetVarsList = document.getElementById("custom-widget-vars-list");
@@ -288,6 +290,14 @@ function initializeSettingsDirtyTracking() {
     const resolvedAppearance = appearance || appearanceDraft || {};
     const customWidgets = Array.isArray(resolvedAppearance.customWidgets) ? resolvedAppearance.customWidgets : [];
     const customWidgetMap = new Map(customWidgets.filter(w => w?.id).map(w => [w.id, w]));
+    const customGroups = groupCustomSearchWidgets(customWidgets);
+    const customGroupByRepId = new Map(customGroups.map(g => [g.representative.id, g]));
+    const secondaryCustomIds = new Set();
+    for (const g of customGroups) {
+      for (const m of g.members) {
+        if (m.id !== g.representative.id) secondaryCustomIds.add(m.id);
+      }
+    }
     const order = normalizeWidgetOrder(resolvedAppearance.widgetOrder, customWidgets);
     const spaceKeyMap = {
       disabled: "spaceDisabled",
@@ -333,10 +343,15 @@ function initializeSettingsDirtyTracking() {
       const builtInDef = WIDGET_REGISTRY[key];
       const customDef = customWidgetMap.get(key);
       if (!builtInDef && !customDef) return;
+      if (customDef && secondaryCustomIds.has(key)) return;
       const isCustom = !!customDef;
+      const customGroup = isCustom ? customGroupByRepId.get(key) : null;
+      const customLabel = (customGroup && customGroup.members.length > 1)
+        ? `${customGroup.groupName} (${customGroup.members.length})`
+        : (customDef?.name || "Search");
       const def = builtInDef || {
         key: null,
-        fallback: `${customDef.icon || "🔎"} ${customDef.name || "Search"}`,
+        fallback: `${customDef.icon || "🔎"} ${customLabel}`,
         field: null,
         defaultSpace: "right",
         allowDisabled: true,
@@ -544,6 +559,13 @@ function initializeSettingsDirtyTracking() {
       badge.className = "custom-widget-mode-badge";
       badge.textContent = customDef.mode === "json" ? "JSON" : "Simple";
       titleEl.appendChild(badge);
+      const groupName = typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
+      if (groupName) {
+        const groupBadge = document.createElement("span");
+        groupBadge.className = "custom-widget-group-badge";
+        groupBadge.textContent = groupName;
+        titleEl.appendChild(groupBadge);
+      }
 
       const urlEl = document.createElement("div");
       urlEl.className = "custom-widget-library-url";
@@ -633,6 +655,32 @@ function initializeSettingsDirtyTracking() {
         await render();
         calculateGridLayout();
       });
+
+      if (groupName) {
+        const defaultBtn = document.createElement("button");
+        defaultBtn.type = "button";
+        defaultBtn.className = "widget-order-btn custom-widget-default-btn";
+        if (customDef.isDefault) {
+          defaultBtn.classList.add("active");
+        }
+        defaultBtn.textContent = customDef.isDefault ? "★" : "☆";
+        defaultBtn.title = t("customSearchSetDefaultTitle") || "Set as default in group";
+        defaultBtn.addEventListener("click", async () => {
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          draft.customWidgets = (draft.customWidgets || []).map(w => {
+            if ((typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName) {
+              return { ...w, isDefault: w.id === customDef.id };
+            }
+            return w;
+          });
+          renderWidgetOrderList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        });
+        actions.appendChild(defaultBtn);
+      }
 
       const editBtn = document.createElement("button");
       editBtn.type = "button";
@@ -839,9 +887,11 @@ function initializeSettingsDirtyTracking() {
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = "";
     if (customWidgetModeSelect) customWidgetModeSelect.value = "simple";
     if (customWidgetNameInput) customWidgetNameInput.value = "";
+    if (customWidgetGroupInput) customWidgetGroupInput.value = "";
     if (customWidgetUrlInput) customWidgetUrlInput.value = "";
     if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = "";
     if (customWidgetNewTabInput) customWidgetNewTabInput.checked = false;
+    if (customWidgetDefaultInput) customWidgetDefaultInput.checked = false;
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("customSearchAddBtn") || "+ Add";
     if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.add("hidden");
     if (customWidgetStatus) customWidgetStatus.textContent = "";
@@ -857,9 +907,11 @@ function initializeSettingsDirtyTracking() {
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = widget.customIcon || "";
     if (customWidgetModeSelect) customWidgetModeSelect.value = widget.mode === "json" ? "json" : "simple";
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
+    if (customWidgetGroupInput) customWidgetGroupInput.value = widget.groupName || "";
     if (customWidgetUrlInput) customWidgetUrlInput.value = widget.urlTemplate || "";
     if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = widget.jsonTemplate || "";
     if (customWidgetNewTabInput) customWidgetNewTabInput.checked = !!widget.openInNewTab;
+    if (customWidgetDefaultInput) customWidgetDefaultInput.checked = !!widget.isDefault;
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
     if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.remove("hidden");
     if (customWidgetStatus) customWidgetStatus.textContent = "";
@@ -998,6 +1050,7 @@ function initializeSettingsDirtyTracking() {
     customWidgetAddBtn.addEventListener('click', async () => {
       const mode = customWidgetModeSelect?.value === "json" ? "json" : "simple";
       const name = (customWidgetNameInput?.value || "").trim();
+      const groupName = (customWidgetGroupInput?.value || "").trim();
       const urlTemplate = (customWidgetUrlInput?.value || "").trim();
       const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
       const icon = (customWidgetIconInput?.value || "🔎").trim() || "🔎";
@@ -1013,6 +1066,7 @@ function initializeSettingsDirtyTracking() {
         }
       }
       const openInNewTab = !!customWidgetNewTabInput?.checked;
+      const isDefault = !!customWidgetDefaultInput?.checked && !!groupName;
       const variables = customWidgetVarsDraft
         .map(v => ({
           key: (v.key || "").trim(),
@@ -1039,17 +1093,30 @@ function initializeSettingsDirtyTracking() {
       markSettingsDirty();
       const draft = await ensureAppearanceDraft();
       if (editingCustomWidgetId) {
-        draft.customWidgets = (draft.customWidgets || []).map(w =>
-          w.id === editingCustomWidgetId
-            ? { ...w, mode, name, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables }
-            : w
-        );
+        draft.customWidgets = (draft.customWidgets || []).map(w => {
+          if (w.id === editingCustomWidgetId) {
+            return { ...w, mode, name, groupName, isDefault, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables };
+          }
+          if (isDefault && groupName && (typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName) {
+            return { ...w, isDefault: false };
+          }
+          return w;
+        });
       } else {
+        const existingWidgets = isDefault && groupName
+          ? (draft.customWidgets || []).map(w =>
+              (typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName
+                ? { ...w, isDefault: false }
+                : w
+            )
+          : (draft.customWidgets || []);
         const newWidget = {
           id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
           type: "custom-search",
           mode,
           name,
+          groupName,
+          isDefault,
           icon,
           customIcon,
           urlTemplate,
@@ -1060,7 +1127,7 @@ function initializeSettingsDirtyTracking() {
           align: "auto",
           newRow: false
         };
-        draft.customWidgets = [...(draft.customWidgets || []), newWidget];
+        draft.customWidgets = [...existingWidgets, newWidget];
         draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
       }
 

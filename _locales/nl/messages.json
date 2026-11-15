@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "searchPlaceholder": {
-    "message": "Zoeken..."
+    "message": "Zoeken in bladwijzers..."
   },
   "extensionDescription": {
     "message": "Eenvoudige SpeedDial-extensie slaat bladwijzers op en synchroniseert ze via WebDAV of HTTP met JSON GET/PUT."
@@ -1129,5 +1129,17 @@
   },
   "clickableTags": {
     "message": "Klikbare bladwijzerlabels (klik om te zoeken)"
+  },
+  "customSearchGroupPlaceholder": {
+    "message": "Groep (optioneel)"
+  },
+  "customSearchDefaultInGroup": {
+    "message": "Standaard in groep"
+  },
+  "customSearchSwitchEngineTitle": {
+    "message": "Zoekmachine wisselen"
+  },
+  "customSearchSetDefaultTitle": {
+    "message": "Als standaard in groep instellen"
   }
 }

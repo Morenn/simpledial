@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "searchPlaceholder": {
-    "message": "Suchen..."
+    "message": "In Lesezeichen suchen..."
   },
   "extensionDescription": {
     "message": "Einfache SpeedDial-Erweiterung speichert und synchronisiert Lesezeichen über WebDAV oder HTTP mit JSON-GET/PUT."
@@ -1129,5 +1129,17 @@
   },
   "clickableTags": {
     "message": "Anklickbare Lesezeichen-Tags (Klick zum Suchen)"
+  },
+  "customSearchGroupPlaceholder": {
+    "message": "Gruppe (optional)"
+  },
+  "customSearchDefaultInGroup": {
+    "message": "Standard in Gruppe"
+  },
+  "customSearchSwitchEngineTitle": {
+    "message": "Suchmaschine wechseln"
+  },
+  "customSearchSetDefaultTitle": {
+    "message": "Als Standard in der Gruppe festlegen"
   }
 }

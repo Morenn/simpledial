@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "searchPlaceholder": {
-    "message": "Пошук..."
+    "message": "Пошук у закладках..."
   },
   "extensionDescription": {
     "message": "Просте розширення SpeedDial зберігає та синхронізує закладки через WebDAV або HTTP-сервер із підтримкою JSON GET/PUT."
@@ -1129,5 +1129,17 @@
   },
   "clickableTags": {
     "message": "Клікабельні теги закладок (натисніть для пошуку)"
+  },
+  "customSearchGroupPlaceholder": {
+    "message": "Група (необов'язково)"
+  },
+  "customSearchDefaultInGroup": {
+    "message": "Типовий у групі"
+  },
+  "customSearchSwitchEngineTitle": {
+    "message": "Змінити пошукову систему"
+  },
+  "customSearchSetDefaultTitle": {
+    "message": "Зробити типовим у групі"
   }
 }

@@ -769,6 +769,8 @@ export function serializeCustomWidgetsExport(widgets = []) {
         space: VALID_WIDGET_SPACES.has(w?.space) ? w.space : "right",
         align: VALID_WIDGET_ALIGNS.has(w?.align) ? w.align : "auto",
         newRow: !!w?.newRow,
+        groupName: typeof w?.groupName === "string" ? w.groupName.trim() : "",
+        isDefault: !!w?.isDefault,
         ...(typeof w?.sourceUrl === "string" && isAllowedThemeUrl(w.sourceUrl) ? { sourceUrl: w.sourceUrl.trim() } : {}),
         ...(typeof w?.sourceUpdatedAt === "string" && w.sourceUpdatedAt ? { sourceUpdatedAt: w.sourceUpdatedAt } : {})
       };
@@ -848,6 +850,8 @@ export function parseImportedCustomWidgets(parsed) {
       space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "right",
       align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
       newRow: !!raw.newRow,
+      groupName: typeof raw.groupName === "string" ? raw.groupName.trim() : "",
+      isDefault: !!raw.isDefault,
       ...(sourceUrl ? { sourceUrl } : {}),
       ...(typeof raw.sourceUpdatedAt === "string" && raw.sourceUpdatedAt ? { sourceUpdatedAt: raw.sourceUpdatedAt } : {})
     });
@@ -964,7 +968,7 @@ export function normalizeWidgetOrder(rawOrder, customWidgets = []) {
   return result;
 }
 
-function syncCustomSearchWidgetElements(customWidgets = []) {
+export function groupCustomSearchWidgets(customWidgets = []) {
   const validList = Array.isArray(customWidgets)
     ? customWidgets.filter(w =>
         w &&
@@ -974,56 +978,199 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
         (w.mode !== "json" || isValidCustomSearchJsonTemplate(w.jsonTemplate))
       )
     : [];
-  const validIds = new Set(validList.map(w => w.id));
+
+  const groups = [];
+  const byGroupKey = new Map();
+
+  for (const w of validList) {
+    const groupName = typeof w.groupName === "string" ? w.groupName.trim() : "";
+    if (!groupName) {
+      groups.push({ groupName: "", members: [w], representative: w });
+      continue;
+    }
+    const key = groupName.toLowerCase();
+    let entry = byGroupKey.get(key);
+    if (!entry) {
+      entry = { groupName, members: [], representative: w };
+      byGroupKey.set(key, entry);
+      groups.push(entry);
+    }
+    entry.members.push(w);
+  }
+
+  for (const g of groups) {
+    if (g.members.length > 1) {
+      g.representative = g.members.find(m => !!m.isDefault) || g.members[0];
+    }
+  }
+
+  return groups;
+}
+
+function createCustomSearchIconContent(widget, iconEl) {
+  const { emoji, customIcon } = resolveCustomWidgetIcon(widget);
+  iconEl.innerHTML = "";
+  if (customIcon) {
+    const iconImg = document.createElement("img");
+    iconImg.className = "custom-search-icon-img";
+    iconImg.src = customIcon;
+    iconImg.alt = "";
+    iconImg.addEventListener("error", () => {
+      iconEl.textContent = emoji;
+    }, { once: true });
+    iconEl.appendChild(iconImg);
+  } else {
+    iconEl.textContent = emoji;
+  }
+}
+
+let customSearchMenuListenersBound = false;
+
+function closeAllCustomSearchEngineMenus(exceptMenu = null) {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll(".custom-search-engine-menu:not(.hidden)").forEach(menu => {
+    if (menu === exceptMenu) return;
+    menu.classList.add("hidden");
+    const btn = menu.closest(".custom-search-widget")?.querySelector(".custom-search-icon-btn");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  });
+}
+
+function ensureCustomSearchMenuListeners() {
+  if (customSearchMenuListenersBound || typeof document === "undefined") return;
+  customSearchMenuListenersBound = true;
+  document.addEventListener("click", (ev) => {
+    const target = ev.target;
+    if (target instanceof Element && (target.closest(".custom-search-engine-menu") || target.closest(".custom-search-icon-btn"))) {
+      return;
+    }
+    closeAllCustomSearchEngineMenus();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") {
+      closeAllCustomSearchEngineMenus();
+    }
+  });
+}
+
+function syncCustomSearchWidgetElements(customWidgets = []) {
+  ensureCustomSearchMenuListeners();
+  const groups = groupCustomSearchWidgets(customWidgets);
+  const validRepIds = new Set(groups.map(g => g.representative.id));
 
   document.querySelectorAll(".custom-search-widget[data-custom-widget-id]").forEach(el => {
-    if (!validIds.has(el.dataset.customWidgetId)) {
+    if (!validRepIds.has(el.dataset.customWidgetId)) {
       el.remove();
     }
   });
 
   const elementMap = {};
-  for (const widget of validList) {
-    const vars = normalizeCustomWidgetVariables(widget);
-    const { emoji: widgetEmoji, customIcon: widgetCustomIcon } = resolveCustomWidgetIcon(widget);
+  for (const group of groups) {
+    const rep = group.representative;
+    const members = group.members;
+    const isGrouped = members.length > 1;
+
     const configSig = JSON.stringify({
-      name: widget.name || "",
-      icon: widgetEmoji,
-      customIcon: widgetCustomIcon || "",
-      mode: widget.mode === "json" ? "json" : "simple",
-      urlTemplate: widget.urlTemplate || "",
-      jsonTemplate: widget.jsonTemplate || "",
-      openInNewTab: !!widget.openInNewTab,
-      variables: vars
+      groupName: group.groupName,
+      repId: rep.id,
+      members: members.map(w => {
+        const { emoji, customIcon } = resolveCustomWidgetIcon(w);
+        return {
+          id: w.id,
+          name: w.name || "",
+          icon: emoji,
+          customIcon: customIcon || "",
+          isDefault: !!w.isDefault,
+          mode: w.mode === "json" ? "json" : "simple",
+          urlTemplate: w.urlTemplate || "",
+          jsonTemplate: w.jsonTemplate || "",
+          openInNewTab: !!w.openInNewTab,
+          variables: normalizeCustomWidgetVariables(w)
+        };
+      })
     });
 
-    let form = document.querySelector(`.custom-search-widget[data-custom-widget-id="${CSS.escape(widget.id)}"]`);
+    let form = document.querySelector(`.custom-search-widget[data-custom-widget-id="${CSS.escape(rep.id)}"]`);
     if (!form) {
       form = document.createElement("form");
       form.className = "custom-search-widget";
-      form.dataset.customWidgetId = widget.id;
+      form.dataset.customWidgetId = rep.id;
     }
 
-    if (form.dataset.configSig !== configSig) {
-      form.dataset.configSig = configSig;
+    const renderEngineForm = (activeWidget) => {
+      form.dataset.activeEngineId = activeWidget.id;
+      const prevPrimaryValue = form.querySelector(".custom-search-input")?.value || "";
       form.innerHTML = "";
 
+      const vars = normalizeCustomWidgetVariables(activeWidget);
       const mainRow = document.createElement("div");
       mainRow.className = "custom-search-main-row";
 
-      const iconSpan = document.createElement("span");
-      iconSpan.className = "custom-search-icon";
-      if (widgetCustomIcon) {
-        const iconImg = document.createElement("img");
-        iconImg.className = "custom-search-icon-img";
-        iconImg.src = widgetCustomIcon;
-        iconImg.alt = "";
-        iconImg.addEventListener("error", () => {
-          iconSpan.textContent = widgetEmoji;
-        }, { once: true });
-        iconSpan.appendChild(iconImg);
+      let engineMenu = null;
+      let iconControl;
+      if (isGrouped) {
+        const iconBtn = document.createElement("button");
+        iconBtn.type = "button";
+        iconBtn.className = "custom-search-icon-btn";
+        iconBtn.title = t("customSearchSwitchEngineTitle") || "Switch search engine";
+        iconBtn.setAttribute("aria-expanded", "false");
+
+        const iconGraphic = document.createElement("span");
+        iconGraphic.className = "custom-search-icon";
+        createCustomSearchIconContent(activeWidget, iconGraphic);
+
+        const caret = document.createElement("span");
+        caret.className = "custom-search-icon-caret";
+        caret.textContent = "▾";
+
+        iconBtn.append(iconGraphic, caret);
+        iconControl = iconBtn;
+
+        engineMenu = document.createElement("div");
+        engineMenu.className = "custom-search-engine-menu hidden";
+        for (const member of members) {
+          const itemBtn = document.createElement("button");
+          itemBtn.type = "button";
+          itemBtn.className = "custom-search-engine-option";
+          if (member.id === activeWidget.id) {
+            itemBtn.classList.add("active");
+          }
+
+          const optIcon = document.createElement("span");
+          optIcon.className = "custom-search-icon";
+          createCustomSearchIconContent(member, optIcon);
+
+          const optName = document.createElement("span");
+          optName.className = "custom-search-engine-name";
+          optName.textContent = member.name || "Search";
+
+          itemBtn.append(optIcon, optName);
+          if (member.isDefault) {
+            const star = document.createElement("span");
+            star.className = "custom-search-engine-default-star";
+            star.textContent = "★";
+            itemBtn.appendChild(star);
+          }
+
+          itemBtn.addEventListener("click", () => {
+            renderEngineForm(member);
+            const nextInput = form.querySelector(".custom-search-input");
+            if (nextInput) nextInput.focus();
+          });
+          engineMenu.appendChild(itemBtn);
+        }
+
+        iconBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          closeAllCustomSearchEngineMenus(engineMenu);
+          const isHidden = engineMenu.classList.toggle("hidden");
+          iconBtn.setAttribute("aria-expanded", String(!isHidden));
+        });
       } else {
-        iconSpan.textContent = widgetEmoji;
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "custom-search-icon";
+        createCustomSearchIconContent(activeWidget, iconSpan);
+        iconControl = iconSpan;
       }
 
       const primaryVar = vars.find(v => v.type === "text" || v.type === "list") || vars[0];
@@ -1039,7 +1186,8 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
         primaryInput = document.createElement("input");
         primaryInput.type = "search";
         primaryInput.className = "custom-search-input";
-        const placeholder = vars.length === 1 ? (widget.name || primaryVar.label) : `${widget.name || "Search"}: ${primaryVar.label}`;
+        primaryInput.value = prevPrimaryValue;
+        const placeholder = vars.length === 1 ? (activeWidget.name || primaryVar.label) : `${activeWidget.name || "Search"}: ${primaryVar.label}`;
         primaryInput.placeholder = placeholder;
         primaryInput.setAttribute("aria-label", placeholder);
         valueReaders[primaryVar.key] = () => {
@@ -1052,12 +1200,12 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
       } else {
         const titleLabel = document.createElement("span");
         titleLabel.className = "custom-search-title-label";
-        titleLabel.textContent = widget.name || "Search";
-        mainRow.append(iconSpan, titleLabel);
+        titleLabel.textContent = activeWidget.name || "Search";
+        mainRow.append(iconControl, titleLabel);
       }
 
       if (primaryInput) {
-        mainRow.append(iconSpan, primaryInput);
+        mainRow.append(iconControl, primaryInput);
       }
 
       let filtersPanel = null;
@@ -1167,10 +1315,13 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
       submitBtn.type = "submit";
       submitBtn.className = "custom-search-submit";
       submitBtn.textContent = "↵";
-      submitBtn.title = widget.name || "Search";
+      submitBtn.title = activeWidget.name || "Search";
       mainRow.appendChild(submitBtn);
 
       form.appendChild(mainRow);
+      if (engineMenu) {
+        form.appendChild(engineMenu);
+      }
       if (filtersPanel) {
         form.appendChild(filtersPanel);
       }
@@ -1190,18 +1341,24 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
           if (primaryInput) primaryInput.focus();
           return;
         }
-        if (!isValidCustomSearchUrlTemplate(widget.urlTemplate)) return;
-        if (widget.mode === "json" && !isValidCustomSearchJsonTemplate(widget.jsonTemplate)) return;
-        const targetUrl = buildCustomSearchTargetUrl(widget, valuesMap);
-        if (widget.openInNewTab) {
+        if (!isValidCustomSearchUrlTemplate(activeWidget.urlTemplate)) return;
+        if (activeWidget.mode === "json" && !isValidCustomSearchJsonTemplate(activeWidget.jsonTemplate)) return;
+        const targetUrl = buildCustomSearchTargetUrl(activeWidget, valuesMap);
+        if (activeWidget.openInNewTab) {
           window.open(targetUrl, "_blank", "noopener,noreferrer");
         } else {
           window.location.href = targetUrl;
         }
       };
+    };
+
+    if (form.dataset.configSig !== configSig) {
+      form.dataset.configSig = configSig;
+      const currentActive = members.find(m => m.id === form.dataset.activeEngineId) || rep;
+      renderEngineForm(currentActive);
     }
 
-    elementMap[widget.id] = form;
+    elementMap[rep.id] = form;
   }
 
   return elementMap;

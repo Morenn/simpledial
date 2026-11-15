@@ -1,0 +1,28 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-bing",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "Bing",
+      "icon": "🅱️",
+      "customIcon": "https://www.bing.com/favicon.ico",
+      "urlTemplate": "https://www.bing.com/search?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "searchPlaceholder": {
-    "message": "Hledat..."
+    "message": "Hledat v záložkách..."
   },
   "extensionDescription": {
     "message": "Jednoduché rozšíření SpeedDial ukládá a synchronizuje záložky přes WebDAV nebo HTTP server s podporou JSON GET/PUT."
@@ -1129,5 +1129,17 @@
   },
   "clickableTags": {
     "message": "Klikatelné štítky záložek (kliknutím vyhledat)"
+  },
+  "customSearchGroupPlaceholder": {
+    "message": "Skupina (volitelné)"
+  },
+  "customSearchDefaultInGroup": {
+    "message": "Výchozí ve skupině"
+  },
+  "customSearchSwitchEngineTitle": {
+    "message": "Přepnout vyhledávač"
+  },
+  "customSearchSetDefaultTitle": {
+    "message": "Nastavit jako výchozí ve skupině"
   }
 }

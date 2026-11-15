@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "searchPlaceholder": {
-    "message": "Haku..."
+    "message": "Hae kirjanmerkeistä..."
   },
   "extensionDescription": {
     "message": "Yksinkertainen SpeedDial tallentaa ja synkronoi kirjanmerkit WebDAV:n tai JSON GET/PUT -tuella toimivan HTTP-palvelimen kautta."
@@ -1129,5 +1129,17 @@
   },
   "clickableTags": {
     "message": "Klikattavat kirjanmerkkien tunnisteet (hae napsauttamalla)"
+  },
+  "customSearchGroupPlaceholder": {
+    "message": "Ryhmä (valinnainen)"
+  },
+  "customSearchDefaultInGroup": {
+    "message": "Oletus ryhmässä"
+  },
+  "customSearchSwitchEngineTitle": {
+    "message": "Vaihda hakukonetta"
+  },
+  "customSearchSetDefaultTitle": {
+    "message": "Aseta oletukseksi ryhmässä"
   }
 }

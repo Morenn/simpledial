@@ -18,7 +18,7 @@
       <div id="search-widget" class="search-widget search-mode-full">
         <button type="button" id="search-toggle-btn" class="icon-btn search-toggle-btn" title="searchPlaceholder" aria-label="searchPlaceholder">🔍</button>
         <div class="search-input-wrap">
-          <input id="search-box" type="text" placeholder="Search...">
+          <input id="search-box" type="text" placeholder="Search in bookmarks...">
           <button type="button" id="search-clear-btn" class="search-clear-btn hidden" title="clearSearch" aria-label="clearSearch">✕</button>
         </div>
       </div>
@@ -648,10 +648,15 @@
                   <input type="file" id="custom-widget-icon-file" accept="image/*" style="display: none;">
                 </div>
                 <input type="text" id="custom-widget-name" class="sync-compact-input custom-widget-name-input" data-i18n-placeholder="customSearchNamePlaceholder" placeholder="Name (e.g. Google)">
+                <input type="text" id="custom-widget-group" class="sync-compact-input custom-widget-group-input" data-i18n-placeholder="customSearchGroupPlaceholder" placeholder="Group (optional)">
                 <input type="url" id="custom-widget-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customSearchUrlPlaceholder" placeholder="https://www.google.com/search?q={query}">
                 <label class="checkbox-row custom-widget-newtab-label">
                   <input type="checkbox" id="custom-widget-newtab">
                   <span data-i18n="customSearchNewTab">New tab</span>
+                </label>
+                <label class="checkbox-row custom-widget-default-label">
+                  <input type="checkbox" id="custom-widget-default">
+                  <span data-i18n="customSearchDefaultInGroup">Default in group</span>
                 </label>
               </div>
               <div id="custom-widget-json-row" class="custom-widget-json-row hidden">

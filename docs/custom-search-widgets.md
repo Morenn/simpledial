@@ -139,4 +139,16 @@ You can back up, share, or load custom search widgets from a file or a remote JS
 
 > **Security note:** Only import or load custom widgets from files and URLs you trust.
 
+---
+
+## 5. Grouping Search Engines into One Widget
+
+You can combine multiple search engines into a single compact search widget with a clickable engine switcher:
+
+1. In **Settings → Custom Widgets**, enter the same **Group (optional)** name (for example, `Web Search`) on two or more custom search widgets.
+2. Check **Default in group** (or click **☆** in **Saved Custom Widgets**) on the engine you want selected initially and used as the group's placement entry in **Settings → Appearance → Widgets**.
+3. On the new-tab page, click the search widget's icon button (`▾`) to switch between any engine in that group without leaving the bar.
+
+Ready-to-import presets for **Google Search**, **Brave Search**, **DuckDuckGo**, **Bing**, and **Ecosia** (plus `all-search-engines.json` pre-grouped under `Web Search`) are available in `widget-examples/search/`.
+
 Remember to click **Save** in Settings to persist changes.

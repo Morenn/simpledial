@@ -1,0 +1,28 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-duckduckgo",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "DuckDuckGo",
+      "icon": "🦆",
+      "customIcon": "https://duckduckgo.com/favicon.ico",
+      "urlTemplate": "https://duckduckgo.com/?q={query}",
+      "jsonTemplate": "",
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}
