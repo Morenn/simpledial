@@ -449,6 +449,27 @@
   "confirmRestoreBackup": {
     "message": "Palautetaanko tämä varmuuskopio? Synkronointi pitää ensin poistaa käytöstä."
   },
+  "backupTabBookmarks": {
+    "message": "Kirjanmerkkitietokanta"
+  },
+  "backupTabConfig": {
+    "message": "Lisäosan asetukset"
+  },
+  "backupTabWidgets": {
+    "message": "Mukautetut widgetit"
+  },
+  "confirmRestoreConfigBackup": {
+    "message": "Palautetaanko tämä lisäosan asetusten varmuuskopio? Nykyiset ulkoasuasetukset korvataan (synkronointiasetuksia ei muuteta)."
+  },
+  "confirmRestoreWidgetsBackup": {
+    "message": "Palautetaanko tämä mukautettujen widgettien varmuuskopio? Nykyiset mukautetut widgetit korvataan."
+  },
+  "backupConfigRestored": {
+    "message": "Lisäosan asetukset palautettu varmuuskopiosta."
+  },
+  "backupWidgetsRestored": {
+    "message": "Mukautetut widgetit palautettu varmuuskopiosta."
+  },
   "confirmDeleteBackup": {
     "message": "Poistetaanko tämä varmuuskopio pysyvästi?"
   },
@@ -1020,10 +1041,10 @@
     "message": "Nimiö=Arvo (yksi per rivi)"
   },
   "customSearchWidgetsExportTitle": {
-    "message": "Mukautetut hakuwidgetit"
+    "message": "Mukautetut widgetit"
   },
   "customSearchWidgetsExportDesc": {
-    "message": "Vie ja tuo mukautettu hakuwidget-kirjastosi JSON-muodossa jakamista tai varmuuskopiointia varten."
+    "message": "Vie ja tuo mukautettu widget-kirjastosi JSON-muodossa jakamista tai varmuuskopiointia varten."
   },
   "exportWidgetTitle": {
     "message": "Vie widget"

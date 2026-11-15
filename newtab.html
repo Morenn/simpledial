@@ -355,7 +355,7 @@
           <div class="backups-controls-grid">
             <div class="appearance-slider-row">
               <label for="backup-retention-days" data-i18n="backupsRetentionDays">Retention period (days):</label>
-              <input type="number" id="backup-retention-days" class="appearance-number-input" min="1" max="365" value="30">
+              <input type="number" id="backup-retention-days" class="appearance-number-input" min="1" max="365" value="14">
             </div>
             <div class="appearance-slider-row">
               <label for="backup-frequency-hours" data-i18n="backupsFrequency">Backup frequency (hours):</label>
@@ -369,6 +369,11 @@
             </div>
             <div id="backup-status" class="status"></div>
           </div>
+        </div>
+
+        <div class="backups-subtabs" role="tablist">
+          <button type="button" class="backups-subtab-btn active" data-backup-type="bookmarks" data-i18n="backupTabBookmarks">Bookmark Database</button>
+          <button type="button" class="backups-subtab-btn" data-backup-type="config" data-i18n="backupTabConfig">Addon configuration</button>
         </div>
 
         <div class="backups-table-wrap">
@@ -429,8 +434,8 @@
           </div>
 
           <div class="sync-section-card appearance-card">
-            <h3 data-i18n="customSearchWidgetsExportTitle">Custom Search Widgets</h3>
-            <p class="appearance-card-desc" data-i18n="customSearchWidgetsExportDesc">Export and import your custom search widget library as JSON to share or back up.</p>
+            <h3 data-i18n="customSearchWidgetsExportTitle">Custom Widgets</h3>
+            <p class="appearance-card-desc" data-i18n="customSearchWidgetsExportDesc">Export and import your custom widgets library as JSON to share or back up.</p>
             <div class="appearance-card-footer">
               <div class="tile-mass-color-actions">
                 <button id="export-widgets-btn" class="icon-btn primary" data-i18n="export">📥 Export</button>

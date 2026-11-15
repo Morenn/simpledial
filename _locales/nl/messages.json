@@ -449,6 +449,27 @@
   "confirmRestoreBackup": {
     "message": "Deze back-up herstellen? Synchronisatie moet eerst worden uitgeschakeld."
   },
+  "backupTabBookmarks": {
+    "message": "Bladwijzerdatabase"
+  },
+  "backupTabConfig": {
+    "message": "Add-onconfiguratie"
+  },
+  "backupTabWidgets": {
+    "message": "Aangepaste widgets"
+  },
+  "confirmRestoreConfigBackup": {
+    "message": "Deze back-up van de add-onconfiguratie herstellen? De huidige weergave-instellingen worden vervangen (synchronisatie-instellingen worden niet gewijzigd)."
+  },
+  "confirmRestoreWidgetsBackup": {
+    "message": "Deze back-up van aangepaste widgets herstellen? Huidige aangepaste widgets worden vervangen."
+  },
+  "backupConfigRestored": {
+    "message": "Add-onconfiguratie hersteld vanuit back-up."
+  },
+  "backupWidgetsRestored": {
+    "message": "Aangepaste widgets hersteld vanuit back-up."
+  },
   "confirmDeleteBackup": {
     "message": "Deze back-up definitief verwijderen?"
   },
@@ -1020,10 +1041,10 @@
     "message": "Label=Waarde (één per regel)"
   },
   "customSearchWidgetsExportTitle": {
-    "message": "Aangepaste zoekwidgets"
+    "message": "Aangepaste widgets"
   },
   "customSearchWidgetsExportDesc": {
-    "message": "Exporteer en importeer uw zoekwidget-bibliotheek als JSON om te delen of te back-uppen."
+    "message": "Exporteer en importeer uw bibliotheek met aangepaste widgets als JSON om te delen of te back-uppen."
   },
   "exportWidgetTitle": {
     "message": "Widget exporteren"

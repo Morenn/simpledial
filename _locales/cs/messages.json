@@ -449,6 +449,27 @@
   "confirmRestoreBackup": {
     "message": "Obnovit tuto zálohu? Nejprve je nutné vypnout synchronizaci."
   },
+  "backupTabBookmarks": {
+    "message": "Databáze záložek"
+  },
+  "backupTabConfig": {
+    "message": "Nastavení doplňku"
+  },
+  "backupTabWidgets": {
+    "message": "Vlastní widgety"
+  },
+  "confirmRestoreConfigBackup": {
+    "message": "Obnovit tuto zálohu nastavení doplňku? Aktuální nastavení vzhledu bude nahrazeno (nastavení synchronizace zůstane beze změny)."
+  },
+  "confirmRestoreWidgetsBackup": {
+    "message": "Obnovit tuto zálohu vlastních widgetů? Aktuální vlastní widgety budou nahrazeny."
+  },
+  "backupConfigRestored": {
+    "message": "Nastavení doplňku bylo obnoveno ze zálohy."
+  },
+  "backupWidgetsRestored": {
+    "message": "Vlastní widgety byly obnoveny ze zálohy."
+  },
   "confirmDeleteBackup": {
     "message": "Smazat tuto zálohu trvale?"
   },
@@ -1020,10 +1041,10 @@
     "message": "Popisek=Hodnota (na řádek)"
   },
   "customSearchWidgetsExportTitle": {
-    "message": "Vlastní vyhledávací widgety"
+    "message": "Vlastní widgety"
   },
   "customSearchWidgetsExportDesc": {
-    "message": "Exportujte a importujte knihovnu vlastních vyhledávacích widgetů jako JSON pro sdílení nebo zálohu."
+    "message": "Exportujte a importujte knihovnu vlastních widgetů jako JSON pro sdílení nebo zálohu."
   },
   "exportWidgetTitle": {
     "message": "Exportovat widget"

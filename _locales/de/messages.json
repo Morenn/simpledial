@@ -449,6 +449,27 @@
   "confirmRestoreBackup": {
     "message": "Diese Sicherung wiederherstellen? Die Synchronisierung muss dazu zuerst deaktiviert werden."
   },
+  "backupTabBookmarks": {
+    "message": "Lesezeichen-Datenbank"
+  },
+  "backupTabConfig": {
+    "message": "Addon-Konfiguration"
+  },
+  "backupTabWidgets": {
+    "message": "Benutzerdefinierte Widgets"
+  },
+  "confirmRestoreConfigBackup": {
+    "message": "Diese Addon-Konfigurationssicherung wiederherstellen? Die aktuellen Darstellungseinstellungen werden ersetzt (Synchronisierungseinstellungen bleiben unverändert)."
+  },
+  "confirmRestoreWidgetsBackup": {
+    "message": "Diese Sicherung der benutzerdefinierten Widgets wiederherstellen? Aktuelle benutzerdefinierte Widgets werden ersetzt."
+  },
+  "backupConfigRestored": {
+    "message": "Addon-Konfiguration aus Sicherung wiederhergestellt."
+  },
+  "backupWidgetsRestored": {
+    "message": "Benutzerdefinierte Widgets aus Sicherung wiederhergestellt."
+  },
   "confirmDeleteBackup": {
     "message": "Diese Sicherung dauerhaft löschen?"
   },
@@ -1020,10 +1041,10 @@
     "message": "Beschriftung=Wert (pro Zeile)"
   },
   "customSearchWidgetsExportTitle": {
-    "message": "Benutzerdefinierte Such-Widgets"
+    "message": "Benutzerdefinierte Widgets"
   },
   "customSearchWidgetsExportDesc": {
-    "message": "Exportieren und importieren Sie Ihre Such-Widget-Bibliothek als JSON zum Teilen oder Sichern."
+    "message": "Exportieren und importieren Sie Ihre benutzerdefinierte Widget-Bibliothek als JSON zum Teilen oder Sichern."
   },
   "exportWidgetTitle": {
     "message": "Widget exportieren"

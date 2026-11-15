@@ -452,6 +452,27 @@
   "confirmRestoreBackup": {
     "message": "Restore this backup? Sync has to be disabled first."
   },
+  "backupTabBookmarks": {
+    "message": "Bookmark Database"
+  },
+  "backupTabConfig": {
+    "message": "Addon configuration"
+  },
+  "backupTabWidgets": {
+    "message": "Custom widgets"
+  },
+  "confirmRestoreConfigBackup": {
+    "message": "Restore this Addon configuration backup? Current appearance settings will be replaced (sync settings will not be changed)."
+  },
+  "confirmRestoreWidgetsBackup": {
+    "message": "Restore this Custom widgets backup? Current custom widgets will be replaced."
+  },
+  "backupConfigRestored": {
+    "message": "Addon configuration restored from backup."
+  },
+  "backupWidgetsRestored": {
+    "message": "Custom widgets restored from backup."
+  },
   "confirmDeleteBackup": {
     "message": "Delete this backup permanently?"
   },
@@ -1023,10 +1044,10 @@
     "message": "Label=Value (one per line)"
   },
   "customSearchWidgetsExportTitle": {
-    "message": "Custom Search Widgets"
+    "message": "Custom Widgets"
   },
   "customSearchWidgetsExportDesc": {
-    "message": "Export and import your custom search widget library as JSON to share or back up."
+    "message": "Export and import your custom widgets library as JSON to share or back up."
   },
   "exportWidgetTitle": {
     "message": "Export widget"

@@ -449,6 +449,27 @@
   "confirmRestoreBackup": {
     "message": "Restaurer cette sauvegarde ? La synchronisation doit d'abord être désactivée."
   },
+  "backupTabBookmarks": {
+    "message": "Base de favoris"
+  },
+  "backupTabConfig": {
+    "message": "Configuration de l'extension"
+  },
+  "backupTabWidgets": {
+    "message": "Widgets personnalisés"
+  },
+  "confirmRestoreConfigBackup": {
+    "message": "Restaurer cette sauvegarde de configuration ? Les paramètres d'apparence actuels seront remplacés (les paramètres de synchronisation ne seront pas modifiés)."
+  },
+  "confirmRestoreWidgetsBackup": {
+    "message": "Restaurer cette sauvegarde de widgets personnalisés ? Les widgets personnalisés actuels seront remplacés."
+  },
+  "backupConfigRestored": {
+    "message": "Configuration de l'extension restaurée depuis la sauvegarde."
+  },
+  "backupWidgetsRestored": {
+    "message": "Widgets personnalisés restaurés depuis la sauvegarde."
+  },
   "confirmDeleteBackup": {
     "message": "Supprimer définitivement cette sauvegarde ?"
   },
@@ -1020,10 +1041,10 @@
     "message": "Libellé=Valeur (un par ligne)"
   },
   "customSearchWidgetsExportTitle": {
-    "message": "Widgets de recherche personnalisés"
+    "message": "Widgets personnalisés"
   },
   "customSearchWidgetsExportDesc": {
-    "message": "Exportez et importez votre bibliothèque de widgets de recherche au format JSON pour la partager ou la sauvegarder."
+    "message": "Exportez et importez votre bibliothèque de widgets personnalisés au format JSON pour la partager ou la sauvegarder."
   },
   "exportWidgetTitle": {
     "message": "Exporter le widget"

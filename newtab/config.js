@@ -39,7 +39,7 @@ export const defaultConfig = {
     iconAutoRefreshHours: 24
   },
   backups: {
-    retentionDays: 30,
+    retentionDays: 14,
     frequencyHours: 24,
     lastAutoBackup: 0
   },

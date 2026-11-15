@@ -66,6 +66,8 @@ const backupFrequencyHours = document.getElementById("backup-frequency-hours");
 const backupCreateNowBtn = document.getElementById("backup-create-now");
 const backupStatus = document.getElementById("backup-status");
 const backupsTableBody = document.getElementById("backups-table-body");
+const backupSubtabBtns = document.querySelectorAll(".backups-subtab-btn");
+let currentBackupTabType = "bookmarks";
 
 // Export/Import Elements
 const exportBtn = document.getElementById("export-btn");
@@ -2288,7 +2290,7 @@ settingsBtn.addEventListener("click", async () => {
 
   // Load backups settings
   if (backupRetentionDays) {
-    backupRetentionDays.value = config.backups?.retentionDays || 30;
+    backupRetentionDays.value = config.backups?.retentionDays || 14;
   }
   if (backupFrequencyHours) {
     backupFrequencyHours.value = config.backups?.frequencyHours || 24;
@@ -3696,7 +3698,7 @@ async function persistSettings(closeAfterSave = false) {
   config.housekeeper.iconAutoRefreshHours = Math.max(1, parseInt(hkIconRefreshHours?.value, 10) || 24);
 
   // Save backups config
-  config.backups.retentionDays = Math.max(1, parseInt(backupRetentionDays?.value, 10) || 30);
+  config.backups.retentionDays = Math.max(1, parseInt(backupRetentionDays?.value, 10) || 14);
   config.backups.frequencyHours = Math.max(1, parseInt(backupFrequencyHours?.value, 10) || 24);
 
   // Save appearance settings
@@ -4239,10 +4241,34 @@ function getBackupStats(backup) {
   }
 }
 
+function formatBackupSummary(backup, type) {
+  if (type === "config") {
+    const themeLabel = backup.theme || "default";
+    const settingCount = Number(backup.settingCount || 0);
+    return `${t("themeSelect")} ${themeLabel} (${settingCount})`;
+  }
+  const stats = getBackupStats(backup);
+  return `G:${stats.groupCount} B:${stats.bookmarkCount}`;
+}
+
+backupSubtabBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const nextType = btn.dataset.backupType || "bookmarks";
+    if (nextType === currentBackupTabType) return;
+    currentBackupTabType = nextType;
+    backupSubtabBtns.forEach(item => {
+      item.classList.toggle("active", item === btn);
+    });
+    if (backupStatus) backupStatus.textContent = "";
+    void refreshBackupsTable();
+  });
+});
+
 async function refreshBackupsTable() {
   if (!backupsTableBody) return;
 
-  const backups = await listBackups();
+  const activeType = currentBackupTabType;
+  const backups = await listBackups(activeType);
   backupsTableBody.innerHTML = "";
 
   if (!backups.length) {
@@ -4266,8 +4292,7 @@ async function refreshBackupsTable() {
     sizeCell.textContent = formatBytes(backup.sizeBytes);
 
     const statsCell = document.createElement("td");
-    const stats = getBackupStats(backup);
-    statsCell.textContent = `G:${stats.groupCount} B:${stats.bookmarkCount}`;
+    statsCell.textContent = formatBackupSummary(backup, activeType);
 
     const actionsCell = document.createElement("td");
 
@@ -4307,9 +4332,9 @@ if (backupCreateNowBtn) {
     if (backupStatus) backupStatus.textContent = "💾 " + t("creatingBackup");
 
     try {
-      const entry = await createBackup();
+      const entry = await createBackup(currentBackupTabType);
       const config = await loadConfig();
-      await cleanupOldBackups(config.backups?.retentionDays || 30);
+      await cleanupOldBackups(config.backups?.retentionDays || 14, currentBackupTabType);
       await refreshBackupsTable();
 
       if (backupStatus) {
@@ -4337,7 +4362,7 @@ if (backupsTableBody) {
 
     if (downloadFile) {
       try {
-        const entry = await getBackup(downloadFile);
+        const entry = await getBackup(downloadFile, currentBackupTabType);
         const blob = new Blob([entry.data], { type: "application/json" });
         const url = URL.createObjectURL(blob);
 
@@ -4357,16 +4382,31 @@ if (backupsTableBody) {
     }
 
     if (restoreFile) {
-      const confirmed = confirm(t("confirmRestoreBackup"));
+      const confirmKey = currentBackupTabType === "config"
+        ? "confirmRestoreConfigBackup"
+        : "confirmRestoreBackup";
+      const confirmed = confirm(t(confirmKey));
       if (!confirmed) return;
 
       try {
-        const result = await restoreBackup(restoreFile);
-        await refreshBackupsTable();
-        if (backupStatus) {
-          backupStatus.textContent = `⚠️ ${result.warning}`;
+        const result = await restoreBackup(restoreFile, currentBackupTabType);
+        if (currentBackupTabType === "config" && result.config) {
+          pendingLanguageReset = false;
+          setSettingsDirty(false);
+          await revertAppearancePreviewToSaved();
+          updateDateTimeVisibility(result.config.appearance?.dateTimeSpace !== "disabled");
+          await render();
+          calculateGridLayout();
+          if (backupStatus) {
+            backupStatus.textContent = "✅ " + t("backupConfigRestored");
+          }
+        } else {
+          await refreshBackupsTable();
+          if (backupStatus) {
+            backupStatus.textContent = `⚠️ ${result.warning}`;
+          }
+          alert(result.warning);
         }
-        alert(result.warning);
       } catch (error) {
         if (backupStatus) backupStatus.textContent = "❌ " + t("backupRestoreFailed");
         console.error("restoreBackup failed", error);
@@ -4379,7 +4419,7 @@ if (backupsTableBody) {
       if (!confirmedDelete) return;
 
       try {
-        await deleteBackup(deleteFile);
+        await deleteBackup(deleteFile, currentBackupTabType);
         await refreshBackupsTable();
         if (backupStatus) {
           backupStatus.textContent = "✅ " + t("backupDeleted");

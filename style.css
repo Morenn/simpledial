@@ -1841,6 +1841,37 @@ body.theme-dark .bookmark-title:hover {
   cursor: not-allowed;
 }
 
+.backups-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.backups-subtab-btn {
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.backups-subtab-btn:hover {
+  border-color: var(--accent);
+}
+
+.backups-subtab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .backups-table-wrap {
   margin-top: 0.75rem;
   border: 1px solid var(--border);

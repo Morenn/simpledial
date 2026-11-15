@@ -483,7 +483,7 @@ export function updateUIText() {
 }
 
 function getLeadingIconPrefix(text) {
-  const match = text.trim().match(/^[^\p{L}\p{N}\s+-]+\s+/u);
+  const match = text.trim().match(/^(?:\u2139\uFE0F?|[^\p{L}\p{N}\s+-])+\s+/u);
   return match ? match[0] : "";
 }
 
