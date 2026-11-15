@@ -1,0 +1,40 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-servicenow",
+      "type": "custom-search",
+      "mode": "json",
+      "name": "ServiceNow",
+      "icon": "🎫",
+      "customIcon": null,
+      "urlTemplate": "https://snow.example.com/esc?id=search&payload={json}",
+      "jsonTemplate": "{\"q\":\"{query}\",\"filters\":{\"table\":\"{table}\",\"state\":\"{state}\"}}",
+      "openInNewTab": true,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        },
+        {
+          "key": "table",
+          "label": "Table",
+          "type": "select",
+          "optionsText": "Incidents=incident\nRequests=sc_req_item\nChanges=change_request\nKnowledge=kb_knowledge"
+        },
+        {
+          "key": "state",
+          "label": "State",
+          "type": "multi",
+          "optionsText": "New=1\nIn Progress=2\nOn Hold=3\nResolved=6"
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

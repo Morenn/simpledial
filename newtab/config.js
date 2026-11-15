@@ -67,8 +67,12 @@ export const defaultConfig = {
     lockTiles: false,
     groupsSpace: "header", // "header", "left", "center", "right", "footer"
     searchSpace: "header", // "header", "left", "center", "right", "footer"
+    manageSpace: "header", // "header", "left", "center", "right", "footer"
+    syncStatusSpace: "footer", // "disabled", "header", "left", "center", "right", "footer"
+    bookmarksCountSpace: "footer", // "disabled", "header", "left", "center", "right", "footer"
+    headerSingleRow: true, // Force header widgets to stay on a single row
     searchStyle: "full", // "full", "icon", or "hover"
-    widgetOrder: ["groups", "search", "bookmarks", "dateTime"],
+    widgetOrder: ["groups", "search", "manage", "bookmarks", "syncStatus", "dateTime", "bookmarksCount"],
     widgetAlign: {}, // Per-widget alignment: "auto" | "top" | "bottom" | "left" | "right" | "center"
     widgetNewRow: {}, // Per-widget row break flag: { [widgetKey]: boolean }
     customWidgets: [] // User-defined declarative widgets (e.g. custom search)

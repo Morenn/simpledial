@@ -1141,5 +1141,50 @@
   },
   "customSearchSetDefaultTitle": {
     "message": "Aseta oletukseksi ryhmässä"
+  },
+  "customWidgetModeTimezone": {
+    "message": "Aikavyöhykkeet (vain kellonaika)"
+  },
+  "customTzShowSeconds": {
+    "message": "Näytä sekunnit"
+  },
+  "customTzUse24Hour": {
+    "message": "24 tunnin muoto"
+  },
+  "customTzLabelPlaceholder": {
+    "message": "Nimi (esim. New York)"
+  },
+  "customTzZonePlaceholder": {
+    "message": "Aikavyöhyke (esim. America/New_York)"
+  },
+  "customTzAddBtn": {
+    "message": "+ Lisää aikavyöhyke"
+  },
+  "customTzInvalidError": {
+    "message": "Lisää vähintään yksi kelvollinen IANA-aikavyöhyke (esim. UTC, Europe/Helsinki, America/New_York)."
+  },
+  "customTzDefaultName": {
+    "message": "Aikavyöhykkeet"
+  },
+  "customTzAddTitle": {
+    "message": "Lisää aikavyöhykewidget"
+  },
+  "customWidgetsExportAllBtn": {
+    "message": "Vie kaikki"
+  },
+  "customWidgetsExportGroupBtn": {
+    "message": "Vie ryhmä"
+  },
+  "widgetManage": {
+    "message": "Hallintapainikkeet"
+  },
+  "widgetSyncStatus": {
+    "message": "Synkronoinnin tila"
+  },
+  "widgetBookmarksCount": {
+    "message": "Kirjanmerkkien määrä"
+  },
+  "headerSingleRow": {
+    "message": "Pidä ylätunnisteen widgetit yhdellä rivillä"
   }
 }

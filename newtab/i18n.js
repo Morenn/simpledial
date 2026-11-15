@@ -93,7 +93,7 @@ export function t(key) {
 }
 
 // --- Set language ---
-export async function setLanguage(lang) {
+export async function setLanguage(lang, { persist = true } = {}) {
   const loaded = await loadLanguageFile(lang);
   if (!loaded) return false;
 
@@ -102,9 +102,19 @@ export async function setLanguage(lang) {
   // User explicitly chose a language → disable chrome.i18n
   useNative = false;
 
-  try { localStorage.setItem('speeddial-language', lang); } catch (e) {}
+  if (persist) {
+    try { localStorage.setItem('speeddial-language', lang); } catch (e) {}
+  }
   document.documentElement.lang = lang;
   return true;
+}
+
+export function getSavedLanguageOverride() {
+  try {
+    return localStorage.getItem('speeddial-language') || null;
+  } catch {
+    return null;
+  }
 }
 
 export function getCurrentLanguage() {
@@ -161,7 +171,7 @@ export async function initLanguage() {
   }
 }
 
-export async function resetLanguageToBrowser() {
+export async function resetLanguageToBrowser({ persist = true } = {}) {
   // Get browser language (e.g., "de-DE" → "de")
   const browserLang = (navigator.language || navigator.userLanguage || 'en')
     .split('-')[0]
@@ -186,9 +196,11 @@ export async function resetLanguageToBrowser() {
 
   // Clear any saved override so future loads keep following the browser
   // language automatically, instead of re-pinning it as an explicit choice
-  try {
-    localStorage.removeItem('speeddial-language');
-  } catch (e) {}
+  if (persist) {
+    try {
+      localStorage.removeItem('speeddial-language');
+    } catch (e) {}
+  }
 
   // Set <html lang="xx">
   document.documentElement.lang = currentLanguage;

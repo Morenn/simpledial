@@ -1144,5 +1144,50 @@
   },
   "customSearchSetDefaultTitle": {
     "message": "Set as default in group"
+  },
+  "customWidgetModeTimezone": {
+    "message": "Time zones (clock only)"
+  },
+  "customTzShowSeconds": {
+    "message": "Show seconds"
+  },
+  "customTzUse24Hour": {
+    "message": "24-hour format"
+  },
+  "customTzLabelPlaceholder": {
+    "message": "Label (e.g. New York)"
+  },
+  "customTzZonePlaceholder": {
+    "message": "Time zone (e.g. America/New_York)"
+  },
+  "customTzAddBtn": {
+    "message": "+ Add time zone"
+  },
+  "customTzInvalidError": {
+    "message": "Add at least one valid IANA time zone (e.g. UTC, Europe/Prague, America/New_York)."
+  },
+  "customTzDefaultName": {
+    "message": "Time Zones"
+  },
+  "customTzAddTitle": {
+    "message": "Add Time Zone Widget"
+  },
+  "customWidgetsExportAllBtn": {
+    "message": "Export all"
+  },
+  "customWidgetsExportGroupBtn": {
+    "message": "Export group"
+  },
+  "widgetManage": {
+    "message": "Manage buttons"
+  },
+  "widgetSyncStatus": {
+    "message": "Sync status"
+  },
+  "widgetBookmarksCount": {
+    "message": "Bookmarks count"
+  },
+  "headerSingleRow": {
+    "message": "Keep header widgets in a single row"
   }
 }

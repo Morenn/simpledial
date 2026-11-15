@@ -110,11 +110,90 @@ body::before {
 #top-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 0.75rem;
   background: color-mix(in srgb, var(--bg2) calc(var(--bar-opacity, 1) * 100%), transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--border) calc(var(--bar-opacity, 1) * 100%), transparent);
   padding: 0.5rem 0.75rem;
+}
+
+#top-bar > #groups-header:not([data-widget-align]) {
+  margin-right: auto;
+}
+
+#top-bar.header-single-row {
+  flex-wrap: nowrap;
+}
+
+#top-bar.header-single-row > #groups-header {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+#top-bar.header-single-row > :not(#groups-header) {
+  flex-shrink: 0;
+}
+
+.widgets-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.widgets-card-header h3 {
+  margin: 0;
+}
+
+.header-single-row-option {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.widget-space-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--bg2);
+}
+
+.widget-space-group-disabled {
+  border-left-color: var(--border);
+  opacity: 0.82;
+}
+
+.widget-space-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.widget-space-group-count {
+  font-size: 0.72rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.widget-space-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 /* ─────────────────────────────────────────────
@@ -1508,12 +1587,15 @@ body.theme-dark .bookmark-title:hover {
    MANAGE SECTION
 ───────────────────────────────────────────── */
 
-#manage {
+.manage-actions-widget {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-  flex-shrink: 0;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.workspace-side-space .manage-actions-widget {
+  justify-content: center;
 }
 
 /* ─────────────────────────────────────────────
@@ -1536,8 +1618,8 @@ body.theme-dark .bookmark-title:hover {
   opacity: 0.8;
 }
 
-/* Icon buttons in top bar are compact */
-#manage .icon-btn {
+/* Icon buttons in top bar / manage widget are compact */
+.manage-actions-widget .icon-btn {
   padding: 6px 8px;
   font-size: 1rem;
   min-width: auto;
@@ -2072,13 +2154,6 @@ body.theme-dark .bookmark-title:hover {
   flex-shrink: 0;
 }
 
-.footer-left,
-.footer-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .footer-status-dot {
   width: 8px;
   height: 8px;
@@ -2103,8 +2178,30 @@ body.theme-dark .bookmark-title:hover {
 }
 
 .footer-bookmarks-total {
+  display: inline-flex;
+  align-items: center;
   color: var(--footer-accent);
   font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+#footer-sync-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.footer-widgets > #footer-sync-status:not([data-widget-align]) {
+  margin-right: auto;
+}
+
+.footer-widgets > #footer-bookmarks-total:not([data-widget-align]) {
+  margin-left: auto;
 }
 
 /* ─────────────────────────────────────────────
@@ -2509,14 +2606,14 @@ body.highlight-side-spaces .workspace-side-space {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  z-index: 40;
+  z-index: 200;
   min-width: 170px;
   max-width: 240px;
   padding: 0.25rem;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  background: var(--bg2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38);
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
@@ -2581,6 +2678,167 @@ body.highlight-side-spaces .workspace-side-space {
 .custom-widget-default-btn.active {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+.custom-widgets-library-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.custom-widget-group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--bg2);
+}
+
+.custom-widget-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.custom-widget-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.custom-widget-group-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.custom-widget-group-members {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 0.35rem;
+}
+
+.custom-widget-group-export-btn {
+  font-size: 0.78rem;
+  padding: 0.22rem 0.55rem;
+}
+
+/* Custom TimeZone Widget */
+.custom-timezone-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.55rem;
+  min-width: 0;
+}
+
+.custom-timezone-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.custom-timezone-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-timezone-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+}
+
+.workspace-side-space .custom-timezone-widget {
+  width: 100%;
+}
+
+.workspace-side-space .custom-timezone-list {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.custom-timezone-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+}
+
+.custom-timezone-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.custom-timezone-time {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.custom-widget-timezone-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.custom-widget-timezone-section.hidden {
+  display: none;
+}
+
+.custom-widget-tz-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.custom-widget-tz-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.custom-widget-tz-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.custom-widget-tz-label-input {
+  flex: 1 1 140px;
+  min-width: 110px;
+}
+
+.custom-widget-tz-zone-input {
+  flex: 1.4 1 190px;
+  min-width: 150px;
 }
 
 .custom-search-icon-img,
@@ -2698,17 +2956,64 @@ body.highlight-side-spaces .workspace-side-space {
   padding: 0.22rem 0.4rem;
 }
 
+.custom-search-multi-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.custom-search-multi-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  padding: 0.28rem 0.45rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.custom-search-multi-toggle-text {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .custom-search-multi-list {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  max-height: 120px;
+  max-height: 180px;
   overflow-y: auto;
+}
+
+.custom-search-multi-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 210;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38);
+}
+
+.custom-search-multi-menu.hidden {
+  display: none;
 }
 
 .custom-search-multi-option {
   margin: 0 !important;
   font-size: 0.8rem;
+  padding: 0.15rem 0.2rem;
+  border-radius: 4px;
+}
+
+.custom-search-multi-option:hover {
+  background: var(--bg-hover);
 }
 
 /* Add Custom Search Widget form in Settings */

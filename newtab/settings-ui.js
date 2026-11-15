@@ -1,11 +1,11 @@
 ﻿import { state, saveState, generateId, isStackItem } from "./state.js";
 import { loadConfig, saveConfig, defaultConfig, getSyncIntervalMs, DEFAULT_SYNC_INTERVAL } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
-import { t, getCurrentLanguage, resetLanguageToBrowser } from "./i18n.js";
+import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLanguageOverride } from "./i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from './bookmarks-api.js';
 import { render, calculateGridLayout } from "./render.js";
-import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTileSize, applyGroupTileSize, applySideSpaces, applyThemeStyle, fetchAndCacheThemeUrl, fetchBackgroundImageFromUrl, isAllowedThemeUrl, getCustomThemeUrlCache, normalizeWidgetOrder, groupCustomSearchWidgets, isValidCustomSearchUrlTemplate, isValidCustomSearchJsonTemplate, serializeCustomWidgetsExport, parseImportedCustomWidgets, resolveCustomWidgetIcon, fetchCustomWidgetsFromUrl, applyCustomWidgetUpdate, revertCustomWidgetVersion, buildCustomSearchPreview, normalizeCustomWidgetVariables } from "./theme.js";
+import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTileSize, applyGroupTileSize, applySideSpaces, applyThemeStyle, fetchAndCacheThemeUrl, fetchBackgroundImageFromUrl, isAllowedThemeUrl, getCustomThemeUrlCache, normalizeWidgetOrder, groupCustomSearchWidgets, isValidCustomSearchUrlTemplate, isValidCustomSearchJsonTemplate, isValidTimeZone, normalizeCustomTimeZones, serializeCustomWidgetsExport, parseImportedCustomWidgets, resolveCustomWidgetIcon, fetchCustomWidgetsFromUrl, applyCustomWidgetUpdate, revertCustomWidgetVersion, buildCustomSearchPreview, normalizeCustomWidgetVariables } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
@@ -116,6 +116,7 @@ const highlightSideSpacesToggle = document.getElementById("highlight-side-spaces
 const tallBookmarkTilesToggle = document.getElementById("tall-bookmark-tiles-toggle");
 const clickableTagsToggle = document.getElementById("clickable-tags-toggle");
 const searchStyleSelect = document.getElementById("search-style-select");
+const headerSingleRowToggle = document.getElementById("header-single-row-toggle");
 const widgetOrderList = document.getElementById("widget-order-list");
 const customWidgetsList = document.getElementById("custom-widgets-list");
 const customWidgetIconInput = document.getElementById("custom-widget-icon");
@@ -123,6 +124,7 @@ const customWidgetCustomIconInput = document.getElementById("custom-widget-custo
 const customWidgetIconUploadBtn = document.getElementById("custom-widget-icon-upload-btn");
 const customWidgetIconFile = document.getElementById("custom-widget-icon-file");
 const customWidgetModeSelect = document.getElementById("custom-widget-mode");
+const customWidgetAddTitle = document.querySelector(".custom-widget-add-title");
 const customWidgetNameInput = document.getElementById("custom-widget-name");
 const customWidgetGroupInput = document.getElementById("custom-widget-group");
 const customWidgetUrlInput = document.getElementById("custom-widget-url");
@@ -132,6 +134,15 @@ const customWidgetJsonRow = document.getElementById("custom-widget-json-row");
 const customWidgetJsonTemplateInput = document.getElementById("custom-widget-json-template");
 const customWidgetVarsList = document.getElementById("custom-widget-vars-list");
 const customWidgetAddVarBtn = document.getElementById("custom-widget-add-var-btn");
+const customWidgetVarsSection = document.querySelector(".custom-widget-vars-section");
+const customWidgetTimezoneSection = document.getElementById("custom-widget-timezone-section");
+const customWidgetTzSeconds = document.getElementById("custom-widget-tz-seconds");
+const customWidgetTz24h = document.getElementById("custom-widget-tz-24h");
+const customWidgetTzAddBtn = document.getElementById("custom-widget-tz-add-btn");
+const customWidgetTzList = document.getElementById("custom-widget-tz-list");
+const customWidgetTzDatalist = document.getElementById("custom-widget-tz-datalist");
+const customWidgetNewTabLabel = customWidgetNewTabInput?.closest(".custom-widget-newtab-label");
+const customWidgetDefaultLabel = customWidgetDefaultInput?.closest(".custom-widget-default-label");
 const customWidgetAddBtn = document.getElementById("custom-widget-add-btn");
 const customWidgetCancelEditBtn = document.getElementById("custom-widget-cancel-edit-btn");
 const customWidgetPreviewToggleBtn = document.getElementById("custom-widget-preview-toggle-btn");
@@ -146,6 +157,7 @@ const customWidgetImportFile = document.getElementById("custom-widget-import-fil
 const customWidgetSourceUrlInput = document.getElementById("custom-widget-source-url");
 const customWidgetLoadUrlBtn = document.getElementById("custom-widget-load-url-btn");
 const customWidgetUpdateAllBtn = document.getElementById("custom-widget-update-all-btn");
+const customWidgetExportAllBtn = document.getElementById("custom-widget-export-all-btn");
 const customWidgetsLibraryStatus = document.getElementById("custom-widgets-library-status");
 const exportWidgetsBtn = document.getElementById("export-widgets-btn");
 const importWidgetsBtn = document.getElementById("import-widgets-btn");
@@ -219,6 +231,15 @@ let settingsDirty = false;
 let appearanceDraft = null;
 let appearancePreviewUrlCss = "";
 let appearancePreviewUrlTarget = "";
+let savedLanguageSnapshot = null;
+let pendingLanguageReset = false;
+
+if (languageSelect) {
+  languageSelect.addEventListener("change", () => {
+    pendingLanguageReset = false;
+    markSettingsDirty();
+  });
+}
 
 function updateChoiceOptionStates() {
   document.querySelectorAll('.choice-option').forEach(option => {
@@ -281,8 +302,11 @@ function initializeSettingsDirtyTracking() {
   const WIDGET_REGISTRY = {
     groups: { key: "widgetGroups", fallback: "Group selector", field: "groupsSpace", defaultSpace: "header", allowDisabled: false },
     search: { key: "widgetSearch", fallback: "Search bar", field: "searchSpace", defaultSpace: "header", allowDisabled: false },
+    manage: { key: "widgetManage", fallback: "Manage buttons", field: "manageSpace", defaultSpace: "header", allowDisabled: false },
     bookmarks: { key: "widgetBookmarks", fallback: "Bookmarks", field: null, defaultSpace: "center", allowDisabled: false, fixedSpace: true },
-    dateTime: { key: "widgetDateTime", fallback: "Date & Time", field: "dateTimeSpace", defaultSpace: "footer", allowDisabled: true }
+    syncStatus: { key: "widgetSyncStatus", fallback: "Sync status", field: "syncStatusSpace", defaultSpace: "footer", allowDisabled: true },
+    dateTime: { key: "widgetDateTime", fallback: "Date & Time", field: "dateTimeSpace", defaultSpace: "footer", allowDisabled: true },
+    bookmarksCount: { key: "widgetBookmarksCount", fallback: "Bookmarks count", field: "bookmarksCountSpace", defaultSpace: "footer", allowDisabled: true }
   };
 
   const renderWidgetOrderList = (appearance = null) => {
@@ -339,11 +363,22 @@ function initializeSettingsDirtyTracking() {
     const widgetNewRow = resolvedAppearance.widgetNewRow || {};
 
     widgetOrderList.innerHTML = "";
-    order.forEach((key, idx) => {
+    const spaceBuckets = {
+      header: [],
+      left: [],
+      center: [],
+      right: [],
+      footer: [],
+      disabled: []
+    };
+    const visibleOrder = order.filter(key =>
+      (WIDGET_REGISTRY[key] || customWidgetMap.get(key)) && !secondaryCustomIds.has(key)
+    );
+    visibleOrder.forEach((key, visibleIdx) => {
       const builtInDef = WIDGET_REGISTRY[key];
       const customDef = customWidgetMap.get(key);
       if (!builtInDef && !customDef) return;
-      if (customDef && secondaryCustomIds.has(key)) return;
+      const idx = order.indexOf(key);
       const isCustom = !!customDef;
       const customGroup = isCustom ? customGroupByRepId.get(key) : null;
       const customLabel = (customGroup && customGroup.members.length > 1)
@@ -414,6 +449,7 @@ function initializeSettingsDirtyTracking() {
               updateDateTimeVisibility(draft.showDateTime);
             }
           }
+          renderWidgetOrderList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -434,6 +470,7 @@ function initializeSettingsDirtyTracking() {
           markSettingsDirty();
           const draft = await ensureAppearanceDraft();
           draft.widgetAlign = { ...(draft.widgetAlign || {}), [key]: alignControl.value };
+          renderWidgetOrderList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -457,6 +494,7 @@ function initializeSettingsDirtyTracking() {
           const nextVal = !(draft.widgetNewRow && draft.widgetNewRow[key]);
           draft.widgetNewRow = { ...(draft.widgetNewRow || {}), [key]: nextVal };
           renderWidgetOrderList(draft);
+          renderWidgetOrderList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -469,13 +507,17 @@ function initializeSettingsDirtyTracking() {
       upBtn.className = "widget-order-btn";
       upBtn.textContent = "↑";
       upBtn.title = t("moveWidgetUp") || "Move up";
-      upBtn.disabled = idx === 0;
+      upBtn.disabled = visibleIdx === 0;
       upBtn.addEventListener("click", async () => {
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
         const nextOrder = normalizeWidgetOrder(draft.widgetOrder, draft.customWidgets);
-        if (idx <= 0) return;
-        [nextOrder[idx - 1], nextOrder[idx]] = [nextOrder[idx], nextOrder[idx - 1]];
+        if (visibleIdx <= 0) return;
+        const prevKey = visibleOrder[visibleIdx - 1];
+        const curPos = nextOrder.indexOf(key);
+        const prevPos = nextOrder.indexOf(prevKey);
+        if (curPos === -1 || prevPos === -1) return;
+        [nextOrder[prevPos], nextOrder[curPos]] = [nextOrder[curPos], nextOrder[prevPos]];
         draft.widgetOrder = nextOrder;
         renderWidgetOrderList(draft);
         await applySideSpaces({ appearance: draft });
@@ -488,13 +530,17 @@ function initializeSettingsDirtyTracking() {
       downBtn.className = "widget-order-btn";
       downBtn.textContent = "↓";
       downBtn.title = t("moveWidgetDown") || "Move down";
-      downBtn.disabled = idx === order.length - 1;
+      downBtn.disabled = visibleIdx === visibleOrder.length - 1;
       downBtn.addEventListener("click", async () => {
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
         const nextOrder = normalizeWidgetOrder(draft.widgetOrder, draft.customWidgets);
-        if (idx >= nextOrder.length - 1) return;
-        [nextOrder[idx], nextOrder[idx + 1]] = [nextOrder[idx + 1], nextOrder[idx]];
+        if (visibleIdx >= visibleOrder.length - 1) return;
+        const nextKey = visibleOrder[visibleIdx + 1];
+        const curPos = nextOrder.indexOf(key);
+        const nextPos = nextOrder.indexOf(nextKey);
+        if (curPos === -1 || nextPos === -1) return;
+        [nextOrder[curPos], nextOrder[nextPos]] = [nextOrder[nextPos], nextOrder[curPos]];
         draft.widgetOrder = nextOrder;
         renderWidgetOrderList(draft);
         await applySideSpaces({ appearance: draft });
@@ -508,15 +554,47 @@ function initializeSettingsDirtyTracking() {
       } else {
         row.append(nameEl, spaceControl, actions);
       }
-      widgetOrderList.appendChild(row);
+      const bucketKey = spaceBuckets[currentSpace] ? currentSpace : "right";
+      spaceBuckets[bucketKey].push(row);
     });
-    renderCustomWidgetsList(appearance);
+
+    const SPACE_GROUP_ORDER = ["header", "left", "center", "right", "footer", "disabled"];
+    for (const spaceKey of SPACE_GROUP_ORDER) {
+      const rows = spaceBuckets[spaceKey];
+      if (!rows || rows.length === 0) continue;
+
+      const groupEl = document.createElement("div");
+      groupEl.className = `widget-space-group${spaceKey === "disabled" ? " widget-space-group-disabled" : ""}`;
+
+      const headerEl = document.createElement("div");
+      headerEl.className = "widget-space-group-header";
+      const labelSpan = document.createElement("span");
+      if (spaceKeyMap[spaceKey]) {
+        labelSpan.setAttribute("data-i18n", spaceKeyMap[spaceKey]);
+      }
+      labelSpan.textContent = spaceLabels[spaceKey] || spaceKey;
+      const countSpan = document.createElement("span");
+      countSpan.className = "widget-space-group-count";
+      countSpan.textContent = String(rows.length);
+      headerEl.append(labelSpan, countSpan);
+
+      const itemsEl = document.createElement("div");
+      itemsEl.className = "widget-space-group-items";
+      rows.forEach(r => itemsEl.appendChild(r));
+
+      groupEl.append(headerEl, itemsEl);
+      widgetOrderList.appendChild(groupEl);
+    }
+    renderCustomWidgetsList(resolvedAppearance);
   };
 
   const renderCustomWidgetsList = (appearance = null) => {
     if (!customWidgetsList) return;
     const customList = Array.isArray(appearance?.customWidgets) ? appearance.customWidgets : [];
     customWidgetsList.innerHTML = "";
+    if (customWidgetExportAllBtn) {
+      customWidgetExportAllBtn.classList.toggle("hidden", customList.length === 0);
+    }
     if (customWidgetUpdateAllBtn) {
       customWidgetUpdateAllBtn.classList.toggle("hidden", !customList.some(w => !!w?.sourceUrl));
     }
@@ -529,8 +607,7 @@ function initializeSettingsDirtyTracking() {
       return;
     }
 
-    customList.forEach(customDef => {
-      if (!customDef?.id) return;
+    const buildCustomWidgetLibraryRow = (customDef) => {
       const row = document.createElement("div");
       row.className = "widget-order-item custom-widget-library-item";
 
@@ -555,11 +632,15 @@ function initializeSettingsDirtyTracking() {
       const titleEl = document.createElement("div");
       titleEl.className = "custom-widget-library-name";
       titleEl.textContent = customDef.name || customDef.id;
+      const isTimezone = customDef.type === "timezone";
+      const tzList = isTimezone ? normalizeCustomTimeZones(customDef.timeZones) : [];
       const badge = document.createElement("span");
       badge.className = "custom-widget-mode-badge";
-      badge.textContent = customDef.mode === "json" ? "JSON" : "Simple";
+      badge.textContent = isTimezone
+        ? `🕒 ${tzList.length}`
+        : (customDef.mode === "json" ? "JSON" : "Simple");
       titleEl.appendChild(badge);
-      const groupName = typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
+      const groupName = !isTimezone && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
       if (groupName) {
         const groupBadge = document.createElement("span");
         groupBadge.className = "custom-widget-group-badge";
@@ -569,7 +650,9 @@ function initializeSettingsDirtyTracking() {
 
       const urlEl = document.createElement("div");
       urlEl.className = "custom-widget-library-url";
-      urlEl.textContent = customDef.urlTemplate || "";
+      urlEl.textContent = isTimezone
+        ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
+        : (customDef.urlTemplate || "");
       info.append(titleEl, urlEl);
       if (customDef.sourceUrl) {
         const sourceEl = document.createElement("div");
@@ -675,6 +758,7 @@ function initializeSettingsDirtyTracking() {
             return w;
           });
           renderWidgetOrderList(draft);
+          renderWidgetOrderList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -717,24 +801,210 @@ function initializeSettingsDirtyTracking() {
 
       actions.append(exportOneBtn, dupBtn, editBtn, delBtn);
       row.append(iconWrap, info, actions);
-      customWidgetsList.appendChild(row);
-    });
+      return row;
+    };
+
+    const entries = [];
+    const groupMap = new Map();
+    for (const customDef of customList) {
+      if (!customDef?.id) continue;
+      const isTimezone = customDef.type === "timezone";
+      const groupName = !isTimezone && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
+      if (!groupName) {
+        entries.push({ kind: "single", widget: customDef });
+        continue;
+      }
+      const key = groupName.toLowerCase();
+      let groupEntry = groupMap.get(key);
+      if (!groupEntry) {
+        groupEntry = { kind: "group", groupName, members: [] };
+        groupMap.set(key, groupEntry);
+        entries.push(groupEntry);
+      }
+      groupEntry.members.push(customDef);
+    }
+
+    for (const entry of entries) {
+      if (entry.kind === "single") {
+        customWidgetsList.appendChild(buildCustomWidgetLibraryRow(entry.widget));
+        continue;
+      }
+
+      const groupCard = document.createElement("div");
+      groupCard.className = "custom-widget-group-card";
+
+      const groupHeader = document.createElement("div");
+      groupHeader.className = "custom-widget-group-header";
+
+      const groupTitle = document.createElement("div");
+      groupTitle.className = "custom-widget-group-title";
+      const groupNameSpan = document.createElement("span");
+      groupNameSpan.textContent = `📁 ${entry.groupName}`;
+      const countBadge = document.createElement("span");
+      countBadge.className = "custom-widget-group-count";
+      countBadge.textContent = String(entry.members.length);
+      groupTitle.append(groupNameSpan, countBadge);
+
+      const exportGroupBtn = document.createElement("button");
+      exportGroupBtn.type = "button";
+      exportGroupBtn.className = "icon-btn custom-widget-group-export-btn";
+      exportGroupBtn.textContent = "📥 " + (t("customWidgetsExportGroupBtn") || "Export group");
+      exportGroupBtn.addEventListener("click", () => {
+        const slug = entry.groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "group";
+        exportCustomWidgetsLibrary(entry.members, `simple-dial-group-${slug}`, customWidgetsLibraryStatus);
+      });
+
+      groupHeader.append(groupTitle, exportGroupBtn);
+
+      const membersWrap = document.createElement("div");
+      membersWrap.className = "custom-widget-group-members";
+      for (const member of entry.members) {
+        membersWrap.appendChild(buildCustomWidgetLibraryRow(member));
+      }
+
+      groupCard.append(groupHeader, membersWrap);
+      customWidgetsList.appendChild(groupCard);
+    }
   };
   window.renderCustomWidgetsList = renderCustomWidgetsList;
   window.renderWidgetOrderList = renderWidgetOrderList;
 
   let editingCustomWidgetId = null;
   let customWidgetVarsDraft = [{ key: "query", label: "Search", type: "text", optionsText: "" }];
+  let customWidgetTzDraft = [
+    { label: "UTC", timeZone: "UTC" },
+    { label: "New York", timeZone: "America/New_York" }
+  ];
+
+  if (customWidgetTzDatalist && customWidgetTzDatalist.children.length === 0) {
+    let zones = [];
+    try {
+      if (typeof Intl !== "undefined" && typeof Intl.supportedValuesOf === "function") {
+        zones = Intl.supportedValuesOf("timeZone");
+      }
+    } catch {
+      zones = [];
+    }
+    if (!Array.isArray(zones) || zones.length === 0) {
+      zones = ["UTC", "Europe/London", "Europe/Prague", "Europe/Berlin", "America/New_York", "America/Los_Angeles", "Asia/Tokyo", "Asia/Singapore", "Australia/Sydney"];
+    }
+    const frag = document.createDocumentFragment();
+    for (const tz of zones) {
+      const opt = document.createElement("option");
+      opt.value = tz;
+      frag.appendChild(opt);
+    }
+    customWidgetTzDatalist.appendChild(frag);
+  }
+
+  const renderCustomWidgetTzEditor = () => {
+    if (!customWidgetTzList) return;
+    customWidgetTzList.innerHTML = "";
+    customWidgetTzDraft.forEach((tzItem, idx) => {
+      const row = document.createElement("div");
+      row.className = "custom-widget-tz-row";
+
+      const labelInput = document.createElement("input");
+      labelInput.type = "text";
+      labelInput.className = "sync-compact-input custom-widget-tz-label-input";
+      labelInput.value = tzItem.label || "";
+      labelInput.placeholder = t("customTzLabelPlaceholder") || "Label (e.g. New York)";
+      labelInput.addEventListener("input", () => {
+        tzItem.label = labelInput.value;
+      });
+
+      const zoneInput = document.createElement("input");
+      zoneInput.type = "text";
+      zoneInput.className = "sync-compact-input custom-widget-tz-zone-input";
+      zoneInput.setAttribute("list", "custom-widget-tz-datalist");
+      zoneInput.value = tzItem.timeZone || "";
+      zoneInput.placeholder = t("customTzZonePlaceholder") || "Time zone (e.g. America/New_York)";
+      zoneInput.addEventListener("input", () => {
+        tzItem.timeZone = zoneInput.value;
+        if (!labelInput.value.trim() && isValidTimeZone(zoneInput.value.trim())) {
+          const autoLabel = zoneInput.value.trim().split("/").pop()?.replace(/_/g, " ") || "";
+          if (autoLabel) {
+            labelInput.placeholder = autoLabel;
+          }
+        }
+      });
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "widget-order-btn widget-delete-btn";
+      removeBtn.textContent = "🗑️";
+      removeBtn.disabled = customWidgetTzDraft.length <= 1;
+      removeBtn.addEventListener("click", () => {
+        if (customWidgetTzDraft.length <= 1) return;
+        customWidgetTzDraft.splice(idx, 1);
+        renderCustomWidgetTzEditor();
+      });
+
+      row.append(labelInput, zoneInput, removeBtn);
+      customWidgetTzList.appendChild(row);
+    });
+  };
+
+  if (customWidgetTzAddBtn) {
+    customWidgetTzAddBtn.addEventListener("click", () => {
+      customWidgetTzDraft.push({ label: "", timeZone: "" });
+      renderCustomWidgetTzEditor();
+    });
+  }
 
   const syncCustomWidgetModeUI = () => {
-    const isJson = customWidgetModeSelect?.value === "json";
+    const mode = customWidgetModeSelect?.value || "simple";
+    const isJson = mode === "json";
+    const isTimezone = mode === "timezone";
+
+    if (customWidgetAddTitle) {
+      const titleKey = isTimezone ? "customTzAddTitle" : "customSearchAddTitle";
+      const titleFallback = isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget";
+      customWidgetAddTitle.setAttribute("data-i18n", titleKey);
+      customWidgetAddTitle.textContent = t(titleKey) || titleFallback;
+    }
+
     if (customWidgetJsonRow) {
       customWidgetJsonRow.classList.toggle("hidden", !isJson);
     }
+    if (customWidgetTimezoneSection) {
+      customWidgetTimezoneSection.classList.toggle("hidden", !isTimezone);
+    }
+    if (customWidgetVarsSection) {
+      customWidgetVarsSection.classList.toggle("hidden", isTimezone);
+    }
     if (customWidgetUrlInput) {
+      customWidgetUrlInput.classList.toggle("hidden", isTimezone);
       customWidgetUrlInput.placeholder = isJson
         ? "https://example.com/search/"
         : (t("customSearchUrlPlaceholder") || "https://www.google.com/search?q={query}");
+    }
+    if (customWidgetGroupInput) {
+      customWidgetGroupInput.classList.toggle("hidden", isTimezone);
+    }
+    if (customWidgetNewTabLabel) {
+      customWidgetNewTabLabel.classList.toggle("hidden", isTimezone);
+    }
+    if (customWidgetDefaultLabel) {
+      customWidgetDefaultLabel.classList.toggle("hidden", isTimezone);
+    }
+    if (customWidgetPreviewToggleBtn) {
+      customWidgetPreviewToggleBtn.classList.toggle("hidden", isTimezone);
+    }
+    if (isTimezone && customWidgetPreviewBox) {
+      customWidgetPreviewBox.classList.add("hidden");
+    }
+    if (customWidgetNameInput) {
+      customWidgetNameInput.placeholder = isTimezone
+        ? (t("customTzDefaultName") || "Time Zones")
+        : (t("customSearchNamePlaceholder") || "Name (e.g. Google)");
+    }
+    if (customWidgetIconInput && !editingCustomWidgetId) {
+      if (isTimezone && customWidgetIconInput.value === "🔎") {
+        customWidgetIconInput.value = "🕒";
+      } else if (!isTimezone && customWidgetIconInput.value === "🕒") {
+        customWidgetIconInput.value = "🔎";
+      }
     }
   };
 
@@ -773,7 +1043,9 @@ function initializeSettingsDirtyTracking() {
       ].forEach(optDef => {
         const opt = document.createElement("option");
         opt.value = optDef.value;
-        opt.textContent = t(optDef.key) || optDef.fallback;
+        opt.setAttribute("data-i18n", optDef.key);
+        const translated = t(optDef.key);
+        opt.textContent = (translated && translated !== optDef.key) ? translated : optDef.fallback;
         typeSelect.appendChild(opt);
       });
       typeSelect.value = varItem.type || "text";
@@ -896,34 +1168,51 @@ function initializeSettingsDirtyTracking() {
     if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.add("hidden");
     if (customWidgetStatus) customWidgetStatus.textContent = "";
     customWidgetVarsDraft = [{ key: "query", label: "Search", type: "text", optionsText: "" }];
+    customWidgetTzDraft = [
+      { label: "UTC", timeZone: "UTC" },
+      { label: "New York", timeZone: "America/New_York" }
+    ];
+    if (customWidgetTzSeconds) customWidgetTzSeconds.checked = false;
+    if (customWidgetTz24h) customWidgetTz24h.checked = true;
     syncCustomWidgetModeUI();
     renderCustomWidgetVarsEditor();
+    renderCustomWidgetTzEditor();
   };
 
   const loadCustomWidgetIntoForm = (widget) => {
     if (!widget) return;
+    const isTimezone = widget.type === "timezone";
     editingCustomWidgetId = widget.id;
-    if (customWidgetIconInput) customWidgetIconInput.value = widget.icon || "🔎";
+    if (customWidgetIconInput) customWidgetIconInput.value = widget.icon || (isTimezone ? "🕒" : "🔎");
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = widget.customIcon || "";
-    if (customWidgetModeSelect) customWidgetModeSelect.value = widget.mode === "json" ? "json" : "simple";
+    if (customWidgetModeSelect) {
+      customWidgetModeSelect.value = isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple");
+    }
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
-    if (customWidgetGroupInput) customWidgetGroupInput.value = widget.groupName || "";
+    if (customWidgetGroupInput) customWidgetGroupInput.value = isTimezone ? "" : (widget.groupName || "");
     if (customWidgetUrlInput) customWidgetUrlInput.value = widget.urlTemplate || "";
     if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = widget.jsonTemplate || "";
     if (customWidgetNewTabInput) customWidgetNewTabInput.checked = !!widget.openInNewTab;
-    if (customWidgetDefaultInput) customWidgetDefaultInput.checked = !!widget.isDefault;
+    if (customWidgetDefaultInput) customWidgetDefaultInput.checked = !isTimezone && !!widget.isDefault;
+    if (customWidgetTzSeconds) customWidgetTzSeconds.checked = !!widget.showSeconds;
+    if (customWidgetTz24h) customWidgetTz24h.checked = widget.use24Hour !== false;
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
     if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.remove("hidden");
     if (customWidgetStatus) customWidgetStatus.textContent = "";
     customWidgetVarsDraft = Array.isArray(widget.variables) && widget.variables.length > 0
       ? widget.variables.map(v => ({ ...v }))
       : [{ key: "query", label: widget.name || "Search", type: "text", optionsText: "" }];
+    customWidgetTzDraft = Array.isArray(widget.timeZones) && widget.timeZones.length > 0
+      ? widget.timeZones.map(z => ({ label: z.label || "", timeZone: z.timeZone || "" }))
+      : [{ label: "UTC", timeZone: "UTC" }];
     syncCustomWidgetModeUI();
     renderCustomWidgetVarsEditor();
+    renderCustomWidgetTzEditor();
   };
 
   syncCustomWidgetModeUI();
   renderCustomWidgetVarsEditor();
+  renderCustomWidgetTzEditor();
 
   if (customWidgetModeSelect) {
     customWidgetModeSelect.addEventListener("change", () => {
@@ -1046,14 +1335,25 @@ function initializeSettingsDirtyTracking() {
   if (searchStyleSelect) {
     searchStyleSelect.addEventListener('change', handleSpaceOrSearchStylePreview);
   }
+  if (headerSingleRowToggle) {
+    headerSingleRowToggle.addEventListener('change', async () => {
+      markSettingsDirty();
+      const draft = await ensureAppearanceDraft();
+      draft.headerSingleRow = headerSingleRowToggle.checked;
+      await applySideSpaces({ appearance: draft });
+    });
+  }
   if (customWidgetAddBtn) {
     customWidgetAddBtn.addEventListener('click', async () => {
-      const mode = customWidgetModeSelect?.value === "json" ? "json" : "simple";
+      const selectedMode = customWidgetModeSelect?.value || "simple";
+      const isTimezone = selectedMode === "timezone";
+      const mode = selectedMode === "json" ? "json" : "simple";
       const name = (customWidgetNameInput?.value || "").trim();
       const groupName = (customWidgetGroupInput?.value || "").trim();
       const urlTemplate = (customWidgetUrlInput?.value || "").trim();
       const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
-      const icon = (customWidgetIconInput?.value || "🔎").trim() || "🔎";
+      const defaultIcon = isTimezone ? "🕒" : "🔎";
+      const icon = (customWidgetIconInput?.value || defaultIcon).trim() || defaultIcon;
       const rawCustomIcon = (customWidgetCustomIconInput?.value || "").trim();
       let customIcon = null;
       if (rawCustomIcon) {
@@ -1065,6 +1365,54 @@ function initializeSettingsDirtyTracking() {
           return;
         }
       }
+
+      if (isTimezone) {
+        const timeZones = normalizeCustomTimeZones(customWidgetTzDraft);
+        if (timeZones.length === 0) {
+          if (customWidgetStatus) {
+            customWidgetStatus.textContent = "❌ " + (t("customTzInvalidError") || "Add at least one valid IANA time zone (e.g. UTC, Europe/Prague, America/New_York).");
+          }
+          return;
+        }
+        const resolvedName = name || t("customTzDefaultName") || "Time Zones";
+        const showSeconds = !!customWidgetTzSeconds?.checked;
+        const use24Hour = customWidgetTz24h ? !!customWidgetTz24h.checked : true;
+
+        if (customWidgetStatus) customWidgetStatus.textContent = "";
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        if (editingCustomWidgetId) {
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w.id === editingCustomWidgetId
+              ? { ...w, type: "timezone", name: resolvedName, icon, customIcon, timeZones, showSeconds, use24Hour }
+              : w
+          );
+        } else {
+          const newWidget = {
+            id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            type: "timezone",
+            name: resolvedName,
+            icon,
+            customIcon,
+            timeZones,
+            showSeconds,
+            use24Hour,
+            space: "right",
+            align: "auto",
+            newRow: false
+          };
+          draft.customWidgets = [...(draft.customWidgets || []), newWidget];
+          draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
+        }
+
+        resetCustomWidgetForm();
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+        return;
+      }
+
       const openInNewTab = !!customWidgetNewTabInput?.checked;
       const isDefault = !!customWidgetDefaultInput?.checked && !!groupName;
       const variables = customWidgetVarsDraft
@@ -1231,6 +1579,9 @@ function initializeSettingsDirtyTracking() {
 
   if (customWidgetExportBtn) {
     customWidgetExportBtn.addEventListener("click", () => triggerCustomWidgetExport(customWidgetStatus));
+  }
+  if (customWidgetExportAllBtn) {
+    customWidgetExportAllBtn.addEventListener("click", () => triggerCustomWidgetExport(customWidgetsLibraryStatus));
   }
   if (exportWidgetsBtn) {
     exportWidgetsBtn.addEventListener("click", () => triggerCustomWidgetExport(widgetsExportStatus));
@@ -1580,6 +1931,10 @@ function createAppearanceDraftFromConfig(config) {
       : (appearance.dateTimeSpace || "footer"),
     groupsSpace: appearance.groupsSpace || "header",
     searchSpace: appearance.searchSpace || "header",
+    manageSpace: appearance.manageSpace || "header",
+    syncStatusSpace: appearance.syncStatusSpace || "footer",
+    bookmarksCountSpace: appearance.bookmarksCountSpace || "footer",
+    headerSingleRow: appearance.headerSingleRow !== false,
     searchStyle: appearance.searchStyle || "full",
     customWidgets: Array.isArray(appearance.customWidgets) ? appearance.customWidgets.map(w => ({ ...w })) : [],
     widgetOrder: normalizeWidgetOrder(appearance.widgetOrder, appearance.customWidgets),
@@ -1640,6 +1995,9 @@ function syncAppearanceControlsFromDraft(draft) {
   if (groupCountToggle) {
     groupCountToggle.checked = !!draft.showGroupBookmarkCount;
   }
+  if (headerSingleRowToggle) {
+    headerSingleRowToggle.checked = !!draft.headerSingleRow;
+  }
   window.groupCountPreviewEnabled = null;
 
   if (showSideSpacesToggle) {
@@ -1692,6 +2050,22 @@ async function revertAppearancePreviewToSaved() {
     await applyGroupTileSize(config);
     await applySideSpaces(config);
     await revertDateTimePreviewToSaved();
+    if (savedLanguageSnapshot) {
+      const currentLang = getCurrentLanguage();
+      if (savedLanguageSnapshot.override) {
+        if (currentLang !== savedLanguageSnapshot.override) {
+          await setLanguage(savedLanguageSnapshot.override, { persist: true });
+        }
+      } else {
+        await resetLanguageToBrowser({ persist: true });
+      }
+      if (languageSelect) {
+        languageSelect.value = getCurrentLanguage();
+      }
+      pendingLanguageReset = false;
+      updateUIText();
+      updateClock();
+    }
     await render();
   } catch (err) {
     console.warn("Failed to revert appearance preview", err);
@@ -1706,6 +2080,11 @@ settingsBtn.addEventListener("click", async () => {
       window.clearDateTimePreview();
     }
     window.groupCountPreviewEnabled = null;
+    savedLanguageSnapshot = {
+      lang: getCurrentLanguage(),
+      override: getSavedLanguageOverride()
+    };
+    pendingLanguageReset = false;
 
     const config = await loadConfig();
 
@@ -2954,8 +3333,17 @@ if (resetAppearanceBtn) {
       return;
     }
 
+    const existingCustomWidgets = Array.isArray(appearanceDraft?.customWidgets)
+      ? appearanceDraft.customWidgets
+      : ((await loadConfig()).appearance?.customWidgets || []);
+    const disabledCustomWidgets = existingCustomWidgets.map(w => ({ ...w, space: "disabled" }));
+
     appearanceDraft = createAppearanceDraftFromConfig({
-      appearance: { ...defaultConfig.appearance }
+      appearance: {
+        ...defaultConfig.appearance,
+        customWidgets: disabledCustomWidgets,
+        widgetOrder: normalizeWidgetOrder(defaultConfig.appearance.widgetOrder, disabledCustomWidgets)
+      }
     });
     appearancePreviewUrlCss = "";
     appearancePreviewUrlTarget = "";
@@ -3418,6 +3806,10 @@ async function persistSettings(closeAfterSave = false) {
     config.appearance.showDateTime = config.appearance.dateTimeSpace !== "disabled";
     config.appearance.groupsSpace = appearanceDraft.groupsSpace || "header";
     config.appearance.searchSpace = appearanceDraft.searchSpace || "header";
+    config.appearance.manageSpace = appearanceDraft.manageSpace || "header";
+    config.appearance.syncStatusSpace = appearanceDraft.syncStatusSpace || "footer";
+    config.appearance.bookmarksCountSpace = appearanceDraft.bookmarksCountSpace || "footer";
+    config.appearance.headerSingleRow = !!appearanceDraft.headerSingleRow;
   }
   if (searchStyleSelect) {
     config.appearance.searchStyle = searchStyleSelect.value || "full";
@@ -3448,6 +3840,18 @@ async function persistSettings(closeAfterSave = false) {
   delete config.advanced.enableI18nHotReload;
   delete config.advanced.experimentalFaviconFetchLink;
   delete config.advanced.experimentalFaviconFetchManifest;
+
+  // Persist language selection on Save
+  if (pendingLanguageReset) {
+    await resetLanguageToBrowser({ persist: true });
+    pendingLanguageReset = false;
+  } else if (languageSelect?.value && (savedLanguageSnapshot?.override !== languageSelect.value || getCurrentLanguage() !== languageSelect.value)) {
+    await setLanguage(languageSelect.value, { persist: true });
+  }
+  savedLanguageSnapshot = {
+    lang: getCurrentLanguage(),
+    override: getSavedLanguageOverride()
+  };
 
   // Single save operation
   await saveConfig(config);
@@ -4041,12 +4445,14 @@ if (openExtensionSettingsBtn) {
   }
 }
 
-// button to reset language to browser default
+// button to reset language to browser default (preview until saved)
 document.getElementById('reset-language-to-browser').addEventListener('click', async () => {
-  await resetLanguageToBrowser();
+  pendingLanguageReset = true;
+  await resetLanguageToBrowser({ persist: false });
   if (languageSelect) {
     languageSelect.value = getCurrentLanguage();
   }
+  markSettingsDirty();
   render();
   updateUIText();
   updateClock();

@@ -8,7 +8,7 @@
       "mode": "simple",
       "name": "Brave Search",
       "icon": "🦁",
-      "customIcon": "https://search.brave.com/favicon.ico",
+      "customIcon": "https://www.svgrepo.com/show/378778/brave.svg",
       "urlTemplate": "https://search.brave.com/search?q={query}",
       "jsonTemplate": "",
       "openInNewTab": false,

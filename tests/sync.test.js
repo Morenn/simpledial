@@ -1,0 +1,766 @@
+import assert from "node:assert/strict";
+import { register } from "node:module";
+import test from "node:test";
+
+register("data:text/javascript," + encodeURIComponent(`
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
+export async function resolve(specifier, context, nextResolve) {
+  if (specifier.startsWith(".") && specifier.endsWith(".js")) {
+    return { url: new URL(specifier, context.parentURL).href, format: "module", shortCircuit: true };
+  }
+  return nextResolve(specifier, context);
+}
+
+export async function load(url, context, nextLoad) {
+  if (url.startsWith("file:") && url.endsWith(".js")) {
+    const source = await readFile(fileURLToPath(url), "utf8");
+    return { format: "module", source, shortCircuit: true };
+  }
+  return nextLoad(url, context);
+}
+`));
+
+const CONFIG_KEY = "myspeeddial-config";
+const DATA_KEY = "myspeeddial-data";
+const localStorage = new Map();
+let remoteGroups = [];
+let remoteTags = [];
+let afterNextWrite = null;
+let failNextWrite = false;
+let httpServer = null;
+let httpRequests = [];
+let fetchRemote = null;
+
+globalThis.document = { getElementById: () => null };
+globalThis.window = { dispatchEvent: () => {} };
+globalThis.fetch = (...args) => {
+  if (!fetchRemote) {
+    throw new Error("Unexpected HTTP request in test");
+  }
+  return fetchRemote(...args);
+};
+globalThis.chrome = {
+  runtime: { getURL: path => path },
+  storage: {
+    local: {
+      async get(key) {
+        return { [key]: localStorage.get(key) };
+      },
+      async set(values) {
+        for (const [key, value] of Object.entries(values)) {
+          localStorage.set(key, structuredClone(value));
+        }
+      }
+    },
+    sync: {
+      async get(key) {
+        const payload = remoteTags.length > 0
+          ? { groups: structuredClone(remoteGroups), tags: structuredClone(remoteTags) }
+          : { groups: structuredClone(remoteGroups) };
+        return { [key]: payload };
+      },
+      async set(values) {
+        if (failNextWrite) {
+          failNextWrite = false;
+          throw new Error("storage quota exceeded");
+        }
+
+        remoteGroups = structuredClone(values[DATA_KEY].groups);
+        remoteTags = Array.isArray(values[DATA_KEY].tags)
+          ? structuredClone(values[DATA_KEY].tags)
+          : [];
+        if (afterNextWrite) {
+          const mutate = afterNextWrite;
+          afterNextWrite = null;
+          remoteGroups = mutate(structuredClone(remoteGroups));
+        }
+      }
+    }
+  }
+};
+
+const [{ state }, { syncNow, syncWrite }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
+  import("../newtab/state.js"),
+  import("../newtab/sync.js"),
+  import("../newtab/config.js")
+]);
+
+function item(id, title, updatedAt = 100) {
+  return { id, title, url: `https://${id}.example`, updatedAt, deleted: false, deletedAt: null };
+}
+
+function group(items, id = "g_main") {
+  return {
+    id,
+    name: "Main",
+    items,
+    updatedAt: 1,
+    deleted: false,
+    deletedAt: null
+  };
+}
+
+function browserConfig(lastSyncedLocalHash = "") {
+  return {
+    sync: {
+      enabled: true,
+      type: "browser",
+      serverUrl: "",
+      intervalMode: "custom",
+      customIntervalMinutes: 1,
+      lastSync: 0,
+      lastSyncedLocalHash,
+      remoteChangeHeaderType: null,
+      lastSeenRemoteMarker: "",
+      lastRemoteMarkerCheck: 0,
+      lastMarkerCheckUrl: ""
+    }
+  };
+}
+
+function httpConfig(type, overrides = {}) {
+  return {
+    sync: {
+      ...browserConfig().sync,
+      type,
+      serverUrl: type === "webdav"
+        ? "davs://sync.example/remote.php/dav/bookmarks.json"
+        : "https://sync.example/bookmarks.json",
+      ...overrides
+    }
+  };
+}
+
+function markerHeaders() {
+  if (!httpServer.markerType) return {};
+  const header = {
+    sha256: "X-JSON-SHA256",
+    etag: "ETag",
+    "last-modified": "Last-Modified"
+  }[httpServer.markerType];
+  return { [header]: httpServer.markerValue };
+}
+
+function installHttpServer({ groups = [], tags = undefined, markerType = null, markerValue = "", failReads = 0, failWrites = 0 } = {}) {
+  httpServer = {
+    groups: structuredClone(groups),
+    tags: tags !== undefined ? structuredClone(tags) : undefined,
+    markerType,
+    markerValue,
+    failReads,
+    failWrites
+  };
+  httpRequests = [];
+  fetchRemote = async (input, init = {}) => {
+    const url = String(input);
+    const method = init.method || "GET";
+    httpRequests.push({ url, method, headers: init.headers || {} });
+
+    if (method === "HEAD") {
+      return new Response(null, { status: 200, headers: markerHeaders() });
+    }
+
+    if (method === "GET") {
+      if (httpServer.failReads > 0) {
+        httpServer.failReads--;
+        return new Response("Unavailable", { status: 503 });
+      }
+      const payload = httpServer.tags !== undefined
+        ? { groups: httpServer.groups, tags: httpServer.tags }
+        : { groups: httpServer.groups };
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...markerHeaders() }
+      });
+    }
+
+    if (method === "PUT") {
+      if (httpServer.failWrites > 0) {
+        httpServer.failWrites--;
+        return new Response("Unavailable", { status: 503 });
+      }
+      const parsed = JSON.parse(init.body);
+      httpServer.groups = parsed.groups;
+      if (parsed.tags !== undefined) {
+        httpServer.tags = parsed.tags;
+      }
+      if (httpServer.markerType === "etag") {
+        httpServer.markerValue = `"v${Number.parseInt(httpServer.markerValue.match(/\\d+/)?.[0] || "0", 10) + 1}"`;
+      } else if (httpServer.markerType === "sha256") {
+        httpServer.markerValue = String(Number.parseInt(httpServer.markerValue || "0", 16) + 1).padStart(64, "0");
+      }
+      return new Response(null, { status: 200 });
+    }
+
+    return new Response("Method not allowed", { status: 405 });
+  };
+}
+
+async function hashGroups(groups) {
+  const bytes = new TextEncoder().encode(JSON.stringify(groups));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function setClient(groups, config = browserConfig(), tags = []) {
+  state.groups = structuredClone(groups);
+  state.tags = structuredClone(tags);
+  localStorage.set(CONFIG_KEY, structuredClone(config));
+}
+
+function readStoredConfig() {
+  return localStorage.get(CONFIG_KEY);
+}
+
+test.beforeEach(() => {
+  localStorage.clear();
+  remoteGroups = [];
+  remoteTags = [];
+  afterNextWrite = null;
+  failNextWrite = false;
+  httpServer = null;
+  httpRequests = [];
+  fetchRemote = null;
+  state.groups = [];
+  state.tags = [];
+});
+
+test("sync merges a local-only edit with data already stored remotely", async () => {
+  const existing = item("remote", "Remote");
+  const localEdit = item("local", "Local");
+  remoteGroups = [group([existing])];
+  setClient([group([existing, localEdit])]);
+
+  const result = await syncNow();
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(remoteGroups[0].items.map(entry => entry.id).sort(), ["local", "remote"]);
+  assert.ok(readStoredConfig().sync.lastSyncedLocalHash);
+});
+
+test("sequential clients preserve distinct edits in shared browser sync storage", async () => {
+  const baseline = item("base", "Base");
+  remoteGroups = [group([baseline])];
+
+  setClient([group([baseline, item("client-a", "A")])]);
+  assert.equal((await syncNow()).ok, true);
+
+  setClient([group([baseline, item("client-b", "B")])]);
+  assert.equal((await syncNow()).ok, true);
+
+  assert.deepEqual(
+    remoteGroups[0].items.map(entry => entry.id).sort(),
+    ["base", "client-a", "client-b"]
+  );
+});
+
+test("native sync retries merge after a concurrent client overwrites its snapshot", async () => {
+  const base = item("base", "Base");
+  const concurrentEdit = item("other-client", "Concurrent");
+  const localEdit = item("this-client", "Local");
+  remoteGroups = [group([base])];
+  setClient([group([base, localEdit])]);
+  afterNextWrite = () => [group([base, concurrentEdit])];
+
+  const result = await syncNow();
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    remoteGroups[0].items.map(entry => entry.id).sort(),
+    ["base", "other-client", "this-client"]
+  );
+});
+
+test("same-timestamp conflicts resolve identically regardless of client role", async () => {
+  const alpha = item("shared", "Alpha", 500);
+  const beta = item("shared", "Beta", 500);
+
+  remoteGroups = [group([beta])];
+  setClient([group([alpha])]);
+  assert.equal((await syncNow()).ok, true);
+  const firstResult = remoteGroups[0].items[0];
+
+  remoteGroups = [group([alpha])];
+  setClient([group([beta])]);
+  assert.equal((await syncNow()).ok, true);
+  const secondResult = remoteGroups[0].items[0];
+
+  assert.equal(firstResult.title, secondResult.title);
+});
+
+test("storage failure reports sync failure and does not advance local sync fingerprint", async () => {
+  const existing = item("remote", "Remote");
+  const localEdit = item("local", "Local");
+  remoteGroups = [group([existing])];
+  setClient([group([existing, localEdit])]);
+  failNextWrite = true;
+
+  const result = await syncNow();
+
+  assert.equal(result.ok, false);
+  assert.equal(readStoredConfig().sync.lastSyncedLocalHash, "");
+  assert.equal(remoteGroups[0].items.some(entry => entry.id === "local"), false);
+});
+
+for (const provider of ["direct", "webdav"]) {
+  test(`${provider} provider merges local changes and writes to the configured endpoint`, async () => {
+    const remoteItem = item("remote", "Remote");
+    const localItem = item("local", "Local");
+    installHttpServer({ groups: [group([remoteItem])] });
+    setClient([group([remoteItem, localItem])], httpConfig(provider));
+
+    const result = await syncNow();
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(httpServer.groups[0].items.map(entry => entry.id).sort(), ["local", "remote"]);
+    assert.equal(httpRequests.some(request => request.method === "PUT"), true);
+    assert.ok(httpRequests.every(request => request.url.startsWith(
+      provider === "webdav" ? "https://sync.example/" : "https://sync.example/"
+    )));
+    if (provider === "webdav") {
+      assert.ok(httpRequests.every(request => request.headers["OCS-APIRequest"] === "true"));
+      assert.ok(httpRequests.every(request => request.headers["X-Requested-With"] === "XMLHttpRequest"));
+    }
+  });
+}
+
+for (const provider of ["direct", "webdav"]) {
+  for (const [markerType, markerValue] of [
+    ["sha256", "a".repeat(64)],
+    ["etag", '"version-1"']
+  ]) {
+    test(`${provider} skips unchanged ${markerType} when local state matches the last sync`, async () => {
+      const groups = [group([item("same", "Same")])];
+      installHttpServer({ groups, markerType, markerValue });
+      const config = httpConfig(provider, {
+        lastSyncedLocalHash: await hashGroups(groups),
+        remoteChangeHeaderType: markerType,
+        lastSeenRemoteMarker: markerValue,
+        lastMarkerCheckUrl: `${provider}::${provider === "webdav" ? "davs://sync.example/remote.php/dav/bookmarks.json" : "https://sync.example/bookmarks.json"}`
+      });
+      setClient(groups, config);
+
+      const result = await syncNow();
+
+      assert.deepEqual(result, { ok: true, reason: "remote-marker-unchanged", changed: false });
+      assert.deepEqual(httpRequests.map(request => request.method), ["HEAD"]);
+    });
+  }
+}
+
+for (const provider of ["direct", "webdav"]) {
+  for (const [markerType, markerValue] of [
+    ["etag", 'W/"version-1"'],
+    ["last-modified", "Wed, 21 Oct 2015 07:28:00 GMT"],
+    [null, ""]
+  ]) {
+    test(`${provider} performs a full read with ${markerType || "no marker"}`, async () => {
+      const groups = [group([item("same", "Same")])];
+      installHttpServer({ groups, markerType, markerValue });
+      const config = httpConfig(provider, {
+        lastSyncedLocalHash: await hashGroups(groups),
+        remoteChangeHeaderType: markerType,
+        lastSeenRemoteMarker: markerValue,
+        lastMarkerCheckUrl: `${provider}::${provider === "webdav" ? "davs://sync.example/remote.php/dav/bookmarks.json" : "https://sync.example/bookmarks.json"}`
+      });
+      setClient(groups, config);
+
+      const result = await syncNow();
+
+      assert.equal(result.ok, true);
+      assert.equal(httpRequests.some(request => request.method === "GET"), true);
+      assert.equal(httpRequests.some(request => request.method === "PUT"), false);
+    });
+  }
+}
+
+for (const provider of ["direct", "webdav"]) {
+  test(`${provider} does not commit a changed marker when the subsequent read fails`, async () => {
+    const groups = [group([item("local", "Local")])];
+    installHttpServer({
+      groups: [],
+      markerType: "etag",
+      markerValue: '"version-2"',
+      failReads: 1
+    });
+    const config = httpConfig(provider, {
+      lastSyncedLocalHash: await hashGroups(groups),
+      remoteChangeHeaderType: "etag",
+      lastSeenRemoteMarker: '"version-1"',
+      lastMarkerCheckUrl: `${provider}::${provider === "webdav" ? "davs://sync.example/remote.php/dav/bookmarks.json" : "https://sync.example/bookmarks.json"}`
+    });
+    setClient(groups, config);
+
+    const result = await syncNow();
+
+    assert.equal(result.ok, false);
+    assert.equal(readStoredConfig().sync.lastSeenRemoteMarker, '"version-1"');
+  });
+}
+
+for (const provider of ["direct", "webdav"]) {
+  test(`${provider} downloads remote changes after the marker changes`, async () => {
+    const localItem = item("local", "Local");
+    const remoteItem = item("remote", "Remote", 200);
+    const groups = [group([localItem])];
+    installHttpServer({
+      groups: [group([localItem, remoteItem])],
+      markerType: "etag",
+      markerValue: '"version-2"'
+    });
+    const config = httpConfig(provider, {
+      lastSyncedLocalHash: await hashGroups(groups),
+      remoteChangeHeaderType: "etag",
+      lastSeenRemoteMarker: '"version-1"',
+      lastMarkerCheckUrl: `${provider}::${provider === "webdav" ? "davs://sync.example/remote.php/dav/bookmarks.json" : "https://sync.example/bookmarks.json"}`
+    });
+    setClient(groups, config);
+
+    const result = await syncNow();
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(state.groups[0].items.map(entry => entry.id).sort(), ["local", "remote"]);
+    assert.equal(readStoredConfig().sync.lastSeenRemoteMarker, '"version-2"');
+    assert.equal(httpRequests.some(request => request.method === "GET"), true);
+    assert.equal(httpRequests.some(request => request.method === "PUT"), false);
+  });
+}
+
+for (const provider of ["direct", "webdav"]) {
+  test(`${provider} preserves pending local edits when remote PUT fails`, async () => {
+    const localItem = item("local", "Local");
+    installHttpServer({
+      groups: [],
+      markerType: "etag",
+      markerValue: '"version-2"',
+      failWrites: 1
+    });
+    const config = httpConfig(provider, {
+      lastSyncedLocalHash: "",
+      remoteChangeHeaderType: "etag",
+      lastSeenRemoteMarker: '"version-1"',
+      lastMarkerCheckUrl: `${provider}::${provider === "webdav" ? "davs://sync.example/remote.php/dav/bookmarks.json" : "https://sync.example/bookmarks.json"}`
+    });
+    setClient([group([localItem])], config);
+
+    const result = await syncNow();
+
+    assert.equal(result.ok, false);
+    assert.equal(state.groups[0].items[0].id, "local");
+    assert.equal(readStoredConfig().sync.lastSyncedLocalHash, "");
+    assert.equal(readStoredConfig().sync.lastSeenRemoteMarker, '"version-1"');
+  });
+}
+
+test("sync interval policy supports immediate, custom, default, and manual modes", () => {
+  const now = Date.now();
+  const config = { sync: { intervalMode: "immediate", lastSync: now } };
+  assert.equal(shouldSync(config), true);
+  assert.equal(getSyncIntervalMs(config), 0);
+
+  config.sync.intervalMode = "custom";
+  config.sync.customIntervalMinutes = 5;
+  config.sync.lastSync = now - 4 * 60_000;
+  assert.equal(shouldSync(config), false);
+  config.sync.lastSync = now - 5 * 60_000 - 1;
+  assert.equal(shouldSync(config), true);
+  assert.equal(getSyncIntervalMs(config), 5 * 60_000);
+
+  config.sync.intervalMode = "default";
+  assert.equal(getSyncIntervalMs(config), 60_000);
+
+  config.sync.intervalMode = "manual";
+  assert.equal(shouldSync(config), false);
+  assert.equal(getSyncIntervalMs(config), -1);
+});
+
+test("sync preserves and merges group and bookmark customIcon, tileColor, colorFromIcon, and notes", async () => {
+  const remoteBookmark = {
+    ...item("bm-remote", "Remote Bookmark", 150),
+    customIcon: "https://remote.example/icon.png",
+    notes: "Remote note",
+    tileColor: "#3355ff",
+    colorFromIcon: true
+  };
+  const remoteGroup = {
+    id: "g_custom",
+    name: "AI Tools",
+    iconEmoji: "🤖",
+    customIcon: "https://remote.example/group.png",
+    tileColor: "#ff6600",
+    colorFromIcon: true,
+    items: [remoteBookmark],
+    updatedAt: 200,
+    deleted: false,
+    deletedAt: null
+  };
+  const localNewerBookmark = {
+    ...item("bm-local", "Local Edited", 300),
+    customIcon: "https://example.com/icon.png",
+    notes: "Updated note",
+    tileColor: "#12ab34",
+    colorFromIcon: false
+  };
+  const localStaleRemoteBookmark = {
+    ...item("bm-remote", "Stale Bookmark", 100),
+    customIcon: null,
+    notes: null,
+    tileColor: null,
+    colorFromIcon: false
+  };
+  const localGroup = {
+    id: "g_custom",
+    name: "AI Tools Old",
+    iconEmoji: null,
+    customIcon: null,
+    tileColor: null,
+    colorFromIcon: false,
+    items: [localStaleRemoteBookmark, localNewerBookmark],
+    updatedAt: 100,
+    deleted: false,
+    deletedAt: null
+  };
+
+  // Browser sync merge check
+  remoteGroups = [structuredClone(remoteGroup)];
+  setClient([structuredClone(localGroup)]);
+  const browserResult = await syncNow();
+  assert.equal(browserResult.ok, true);
+  assert.equal(remoteGroups[0].iconEmoji, "🤖");
+  assert.equal(remoteGroups[0].customIcon, "https://remote.example/group.png");
+  assert.equal(remoteGroups[0].tileColor, "#ff6600");
+  assert.equal(remoteGroups[0].colorFromIcon, true);
+  const browserMergedRemoteBm = remoteGroups[0].items.find(entry => entry.id === "bm-remote");
+  const browserMergedLocalBm = remoteGroups[0].items.find(entry => entry.id === "bm-local");
+  assert.equal(browserMergedRemoteBm.customIcon, "https://remote.example/icon.png");
+  assert.equal(browserMergedRemoteBm.notes, "Remote note");
+  assert.equal(browserMergedRemoteBm.tileColor, "#3355ff");
+  assert.equal(browserMergedRemoteBm.colorFromIcon, true);
+  assert.equal(browserMergedLocalBm.customIcon, "https://example.com/icon.png");
+  assert.equal(browserMergedLocalBm.notes, "Updated note");
+  assert.equal(browserMergedLocalBm.tileColor, "#12ab34");
+  assert.equal(browserMergedLocalBm.colorFromIcon, false);
+
+  // HTTP sync checks (direct & webdav)
+  for (const provider of ["direct", "webdav"]) {
+    installHttpServer({ groups: [structuredClone(remoteGroup)] });
+    setClient([structuredClone(localGroup)], httpConfig(provider));
+    const httpResult = await syncNow();
+    assert.equal(httpResult.ok, true);
+    assert.equal(httpServer.groups[0].iconEmoji, "🤖");
+    assert.equal(httpServer.groups[0].customIcon, "https://remote.example/group.png");
+    assert.equal(httpServer.groups[0].tileColor, "#ff6600");
+    assert.equal(httpServer.groups[0].colorFromIcon, true);
+    const httpRemoteBm = httpServer.groups[0].items.find(entry => entry.id === "bm-remote");
+    const httpLocalBm = httpServer.groups[0].items.find(entry => entry.id === "bm-local");
+    assert.equal(httpRemoteBm.notes, "Remote note");
+    assert.equal(httpRemoteBm.tileColor, "#3355ff");
+    assert.equal(httpLocalBm.customIcon, "https://example.com/icon.png");
+    assert.equal(httpLocalBm.notes, "Updated note");
+    assert.equal(httpLocalBm.tileColor, "#12ab34");
+    assert.equal(httpLocalBm.colorFromIcon, false);
+  }
+});
+
+test("browser sync merges sections, item.sectionId, state.tags, and item.tags across clients", async () => {
+  const secRemote = { id: "sec_remote", title: "Remote Section", order: 0, updatedAt: 150, deleted: false, deletedAt: null };
+  const secLocal = { id: "sec_local", title: "Local Section", order: 1, updatedAt: 200, deleted: false, deletedAt: null };
+
+  const remoteGroup = {
+    ...group([{ ...item("b1", "B1", 200), sectionId: "sec_remote", tags: ["tag_shared"] }]),
+    sections: [secRemote]
+  };
+  const localGroup = {
+    ...group([{ ...item("b2", "B2", 250), sectionId: "sec_local", tags: ["tag_local"] }]),
+    sections: [secLocal]
+  };
+
+  remoteGroups = [remoteGroup];
+  remoteTags = [
+    { id: "tag_shared", name: "Shared", color: "#10b981", updatedAt: 150, deleted: false, deletedAt: null },
+    { id: "tag_del", name: "Obsolete", color: "#ef4444", updatedAt: 250, deleted: true, deletedAt: 250 }
+  ];
+
+  const localTags = [
+    { id: "tag_del", name: "Obsolete", color: "#ef4444", updatedAt: 100, deleted: false, deletedAt: null },
+    { id: "tag_local", name: "Work", color: "#3b82f6", updatedAt: 220, deleted: false, deletedAt: null }
+  ];
+
+  setClient([localGroup], browserConfig(), localTags);
+  await syncNow();
+
+  assert.deepEqual(
+    state.groups[0].sections.filter(s => !s.deleted).map(s => s.id).sort(),
+    ["sec_local", "sec_remote"]
+  );
+
+  const byId = new Map(state.groups[0].items.map(bm => [bm.id, bm]));
+  assert.equal(byId.get("b1").sectionId, "sec_remote");
+  assert.deepEqual(byId.get("b1").tags, ["tag_shared"]);
+  assert.equal(byId.get("b2").sectionId, "sec_local");
+  assert.deepEqual(byId.get("b2").tags, ["tag_local"]);
+
+  const tagById = new Map(state.tags.map(t => [t.id, t]));
+  assert.equal(tagById.get("tag_shared").deleted, false);
+  assert.equal(tagById.get("tag_local").deleted, false);
+  assert.equal(tagById.get("tag_del").deleted, true);
+  assert.equal(remoteTags.length, 3);
+});
+
+test("HTTP sync merges stack items and handles moving a bookmark out of a stack without duplication", async () => {
+  const secMain = { id: "sec_1", title: "Tools", order: 0, updatedAt: 100, deleted: false, deletedAt: null };
+  const remoteStack = {
+    id: "st_1",
+    type: "stack",
+    title: "Dev Stack",
+    sectionId: null,
+    children: [
+      item("b1", "B1 Updated", 300),
+      item("b3", "B3", 100)
+    ],
+    updatedAt: 350,
+    deleted: false,
+    deletedAt: null
+  };
+  const remoteMovedOut = { ...item("b2", "B2 Moved", 400), sectionId: "sec_1" };
+
+  installHttpServer({
+    groups: [{ ...group([remoteStack, remoteMovedOut]), sections: [secMain] }],
+    tags: [{ id: "t1", name: "Dev", color: "#8b5cf6", updatedAt: 100, deleted: false, deletedAt: null }]
+  });
+
+  const localStack = {
+    id: "st_1",
+    type: "stack",
+    title: "Dev Stack",
+    sectionId: null,
+    children: [
+      item("b1", "B1 Old", 100),
+      item("b2", "B2 Moved", 100),
+      item("b3", "B3", 100),
+      item("b4", "B4 Local", 420)
+    ],
+    updatedAt: 420,
+    deleted: false,
+    deletedAt: null
+  };
+
+  setClient(
+    [{ ...group([localStack]), sections: [secMain] }],
+    httpConfig("direct"),
+    [{ id: "t1", name: "Dev", color: "#8b5cf6", updatedAt: 100, deleted: false, deletedAt: null }]
+  );
+
+  await syncNow();
+
+  const mergedTop = state.groups[0].items;
+  const mergedStack = mergedTop.find(entry => entry.id === "st_1");
+  const movedOutItem = mergedTop.find(entry => entry.id === "b2");
+
+  assert.ok(mergedStack);
+  assert.equal(mergedStack.type, "stack");
+  assert.ok(movedOutItem);
+  assert.equal(movedOutItem.sectionId, "sec_1");
+
+  const stackChildIds = mergedStack.children.map(c => c.id);
+  assert.deepEqual(stackChildIds, ["b1", "b3", "b4"]);
+  assert.equal(mergedStack.children.find(c => c.id === "b1").title, "B1 Updated");
+  assert.equal(stackChildIds.includes("b2"), false);
+});
+
+
+test("syncWrite with purgedIds permanently deletes bookmarks, stacks, and groups across browser and HTTP sync", async () => {
+  const bKeep = { ...item("b_keep", "Keep", 100), deleted: false, deletedAt: null };
+  const bDel = { ...item("b_del", "Delete Me", 200), deleted: true, deletedAt: 200 };
+  const stackDel = {
+    id: "st_del",
+    type: "stack",
+    title: "Deleted Stack",
+    sectionId: null,
+    children: [
+      { ...item("st_c1", "Stack Child 1", 200), deleted: true, deletedAt: 200 },
+      { ...item("st_c2", "Stack Child 2", 200), deleted: true, deletedAt: 200 }
+    ],
+    updatedAt: 200,
+    deleted: true,
+    deletedAt: 200
+  };
+  const gMain = { ...group([bKeep, bDel, stackDel]), id: "g_main", name: "Main", updatedAt: 200, deleted: false, deletedAt: null };
+  const gDel = {
+    ...group([{ ...item("g_del_b1", "Group Deleted Child", 200), deleted: true, deletedAt: 200 }]),
+    id: "g_del",
+    name: "Trash Group",
+    updatedAt: 200,
+    deleted: true,
+    deletedAt: 200
+  };
+
+  // 1) Browser sync permanent deletion
+  remoteGroups = [structuredClone(gMain), structuredClone(gDel)];
+  remoteTags = [];
+  setClient([structuredClone(gMain), structuredClone(gDel)], browserConfig(), []);
+  await syncNow();
+
+  state.groups = state.groups.filter(g => g.id !== "g_del");
+  state.groups[0].items = state.groups[0].items.filter(entry => entry.id !== "b_del" && entry.id !== "st_del");
+  state.groups[0].updatedAt = 300;
+  await syncWrite(state, { purgedIds: ["b_del", "st_del", "st_c1", "st_c2", "g_del", "g_del_b1"] });
+  await syncNow();
+
+  assert.deepEqual(state.groups.map(g => g.id), ["g_main"]);
+  assert.deepEqual(state.groups[0].items.map(entry => entry.id), ["b_keep"]);
+  assert.deepEqual(remoteGroups.map(g => g.id), ["g_main"]);
+  assert.deepEqual(remoteGroups[0].items.map(entry => entry.id), ["b_keep"]);
+
+  // Emptying the last remaining group on an already-synced client must not trigger bootstrap resurrection
+  state.groups[0].items = [];
+  state.groups[0].updatedAt = 400;
+  await syncWrite(state, { purgedIds: ["b_keep"] });
+  await syncNow();
+
+  assert.deepEqual(state.groups.map(g => g.id), ["g_main"]);
+  assert.deepEqual(state.groups[0].items, []);
+  assert.deepEqual(remoteGroups[0].items, []);
+
+  // 2) HTTP sync permanent deletion
+  const httpMain = {
+    ...group([
+      { ...item("hb_keep", "HTTP Keep", 100), deleted: false, deletedAt: null },
+      { ...item("hb_del", "HTTP Delete", 200), deleted: true, deletedAt: 200 }
+    ]),
+    id: "g_http",
+    name: "HTTP Main",
+    updatedAt: 200,
+    deleted: false,
+    deletedAt: null
+  };
+  installHttpServer({ groups: [structuredClone(httpMain)], tags: [] });
+  setClient([structuredClone(httpMain)], httpConfig("direct"), []);
+  await syncNow();
+
+  state.groups[0].items = state.groups[0].items.filter(entry => entry.id !== "hb_del");
+  state.groups[0].updatedAt = 300;
+  await syncWrite(state, { purgedIds: ["hb_del"] });
+  await syncNow();
+
+  assert.deepEqual(state.groups[0].items.map(entry => entry.id), ["hb_keep"]);
+
+  // Sync a second client with the same group ID to verify HTTP server storage no longer holds hb_del
+  const secondClientGroup = {
+    ...group([{ ...item("hb_fresh", "Fresh Item", 400), deleted: false, deletedAt: null }]),
+    id: "g_http",
+    name: "HTTP Main",
+    updatedAt: 400,
+    deleted: false,
+    deletedAt: null
+  };
+  setClient([secondClientGroup], httpConfig("direct"), []);
+  await syncNow();
+
+  assert.deepEqual(
+    state.groups[0].items.map(entry => entry.id).sort(),
+    ["hb_fresh", "hb_keep"]
+  );
+});

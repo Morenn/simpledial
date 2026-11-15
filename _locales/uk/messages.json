@@ -1141,5 +1141,50 @@
   },
   "customSearchSetDefaultTitle": {
     "message": "Зробити типовим у групі"
+  },
+  "customWidgetModeTimezone": {
+    "message": "Часові пояси (лише час)"
+  },
+  "customTzShowSeconds": {
+    "message": "Показувати секунди"
+  },
+  "customTzUse24Hour": {
+    "message": "24-годинний формат"
+  },
+  "customTzLabelPlaceholder": {
+    "message": "Підпис (напр. New York)"
+  },
+  "customTzZonePlaceholder": {
+    "message": "Часовий пояс (напр. America/New_York)"
+  },
+  "customTzAddBtn": {
+    "message": "+ Додати часовий пояс"
+  },
+  "customTzInvalidError": {
+    "message": "Додайте принаймні один дійсний часовий пояс IANA (напр. UTC, Europe/Kyiv, America/New_York)."
+  },
+  "customTzDefaultName": {
+    "message": "Часові пояси"
+  },
+  "customTzAddTitle": {
+    "message": "Додати віджет часових поясів"
+  },
+  "customWidgetsExportAllBtn": {
+    "message": "Експортувати все"
+  },
+  "customWidgetsExportGroupBtn": {
+    "message": "Експортувати групу"
+  },
+  "widgetManage": {
+    "message": "Кнопки керування"
+  },
+  "widgetSyncStatus": {
+    "message": "Стан синхронізації"
+  },
+  "widgetBookmarksCount": {
+    "message": "Кількість закладок"
+  },
+  "headerSingleRow": {
+    "message": "Тримати віджети заголовка в одному рядку"
   }
 }

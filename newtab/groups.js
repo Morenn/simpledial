@@ -257,10 +257,13 @@ function shouldUseDropdown(groupCount) {
   if (!host) return false;
 
   const isTopBar = host.id === "top-bar";
-  const managePart = isTopBar ? document.getElementById("manage") : null;
-  const manageWidth = managePart ? managePart.offsetWidth : 0;
+  const otherWidgetsWidth = isTopBar
+    ? Array.from(host.children)
+      .filter(el => el !== groupsHeader && !el.classList.contains("widget-row-break"))
+      .reduce((sum, el) => sum + (el.offsetWidth || 0), 0)
+    : 0;
   const hostWidth = host.clientWidth || document.getElementById("top-bar")?.clientWidth || 800;
-  const availableWidth = Math.max(180, hostWidth - manageWidth - 20); // Extra padding
+  const availableWidth = Math.max(180, hostWidth - otherWidgetsWidth - 20); // Extra padding
 
   // Estimate how many tabs fit per line
   const groupScale = parseFloat(document.body?.style?.getPropertyValue?.("--group-tile-scale") || "") || 1;

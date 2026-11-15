@@ -1141,5 +1141,50 @@
   },
   "customSearchSetDefaultTitle": {
     "message": "Nastavit jako výchozí ve skupině"
+  },
+  "customWidgetModeTimezone": {
+    "message": "Časová pásma (pouze čas)"
+  },
+  "customTzShowSeconds": {
+    "message": "Zobrazit sekundy"
+  },
+  "customTzUse24Hour": {
+    "message": "24hodinový formát"
+  },
+  "customTzLabelPlaceholder": {
+    "message": "Popisek (např. New York)"
+  },
+  "customTzZonePlaceholder": {
+    "message": "Časové pásmo (např. America/New_York)"
+  },
+  "customTzAddBtn": {
+    "message": "+ Přidat časové pásmo"
+  },
+  "customTzInvalidError": {
+    "message": "Přidejte alespoň jedno platné IANA časové pásmo (např. UTC, Europe/Prague, America/New_York)."
+  },
+  "customTzDefaultName": {
+    "message": "Časová pásma"
+  },
+  "customTzAddTitle": {
+    "message": "Přidat widget časových pásem"
+  },
+  "customWidgetsExportAllBtn": {
+    "message": "Exportovat vše"
+  },
+  "customWidgetsExportGroupBtn": {
+    "message": "Exportovat skupinu"
+  },
+  "widgetManage": {
+    "message": "Tlačítka správy"
+  },
+  "widgetSyncStatus": {
+    "message": "Stav synchronizace"
+  },
+  "widgetBookmarksCount": {
+    "message": "Počet záložek"
+  },
+  "headerSingleRow": {
+    "message": "Udržet widgety hlavičky na jednom řádku"
   }
 }

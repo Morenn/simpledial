@@ -1141,5 +1141,50 @@
   },
   "customSearchSetDefaultTitle": {
     "message": "Als standaard in groep instellen"
+  },
+  "customWidgetModeTimezone": {
+    "message": "Tijdzones (alleen tijd)"
+  },
+  "customTzShowSeconds": {
+    "message": "Seconden tonen"
+  },
+  "customTzUse24Hour": {
+    "message": "24-uursnotatie"
+  },
+  "customTzLabelPlaceholder": {
+    "message": "Label (bijv. New York)"
+  },
+  "customTzZonePlaceholder": {
+    "message": "Tijdzone (bijv. America/New_York)"
+  },
+  "customTzAddBtn": {
+    "message": "+ Tijdzone toevoegen"
+  },
+  "customTzInvalidError": {
+    "message": "Voeg ten minste één geldige IANA-tijdzone toe (bijv. UTC, Europe/Amsterdam, America/New_York)."
+  },
+  "customTzDefaultName": {
+    "message": "Tijdzones"
+  },
+  "customTzAddTitle": {
+    "message": "Tijdzonewidget toevoegen"
+  },
+  "customWidgetsExportAllBtn": {
+    "message": "Alles exporteren"
+  },
+  "customWidgetsExportGroupBtn": {
+    "message": "Groep exporteren"
+  },
+  "widgetManage": {
+    "message": "Beheerknoppen"
+  },
+  "widgetSyncStatus": {
+    "message": "Synchronisatiestatus"
+  },
+  "widgetBookmarksCount": {
+    "message": "Aantal bladwijzers"
+  },
+  "headerSingleRow": {
+    "message": "Koptekstwidgets op één rij houden"
   }
 }

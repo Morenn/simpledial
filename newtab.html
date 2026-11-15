@@ -14,14 +14,14 @@
   <header id="top-bar">
     <div id="groups-header">
     </div>
-    <div id="manage">
-      <div id="search-widget" class="search-widget search-mode-full">
-        <button type="button" id="search-toggle-btn" class="icon-btn search-toggle-btn" title="searchPlaceholder" aria-label="searchPlaceholder">🔍</button>
-        <div class="search-input-wrap">
-          <input id="search-box" type="text" placeholder="Search in bookmarks...">
-          <button type="button" id="search-clear-btn" class="search-clear-btn hidden" title="clearSearch" aria-label="clearSearch">✕</button>
-        </div>
+    <div id="search-widget" class="search-widget search-mode-full">
+      <button type="button" id="search-toggle-btn" class="icon-btn search-toggle-btn" title="searchPlaceholder" aria-label="searchPlaceholder">🔍</button>
+      <div class="search-input-wrap">
+        <input id="search-box" type="text" placeholder="Search in bookmarks...">
+        <button type="button" id="search-clear-btn" class="search-clear-btn hidden" title="clearSearch" aria-label="clearSearch">✕</button>
       </div>
+    </div>
+    <div id="manage-actions" class="manage-actions-widget">
       <button id="theme-toggle" title="Switch theme">🌓</button>
       <button id="lock-tiles-btn" class="icon-btn" type="button" title="lockTiles" aria-label="lockTiles">🔓</button>
       <button id="show-deleted-btn" class="icon-btn" title="Show deleted">👁️</button>
@@ -53,12 +53,11 @@
 
   <!-- Footer -->
   <footer id="page-footer" class="noselect">
-    <div id="footer-sync-status" class="footer-left">
-      <span id="footer-sync-dot" class="footer-status-dot disabled"></span>
-      <span id="footer-sync-text"></span>
-    </div>
-    <div id="footer-widgets" class="footer-widgets"></div>
-    <div id="footer-right" class="footer-right">
+    <div id="footer-widgets" class="footer-widgets">
+      <div id="footer-sync-status">
+        <span id="footer-sync-dot" class="footer-status-dot disabled"></span>
+        <span id="footer-sync-text"></span>
+      </div>
       <span id="footer-bookmarks-total" class="footer-bookmarks-total"></span>
     </div>
   </footer>
@@ -618,7 +617,13 @@
 
           <!-- Card 5: Widgets (Placement & Order) -->
           <div class="sync-section-card appearance-card appearance-card-wide">
-            <h3 id="widgets-title" data-i18n="widgetsSectionTitle">🧩 Widgets</h3>
+            <div class="widgets-card-header">
+              <h3 id="widgets-title" data-i18n="widgetsSectionTitle">🧩 Widgets</h3>
+              <label class="checkbox-row header-single-row-option">
+                <input type="checkbox" id="header-single-row-toggle" checked>
+                <span data-i18n="headerSingleRow">Keep header widgets in a single row</span>
+              </label>
+            </div>
             <div id="widget-order-list" class="widget-order-list"></div>
           </div>
 
@@ -635,9 +640,10 @@
             <div class="custom-widget-add-block custom-widget-add-block-tab">
               <div class="custom-widget-add-header">
                 <div class="custom-widget-add-title" data-i18n="customSearchAddTitle">Add Custom Search Widget</div>
-                <select id="custom-widget-mode" class="appearance-select custom-widget-mode-select" aria-label="Search type">
+                <select id="custom-widget-mode" class="appearance-select custom-widget-mode-select" aria-label="Widget type">
                   <option value="simple" data-i18n="customSearchModeSimple">Simple string search</option>
                   <option value="json" data-i18n="customSearchModeJson">JSON search</option>
+                  <option value="timezone" data-i18n="customWidgetModeTimezone">Time zones (clock only)</option>
                 </select>
               </div>
               <div class="custom-widget-add-row">
@@ -669,6 +675,21 @@
                   <button type="button" id="custom-widget-add-var-btn" class="icon-btn" data-i18n="customSearchAddVarBtn">+ Add variable</button>
                 </div>
                 <div id="custom-widget-vars-list" class="custom-widget-vars-list"></div>
+              </div>
+              <div id="custom-widget-timezone-section" class="custom-widget-timezone-section hidden">
+                <div class="custom-widget-tz-options">
+                  <label class="checkbox-row">
+                    <input type="checkbox" id="custom-widget-tz-seconds">
+                    <span data-i18n="customTzShowSeconds">Show seconds</span>
+                  </label>
+                  <label class="checkbox-row">
+                    <input type="checkbox" id="custom-widget-tz-24h" checked>
+                    <span data-i18n="customTzUse24Hour">24-hour format</span>
+                  </label>
+                  <button type="button" id="custom-widget-tz-add-btn" class="icon-btn" data-i18n="customTzAddBtn">+ Add time zone</button>
+                </div>
+                <div id="custom-widget-tz-list" class="custom-widget-tz-list"></div>
+                <datalist id="custom-widget-tz-datalist"></datalist>
               </div>
               <div id="custom-widget-preview-box" class="custom-widget-preview-box hidden">
                 <div class="custom-widget-preview-header">
@@ -708,7 +729,10 @@
           <div class="sync-section-card appearance-card appearance-card-wide">
             <div class="custom-widgets-library-header">
               <h3 data-i18n="customWidgetsLibraryTitle">Saved Custom Widgets</h3>
-              <button type="button" id="custom-widget-update-all-btn" class="icon-btn hidden" data-i18n="customSearchUpdateAllBtn">🔄 Update from URL</button>
+              <div class="custom-widgets-library-header-actions">
+                <button type="button" id="custom-widget-export-all-btn" class="icon-btn hidden" data-i18n="customWidgetsExportAllBtn">📥 Export all</button>
+                <button type="button" id="custom-widget-update-all-btn" class="icon-btn hidden" data-i18n="customSearchUpdateAllBtn">🔄 Update from URL</button>
+              </div>
             </div>
             <div id="custom-widgets-library-status" class="status"></div>
             <div id="custom-widgets-list" class="widget-order-list"></div>

@@ -1,0 +1,10 @@
+{
+  "name": "simple-dial",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check-addon.mjs",
+    "test:sync": "node --test sync.test.js",
+    "test": "node check-addon.mjs && node --test sync.test.js"
+  }
+}

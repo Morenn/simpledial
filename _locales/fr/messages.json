@@ -1141,5 +1141,50 @@
   },
   "customSearchSetDefaultTitle": {
     "message": "Définir par défaut dans le groupe"
+  },
+  "customWidgetModeTimezone": {
+    "message": "Fuseaux horaires (heure seule)"
+  },
+  "customTzShowSeconds": {
+    "message": "Afficher les secondes"
+  },
+  "customTzUse24Hour": {
+    "message": "Format 24 heures"
+  },
+  "customTzLabelPlaceholder": {
+    "message": "Libellé (ex. New York)"
+  },
+  "customTzZonePlaceholder": {
+    "message": "Fuseau horaire (ex. America/New_York)"
+  },
+  "customTzAddBtn": {
+    "message": "+ Ajouter un fuseau horaire"
+  },
+  "customTzInvalidError": {
+    "message": "Ajoutez au moins un fuseau horaire IANA valide (ex. UTC, Europe/Paris, America/New_York)."
+  },
+  "customTzDefaultName": {
+    "message": "Fuseaux horaires"
+  },
+  "customTzAddTitle": {
+    "message": "Ajouter un widget de fuseaux horaires"
+  },
+  "customWidgetsExportAllBtn": {
+    "message": "Tout exporter"
+  },
+  "customWidgetsExportGroupBtn": {
+    "message": "Exporter le groupe"
+  },
+  "widgetManage": {
+    "message": "Boutons de gestion"
+  },
+  "widgetSyncStatus": {
+    "message": "État de synchronisation"
+  },
+  "widgetBookmarksCount": {
+    "message": "Nombre de favoris"
+  },
+  "headerSingleRow": {
+    "message": "Garder les widgets d'en-tête sur une seule ligne"
   }
 }

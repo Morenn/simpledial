@@ -1,5 +1,5 @@
 import { state, saveState, generateId, loadState } from "./state.js";
-import { loadTheme, applySideSpaces } from "./theme.js";
+import { loadTheme, applySideSpaces, updateCustomTimeZoneWidgets } from "./theme.js";
 import { render, updateFooter } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
@@ -272,10 +272,10 @@ export function setupLanguageSelector() {
     // Set current language
     langSelect.value = getCurrentLanguage();
 
-    // Handle language change
+    // Handle language change (preview until saved in settings)
     langSelect.addEventListener("change", async (e) => {
       const newLang = e.target.value;
-      if (await setLanguage(newLang)) {
+      if (await setLanguage(newLang, { persist: false })) {
         // Re-render UI with new language
         render();
         // Update all UI text
@@ -291,6 +291,9 @@ export function setupLanguageSelector() {
  * only if the feature is enabled in settings.
  */
 export function updateClock() {
+  const now = new Date();
+  updateCustomTimeZoneWidgets(now);
+
   if (!dateTimeDisplay) return;
 
   if (!getEffectiveDateTimeEnabled()) {
@@ -300,7 +303,6 @@ export function updateClock() {
 
   applyDateTimeVisibility();
 
-  const now = new Date();
   const currentLocale = getCurrentLanguage();
 
   // Time is always computed manually — reliable across environments.
@@ -480,6 +482,11 @@ export function updateUIText() {
   updateSettingsModalText();
 }
 
+function getLeadingIconPrefix(text) {
+  const match = text.trim().match(/^[^\p{L}\p{N}\s+-]+\s+/u);
+  return match ? match[0] : "";
+}
+
 // Update settings modal text based on language
 function updateSettingsModalText() {
   // Get all elements with data-i18n attribute
@@ -489,9 +496,7 @@ function updateSettingsModalText() {
     const text = t(key);
     
     // Preserve emoji/icon if present
-    const content = el.textContent.trim();
-    const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
-    const emoji = emojiMatch ? emojiMatch[0] : '';
+    const emoji = getLeadingIconPrefix(el.textContent);
     
     if (emoji && !text.startsWith(emoji.trim())) {
       el.textContent = emoji + text;
@@ -514,9 +519,7 @@ function updateSettingsModalText() {
     const text = t(key);
     
     // Preserve emoji/icon if present
-    const content = btn.textContent.trim();
-    const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
-    const emoji = emojiMatch ? emojiMatch[0] : '';
+    const emoji = getLeadingIconPrefix(btn.textContent);
     
     if (emoji && !text.startsWith(emoji.trim())) {
       btn.textContent = emoji + text;
@@ -532,11 +535,9 @@ function updateSettingsModalText() {
     const text = t(key);
     
     // Preserve emoji/icon if present
-    const content = span.textContent.trim();
-    const emojiMatch = content.match(/^[^\w\s]+\s+/); // Match emoji/icon at start
-    const emoji = emojiMatch ? emojiMatch[0] : '';
+    const emoji = getLeadingIconPrefix(span.textContent);
     
-    if (emoji) {
+    if (emoji && !text.startsWith(emoji.trim())) {
       span.textContent = emoji + text;
     } else {
       span.textContent = text;

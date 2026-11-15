@@ -535,7 +535,7 @@ export async function applyTilesLock(config = null) {
 }
 
 const VALID_WIDGET_SPACES = new Set(["header", "left", "center", "right", "footer"]);
-export const DEFAULT_WIDGET_ORDER = ["groups", "search", "bookmarks", "dateTime"];
+export const DEFAULT_WIDGET_ORDER = ["groups", "search", "manage", "bookmarks", "syncStatus", "dateTime", "bookmarksCount"];
 const VALID_WIDGET_KEYS = new Set(DEFAULT_WIDGET_ORDER);
 
 export function isValidCustomSearchUrlTemplate(rawUrl) {
@@ -747,6 +747,50 @@ export function resolveCustomWidgetIcon(widget) {
   return { emoji: rawEmoji, customIcon: null };
 }
 
+export function isValidTimeZone(tz) {
+  if (typeof tz !== "string" || !tz.trim()) return false;
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: tz.trim() });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function normalizeCustomTimeZones(rawZones) {
+  if (!Array.isArray(rawZones)) return [];
+  const list = [];
+  for (const entry of rawZones) {
+    if (!entry || typeof entry !== "object") continue;
+    const timeZone = typeof entry.timeZone === "string" ? entry.timeZone.trim() : "";
+    if (!isValidTimeZone(timeZone)) continue;
+    const rawLabel = typeof entry.label === "string" ? entry.label.trim() : "";
+    const fallbackLabel = timeZone.split("/").pop()?.replace(/_/g, " ") || timeZone;
+    list.push({
+      label: rawLabel || fallbackLabel,
+      timeZone
+    });
+  }
+  return list;
+}
+
+export function formatTimeForTimeZone(date, timeZone, { showSeconds = false, use24Hour = true } = {}) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime()) || !isValidTimeZone(timeZone)) {
+    return "--:--";
+  }
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      ...(showSeconds ? { second: "2-digit" } : {}),
+      hour12: !use24Hour,
+      timeZone: timeZone.trim()
+    }).format(date);
+  } catch {
+    return "--:--";
+  }
+}
+
 export function serializeCustomWidgetsExport(widgets = []) {
   const list = Array.isArray(widgets) ? widgets : [];
   return {
@@ -755,24 +799,36 @@ export function serializeCustomWidgetsExport(widgets = []) {
     exportedAt: new Date().toISOString(),
     widgets: list.map(w => {
       const { emoji, customIcon } = resolveCustomWidgetIcon(w);
-      return {
+      const base = {
         id: typeof w?.id === "string" && w.id.trim() ? w.id.trim() : "",
-        type: "custom-search",
-        mode: w?.mode === "json" ? "json" : "simple",
         name: typeof w?.name === "string" ? w.name.trim() : "",
         icon: emoji.slice(0, 4),
         customIcon: customIcon || null,
+        space: VALID_WIDGET_SPACES.has(w?.space) ? w.space : "right",
+        align: VALID_WIDGET_ALIGNS.has(w?.align) ? w.align : "auto",
+        newRow: !!w?.newRow,
+        ...(typeof w?.sourceUrl === "string" && isAllowedThemeUrl(w.sourceUrl) ? { sourceUrl: w.sourceUrl.trim() } : {}),
+        ...(typeof w?.sourceUpdatedAt === "string" && w.sourceUpdatedAt ? { sourceUpdatedAt: w.sourceUpdatedAt } : {})
+      };
+      if (w?.type === "timezone") {
+        return {
+          ...base,
+          type: "timezone",
+          timeZones: normalizeCustomTimeZones(w.timeZones),
+          showSeconds: !!w.showSeconds,
+          use24Hour: w.use24Hour !== false
+        };
+      }
+      return {
+        ...base,
+        type: "custom-search",
+        mode: w?.mode === "json" ? "json" : "simple",
         urlTemplate: typeof w?.urlTemplate === "string" ? w.urlTemplate.trim() : "",
         jsonTemplate: typeof w?.jsonTemplate === "string" ? w.jsonTemplate.trim() : "",
         openInNewTab: !!w?.openInNewTab,
         variables: normalizeCustomWidgetVariables(w),
-        space: VALID_WIDGET_SPACES.has(w?.space) ? w.space : "right",
-        align: VALID_WIDGET_ALIGNS.has(w?.align) ? w.align : "auto",
-        newRow: !!w?.newRow,
         groupName: typeof w?.groupName === "string" ? w.groupName.trim() : "",
-        isDefault: !!w?.isDefault,
-        ...(typeof w?.sourceUrl === "string" && isAllowedThemeUrl(w.sourceUrl) ? { sourceUrl: w.sourceUrl.trim() } : {}),
-        ...(typeof w?.sourceUpdatedAt === "string" && w.sourceUpdatedAt ? { sourceUpdatedAt: w.sourceUpdatedAt } : {})
+        isDefault: !!w?.isDefault
       };
     })
   };
@@ -787,7 +843,7 @@ export function parseImportedCustomWidgets(parsed) {
       candidates = parsed.widgets;
     } else if (Array.isArray(parsed.customWidgets)) {
       candidates = parsed.customWidgets;
-    } else if (typeof parsed.urlTemplate === "string" || typeof parsed.name === "string") {
+    } else if (typeof parsed.urlTemplate === "string" || typeof parsed.name === "string" || Array.isArray(parsed.timeZones)) {
       candidates = [parsed];
     }
   } else {
@@ -800,7 +856,8 @@ export function parseImportedCustomWidgets(parsed) {
     !Array.isArray(parsed.widgets) &&
     !Array.isArray(parsed.customWidgets) &&
     typeof parsed.urlTemplate !== "string" &&
-    typeof parsed.name !== "string"
+    typeof parsed.name !== "string" &&
+    !Array.isArray(parsed.timeZones)
   ) {
     return { widgets: [], skipped: 0, validFormat: false };
   }
@@ -813,6 +870,42 @@ export function parseImportedCustomWidgets(parsed) {
       skipped++;
       continue;
     }
+    const id = typeof raw.id === "string" && raw.id.trim()
+      ? raw.id.trim()
+      : `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const { emoji, customIcon } = resolveCustomWidgetIcon(raw);
+    const sourceUrl = typeof raw.sourceUrl === "string" && /^https?:\/\//i.test(raw.sourceUrl.trim()) && isAllowedThemeUrl(raw.sourceUrl.trim())
+      ? raw.sourceUrl.trim()
+      : null;
+
+    if (raw.type === "timezone" || (Array.isArray(raw.timeZones) && typeof raw.urlTemplate !== "string")) {
+      const timeZones = normalizeCustomTimeZones(raw.timeZones);
+      if (timeZones.length === 0) {
+        skipped++;
+        continue;
+      }
+      const tzName = typeof raw.name === "string" && raw.name.trim()
+        ? raw.name.trim()
+        : (t("customTzDefaultName") || "Time Zones");
+      widgets.push({
+        id,
+        type: "timezone",
+        name: tzName,
+        icon: emoji.slice(0, 4),
+        customIcon,
+        timeZones,
+        showSeconds: !!raw.showSeconds,
+        use24Hour: raw.use24Hour !== false,
+        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "right",
+        align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
+        newRow: !!raw.newRow,
+        ...(sourceUrl ? { sourceUrl } : {}),
+        ...(typeof raw.sourceUpdatedAt === "string" && raw.sourceUpdatedAt ? { sourceUpdatedAt: raw.sourceUpdatedAt } : {})
+      });
+      continue;
+    }
+
     const name = typeof raw.name === "string" ? raw.name.trim() : "";
     const urlTemplate = typeof raw.urlTemplate === "string" ? raw.urlTemplate.trim() : "";
     const mode = raw.mode === "json" ? "json" : "simple";
@@ -826,15 +919,6 @@ export function parseImportedCustomWidgets(parsed) {
       skipped++;
       continue;
     }
-
-    const id = typeof raw.id === "string" && raw.id.trim()
-      ? raw.id.trim()
-      : `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-
-    const { emoji, customIcon } = resolveCustomWidgetIcon(raw);
-    const sourceUrl = typeof raw.sourceUrl === "string" && /^https?:\/\//i.test(raw.sourceUrl.trim()) && isAllowedThemeUrl(raw.sourceUrl.trim())
-      ? raw.sourceUrl.trim()
-      : null;
 
     widgets.push({
       id,
@@ -865,7 +949,8 @@ export function createCustomWidgetSnapshot(widget) {
   const { previousVersion: _ignored, ...rest } = widget;
   return {
     ...rest,
-    variables: Array.isArray(rest.variables) ? rest.variables.map(v => ({ ...v })) : []
+    variables: Array.isArray(rest.variables) ? rest.variables.map(v => ({ ...v })) : [],
+    ...(Array.isArray(rest.timeZones) ? { timeZones: rest.timeZones.map(z => ({ ...z })) } : {})
   };
 }
 
@@ -1036,19 +1121,32 @@ function closeAllCustomSearchEngineMenus(exceptMenu = null) {
   });
 }
 
+function closeAllCustomSearchMultiMenus(exceptMenu = null) {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll(".custom-search-multi-menu:not(.hidden)").forEach(menu => {
+    if (menu === exceptMenu) return;
+    menu.classList.add("hidden");
+    const btn = menu.closest(".custom-search-multi-dropdown")?.querySelector(".custom-search-multi-toggle");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  });
+}
+
 function ensureCustomSearchMenuListeners() {
   if (customSearchMenuListenersBound || typeof document === "undefined") return;
   customSearchMenuListenersBound = true;
   document.addEventListener("click", (ev) => {
     const target = ev.target;
-    if (target instanceof Element && (target.closest(".custom-search-engine-menu") || target.closest(".custom-search-icon-btn"))) {
-      return;
+    if (!(target instanceof Element) || (!target.closest(".custom-search-engine-menu") && !target.closest(".custom-search-icon-btn"))) {
+      closeAllCustomSearchEngineMenus();
     }
-    closeAllCustomSearchEngineMenus();
+    if (!(target instanceof Element) || !target.closest(".custom-search-multi-dropdown")) {
+      closeAllCustomSearchMultiMenus();
+    }
   });
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") {
       closeAllCustomSearchEngineMenus();
+      closeAllCustomSearchMultiMenus();
     }
   });
 }
@@ -1249,23 +1347,63 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
             fieldRow.appendChild(sel);
             valueReaders[v.key] = () => sel.value;
           } else if (v.type === "multi") {
+            const multiWrap = document.createElement("div");
+            multiWrap.className = "custom-search-multi-dropdown";
+
+            const toggleBtn = document.createElement("button");
+            toggleBtn.type = "button";
+            toggleBtn.className = "appearance-select custom-search-multi-toggle";
+            toggleBtn.setAttribute("aria-expanded", "false");
+
+            const toggleText = document.createElement("span");
+            toggleText.className = "custom-search-multi-toggle-text";
+            toggleText.textContent = "—";
+
+            const toggleCaret = document.createElement("span");
+            toggleCaret.className = "custom-search-icon-caret";
+            toggleCaret.textContent = "▾";
+            toggleBtn.append(toggleText, toggleCaret);
+
             const listEl = document.createElement("div");
-            listEl.className = "custom-search-multi-list";
+            listEl.className = "custom-search-multi-list custom-search-multi-menu hidden";
             const checkboxes = [];
+            const updateToggleLabel = () => {
+              const selectedLabels = checkboxes
+                .filter(item => item.cb.checked)
+                .map(item => item.label);
+              if (selectedLabels.length === 0) {
+                toggleText.textContent = "—";
+              } else if (selectedLabels.length <= 2) {
+                toggleText.textContent = selectedLabels.join(", ");
+              } else {
+                toggleText.textContent = `${selectedLabels.length} (${selectedLabels.slice(0, 2).join(", ")}…)`;
+              }
+            };
+
             for (const optDef of parseVariableOptions(v.optionsText)) {
               const cbLabel = document.createElement("label");
               cbLabel.className = "checkbox-row custom-search-multi-option";
               const cb = document.createElement("input");
               cb.type = "checkbox";
               cb.value = optDef.value;
+              cb.addEventListener("change", updateToggleLabel);
               const txt = document.createElement("span");
               txt.textContent = optDef.label;
               cbLabel.append(cb, txt);
               listEl.appendChild(cbLabel);
-              checkboxes.push(cb);
+              checkboxes.push({ cb, label: optDef.label });
             }
-            fieldRow.appendChild(listEl);
-            valueReaders[v.key] = () => checkboxes.filter(cb => cb.checked).map(cb => cb.value);
+
+            toggleBtn.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              closeAllCustomSearchMultiMenus(listEl);
+              const isHidden = listEl.classList.toggle("hidden");
+              toggleBtn.setAttribute("aria-expanded", String(!isHidden));
+            });
+
+            multiWrap.append(toggleBtn, listEl);
+            fieldRow.appendChild(multiWrap);
+            valueReaders[v.key] = () => checkboxes.filter(item => item.cb.checked).map(item => item.cb.value);
           } else {
             const txtInput = document.createElement("input");
             txtInput.type = "text";
@@ -1364,6 +1502,100 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
   return elementMap;
 }
 
+export function updateCustomTimeZoneWidgets(now = new Date()) {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll(".custom-timezone-time[data-tz]").forEach(el => {
+    const tz = el.dataset.tz;
+    const showSeconds = el.dataset.showSeconds === "true";
+    const use24Hour = el.dataset.use24h !== "false";
+    el.textContent = formatTimeForTimeZone(now, tz, { showSeconds, use24Hour });
+  });
+}
+
+function syncCustomTimeZoneWidgetElements(customWidgets = []) {
+  const tzWidgets = Array.isArray(customWidgets)
+    ? customWidgets.filter(w => w && w.id && w.type === "timezone" && normalizeCustomTimeZones(w.timeZones).length > 0)
+    : [];
+  const validIds = new Set(tzWidgets.map(w => w.id));
+
+  document.querySelectorAll(".custom-timezone-widget[data-custom-widget-id]").forEach(el => {
+    if (!validIds.has(el.dataset.customWidgetId)) {
+      el.remove();
+    }
+  });
+
+  const elementMap = {};
+  for (const w of tzWidgets) {
+    const zones = normalizeCustomTimeZones(w.timeZones);
+    const { emoji, customIcon } = resolveCustomWidgetIcon(w);
+    const showSeconds = !!w.showSeconds;
+    const use24Hour = w.use24Hour !== false;
+    const configSig = JSON.stringify({
+      name: w.name || "",
+      icon: emoji,
+      customIcon: customIcon || "",
+      timeZones: zones,
+      showSeconds,
+      use24Hour
+    });
+
+    let container = document.querySelector(`.custom-timezone-widget[data-custom-widget-id="${CSS.escape(w.id)}"]`);
+    if (!container) {
+      container = document.createElement("div");
+      container.className = "custom-timezone-widget";
+      container.dataset.customWidgetId = w.id;
+    }
+
+    if (container.dataset.configSig !== configSig) {
+      container.dataset.configSig = configSig;
+      container.innerHTML = "";
+
+      if (w.name || emoji || customIcon) {
+        const header = document.createElement("div");
+        header.className = "custom-timezone-header";
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "custom-search-icon";
+        createCustomSearchIconContent(w, iconSpan);
+        header.appendChild(iconSpan);
+        if (w.name) {
+          const titleSpan = document.createElement("span");
+          titleSpan.className = "custom-timezone-title";
+          titleSpan.textContent = w.name;
+          header.appendChild(titleSpan);
+        }
+        container.appendChild(header);
+      }
+
+      const listEl = document.createElement("div");
+      listEl.className = "custom-timezone-list";
+      for (const z of zones) {
+        const itemEl = document.createElement("div");
+        itemEl.className = "custom-timezone-item";
+        itemEl.title = z.timeZone;
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "custom-timezone-label";
+        labelEl.textContent = z.label;
+
+        const timeEl = document.createElement("span");
+        timeEl.className = "custom-timezone-time";
+        timeEl.dataset.tz = z.timeZone;
+        timeEl.dataset.showSeconds = String(showSeconds);
+        timeEl.dataset.use24h = String(use24Hour);
+
+        itemEl.append(labelEl, timeEl);
+        listEl.appendChild(itemEl);
+      }
+      container.appendChild(listEl);
+    }
+
+    elementMap[w.id] = container;
+  }
+
+  updateCustomTimeZoneWidgets();
+  return elementMap;
+}
+
 function normalizeWidgetSpace(rawSpace, fallback = "header") {
   return VALID_WIDGET_SPACES.has(rawSpace) ? rawSpace : fallback;
 }
@@ -1397,11 +1629,21 @@ export async function applySideSpaces(config = null) {
   const highlightSideSpaces = !!appearance.highlightSideSpaces;
   const groupsSpace = normalizeWidgetSpace(appearance.groupsSpace, "header");
   const searchSpace = normalizeWidgetSpace(appearance.searchSpace, "header");
+  const manageSpace = normalizeWidgetSpace(appearance.manageSpace, "header");
+  const syncStatusSpace = appearance.syncStatusSpace === "disabled"
+    ? "disabled"
+    : normalizeWidgetSpace(appearance.syncStatusSpace, "footer");
   const dateTimeSpace = (appearance.dateTimeSpace === "disabled" || appearance.showDateTime === false)
     ? "disabled"
     : normalizeWidgetSpace(appearance.dateTimeSpace, "footer");
+  const bookmarksCountSpace = appearance.bookmarksCountSpace === "disabled"
+    ? "disabled"
+    : normalizeWidgetSpace(appearance.bookmarksCountSpace, "footer");
   const customWidgets = Array.isArray(appearance.customWidgets) ? appearance.customWidgets : [];
-  const customElements = syncCustomSearchWidgetElements(customWidgets);
+  const customElements = {
+    ...syncCustomSearchWidgetElements(customWidgets),
+    ...syncCustomTimeZoneWidgetElements(customWidgets)
+  };
   const widgetOrder = normalizeWidgetOrder(appearance.widgetOrder, customWidgets);
   const rawSearchStyle = appearance.searchStyle;
   const searchStyle = (rawSearchStyle === "icon" || rawSearchStyle === "hover") ? rawSearchStyle : "full";
@@ -1412,29 +1654,40 @@ export async function applySideSpaces(config = null) {
   await applyTilesLock(config);
 
   const topBar = document.getElementById("top-bar");
-  const manage = document.getElementById("manage");
+  if (topBar) {
+    topBar.classList.toggle("header-single-row", appearance.headerSingleRow !== false);
+  }
   const leftSpace = document.getElementById("left-space");
   const rightSpace = document.getElementById("right-space");
   const centerWidgets = document.getElementById("center-space-widgets");
   const centerBottomWidgets = document.getElementById("center-space-bottom-widgets");
+  const pageFooter = document.getElementById("page-footer");
   const footerWidgets = document.getElementById("footer-widgets");
 
   const groupsHeader = document.getElementById("groups-header");
   const searchWidget = document.getElementById("search-widget");
   const searchBox = document.getElementById("search-box");
   const dateTimeDisplay = document.getElementById("date-time-display");
-  const themeToggleBtn = document.getElementById("theme-toggle");
+  const manageActions = document.getElementById("manage-actions");
+  const footerSyncStatus = document.getElementById("footer-sync-status");
+  const footerBookmarksTotal = document.getElementById("footer-bookmarks-total");
 
   const widgetElements = {
     groups: groupsHeader,
     search: searchWidget,
+    manage: manageActions,
+    syncStatus: footerSyncStatus,
     dateTime: dateTimeDisplay,
+    bookmarksCount: footerBookmarksTotal,
     ...customElements
   };
   const widgetSpaces = {
     groups: groupsSpace,
     search: searchSpace,
-    dateTime: dateTimeSpace
+    manage: manageSpace,
+    syncStatus: syncStatusSpace,
+    dateTime: dateTimeSpace,
+    bookmarksCount: bookmarksCountSpace
   };
   const customAlignMap = {};
   const customNewRowMap = {};
@@ -1452,13 +1705,15 @@ export async function applySideSpaces(config = null) {
     footer: footerWidgets
   };
 
-  [topBar, manage, centerWidgets, centerBottomWidgets, footerWidgets].forEach(container => {
+  [topBar, centerWidgets, centerBottomWidgets, footerWidgets].forEach(container => {
     container?.querySelectorAll(".widget-row-break").forEach(el => el.remove());
   });
 
   const widgetAlign = { ...customAlignMap, ...(appearance.widgetAlign || {}) };
   const widgetNewRow = { ...customNewRowMap, ...(appearance.widgetNewRow || {}) };
   const VALID_ALIGNS = new Set(["top", "bottom", "left", "right", "center"]);
+
+  let hasVisibleHeaderWidget = false;
 
   for (let idx = 0; idx < widgetOrder.length; idx++) {
     const key = widgetOrder[idx];
@@ -1475,8 +1730,10 @@ export async function applySideSpaces(config = null) {
     }
     if (key === "dateTime") {
       el.style.display = "block";
-    } else if (customElements[key]) {
+    } else if (key === "manage" || key === "groups" || key === "syncStatus" || customElements[key]) {
       el.style.display = "flex";
+    } else if (key === "bookmarksCount") {
+      el.style.display = "inline-flex";
     }
 
     const align = widgetAlign[key];
@@ -1487,13 +1744,14 @@ export async function applySideSpaces(config = null) {
     }
 
     if (space === "header") {
-      if (key === "groups" && topBar) {
-        if (el.parentElement !== topBar || (manage && el.nextElementSibling !== manage)) {
-          topBar.insertBefore(el, manage || null);
+      if (topBar) {
+        if (widgetNewRow[key] && hasVisibleHeaderWidget) {
+          const br = document.createElement("div");
+          br.className = "widget-row-break";
+          topBar.appendChild(br);
         }
-      } else if (manage) {
-        const anchor = themeToggleBtn && themeToggleBtn.parentElement === manage ? themeToggleBtn : null;
-        manage.insertBefore(el, anchor);
+        topBar.appendChild(el);
+        hasVisibleHeaderWidget = true;
       }
     } else if (space === "center") {
       const targetCenter = idx > bookmarksIndex && centerBottomWidgets ? centerBottomWidgets : centerWidgets;
@@ -1531,6 +1789,13 @@ export async function applySideSpaces(config = null) {
 
   syncSideSpaceContainer(leftSpace, showSideSpaces, highlightSideSpaces);
   syncSideSpaceContainer(rightSpace, showSideSpaces, highlightSideSpaces);
+
+  if (pageFooter) {
+    const hasFooterWidget = footerWidgets && Array.from(footerWidgets.children).some(
+      child => !child.classList.contains("widget-row-break") && child.style.display !== "none"
+    );
+    pageFooter.style.display = hasFooterWidget ? "" : "none";
+  }
 }
 
 // ---------- Toggle theme & tile lock ----------

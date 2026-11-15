@@ -1141,5 +1141,50 @@
   },
   "customSearchSetDefaultTitle": {
     "message": "Als Standard in der Gruppe festlegen"
+  },
+  "customWidgetModeTimezone": {
+    "message": "Zeitzonen (nur Uhrzeit)"
+  },
+  "customTzShowSeconds": {
+    "message": "Sekunden anzeigen"
+  },
+  "customTzUse24Hour": {
+    "message": "24-Stunden-Format"
+  },
+  "customTzLabelPlaceholder": {
+    "message": "Bezeichnung (z. B. New York)"
+  },
+  "customTzZonePlaceholder": {
+    "message": "Zeitzone (z. B. America/New_York)"
+  },
+  "customTzAddBtn": {
+    "message": "+ Zeitzone hinzufügen"
+  },
+  "customTzInvalidError": {
+    "message": "Fügen Sie mindestens eine gültige IANA-Zeitzone hinzu (z. B. UTC, Europe/Berlin, America/New_York)."
+  },
+  "customTzDefaultName": {
+    "message": "Zeitzonen"
+  },
+  "customTzAddTitle": {
+    "message": "Zeitzonen-Widget hinzufügen"
+  },
+  "customWidgetsExportAllBtn": {
+    "message": "Alle exportieren"
+  },
+  "customWidgetsExportGroupBtn": {
+    "message": "Gruppe exportieren"
+  },
+  "widgetManage": {
+    "message": "Verwaltungs-Buttons"
+  },
+  "widgetSyncStatus": {
+    "message": "Synchronisationsstatus"
+  },
+  "widgetBookmarksCount": {
+    "message": "Lesezeichenanzahl"
+  },
+  "headerSingleRow": {
+    "message": "Kopfzeilen-Widgets in einer Zeile halten"
   }
 }
