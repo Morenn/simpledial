@@ -2588,6 +2588,9 @@ body.highlight-side-spaces .workspace-side-space {
 .custom-search-filter-select,
 .custom-search-filter-input {
   width: 100%;
+  max-width: none;
+  flex: 0 0 auto;
+  height: auto;
   font-size: 0.8rem;
   padding: 0.22rem 0.4rem;
 }
