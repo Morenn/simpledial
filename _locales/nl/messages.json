@@ -1174,5 +1174,44 @@
   },
   "checkHttpBookmarksFailed": {
     "message": "Controle van HTTP-bladwijzers mislukt."
+  },
+  "duplicateBookmarks": {
+    "message": "Dubbele bladwijzers"
+  },
+  "duplicateBookmarksDesc": {
+    "message": "Zoek bladwijzers met overeenkomende URL of naam en tag ze lokaal."
+  },
+  "duplicateMatchByUrl": {
+    "message": "Vergelijken op URL"
+  },
+  "duplicateMatchByName": {
+    "message": "Vergelijken op bladwijzernaam"
+  },
+  "checkDuplicatesNow": {
+    "message": "Nu op duplicaten controleren"
+  },
+  "clearDuplicateTags": {
+    "message": "Duplicaattags wissen"
+  },
+  "checkDuplicatesSelectOption": {
+    "message": "Selecteer ten minste één vergelijkingsoptie."
+  },
+  "checkDuplicatesChecking": {
+    "message": "Controleren op dubbele bladwijzers..."
+  },
+  "checkDuplicatesNone": {
+    "message": "Geen dubbele bladwijzers gevonden."
+  },
+  "checkDuplicatesFound": {
+    "message": "{count} dubbele bladwijzer(s) gevonden ({tagged} nieuw getagd)."
+  },
+  "checkDuplicatesFailed": {
+    "message": "Controle op duplicaten mislukt."
+  },
+  "clearDuplicatesDone": {
+    "message": "{count} duplicaattag(s) gewist."
+  },
+  "jumpToLocation": {
+    "message": "Naar locatie springen"
   }
 }

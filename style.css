@@ -4064,3 +4064,47 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
 .tile-settings .appearance-display-list {
   margin-bottom: 0.5rem;
 }
+
+/* Search result location badge & jump button */
+.bookmark-tile.search-result {
+  height: auto;
+  min-height: 40px;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.search-result-location {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--text-muted, #9ca3af);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.search-jump-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 4px 6px;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.search-jump-btn:hover {
+  opacity: 1;
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--accent);
+}
+
+.bookmark-tile.jump-highlight {
+  outline: 2px solid var(--accent);
+  animation: pulse-highlight 0.6s ease-out 3;
+}

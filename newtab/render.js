@@ -1,4 +1,4 @@
-import { state, saveState, isStackItem, getAllGroupBookmarks, SYSTEM_TAGS, getBookmarkSystemTagIds } from "./state.js";
+import { state, saveState, saveActiveGroupId, isStackItem, getAllGroupBookmarks, SYSTEM_TAGS, getBookmarkSystemTagIds } from "./state.js";
 import { renderGroups } from "./groups.js";
 import { createBookmarkTile, createStackTile, openBookmarkModal, refreshOpenStackPopover, closeStackPopover } from "./bookmarks.js";
 import { setupBookmarkDrag } from "./dragdrop.js";
@@ -320,22 +320,34 @@ async function renderBookmarks(providedConfig = null) {
     const searchEntries = [];
     (state.groups || []).forEach(group => {
       if (!group) return;
+      const sectionNameById = new Map(
+        (group.sections || [])
+          .filter(sec => sec && !sec.deleted && sec.id && sec.name)
+          .map(sec => [sec.id, sec.name])
+      );
       (group.items || []).forEach(item => {
         if (!item) return;
+        const sectionName = item.sectionId ? (sectionNameById.get(item.sectionId) || "") : "";
         if (isStackItem(item)) {
           (item.children || []).forEach(child => {
             if (!child) return;
             searchEntries.push({
               ...child,
               deleted: !!(item.deleted || child.deleted),
+              _groupId: group.id,
               _groupName: group.name || "",
+              _sectionName: sectionName,
+              _stackId: item.id,
               _stackTitle: item.title || ""
             });
           });
         } else {
           searchEntries.push({
             ...item,
+            _groupId: group.id,
             _groupName: group.name || "",
+            _sectionName: sectionName,
+            _stackId: null,
             _stackTitle: ""
           });
         }
@@ -348,6 +360,7 @@ async function renderBookmarks(providedConfig = null) {
       const title = (i.title || "").toLowerCase();
       const url = (i.url || "").toLowerCase();
       const groupName = (i._groupName || "").toLowerCase();
+      const sectionName = (i._sectionName || "").toLowerCase();
       const stackTitle = (i._stackTitle || "").toLowerCase();
       const allTagIds = [
         ...getBookmarkSystemTagIds(i.id),
@@ -359,6 +372,7 @@ async function renderBookmarks(providedConfig = null) {
         title.includes(searchText) ||
         url.includes(searchText) ||
         groupName.includes(searchText) ||
+        (sectionName && sectionName.includes(searchText)) ||
         (stackTitle && stackTitle.includes(searchText)) ||
         tagMatches
       );
@@ -368,7 +382,59 @@ async function renderBookmarks(providedConfig = null) {
       const tile = createBookmarkTile(item, config);
       if (item.deleted) tile.classList.add("deleted");
       tile.classList.add("search-result");
-      tile.setAttribute("data-group", item._stackTitle ? `${item._groupName} / ${item._stackTitle}` : item._groupName);
+
+      const locationParts = [item._groupName, item._sectionName, item._stackTitle].filter(Boolean);
+      const locationLabel = locationParts.join(" / ");
+      tile.setAttribute("data-group", locationLabel);
+
+      const body = tile.querySelector(".bookmark-body");
+      if (body && locationLabel) {
+        const locationEl = document.createElement("div");
+        locationEl.className = "search-result-location";
+        locationEl.textContent = `📁 ${locationLabel}`;
+        locationEl.title = locationLabel;
+        body.appendChild(locationEl);
+      }
+
+      if (item._groupId) {
+        const jumpBtn = document.createElement("button");
+        jumpBtn.type = "button";
+        jumpBtn.className = "search-jump-btn";
+        jumpBtn.textContent = "📍";
+        const jumpTitle = t("jumpToLocation");
+        jumpBtn.title = jumpTitle;
+        jumpBtn.setAttribute("aria-label", jumpTitle);
+        jumpBtn.addEventListener("click", async e => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          window.activeGroupId = item._groupId;
+          await saveActiveGroupId(item._groupId);
+
+          if (searchInput) {
+            searchInput.value = "";
+            updateSearchClearButton();
+          }
+
+          await render();
+
+          const targetId = item._stackId || item.id;
+          if (targetId) {
+            const targetTile = document.querySelector(`.bookmark-tile[data-bookmark-id="${CSS.escape(targetId)}"]`);
+            if (targetTile) {
+              targetTile.scrollIntoView({ behavior: "smooth", block: "center" });
+              requestAnimationFrame(() => {
+                targetTile.classList.remove("jump-highlight");
+                void targetTile.offsetWidth;
+                targetTile.classList.add("jump-highlight");
+              });
+              setTimeout(() => targetTile.classList.remove("jump-highlight"), 1850);
+            }
+          }
+        });
+        tile.appendChild(jumpBtn);
+      }
+
       grid.appendChild(tile);
     });
     return;

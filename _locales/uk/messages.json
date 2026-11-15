@@ -1174,5 +1174,44 @@
   },
   "checkHttpBookmarksFailed": {
     "message": "Помилка перевірки HTTP-закладок."
+  },
+  "duplicateBookmarks": {
+    "message": "Дублікати закладок"
+  },
+  "duplicateBookmarksDesc": {
+    "message": "Знаходить закладки зі схожими URL або назвами та локально позначає їх."
+  },
+  "duplicateMatchByUrl": {
+    "message": "Порівнювати за URL"
+  },
+  "duplicateMatchByName": {
+    "message": "Порівнювати за назвою закладки"
+  },
+  "checkDuplicatesNow": {
+    "message": "Перевірити дублікати зараз"
+  },
+  "clearDuplicateTags": {
+    "message": "Очистити теги дублікатів"
+  },
+  "checkDuplicatesSelectOption": {
+    "message": "Виберіть принаймні один критерій порівняння."
+  },
+  "checkDuplicatesChecking": {
+    "message": "Пошук дублікатів закладок..."
+  },
+  "checkDuplicatesNone": {
+    "message": "Дублікатів закладок не знайдено."
+  },
+  "checkDuplicatesFound": {
+    "message": "Знайдено {count} дублікатів ({tagged} щойно позначено)."
+  },
+  "checkDuplicatesFailed": {
+    "message": "Помилка перевірки дублікатів."
+  },
+  "clearDuplicatesDone": {
+    "message": "Очищено {count} тегів дублікатів."
+  },
+  "jumpToLocation": {
+    "message": "Перейти до розташування"
   }
 }

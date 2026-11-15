@@ -1174,5 +1174,44 @@
   },
   "checkHttpBookmarksFailed": {
     "message": "HTTP-kirjanmerkkien tarkistus epäonnistui."
+  },
+  "duplicateBookmarks": {
+    "message": "Kaksoiskappalekirjanmerkit"
+  },
+  "duplicateBookmarksDesc": {
+    "message": "Etsi kirjanmerkit, joilla on sama URL tai nimi, ja merkitse ne paikallisesti."
+  },
+  "duplicateMatchByUrl": {
+    "message": "Täsmää URL-osoitteen perusteella"
+  },
+  "duplicateMatchByName": {
+    "message": "Täsmää kirjanmerkin nimen perusteella"
+  },
+  "checkDuplicatesNow": {
+    "message": "Tarkista kaksoiskappaleet nyt"
+  },
+  "clearDuplicateTags": {
+    "message": "Tyhjennä kaksoiskappaletunnisteet"
+  },
+  "checkDuplicatesSelectOption": {
+    "message": "Valitse vähintään yksi vertailuvaihtoehto."
+  },
+  "checkDuplicatesChecking": {
+    "message": "Tarkistetaan kaksoiskappaleita..."
+  },
+  "checkDuplicatesNone": {
+    "message": "Kaksoiskappaleita ei löytynyt."
+  },
+  "checkDuplicatesFound": {
+    "message": "Löytyi {count} kaksoiskappaletta ({tagged} uutta merkitty)."
+  },
+  "checkDuplicatesFailed": {
+    "message": "Kaksoiskappaleiden tarkistus epäonnistui."
+  },
+  "clearDuplicatesDone": {
+    "message": "Tyhjennetty {count} kaksoiskappaletunnistetta."
+  },
+  "jumpToLocation": {
+    "message": "Siirry sijaintiin"
   }
 }

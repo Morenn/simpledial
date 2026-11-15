@@ -817,6 +817,28 @@
             </div>
           </div>
 
+          <div class="sync-section-card appearance-card">
+            <h3 data-i18n="duplicateBookmarks">Duplicate Bookmarks</h3>
+            <p class="appearance-card-desc" data-i18n="duplicateBookmarksDesc">Find bookmarks with matching URLs or names and tag them locally.</p>
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="hk-dup-by-url" checked>
+                <span data-i18n="duplicateMatchByUrl">🔗 Match by URL</span>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="hk-dup-by-name" checked>
+                <span data-i18n="duplicateMatchByName">🏷️ Match by bookmark name</span>
+              </label>
+            </div>
+            <div class="appearance-card-footer">
+              <div class="tile-mass-color-actions">
+                <button id="hk-check-duplicates" class="icon-btn primary" data-i18n="checkDuplicatesNow">🎭 Check duplicates now</button>
+                <button id="hk-clear-duplicates" class="icon-btn" data-i18n="clearDuplicateTags">✖️ Clear duplicate tags</button>
+              </div>
+              <div id="hk-duplicates-status" class="status"></div>
+            </div>
+          </div>
+
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-﻿import { state, saveState, generateId, isStackItem, getAllGroupBookmarks, SYSTEM_TAG_HTTP_ID, SYSTEM_TAG_DEAD_LINK_ID, setBookmarkSystemTag, clearSystemTagFromAllBookmarks, saveSystemTags } from "./state.js";
+﻿import { state, saveState, generateId, isStackItem, getAllGroupBookmarks, SYSTEM_TAG_HTTP_ID, SYSTEM_TAG_DEAD_LINK_ID, SYSTEM_TAG_DUPLICATE_ID, setBookmarkSystemTag, clearSystemTagFromAllBookmarks, saveSystemTags } from "./state.js";
 import { loadConfig, saveConfig, defaultConfig } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
 import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLanguageOverride } from "./i18n.js";
@@ -181,6 +181,11 @@ const hkCheckHttpBookmarks = document.getElementById("hk-check-http-bookmarks");
 const hkLinkCheckStatus = document.getElementById("hk-link-check-status");
 const hkDeadLinksCount = document.getElementById("hk-dead-links-count");
 const hkClearErrors = document.getElementById("hk-clear-errors");
+const hkDupByUrl = document.getElementById("hk-dup-by-url");
+const hkDupByName = document.getElementById("hk-dup-by-name");
+const hkCheckDuplicates = document.getElementById("hk-check-duplicates");
+const hkClearDuplicates = document.getElementById("hk-clear-duplicates");
+const hkDuplicatesStatus = document.getElementById("hk-duplicates-status");
 const hkIconRefreshAll = document.getElementById("hk-icon-refresh-all");
 const hkIconRefreshMissing = document.getElementById("hk-icon-refresh-missing");
 const hkIconRefreshNone = document.getElementById("hk-icon-refresh-none");
@@ -4068,6 +4073,134 @@ if (hkCheckLinks) {
         console.error("Check HTTP bookmarks error:", error);
       } finally {
         hkCheckHttpBookmarks.disabled = false;
+      }
+    });
+  }
+
+  // ---------- HouseKeeper - Check Duplicates ----------
+  function normalizeDuplicateUrl(url) {
+    if (typeof url !== "string") return "";
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+    try {
+      const parsed = new URL(trimmed);
+      const pathname = parsed.pathname.replace(/\/+$/, "");
+      return `${parsed.protocol}//${parsed.host}${pathname}${parsed.search}${parsed.hash}`.toLowerCase();
+    } catch {
+      return trimmed.replace(/\/+$/, "").toLowerCase();
+    }
+  }
+
+  function normalizeDuplicateName(title) {
+    if (typeof title !== "string") return "";
+    return title.trim().toLowerCase();
+  }
+
+  if (hkCheckDuplicates) {
+    hkCheckDuplicates.addEventListener("click", async () => {
+      const matchByUrl = hkDupByUrl ? hkDupByUrl.checked : true;
+      const matchByName = hkDupByName ? hkDupByName.checked : true;
+
+      if (!matchByUrl && !matchByName) {
+        if (hkDuplicatesStatus) {
+          hkDuplicatesStatus.textContent = `⚠️ ${t("checkDuplicatesSelectOption")}`;
+          hkDuplicatesStatus.style.color = "#f59e0b";
+        }
+        return;
+      }
+
+      hkCheckDuplicates.disabled = true;
+      if (hkDuplicatesStatus) {
+        hkDuplicatesStatus.textContent = `🔍 ${t("checkDuplicatesChecking")}`;
+        hkDuplicatesStatus.style.color = "#999";
+      }
+
+      try {
+        const items = [];
+        const urlCounts = new Map();
+        const nameCounts = new Map();
+
+        for (const group of (state.groups || [])) {
+          if (!group || group.deleted) continue;
+          for (const item of getAllGroupBookmarks(group)) {
+            const normUrl = matchByUrl ? normalizeDuplicateUrl(item.url) : "";
+            const normName = matchByName ? normalizeDuplicateName(item.title) : "";
+            if (normUrl) urlCounts.set(normUrl, (urlCounts.get(normUrl) || 0) + 1);
+            if (normName) nameCounts.set(normName, (nameCounts.get(normName) || 0) + 1);
+            items.push({ item, normUrl, normName });
+          }
+        }
+
+        let duplicateCount = 0;
+        let newlyTagged = 0;
+        let changed = false;
+
+        for (const { item, normUrl, normName } of items) {
+          const isDuplicate =
+            (normUrl && (urlCounts.get(normUrl) || 0) > 1) ||
+            (normName && (nameCounts.get(normName) || 0) > 1);
+
+          if (isDuplicate) {
+            duplicateCount++;
+            if (setBookmarkSystemTag(item.id, SYSTEM_TAG_DUPLICATE_ID, true)) {
+              newlyTagged++;
+              changed = true;
+            }
+          } else if (setBookmarkSystemTag(item.id, SYSTEM_TAG_DUPLICATE_ID, false)) {
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          await saveSystemTags();
+          try { render(); } catch (e) {}
+        }
+
+        if (hkDuplicatesStatus) {
+          if (duplicateCount === 0) {
+            hkDuplicatesStatus.textContent = `✅ ${t("checkDuplicatesNone")}`;
+            hkDuplicatesStatus.style.color = "#4caf50";
+          } else {
+            const msg = t("checkDuplicatesFound")
+              .replace("{count}", String(duplicateCount))
+              .replace("{tagged}", String(newlyTagged));
+            hkDuplicatesStatus.textContent = `🎭 ${msg}`;
+            hkDuplicatesStatus.style.color = "#a855f7";
+          }
+        }
+      } catch (error) {
+        if (hkDuplicatesStatus) {
+          hkDuplicatesStatus.textContent = `❌ ${t("checkDuplicatesFailed")}`;
+          hkDuplicatesStatus.style.color = "#f44336";
+        }
+        console.error("Check duplicates error:", error);
+      } finally {
+        hkCheckDuplicates.disabled = false;
+      }
+    });
+  }
+
+  if (hkClearDuplicates) {
+    hkClearDuplicates.addEventListener("click", async () => {
+      hkClearDuplicates.disabled = true;
+      try {
+        const cleared = clearSystemTagFromAllBookmarks(SYSTEM_TAG_DUPLICATE_ID);
+        if (cleared > 0) {
+          await saveSystemTags();
+          try { render(); } catch (e) {}
+        }
+        if (hkDuplicatesStatus) {
+          hkDuplicatesStatus.textContent = `✅ ${t("clearDuplicatesDone").replace("{count}", String(cleared))}`;
+          hkDuplicatesStatus.style.color = "#4caf50";
+        }
+      } catch (error) {
+        if (hkDuplicatesStatus) {
+          hkDuplicatesStatus.textContent = `❌ ${t("checkDuplicatesFailed")}`;
+          hkDuplicatesStatus.style.color = "#f44336";
+        }
+        console.error("Clear duplicate tags error:", error);
+      } finally {
+        hkClearDuplicates.disabled = false;
       }
     });
   }

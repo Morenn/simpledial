@@ -1174,5 +1174,44 @@
   },
   "checkHttpBookmarksFailed": {
     "message": "Échec de la vérification des favoris HTTP."
+  },
+  "duplicateBookmarks": {
+    "message": "Favoris en double"
+  },
+  "duplicateBookmarksDesc": {
+    "message": "Recherche les favoris ayant une URL ou un nom identique et les étiquette localement."
+  },
+  "duplicateMatchByUrl": {
+    "message": "Comparer par URL"
+  },
+  "duplicateMatchByName": {
+    "message": "Comparer par nom de favori"
+  },
+  "checkDuplicatesNow": {
+    "message": "Vérifier les doublons"
+  },
+  "clearDuplicateTags": {
+    "message": "Effacer les étiquettes de doublon"
+  },
+  "checkDuplicatesSelectOption": {
+    "message": "Sélectionnez au moins une option de comparaison."
+  },
+  "checkDuplicatesChecking": {
+    "message": "Recherche de favoris en double..."
+  },
+  "checkDuplicatesNone": {
+    "message": "Aucun favori en double trouvé."
+  },
+  "checkDuplicatesFound": {
+    "message": "{count} favori(s) en double trouvé(s) ({tagged} nouvellement étiqueté(s))."
+  },
+  "checkDuplicatesFailed": {
+    "message": "Échec de la vérification des doublons."
+  },
+  "clearDuplicatesDone": {
+    "message": "{count} étiquette(s) de doublon effacée(s)."
+  },
+  "jumpToLocation": {
+    "message": "Aller à l'emplacement"
   }
 }

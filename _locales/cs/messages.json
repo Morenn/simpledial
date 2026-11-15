@@ -1174,5 +1174,44 @@
   },
   "checkHttpBookmarksFailed": {
     "message": "Kontrola HTTP záložek selhala."
+  },
+  "duplicateBookmarks": {
+    "message": "Duplicitní záložky"
+  },
+  "duplicateBookmarksDesc": {
+    "message": "Najde záložky se shodnou adresou URL nebo názvem a lokálně je označí."
+  },
+  "duplicateMatchByUrl": {
+    "message": "Porovnat podle URL"
+  },
+  "duplicateMatchByName": {
+    "message": "Porovnat podle názvu záložky"
+  },
+  "checkDuplicatesNow": {
+    "message": "Zkontrolovat duplicity"
+  },
+  "clearDuplicateTags": {
+    "message": "Vymazat štítky duplicit"
+  },
+  "checkDuplicatesSelectOption": {
+    "message": "Vyberte alespoň jednu možnost porovnání."
+  },
+  "checkDuplicatesChecking": {
+    "message": "Hledám duplicitní záložky..."
+  },
+  "checkDuplicatesNone": {
+    "message": "Nebyly nalezeny žádné duplicitní záložky."
+  },
+  "checkDuplicatesFound": {
+    "message": "Nalezeno {count} duplicitních záložek ({tagged} nově označeno)."
+  },
+  "checkDuplicatesFailed": {
+    "message": "Kontrola duplicit selhala."
+  },
+  "clearDuplicatesDone": {
+    "message": "Vymazáno {count} štítků duplicit."
+  },
+  "jumpToLocation": {
+    "message": "Přejít na umístění"
   }
 }

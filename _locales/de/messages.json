@@ -1174,5 +1174,44 @@
   },
   "checkHttpBookmarksFailed": {
     "message": "Prüfung der HTTP-Lesezeichen fehlgeschlagen."
+  },
+  "duplicateBookmarks": {
+    "message": "Doppelte Lesezeichen"
+  },
+  "duplicateBookmarksDesc": {
+    "message": "Findet Lesezeichen mit gleicher URL oder gleichem Namen und markiert sie lokal."
+  },
+  "duplicateMatchByUrl": {
+    "message": "Nach URL abgleichen"
+  },
+  "duplicateMatchByName": {
+    "message": "Nach Lesezeichenname abgleichen"
+  },
+  "checkDuplicatesNow": {
+    "message": "Duplikate jetzt prüfen"
+  },
+  "clearDuplicateTags": {
+    "message": "Duplikat-Tags löschen"
+  },
+  "checkDuplicatesSelectOption": {
+    "message": "Wählen Sie mindestens eine Vergleichsoption."
+  },
+  "checkDuplicatesChecking": {
+    "message": "Doppelte Lesezeichen werden gesucht..."
+  },
+  "checkDuplicatesNone": {
+    "message": "Keine doppelten Lesezeichen gefunden."
+  },
+  "checkDuplicatesFound": {
+    "message": "{count} doppelte Lesezeichen gefunden ({tagged} neu getaggt)."
+  },
+  "checkDuplicatesFailed": {
+    "message": "Duplikatprüfung fehlgeschlagen."
+  },
+  "clearDuplicatesDone": {
+    "message": "{count} Duplikat-Tag(s) gelöscht."
+  },
+  "jumpToLocation": {
+    "message": "Zum Speicherort springen"
   }
 }

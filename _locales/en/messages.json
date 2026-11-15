@@ -1177,5 +1177,44 @@
   },
   "checkHttpBookmarksFailed": {
     "message": "HTTP bookmark check failed."
+  },
+  "duplicateBookmarks": {
+    "message": "Duplicate Bookmarks"
+  },
+  "duplicateBookmarksDesc": {
+    "message": "Find bookmarks with matching URLs or names and tag them locally."
+  },
+  "duplicateMatchByUrl": {
+    "message": "Match by URL"
+  },
+  "duplicateMatchByName": {
+    "message": "Match by bookmark name"
+  },
+  "checkDuplicatesNow": {
+    "message": "Check duplicates now"
+  },
+  "clearDuplicateTags": {
+    "message": "Clear duplicate tags"
+  },
+  "checkDuplicatesSelectOption": {
+    "message": "Select at least one match option."
+  },
+  "checkDuplicatesChecking": {
+    "message": "Checking for duplicate bookmarks..."
+  },
+  "checkDuplicatesNone": {
+    "message": "No duplicate bookmarks found."
+  },
+  "checkDuplicatesFound": {
+    "message": "Found {count} duplicate bookmark(s) ({tagged} newly tagged)."
+  },
+  "checkDuplicatesFailed": {
+    "message": "Duplicate check failed."
+  },
+  "clearDuplicatesDone": {
+    "message": "Cleared {count} duplicate tag(s)."
+  },
+  "jumpToLocation": {
+    "message": "Jump to location"
   }
 }
