@@ -110,7 +110,7 @@
       <textarea id="bm-notes" rows="4" maxlength="100"></textarea>
       <div id="bm-notes-counter" class="bookmark-notes-counter">0/100</div>
 
-      <label data-i18n="bookmarkTags">Tags (optional)</label>
+      <label for="bm-new-tag-name" data-i18n="bookmarkTags">Tags (optional)</label>
       <div class="bm-tags-editor">
         <div id="bm-tags-list" class="bm-tags-list"></div>
         <div class="bm-tags-create-row">
@@ -120,7 +120,7 @@
         </div>
       </div>
 
-      <label data-i18n="tileColor">Tile color (optional)</label>
+      <label for="bm-color" data-i18n="tileColor">Tile color (optional)</label>
       <div class="tile-color-controls">
         <input type="color" id="bm-color" value="#4a6bff">
         <label class="checkbox-row tile-color-checkbox">
@@ -159,7 +159,7 @@
         </div>
       </div>
 
-      <label data-i18n="tileColor">Tile color (optional)</label>
+      <label for="grp-color" data-i18n="tileColor">Tile color (optional)</label>
       <div class="tile-color-controls">
         <input type="color" id="grp-color" value="#4a6bff">
         <label class="checkbox-row tile-color-checkbox">
@@ -279,7 +279,7 @@
             </div>
 
             <div id="sync-encrypt-section" class="appearance-card-spaced">
-              <label id="sync-encrypt-label" class="sync-sub-label" data-i18n="syncEncryptMode">Credentials encryption</label>
+              <div id="sync-encrypt-label" class="sync-sub-label" data-i18n="syncEncryptMode">Credentials encryption</div>
               <div class="choice-group appearance-choice-group" id="sync-encrypt-choice-group">
                 <label class="choice-option choice-option-inline">
                   <input type="radio" name="sync-encrypt-choice" value="none" checked>
@@ -590,28 +590,28 @@
                 </label>
               </div>
               <div class="appearance-slider-row">
-                <label id="tile-opacity-label" data-i18n="tileOpacity">Tile transparency:</label>
+                <label id="tile-opacity-label" for="tile-opacity-slider" data-i18n="tileOpacity">Tile transparency:</label>
                 <div class="opacity-slider-container">
                   <input type="range" id="tile-opacity-slider" min="0" max="100" value="100">
                   <span id="tile-opacity-value" class="opacity-value">100%</span>
                 </div>
               </div>
               <div class="appearance-slider-row">
-                <label id="tile-size-label" data-i18n="tileSize">Tile size:</label>
+                <label id="tile-size-label" for="tile-size-slider" data-i18n="tileSize">Tile size:</label>
                 <div class="opacity-slider-container">
                   <input type="range" id="tile-size-slider" min="50" max="150" value="100">
                   <span id="tile-size-value" class="opacity-value">100%</span>
                 </div>
               </div>
               <div class="appearance-slider-row">
-                <label id="group-tile-size-label" data-i18n="groupTileSize">Group tile size:</label>
+                <label id="group-tile-size-label" for="group-tile-size-slider" data-i18n="groupTileSize">Group tile size:</label>
                 <div class="opacity-slider-container">
                   <input type="range" id="group-tile-size-slider" min="50" max="150" value="100">
                   <span id="group-tile-size-value" class="opacity-value">100%</span>
                 </div>
               </div>
               <div class="appearance-mass-color-block">
-                <label id="mass-color-from-icon-label" class="tile-mass-color-label" data-i18n="massTileColorFromIcon">Auto tile color from icon:</label>
+                <span id="mass-color-from-icon-label" class="tile-mass-color-label" data-i18n="massTileColorFromIcon">Auto tile color from icon:</span>
                 <div class="tile-mass-color-actions">
                   <button type="button" id="mass-enable-color-from-icon" class="icon-btn primary" data-i18n="massEnableColorFromIcon">🎨 Activate for all</button>
                   <button type="button" id="mass-disable-color-from-icon" class="icon-btn" data-i18n="massDisableColorFromIcon">✖️ Deactivate for all</button>

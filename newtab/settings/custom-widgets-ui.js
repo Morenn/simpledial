@@ -232,6 +232,7 @@ export function initCustomWidgetsSettings() {
         spaceControl.textContent = spaceLabels[currentSpace] || currentSpace;
       } else {
         spaceControl = document.createElement("select");
+        spaceControl.name = `widget-space-${key}`;
         spaceControl.className = "appearance-select widget-order-space-select";
         spaceControl.setAttribute("aria-label", nameEl.textContent);
         const spaceOptions = def.allowDisabled
@@ -266,6 +267,7 @@ export function initCustomWidgetsSettings() {
         });
 
         alignControl = document.createElement("select");
+        alignControl.name = `widget-align-${key}`;
         alignControl.className = "appearance-select widget-order-align-select";
         alignControl.setAttribute("aria-label", `${nameEl.textContent} align`);
         ["auto", "top", "bottom", "left", "right", "center"].forEach(alignVal => {
@@ -724,6 +726,7 @@ export function initCustomWidgetsSettings() {
 
         const iconInput = document.createElement("input");
         iconInput.type = "text";
+        iconInput.name = `autoroute-icon-${groupKey}`;
         iconInput.className = "sync-compact-input custom-widget-autoroute-icon-input";
         iconInput.value = currentAutoRouteIcon;
         iconInput.placeholder = t("customSearchAutoRouteIconPlaceholder") || "Emoji or image URL (default: 🔀)";
@@ -735,6 +738,7 @@ export function initCustomWidgetsSettings() {
         uploadBtn.title = t("customSearchUploadIconTitle") || "Upload icon image";
         const fileInput = document.createElement("input");
         fileInput.type = "file";
+        fileInput.name = `autoroute-icon-file-${groupKey}`;
         fileInput.accept = "image/*";
         fileInput.style.display = "none";
         uploadBtn.addEventListener("click", (e) => {
@@ -885,6 +889,7 @@ export function initCustomWidgetsSettings() {
 
       const labelInput = document.createElement("input");
       labelInput.type = "text";
+      labelInput.name = `tz-label-${idx}`;
       labelInput.className = "sync-compact-input custom-widget-tz-label-input";
       labelInput.value = tzItem.label || "";
       labelInput.placeholder = t("customTzLabelPlaceholder") || "Label (e.g. New York)";
@@ -894,6 +899,7 @@ export function initCustomWidgetsSettings() {
 
       const zoneInput = document.createElement("input");
       zoneInput.type = "text";
+      zoneInput.name = `tz-zone-${idx}`;
       zoneInput.className = "sync-compact-input custom-widget-tz-zone-input";
       zoneInput.setAttribute("list", "custom-widget-tz-datalist");
       zoneInput.value = tzItem.timeZone || "";
@@ -999,6 +1005,7 @@ export function initCustomWidgetsSettings() {
 
       const keyInput = document.createElement("input");
       keyInput.type = "text";
+      keyInput.name = `var-key-${idx}`;
       keyInput.className = "sync-compact-input custom-widget-var-key";
       keyInput.value = varItem.key || "";
       keyInput.placeholder = "key (e.g. query)";
@@ -1008,6 +1015,7 @@ export function initCustomWidgetsSettings() {
 
       const labelInput = document.createElement("input");
       labelInput.type = "text";
+      labelInput.name = `var-label-${idx}`;
       labelInput.className = "sync-compact-input custom-widget-var-label";
       labelInput.value = varItem.label || "";
       labelInput.placeholder = t("customSearchVarLabelPlaceholder") || "Label";
@@ -1016,6 +1024,7 @@ export function initCustomWidgetsSettings() {
       });
 
       const typeSelect = document.createElement("select");
+      typeSelect.name = `var-type-${idx}`;
       typeSelect.className = "appearance-select custom-widget-var-type";
       [
         { value: "text", key: "customSearchVarTypeText", fallback: "Text" },
@@ -1033,6 +1042,7 @@ export function initCustomWidgetsSettings() {
       typeSelect.value = varItem.type || "text";
 
       const optionsInput = document.createElement("textarea");
+      optionsInput.name = `var-options-${idx}`;
       optionsInput.className = "sync-compact-input custom-widget-var-options";
       optionsInput.rows = 2;
       optionsInput.value = varItem.optionsText || "";
@@ -1109,12 +1119,16 @@ export function initCustomWidgetsSettings() {
     vars.forEach(v => {
       const field = document.createElement("div");
       field.className = "custom-widget-preview-field";
+      const inputId = `custom-widget-preview-var-${v.key}`;
       const lbl = document.createElement("label");
+      lbl.htmlFor = inputId;
       lbl.textContent = `${v.label || v.key} (${v.key})`;
       field.appendChild(lbl);
 
       const input = document.createElement("input");
       input.type = "text";
+      input.id = inputId;
+      input.name = v.key;
       input.className = "sync-compact-input";
       input.placeholder = (v.type === "list" || v.type === "multi") ? "A, B" : (v.label || v.key);
       const currentVal = customWidgetPreviewValues[v.key];

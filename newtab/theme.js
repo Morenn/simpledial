@@ -1408,6 +1408,7 @@ function syncCustomSearchWidgetElements(customWidgets = [], autoRouteDefaults = 
       if (primaryVar.type === "text" || primaryVar.type === "list") {
         primaryInput = document.createElement("input");
         primaryInput.type = "search";
+        primaryInput.name = primaryVar.key || "query";
         primaryInput.className = "custom-search-input";
         primaryInput.value = prevPrimaryValue;
         const autoRouteLabel = t("customSearchAutoRouteOption") || "Auto-route";
@@ -1474,14 +1475,18 @@ function syncCustomSearchWidgetElements(customWidgets = [], autoRouteDefaults = 
         for (const v of extraVars) {
           const fieldRow = document.createElement("div");
           fieldRow.className = "custom-search-filter-field";
+          const fieldId = `custom-search-${activeWidget.id}-${v.key}`;
 
-          const labelEl = document.createElement("label");
+          const labelEl = document.createElement(v.type === "multi" ? "span" : "label");
           labelEl.className = "custom-search-filter-label";
           labelEl.textContent = v.label;
           fieldRow.appendChild(labelEl);
 
           if (v.type === "select") {
             const sel = document.createElement("select");
+            sel.id = fieldId;
+            sel.name = v.key;
+            labelEl.htmlFor = fieldId;
             sel.className = "appearance-select custom-search-filter-select";
             const emptyOpt = document.createElement("option");
             emptyOpt.value = "";
@@ -1534,6 +1539,7 @@ function syncCustomSearchWidgetElements(customWidgets = [], autoRouteDefaults = 
               cbLabel.className = "checkbox-row custom-search-multi-option";
               const cb = document.createElement("input");
               cb.type = "checkbox";
+              cb.name = v.key;
               cb.value = optDef.value;
               cb.addEventListener("change", updateToggleLabel);
               const txt = document.createElement("span");
@@ -1556,6 +1562,9 @@ function syncCustomSearchWidgetElements(customWidgets = [], autoRouteDefaults = 
           } else {
             const txtInput = document.createElement("input");
             txtInput.type = "text";
+            txtInput.id = fieldId;
+            txtInput.name = v.key;
+            labelEl.htmlFor = fieldId;
             txtInput.className = "sync-compact-input custom-search-filter-input";
             txtInput.placeholder = v.type === "list" ? "A, B" : v.label;
             fieldRow.appendChild(txtInput);
