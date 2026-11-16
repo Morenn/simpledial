@@ -1213,5 +1213,23 @@
   },
   "jumpToLocation": {
     "message": "Zum Speicherort springen"
+  },
+  "customSearchRoutePrefixesPlaceholder": {
+    "message": "Auto-Routing-Präfixe (z. B. INC, CHG)"
+  },
+  "customSearchAutoRoutedBadge": {
+    "message": "Auto-Routing"
+  },
+  "customSearchAutoRouteOption": {
+    "message": "Auto-Routing"
+  },
+  "customSearchAutoRouteSetDefaultTitle": {
+    "message": "Auto-Routing als Standard in Gruppe festlegen"
+  },
+  "customSearchAutoRouteIconTitle": {
+    "message": "Auto-Routing-Symbol festlegen"
+  },
+  "customSearchAutoRouteIconPlaceholder": {
+    "message": "Emoji oder Bild-URL (Standard: 🔀)"
   }
 }

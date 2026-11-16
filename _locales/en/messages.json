@@ -1216,5 +1216,23 @@
   },
   "jumpToLocation": {
     "message": "Jump to location"
+  },
+  "customSearchRoutePrefixesPlaceholder": {
+    "message": "Auto-route prefixes (e.g. INC, CHG)"
+  },
+  "customSearchAutoRoutedBadge": {
+    "message": "Auto-routed"
+  },
+  "customSearchAutoRouteOption": {
+    "message": "Auto-route"
+  },
+  "customSearchAutoRouteSetDefaultTitle": {
+    "message": "Set Auto-route as default in group"
+  },
+  "customSearchAutoRouteIconTitle": {
+    "message": "Set Auto-route icon"
+  },
+  "customSearchAutoRouteIconPlaceholder": {
+    "message": "Emoji or image URL (default: 🔀)"
   }
 }

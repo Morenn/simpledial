@@ -1213,5 +1213,23 @@
   },
   "jumpToLocation": {
     "message": "Aller à l'emplacement"
+  },
+  "customSearchRoutePrefixesPlaceholder": {
+    "message": "Préfixes de routage auto (ex. INC, CHG)"
+  },
+  "customSearchAutoRoutedBadge": {
+    "message": "Routage auto"
+  },
+  "customSearchAutoRouteOption": {
+    "message": "Routage auto"
+  },
+  "customSearchAutoRouteSetDefaultTitle": {
+    "message": "Définir le routage auto par défaut dans le groupe"
+  },
+  "customSearchAutoRouteIconTitle": {
+    "message": "Définir l'icône du routage auto"
+  },
+  "customSearchAutoRouteIconPlaceholder": {
+    "message": "Emoji ou URL d'image (par défaut : 🔀)"
   }
 }

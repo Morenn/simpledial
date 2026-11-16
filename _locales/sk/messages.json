@@ -1213,5 +1213,23 @@
   },
   "jumpToLocation": {
     "message": "Prejsť na umiestnenie"
+  },
+  "customSearchRoutePrefixesPlaceholder": {
+    "message": "Prefixy automatického smerovania (napr. INC, CHG)"
+  },
+  "customSearchAutoRoutedBadge": {
+    "message": "Automaticky smerované"
+  },
+  "customSearchAutoRouteOption": {
+    "message": "Automatické smerovanie"
+  },
+  "customSearchAutoRouteSetDefaultTitle": {
+    "message": "Nastaviť automatické smerovanie ako predvolené v skupine"
+  },
+  "customSearchAutoRouteIconTitle": {
+    "message": "Nastaviť ikonu automatického smerovania"
+  },
+  "customSearchAutoRouteIconPlaceholder": {
+    "message": "Emoji alebo URL obrázka (predvolené: 🔀)"
   }
 }

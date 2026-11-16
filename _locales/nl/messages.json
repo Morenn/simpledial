@@ -1213,5 +1213,23 @@
   },
   "jumpToLocation": {
     "message": "Naar locatie springen"
+  },
+  "customSearchRoutePrefixesPlaceholder": {
+    "message": "Automatische routevoorvoegsels (bijv. INC, CHG)"
+  },
+  "customSearchAutoRoutedBadge": {
+    "message": "Automatisch gerouteerd"
+  },
+  "customSearchAutoRouteOption": {
+    "message": "Auto-routering"
+  },
+  "customSearchAutoRouteSetDefaultTitle": {
+    "message": "Auto-routering instellen als standaard in groep"
+  },
+  "customSearchAutoRouteIconTitle": {
+    "message": "Auto-routeringpictogram instellen"
+  },
+  "customSearchAutoRouteIconPlaceholder": {
+    "message": "Emoji of afbeeldings-URL (standaard: 🔀)"
   }
 }

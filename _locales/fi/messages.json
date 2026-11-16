@@ -1213,5 +1213,23 @@
   },
   "jumpToLocation": {
     "message": "Siirry sijaintiin"
+  },
+  "customSearchRoutePrefixesPlaceholder": {
+    "message": "Automaattisen reitityksen etuliitteet (esim. INC, CHG)"
+  },
+  "customSearchAutoRoutedBadge": {
+    "message": "Automaattisesti reititetty"
+  },
+  "customSearchAutoRouteOption": {
+    "message": "Automaattinen reititys"
+  },
+  "customSearchAutoRouteSetDefaultTitle": {
+    "message": "Aseta automaattinen reititys ryhmän oletukseksi"
+  },
+  "customSearchAutoRouteIconTitle": {
+    "message": "Aseta automaattisen reitityksen kuvake"
+  },
+  "customSearchAutoRouteIconPlaceholder": {
+    "message": "Emoji tai kuvan URL (oletus: 🔀)"
   }
 }

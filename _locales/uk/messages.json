@@ -1213,5 +1213,23 @@
   },
   "jumpToLocation": {
     "message": "Перейти до розташування"
+  },
+  "customSearchRoutePrefixesPlaceholder": {
+    "message": "Префікси автомаршрутизації (напр. INC, CHG)"
+  },
+  "customSearchAutoRoutedBadge": {
+    "message": "Автомаршрутизація"
+  },
+  "customSearchAutoRouteOption": {
+    "message": "Автомаршрутизація"
+  },
+  "customSearchAutoRouteSetDefaultTitle": {
+    "message": "Зробити автомаршрутизацію типовою в групі"
+  },
+  "customSearchAutoRouteIconTitle": {
+    "message": "Установити значок автомаршрутизації"
+  },
+  "customSearchAutoRouteIconPlaceholder": {
+    "message": "Емодзі або URL зображення (типово: 🔀)"
   }
 }

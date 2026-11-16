@@ -74,7 +74,8 @@ async function buildBackupSnapshot(resolvedType) {
     payload = { appearance: appearanceToBackup };
     metadata = {
       theme: appearanceToBackup.theme || "default",
-      settingCount: Object.keys(appearanceToBackup).length
+      settingCount: Object.keys(appearanceToBackup).length,
+      customWidgetCount: Array.isArray(appearanceToBackup.customWidgets) ? appearanceToBackup.customWidgets.length : 0
     };
   } else {
     const groups = Array.isArray(state.groups) ? state.groups : [];

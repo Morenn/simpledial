@@ -5,7 +5,7 @@ import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLan
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from './crypto.js';
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from './bookmarks-api.js';
 import { render, calculateGridLayout } from "./render.js";
-import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTileSize, applyGroupTileSize, applySideSpaces, applyThemeStyle, fetchAndCacheThemeUrl, fetchBackgroundImageFromUrl, isAllowedThemeUrl, getCustomThemeUrlCache, normalizeWidgetOrder, groupCustomSearchWidgets, isValidCustomSearchUrlTemplate, isValidCustomSearchJsonTemplate, isValidTimeZone, normalizeCustomTimeZones, serializeCustomWidgetsExport, parseImportedCustomWidgets, resolveCustomWidgetIcon, fetchCustomWidgetsFromUrl, applyCustomWidgetUpdate, revertCustomWidgetVersion, buildCustomSearchPreview, normalizeCustomWidgetVariables } from "./theme.js";
+import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTileSize, applyGroupTileSize, applySideSpaces, applyThemeStyle, fetchAndCacheThemeUrl, fetchBackgroundImageFromUrl, isAllowedThemeUrl, getCustomThemeUrlCache, normalizeWidgetOrder, groupCustomSearchWidgets, isValidCustomSearchUrlTemplate, isValidCustomSearchJsonTemplate, isValidTimeZone, normalizeCustomTimeZones, serializeCustomWidgetsExport, parseImportedCustomWidgets, resolveCustomWidgetIcon, fetchCustomWidgetsFromUrl, applyCustomWidgetUpdate, revertCustomWidgetVersion, buildCustomSearchPreview, normalizeCustomWidgetVariables, normalizeCustomSearchRoutePrefixes } from "./theme.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
@@ -129,6 +129,7 @@ const customWidgetModeSelect = document.getElementById("custom-widget-mode");
 const customWidgetAddTitle = document.querySelector(".custom-widget-add-title");
 const customWidgetNameInput = document.getElementById("custom-widget-name");
 const customWidgetGroupInput = document.getElementById("custom-widget-group");
+const customWidgetRoutePrefixesInput = document.getElementById("custom-widget-route-prefixes");
 const customWidgetUrlInput = document.getElementById("custom-widget-url");
 const customWidgetNewTabInput = document.getElementById("custom-widget-newtab");
 const customWidgetDefaultInput = document.getElementById("custom-widget-default");
@@ -315,6 +316,8 @@ function initializeSettingsDirtyTracking() {
     dateTime: { key: "widgetDateTime", fallback: "Date & Time", field: "dateTimeSpace", defaultSpace: "footer", allowDisabled: true },
     bookmarksCount: { key: "widgetBookmarksCount", fallback: "Bookmarks count", field: "bookmarksCountSpace", defaultSpace: "footer", allowDisabled: true }
   };
+
+  const collapsedWidgetSpaceGroups = new Set();
 
   const renderWidgetOrderList = (appearance = null) => {
     if (!widgetOrderList) return;
@@ -570,20 +573,52 @@ function initializeSettingsDirtyTracking() {
       const rows = spaceBuckets[spaceKey];
       if (!rows || rows.length === 0) continue;
 
+      const isCollapsed = collapsedWidgetSpaceGroups.has(spaceKey);
       const groupEl = document.createElement("div");
-      groupEl.className = `widget-space-group${spaceKey === "disabled" ? " widget-space-group-disabled" : ""}`;
+      groupEl.className = `widget-space-group${spaceKey === "disabled" ? " widget-space-group-disabled" : ""}${isCollapsed ? " collapsed" : ""}`;
 
       const headerEl = document.createElement("div");
       headerEl.className = "widget-space-group-header";
+      headerEl.setAttribute("role", "button");
+      headerEl.tabIndex = 0;
+      headerEl.setAttribute("aria-expanded", String(!isCollapsed));
+
+      const titleWrap = document.createElement("span");
+      titleWrap.className = "widget-space-group-title";
+      const chevronSpan = document.createElement("span");
+      chevronSpan.className = "widget-space-group-chevron";
+      chevronSpan.textContent = isCollapsed ? "▸" : "▾";
       const labelSpan = document.createElement("span");
       if (spaceKeyMap[spaceKey]) {
         labelSpan.setAttribute("data-i18n", spaceKeyMap[spaceKey]);
       }
       labelSpan.textContent = spaceLabels[spaceKey] || spaceKey;
+      titleWrap.append(chevronSpan, labelSpan);
+
       const countSpan = document.createElement("span");
       countSpan.className = "widget-space-group-count";
       countSpan.textContent = String(rows.length);
-      headerEl.append(labelSpan, countSpan);
+      headerEl.append(titleWrap, countSpan);
+
+      const toggleGroupCollapsed = () => {
+        const nextCollapsed = !collapsedWidgetSpaceGroups.has(spaceKey);
+        if (nextCollapsed) {
+          collapsedWidgetSpaceGroups.add(spaceKey);
+        } else {
+          collapsedWidgetSpaceGroups.delete(spaceKey);
+        }
+        groupEl.classList.toggle("collapsed", nextCollapsed);
+        chevronSpan.textContent = nextCollapsed ? "▸" : "▾";
+        headerEl.setAttribute("aria-expanded", String(!nextCollapsed));
+      };
+
+      headerEl.addEventListener("click", toggleGroupCollapsed);
+      headerEl.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleGroupCollapsed();
+        }
+      });
 
       const itemsEl = document.createElement("div");
       itemsEl.className = "widget-space-group-items";
@@ -594,6 +629,8 @@ function initializeSettingsDirtyTracking() {
     }
     renderCustomWidgetsList(resolvedAppearance);
   };
+
+  const collapsedCustomWidgetGroups = new Set();
 
   const renderCustomWidgetsList = (appearance = null) => {
     if (!customWidgetsList) return;
@@ -653,6 +690,14 @@ function initializeSettingsDirtyTracking() {
         groupBadge.className = "custom-widget-group-badge";
         groupBadge.textContent = groupName;
         titleEl.appendChild(groupBadge);
+      }
+      const routePrefixes = !isTimezone ? normalizeCustomSearchRoutePrefixes(customDef.routePrefixes) : [];
+      if (routePrefixes.length > 0) {
+        const routeBadge = document.createElement("span");
+        routeBadge.className = "custom-widget-route-badge";
+        routeBadge.textContent = `🔀 ${routePrefixes.join(", ")}`;
+        routeBadge.title = `${t("customSearchAutoRoutedBadge") || "Auto-routed"}: ${routePrefixes.join(", ")}`;
+        titleEl.appendChild(routeBadge);
       }
 
       const urlEl = document.createElement("div");
@@ -747,13 +792,22 @@ function initializeSettingsDirtyTracking() {
       });
 
       if (groupName) {
+        const gKey = groupName.toLowerCase();
+        const groupHasRouting = customList.some(
+          w => w && w.type !== "timezone"
+            && (typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "") === gKey
+            && normalizeCustomSearchRoutePrefixes(w.routePrefixes).length > 0
+        );
+        const autoRouteDefaultActive = groupHasRouting && appearance?.customSearchAutoRouteDefaults?.[gKey] !== false;
+        const isWidgetDefaultActive = !!customDef.isDefault && !autoRouteDefaultActive;
+
         const defaultBtn = document.createElement("button");
         defaultBtn.type = "button";
         defaultBtn.className = "widget-order-btn custom-widget-default-btn";
-        if (customDef.isDefault) {
+        if (isWidgetDefaultActive) {
           defaultBtn.classList.add("active");
         }
-        defaultBtn.textContent = customDef.isDefault ? "★" : "☆";
+        defaultBtn.textContent = isWidgetDefaultActive ? "★" : "☆";
         defaultBtn.title = t("customSearchSetDefaultTitle") || "Set as default in group";
         defaultBtn.addEventListener("click", async () => {
           markSettingsDirty();
@@ -764,6 +818,10 @@ function initializeSettingsDirtyTracking() {
             }
             return w;
           });
+          draft.customSearchAutoRouteDefaults = {
+            ...(draft.customSearchAutoRouteDefaults || {}),
+            [gKey]: false
+          };
           renderWidgetOrderList(draft);
           renderWidgetOrderList(draft);
           await applySideSpaces({ appearance: draft });
@@ -837,28 +895,187 @@ function initializeSettingsDirtyTracking() {
         continue;
       }
 
+      const groupKey = entry.groupName.toLowerCase();
+      const isCollapsed = collapsedCustomWidgetGroups.has(groupKey);
       const groupCard = document.createElement("div");
-      groupCard.className = "custom-widget-group-card";
+      groupCard.className = `custom-widget-group-card${isCollapsed ? " collapsed" : ""}`;
 
       const groupHeader = document.createElement("div");
       groupHeader.className = "custom-widget-group-header";
+      groupHeader.setAttribute("role", "button");
+      groupHeader.tabIndex = 0;
+      groupHeader.setAttribute("aria-expanded", String(!isCollapsed));
 
       const groupTitle = document.createElement("div");
       groupTitle.className = "custom-widget-group-title";
+      const chevronSpan = document.createElement("span");
+      chevronSpan.className = "widget-space-group-chevron";
+      chevronSpan.textContent = isCollapsed ? "▸" : "▾";
       const groupNameSpan = document.createElement("span");
       groupNameSpan.textContent = `📁 ${entry.groupName}`;
       const countBadge = document.createElement("span");
       countBadge.className = "custom-widget-group-count";
       countBadge.textContent = String(entry.members.length);
-      groupTitle.append(groupNameSpan, countBadge);
+      groupTitle.append(chevronSpan, groupNameSpan, countBadge);
+
+      const groupPrefixes = entry.members.flatMap(m => normalizeCustomSearchRoutePrefixes(m?.routePrefixes));
+      let autoRouteIconEditor = null;
+      if (groupPrefixes.length > 0) {
+        const autoRouteBadge = document.createElement("span");
+        autoRouteBadge.className = "custom-widget-route-badge";
+        autoRouteBadge.textContent = `🔀 ${t("customSearchAutoRoutedBadge")}`;
+        autoRouteBadge.title = groupPrefixes.join(", ");
+        groupTitle.appendChild(autoRouteBadge);
+
+        const currentAutoRouteIcon = typeof appearance?.customSearchAutoRouteIcons?.[groupKey] === "string"
+          ? appearance.customSearchAutoRouteIcons[groupKey].trim()
+          : "";
+        const autoRouteIconBtn = document.createElement("button");
+        autoRouteIconBtn.type = "button";
+        autoRouteIconBtn.className = "widget-order-btn custom-widget-autoroute-icon-btn";
+        autoRouteIconBtn.title = t("customSearchAutoRouteIconTitle") || "Set Auto-route icon";
+        const customAutoImgUrl = normalizeCustomIconValue(currentAutoRouteIcon, { allowEmoji: false });
+        if (customAutoImgUrl) {
+          const iconImg = document.createElement("img");
+          iconImg.className = "widget-order-icon-img";
+          iconImg.src = customAutoImgUrl;
+          iconImg.alt = "";
+          iconImg.addEventListener("error", () => {
+            autoRouteIconBtn.textContent = "🔀";
+          }, { once: true });
+          autoRouteIconBtn.appendChild(iconImg);
+        } else {
+          autoRouteIconBtn.textContent = currentAutoRouteIcon || "🔀";
+        }
+
+        autoRouteIconEditor = document.createElement("div");
+        autoRouteIconEditor.className = "custom-widget-autoroute-icon-editor hidden";
+
+        const iconInput = document.createElement("input");
+        iconInput.type = "text";
+        iconInput.className = "sync-compact-input custom-widget-autoroute-icon-input";
+        iconInput.value = currentAutoRouteIcon;
+        iconInput.placeholder = t("customSearchAutoRouteIconPlaceholder") || "Emoji or image URL (default: 🔀)";
+
+        const uploadBtn = document.createElement("button");
+        uploadBtn.type = "button";
+        uploadBtn.className = "icon-btn";
+        uploadBtn.textContent = "🖼️";
+        uploadBtn.title = t("customSearchUploadIconTitle") || "Upload icon image";
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "image/*";
+        fileInput.style.display = "none";
+        uploadBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          fileInput.value = "";
+          fileInput.click();
+        });
+        fileInput.addEventListener("change", (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          readWidgetIconFile(file, (dataUrl) => {
+            iconInput.value = dataUrl;
+          });
+        });
+
+        const applyAutoRouteIcon = async (nextRaw) => {
+          const trimmed = (nextRaw || "").trim();
+          const normalized = trimmed ? normalizeCustomIconValue(trimmed, { allowEmoji: true }) : "";
+          if (trimmed && !normalized) {
+            if (customWidgetsLibraryStatus) {
+              customWidgetsLibraryStatus.textContent = "❌ " + (t("customSearchInvalidIcon") || "Enter a valid icon URL or upload an image.");
+            }
+            return;
+          }
+          if (customWidgetsLibraryStatus) customWidgetsLibraryStatus.textContent = "";
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          const nextIcons = { ...(draft.customSearchAutoRouteIcons || {}) };
+          if (normalized) {
+            nextIcons[groupKey] = normalized;
+          } else {
+            delete nextIcons[groupKey];
+          }
+          draft.customSearchAutoRouteIcons = nextIcons;
+          renderWidgetOrderList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        };
+
+        const saveIconBtn = document.createElement("button");
+        saveIconBtn.type = "button";
+        saveIconBtn.className = "icon-btn primary";
+        saveIconBtn.textContent = t("save") || "Save";
+        saveIconBtn.addEventListener("click", () => applyAutoRouteIcon(iconInput.value));
+
+        const resetIconBtn = document.createElement("button");
+        resetIconBtn.type = "button";
+        resetIconBtn.className = "icon-btn";
+        resetIconBtn.textContent = "✖️";
+        resetIconBtn.title = t("clear") || "Clear";
+        resetIconBtn.addEventListener("click", () => applyAutoRouteIcon(""));
+
+        autoRouteIconEditor.append(iconInput, uploadBtn, fileInput, saveIconBtn, resetIconBtn);
+
+        autoRouteIconBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isHidden = autoRouteIconEditor.classList.toggle("hidden");
+          if (!isHidden) iconInput.focus();
+        });
+
+        const isAutoRouteDefault = appearance?.customSearchAutoRouteDefaults?.[groupKey] !== false;
+        const autoRouteDefaultBtn = document.createElement("button");
+        autoRouteDefaultBtn.type = "button";
+        autoRouteDefaultBtn.className = `widget-order-btn custom-widget-default-btn${isAutoRouteDefault ? " active" : ""}`;
+        autoRouteDefaultBtn.textContent = isAutoRouteDefault ? "★" : "☆";
+        autoRouteDefaultBtn.title = t("customSearchAutoRouteSetDefaultTitle") || "Set Auto-route as default in group";
+        autoRouteDefaultBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          draft.customSearchAutoRouteDefaults = {
+            ...(draft.customSearchAutoRouteDefaults || {}),
+            [groupKey]: true
+          };
+          renderWidgetOrderList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        });
+        groupTitle.append(autoRouteIconBtn, autoRouteDefaultBtn);
+      }
 
       const exportGroupBtn = document.createElement("button");
       exportGroupBtn.type = "button";
       exportGroupBtn.className = "icon-btn custom-widget-group-export-btn";
       exportGroupBtn.textContent = "📥 " + (t("customWidgetsExportGroupBtn") || "Export group");
-      exportGroupBtn.addEventListener("click", () => {
+      exportGroupBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
         const slug = entry.groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "group";
         exportCustomWidgetsLibrary(entry.members, `simple-dial-group-${slug}`, customWidgetsLibraryStatus);
+      });
+
+      const toggleGroupCollapsed = () => {
+        const nextCollapsed = !collapsedCustomWidgetGroups.has(groupKey);
+        if (nextCollapsed) {
+          collapsedCustomWidgetGroups.add(groupKey);
+        } else {
+          collapsedCustomWidgetGroups.delete(groupKey);
+        }
+        groupCard.classList.toggle("collapsed", nextCollapsed);
+        chevronSpan.textContent = nextCollapsed ? "▸" : "▾";
+        groupHeader.setAttribute("aria-expanded", String(!nextCollapsed));
+      };
+
+      groupHeader.addEventListener("click", toggleGroupCollapsed);
+      groupHeader.addEventListener("keydown", e => {
+        if (e.target === exportGroupBtn) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleGroupCollapsed();
+        }
       });
 
       groupHeader.append(groupTitle, exportGroupBtn);
@@ -869,7 +1086,11 @@ function initializeSettingsDirtyTracking() {
         membersWrap.appendChild(buildCustomWidgetLibraryRow(member));
       }
 
-      groupCard.append(groupHeader, membersWrap);
+      groupCard.appendChild(groupHeader);
+      if (autoRouteIconEditor) {
+        groupCard.appendChild(autoRouteIconEditor);
+      }
+      groupCard.appendChild(membersWrap);
       customWidgetsList.appendChild(groupCard);
     }
   };
@@ -988,6 +1209,9 @@ function initializeSettingsDirtyTracking() {
     }
     if (customWidgetGroupInput) {
       customWidgetGroupInput.classList.toggle("hidden", isTimezone);
+    }
+    if (customWidgetRoutePrefixesInput) {
+      customWidgetRoutePrefixesInput.classList.toggle("hidden", isTimezone);
     }
     if (customWidgetNewTabLabel) {
       customWidgetNewTabLabel.classList.toggle("hidden", isTimezone);
@@ -1167,6 +1391,7 @@ function initializeSettingsDirtyTracking() {
     if (customWidgetModeSelect) customWidgetModeSelect.value = "simple";
     if (customWidgetNameInput) customWidgetNameInput.value = "";
     if (customWidgetGroupInput) customWidgetGroupInput.value = "";
+    if (customWidgetRoutePrefixesInput) customWidgetRoutePrefixesInput.value = "";
     if (customWidgetUrlInput) customWidgetUrlInput.value = "";
     if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = "";
     if (customWidgetNewTabInput) customWidgetNewTabInput.checked = false;
@@ -1197,6 +1422,11 @@ function initializeSettingsDirtyTracking() {
     }
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
     if (customWidgetGroupInput) customWidgetGroupInput.value = isTimezone ? "" : (widget.groupName || "");
+    if (customWidgetRoutePrefixesInput) {
+      customWidgetRoutePrefixesInput.value = isTimezone
+        ? ""
+        : normalizeCustomSearchRoutePrefixes(widget.routePrefixes).join(", ");
+    }
     if (customWidgetUrlInput) customWidgetUrlInput.value = widget.urlTemplate || "";
     if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = widget.jsonTemplate || "";
     if (customWidgetNewTabInput) customWidgetNewTabInput.checked = !!widget.openInNewTab;
@@ -1263,6 +1493,37 @@ function initializeSettingsDirtyTracking() {
     customWidgetCancelEditBtn.addEventListener("click", resetCustomWidgetForm);
   }
 
+  const readWidgetIconFile = (file, onDataUrl) => {
+    if (!file || typeof onDataUrl !== "function") return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (!dataUrl) return;
+      if (file.type === "image/svg+xml" || dataUrl.length <= 24000) {
+        onDataUrl(dataUrl);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 64;
+        const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round((img.width || maxDim) * scale));
+        canvas.height = Math.max(1, Math.round((img.height || maxDim) * scale));
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          onDataUrl(canvas.toDataURL("image/png"));
+        } else {
+          onDataUrl(dataUrl);
+        }
+      };
+      img.onerror = () => onDataUrl(dataUrl);
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
   if (customWidgetIconUploadBtn && customWidgetIconFile) {
     customWidgetIconUploadBtn.addEventListener("click", () => {
       customWidgetIconFile.value = "";
@@ -1271,35 +1532,9 @@ function initializeSettingsDirtyTracking() {
     customWidgetIconFile.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (!file || !customWidgetCustomIconInput) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = typeof reader.result === "string" ? reader.result : "";
-        if (!dataUrl) return;
-        if (file.type === "image/svg+xml" || dataUrl.length <= 24000) {
-          customWidgetCustomIconInput.value = dataUrl;
-          return;
-        }
-        const img = new Image();
-        img.onload = () => {
-          const maxDim = 64;
-          const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.round((img.width || maxDim) * scale));
-          canvas.height = Math.max(1, Math.round((img.height || maxDim) * scale));
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            customWidgetCustomIconInput.value = canvas.toDataURL("image/png");
-          } else {
-            customWidgetCustomIconInput.value = dataUrl;
-          }
-        };
-        img.onerror = () => {
-          customWidgetCustomIconInput.value = dataUrl;
-        };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
+      readWidgetIconFile(file, (dataUrl) => {
+        customWidgetCustomIconInput.value = dataUrl;
+      });
     });
   }
 
@@ -1422,6 +1657,7 @@ function initializeSettingsDirtyTracking() {
 
       const openInNewTab = !!customWidgetNewTabInput?.checked;
       const isDefault = !!customWidgetDefaultInput?.checked && !!groupName;
+      const routePrefixes = normalizeCustomSearchRoutePrefixes(customWidgetRoutePrefixesInput?.value);
       const variables = customWidgetVarsDraft
         .map(v => ({
           key: (v.key || "").trim(),
@@ -1450,7 +1686,7 @@ function initializeSettingsDirtyTracking() {
       if (editingCustomWidgetId) {
         draft.customWidgets = (draft.customWidgets || []).map(w => {
           if (w.id === editingCustomWidgetId) {
-            return { ...w, mode, name, groupName, isDefault, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables };
+            return { ...w, mode, name, groupName, isDefault, routePrefixes, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables };
           }
           if (isDefault && groupName && (typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName) {
             return { ...w, isDefault: false };
@@ -1472,6 +1708,7 @@ function initializeSettingsDirtyTracking() {
           name,
           groupName,
           isDefault,
+          routePrefixes,
           icon,
           customIcon,
           urlTemplate,
@@ -1944,6 +2181,8 @@ function createAppearanceDraftFromConfig(config) {
     headerSingleRow: appearance.headerSingleRow !== false,
     searchStyle: appearance.searchStyle || "full",
     customWidgets: Array.isArray(appearance.customWidgets) ? appearance.customWidgets.map(w => ({ ...w })) : [],
+    customSearchAutoRouteDefaults: { ...(appearance.customSearchAutoRouteDefaults || {}) },
+    customSearchAutoRouteIcons: { ...(appearance.customSearchAutoRouteIcons || {}) },
     widgetOrder: normalizeWidgetOrder(appearance.widgetOrder, appearance.customWidgets),
     widgetAlign: { ...(appearance.widgetAlign || {}) },
     widgetNewRow: { ...(appearance.widgetNewRow || {}) }
@@ -3818,6 +4057,12 @@ async function persistSettings(closeAfterSave = false) {
   if (appearanceDraft?.customWidgets) {
     config.appearance.customWidgets = appearanceDraft.customWidgets.map(w => ({ ...w }));
   }
+  if (appearanceDraft?.customSearchAutoRouteDefaults) {
+    config.appearance.customSearchAutoRouteDefaults = { ...appearanceDraft.customSearchAutoRouteDefaults };
+  }
+  if (appearanceDraft?.customSearchAutoRouteIcons) {
+    config.appearance.customSearchAutoRouteIcons = { ...appearanceDraft.customSearchAutoRouteIcons };
+  }
   if (appearanceDraft?.widgetOrder) {
     config.appearance.widgetOrder = normalizeWidgetOrder(appearanceDraft.widgetOrder, config.appearance.customWidgets);
   }
@@ -4412,7 +4657,17 @@ function formatBackupSummary(backup, type) {
   if (type === "config") {
     const themeLabel = backup.theme || "default";
     const settingCount = Number(backup.settingCount || 0);
-    return `${t("themeSelect")} ${themeLabel} (${settingCount})`;
+    let customWidgetCount = typeof backup.customWidgetCount === "number" ? backup.customWidgetCount : null;
+    if (customWidgetCount === null && typeof backup.data === "string") {
+      try {
+        const parsed = JSON.parse(backup.data);
+        customWidgetCount = Array.isArray(parsed?.appearance?.customWidgets) ? parsed.appearance.customWidgets.length : 0;
+      } catch {
+        customWidgetCount = 0;
+      }
+    }
+    const widgetsLabel = t("customWidgetsTab") || "Custom Widgets";
+    return `${t("themeSelect")} ${themeLabel} (${settingCount}) • ${widgetsLabel}: ${customWidgetCount ?? 0}`;
   }
   const stats = getBackupStats(backup);
   return `G:${stats.groupCount} B:${stats.bookmarkCount}`;

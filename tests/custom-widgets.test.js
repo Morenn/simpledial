@@ -19,6 +19,8 @@ globalThis.chrome = {
 
 const {
   buildCustomSearchTargetUrl,
+  normalizeCustomSearchRoutePrefixes,
+  resolveCustomSearchRouteEngine,
   buildCustomSearchPreview,
   isValidCustomSearchUrlTemplate,
   isValidCustomSearchJsonTemplate,
@@ -338,4 +340,65 @@ test("export/import preserves timezone custom widgets and skips invalid ones", (
   });
   assert.equal(invalidImport.widgets.length, 0);
   assert.equal(invalidImport.skipped, 1);
+});
+
+test("routePrefixes normalize, export/import, and route queries by longest matching prefix", () => {
+  assert.deepEqual(normalizeCustomSearchRoutePrefixes(" INC, in , INC , CHG , "), ["INC", "in", "CHG"]);
+
+  const globalEngine = {
+    id: "cw-global",
+    type: "custom-search",
+    name: "Global Search",
+    groupName: "SNOW",
+    isDefault: true,
+    urlTemplate: "https://snow.example/search?q={query}",
+    routePrefixes: []
+  };
+  const incEngine = {
+    id: "cw-inc",
+    type: "custom-search",
+    name: "Incidents",
+    groupName: "SNOW",
+    isDefault: false,
+    urlTemplate: "https://snow.example/incident_list.do?sysparm_query=numberLIKE{query}",
+    routePrefixes: ["IN", "INC"]
+  };
+  const chgEngine = {
+    id: "cw-chg",
+    type: "custom-search",
+    name: "Changes",
+    groupName: "SNOW",
+    isDefault: false,
+    urlTemplate: "https://snow.example/change_request_list.do?sysparm_query=numberLIKE{query}",
+    routePrefixes: ["CHG"]
+  };
+  const ctaskEngine = {
+    id: "cw-ctask",
+    type: "custom-search",
+    name: "Change Tasks",
+    groupName: "SNOW",
+    isDefault: false,
+    urlTemplate: "https://snow.example/change_task_list.do?sysparm_query=numberLIKE{query}",
+    routePrefixes: ["C", "CTASK"]
+  };
+
+  const members = [globalEngine, incEngine, chgEngine, ctaskEngine];
+  assert.equal(resolveCustomSearchRouteEngine(members, "inc001234", globalEngine).id, "cw-inc");
+  assert.equal(resolveCustomSearchRouteEngine(members, "in999", globalEngine).id, "cw-inc");
+  assert.equal(resolveCustomSearchRouteEngine(members, "  chg0042  ", globalEngine).id, "cw-chg");
+  assert.equal(resolveCustomSearchRouteEngine(members, "CTASK001", globalEngine).id, "cw-ctask");
+  assert.equal(resolveCustomSearchRouteEngine(members, "something else", globalEngine).id, "cw-global");
+  assert.equal(resolveCustomSearchRouteEngine(members, "", globalEngine).id, "cw-global");
+
+  const exported = serializeCustomWidgetsExport(members);
+  const imported = parseImportedCustomWidgets(exported);
+  assert.equal(imported.validFormat, true);
+  assert.deepEqual(imported.widgets[1].routePrefixes, ["IN", "INC"]);
+  assert.deepEqual(imported.widgets[2].routePrefixes, ["CHG"]);
+
+  const updatedFromOlder = applyCustomWidgetUpdate(incEngine, {
+    ...incEngine,
+    routePrefixes: []
+  });
+  assert.deepEqual(updatedFromOlder.routePrefixes, ["IN", "INC"]);
 });

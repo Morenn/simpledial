@@ -179,6 +179,28 @@ body::before {
   color: var(--text-muted);
   padding-bottom: 0.2rem;
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.widget-space-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.widget-space-group-chevron {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.widget-space-group.collapsed .widget-space-group-items {
+  display: none;
+}
+
+.widget-space-group.collapsed .widget-space-group-header {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .widget-space-group-count {
@@ -2691,6 +2713,48 @@ body.highlight-side-spaces .workspace-side-space {
   white-space: nowrap;
 }
 
+.custom-widget-route-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(74, 107, 255, 0.15);
+  border: 1px solid rgba(74, 107, 255, 0.45);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.custom-widget-autoroute-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  font-size: 0.85rem;
+}
+
+.custom-widget-autoroute-icon-btn .widget-order-icon-img {
+  width: 16px;
+  height: 16px;
+}
+
+.custom-widget-autoroute-icon-editor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+}
+
+.custom-widget-autoroute-icon-input {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+
 .custom-widget-default-btn.active {
   color: var(--accent);
   border-color: var(--accent);
@@ -2721,6 +2785,17 @@ body.highlight-side-spaces .workspace-side-space {
   gap: 0.5rem;
   padding-bottom: 0.25rem;
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.custom-widget-group-card.collapsed .custom-widget-group-members {
+  display: none;
+}
+
+.custom-widget-group-card.collapsed .custom-widget-group-header {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .custom-widget-group-title {
@@ -4107,4 +4182,18 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
 .bookmark-tile.jump-highlight {
   outline: 2px solid var(--accent);
   animation: pulse-highlight 0.6s ease-out 3;
+}
+
+.custom-widget-route-prefixes-input {
+  min-width: 170px;
+}
+
+.custom-search-engine-prefixes {
+  margin-left: auto;
+  font-size: 0.7rem;
+  opacity: 0.75;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
 }

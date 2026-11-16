@@ -74,7 +74,9 @@ export const defaultConfig = {
     widgetOrder: ["groups", "search", "manage", "bookmarks", "syncStatus", "dateTime", "bookmarksCount"],
     widgetAlign: {}, // Per-widget alignment: "auto" | "top" | "bottom" | "left" | "right" | "center"
     widgetNewRow: {}, // Per-widget row break flag: { [widgetKey]: boolean }
-    customWidgets: [] // User-defined declarative widgets (e.g. custom search)
+    customWidgets: [], // User-defined declarative widgets (e.g. custom search)
+    customSearchAutoRouteDefaults: {}, // Per-group auto-route default flag: { [groupKey]: boolean }
+    customSearchAutoRouteIcons: {} // Per-group auto-route custom icon: { [groupKey]: string }
   },
   advanced: {
     faviconDebugLogging: false,

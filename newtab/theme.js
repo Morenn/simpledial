@@ -828,7 +828,8 @@ export function serializeCustomWidgetsExport(widgets = []) {
         openInNewTab: !!w?.openInNewTab,
         variables: normalizeCustomWidgetVariables(w),
         groupName: typeof w?.groupName === "string" ? w.groupName.trim() : "",
-        isDefault: !!w?.isDefault
+        isDefault: !!w?.isDefault,
+        routePrefixes: normalizeCustomSearchRoutePrefixes(w?.routePrefixes)
       };
     })
   };
@@ -936,6 +937,7 @@ export function parseImportedCustomWidgets(parsed) {
       newRow: !!raw.newRow,
       groupName: typeof raw.groupName === "string" ? raw.groupName.trim() : "",
       isDefault: !!raw.isDefault,
+      routePrefixes: normalizeCustomSearchRoutePrefixes(raw.routePrefixes),
       ...(sourceUrl ? { sourceUrl } : {}),
       ...(typeof raw.sourceUpdatedAt === "string" && raw.sourceUpdatedAt ? { sourceUpdatedAt: raw.sourceUpdatedAt } : {})
     });
@@ -960,12 +962,18 @@ export function applyCustomWidgetUpdate(existingWidget, incomingWidget, sourceUr
     ? sourceUrl.trim()
     : (existingWidget?.sourceUrl || incomingWidget?.sourceUrl || null);
 
+  const incomingPrefixes = normalizeCustomSearchRoutePrefixes(incomingWidget?.routePrefixes);
+  const existingPrefixes = normalizeCustomSearchRoutePrefixes(existingWidget?.routePrefixes);
+
   return {
     ...incomingWidget,
     id: existingWidget?.id || incomingWidget.id,
     space: VALID_WIDGET_SPACES.has(existingWidget?.space) ? existingWidget.space : incomingWidget.space,
     align: VALID_WIDGET_ALIGNS.has(existingWidget?.align) ? existingWidget.align : incomingWidget.align,
     newRow: typeof existingWidget?.newRow === "boolean" ? existingWidget.newRow : !!incomingWidget.newRow,
+    ...(incomingWidget?.type === "custom-search"
+      ? { routePrefixes: incomingPrefixes.length > 0 ? incomingPrefixes : existingPrefixes }
+      : {}),
     ...(resolvedSourceUrl ? { sourceUrl: resolvedSourceUrl } : {}),
     sourceUpdatedAt: new Date().toISOString(),
     previousVersion: prevSnapshot
@@ -1092,6 +1100,48 @@ export function groupCustomSearchWidgets(customWidgets = []) {
   return groups;
 }
 
+export function normalizeCustomSearchRoutePrefixes(raw) {
+  const source = Array.isArray(raw)
+    ? raw
+    : (typeof raw === "string" ? raw.split(",") : []);
+  const seen = new Set();
+  const result = [];
+  for (const item of source) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(trimmed);
+  }
+  return result;
+}
+
+export function resolveCustomSearchRouteEngine(members = [], queryText = "", fallbackWidget = null) {
+  if (!Array.isArray(members) || members.length === 0) return fallbackWidget;
+  const trimmed = typeof queryText === "string" ? queryText.trim() : "";
+  if (!trimmed) return fallbackWidget;
+
+  const upperQuery = trimmed.toUpperCase();
+  const candidates = [];
+  for (const member of members) {
+    if (!member) continue;
+    const prefixes = normalizeCustomSearchRoutePrefixes(member.routePrefixes);
+    for (const prefix of prefixes) {
+      candidates.push({ member, prefixUpper: prefix.toUpperCase() });
+    }
+  }
+
+  candidates.sort((a, b) => b.prefixUpper.length - a.prefixUpper.length);
+  for (const candidate of candidates) {
+    if (upperQuery.startsWith(candidate.prefixUpper)) {
+      return candidate.member;
+    }
+  }
+  return fallbackWidget;
+}
+
 function createCustomSearchIconContent(widget, iconEl) {
   const { emoji, customIcon } = resolveCustomWidgetIcon(widget);
   iconEl.innerHTML = "";
@@ -1151,7 +1201,25 @@ function ensureCustomSearchMenuListeners() {
   });
 }
 
-function syncCustomSearchWidgetElements(customWidgets = []) {
+function renderAutoRouteIconContent(iconEl, iconValue = "") {
+  const customImageUrl = normalizeCustomIconValue(iconValue, { allowEmoji: false });
+  iconEl.innerHTML = "";
+  if (customImageUrl) {
+    const iconImg = document.createElement("img");
+    iconImg.className = "custom-search-icon-img";
+    iconImg.src = customImageUrl;
+    iconImg.alt = "";
+    iconImg.addEventListener("error", () => {
+      iconEl.textContent = "🔀";
+    }, { once: true });
+    iconEl.appendChild(iconImg);
+    return;
+  }
+  const emoji = typeof iconValue === "string" ? iconValue.trim() : "";
+  iconEl.textContent = emoji || "🔀";
+}
+
+function syncCustomSearchWidgetElements(customWidgets = [], autoRouteDefaults = {}, autoRouteIcons = {}) {
   ensureCustomSearchMenuListeners();
   const groups = groupCustomSearchWidgets(customWidgets);
   const validRepIds = new Set(groups.map(g => g.representative.id));
@@ -1167,10 +1235,16 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
     const rep = group.representative;
     const members = group.members;
     const isGrouped = members.length > 1;
+    const hasAutoRouting = isGrouped && members.some(m => normalizeCustomSearchRoutePrefixes(m.routePrefixes).length > 0);
+    const groupKey = group.groupName ? group.groupName.trim().toLowerCase() : "";
+    const isAutoRouteDefault = hasAutoRouting && autoRouteDefaults[groupKey] !== false;
+    const autoRouteIconRaw = typeof autoRouteIcons[groupKey] === "string" ? autoRouteIcons[groupKey].trim() : "";
 
     const configSig = JSON.stringify({
       groupName: group.groupName,
       repId: rep.id,
+      isAutoRouteDefault,
+      autoRouteIconRaw,
       members: members.map(w => {
         const { emoji, customIcon } = resolveCustomWidgetIcon(w);
         return {
@@ -1183,6 +1257,7 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
           urlTemplate: w.urlTemplate || "",
           jsonTemplate: w.jsonTemplate || "",
           openInNewTab: !!w.openInNewTab,
+          routePrefixes: normalizeCustomSearchRoutePrefixes(w.routePrefixes),
           variables: normalizeCustomWidgetVariables(w)
         };
       })
@@ -1195,9 +1270,13 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
       form.dataset.customWidgetId = rep.id;
     }
 
-    const renderEngineForm = (activeWidget) => {
+    const renderEngineForm = (activeWidget, isAutoRouteMode = false) => {
       form.dataset.activeEngineId = activeWidget.id;
+      form.dataset.autoRouteActive = isAutoRouteMode ? "true" : "false";
       const prevPrimaryValue = form.querySelector(".custom-search-input")?.value || "";
+      const matchedByPrefix = isAutoRouteMode && hasAutoRouting
+        ? resolveCustomSearchRouteEngine(members, prevPrimaryValue, null)
+        : null;
       form.innerHTML = "";
 
       const vars = normalizeCustomWidgetVariables(activeWidget);
@@ -1215,7 +1294,11 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
 
         const iconGraphic = document.createElement("span");
         iconGraphic.className = "custom-search-icon";
-        createCustomSearchIconContent(activeWidget, iconGraphic);
+        if (isAutoRouteMode && !matchedByPrefix) {
+          renderAutoRouteIconContent(iconGraphic, autoRouteIconRaw);
+        } else {
+          createCustomSearchIconContent(activeWidget, iconGraphic);
+        }
 
         const caret = document.createElement("span");
         caret.className = "custom-search-icon-caret";
@@ -1226,11 +1309,46 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
 
         engineMenu = document.createElement("div");
         engineMenu.className = "custom-search-engine-menu hidden";
+
+        if (hasAutoRouting) {
+          const autoBtn = document.createElement("button");
+          autoBtn.type = "button";
+          autoBtn.className = "custom-search-engine-option";
+          if (isAutoRouteMode) {
+            autoBtn.classList.add("active");
+          }
+
+          const autoIcon = document.createElement("span");
+          autoIcon.className = "custom-search-icon";
+          renderAutoRouteIconContent(autoIcon, autoRouteIconRaw);
+
+          const autoName = document.createElement("span");
+          autoName.className = "custom-search-engine-name";
+          autoName.textContent = t("customSearchAutoRouteOption") || "Auto-route";
+
+          autoBtn.append(autoIcon, autoName);
+          if (isAutoRouteDefault) {
+            const star = document.createElement("span");
+            star.className = "custom-search-engine-default-star";
+            star.textContent = "★";
+            autoBtn.appendChild(star);
+          }
+
+          autoBtn.addEventListener("click", () => {
+            const currentVal = form.querySelector(".custom-search-input")?.value || "";
+            const matched = resolveCustomSearchRouteEngine(members, currentVal, rep);
+            renderEngineForm(matched, true);
+            const nextInput = form.querySelector(".custom-search-input");
+            if (nextInput) nextInput.focus();
+          });
+          engineMenu.appendChild(autoBtn);
+        }
+
         for (const member of members) {
           const itemBtn = document.createElement("button");
           itemBtn.type = "button";
           itemBtn.className = "custom-search-engine-option";
-          if (member.id === activeWidget.id) {
+          if (!isAutoRouteMode && member.id === activeWidget.id) {
             itemBtn.classList.add("active");
           }
 
@@ -1243,7 +1361,14 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
           optName.textContent = member.name || "Search";
 
           itemBtn.append(optIcon, optName);
-          if (member.isDefault) {
+          const memberPrefixes = normalizeCustomSearchRoutePrefixes(member.routePrefixes);
+          if (memberPrefixes.length > 0) {
+            const prefixSpan = document.createElement("span");
+            prefixSpan.className = "custom-search-engine-prefixes";
+            prefixSpan.textContent = memberPrefixes.join(", ");
+            itemBtn.appendChild(prefixSpan);
+          }
+          if (!isAutoRouteDefault && member.isDefault) {
             const star = document.createElement("span");
             star.className = "custom-search-engine-default-star";
             star.textContent = "★";
@@ -1251,7 +1376,7 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
           }
 
           itemBtn.addEventListener("click", () => {
-            renderEngineForm(member);
+            renderEngineForm(member, false);
             const nextInput = form.querySelector(".custom-search-input");
             if (nextInput) nextInput.focus();
           });
@@ -1285,7 +1410,10 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
         primaryInput.type = "search";
         primaryInput.className = "custom-search-input";
         primaryInput.value = prevPrimaryValue;
-        const placeholder = vars.length === 1 ? (activeWidget.name || primaryVar.label) : `${activeWidget.name || "Search"}: ${primaryVar.label}`;
+        const autoRouteLabel = t("customSearchAutoRouteOption") || "Auto-route";
+        const placeholder = (isAutoRouteMode && !matchedByPrefix)
+          ? `${group.groupName || rep.name || "Search"} (${autoRouteLabel})`
+          : (vars.length === 1 ? (activeWidget.name || primaryVar.label) : `${activeWidget.name || "Search"}: ${primaryVar.label}`);
         primaryInput.placeholder = placeholder;
         primaryInput.setAttribute("aria-label", placeholder);
         valueReaders[primaryVar.key] = () => {
@@ -1295,6 +1423,27 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
           }
           return raw;
         };
+
+        if (hasAutoRouting) {
+          primaryInput.addEventListener("input", () => {
+            if (!isAutoRouteMode) return;
+            const nextMatched = resolveCustomSearchRouteEngine(members, primaryInput.value, rep);
+            const wasMatchedByPrefix = !!matchedByPrefix;
+            const isNowMatchedByPrefix = !!resolveCustomSearchRouteEngine(members, primaryInput.value, null);
+            if ((nextMatched && nextMatched.id !== activeWidget.id) || wasMatchedByPrefix !== isNowMatchedByPrefix) {
+              const selStart = primaryInput.selectionStart;
+              const selEnd = primaryInput.selectionEnd;
+              renderEngineForm(nextMatched, true);
+              const nextInput = form.querySelector(".custom-search-input");
+              if (nextInput) {
+                nextInput.focus();
+                if (typeof selStart === "number" && typeof selEnd === "number") {
+                  try { nextInput.setSelectionRange(selStart, selEnd); } catch {}
+                }
+              }
+            }
+          });
+        }
       } else {
         const titleLabel = document.createElement("span");
         titleLabel.className = "custom-search-title-label";
@@ -1479,10 +1628,27 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
           if (primaryInput) primaryInput.focus();
           return;
         }
-        if (!isValidCustomSearchUrlTemplate(activeWidget.urlTemplate)) return;
-        if (activeWidget.mode === "json" && !isValidCustomSearchJsonTemplate(activeWidget.jsonTemplate)) return;
-        const targetUrl = buildCustomSearchTargetUrl(activeWidget, valuesMap);
-        if (activeWidget.openInNewTab) {
+        const rawPrimaryText = primaryInput ? primaryInput.value.trim() : "";
+        const targetWidget = (isAutoRouteMode && hasAutoRouting)
+          ? resolveCustomSearchRouteEngine(members, rawPrimaryText, rep)
+          : activeWidget;
+
+        let targetValuesMap = valuesMap;
+        if (targetWidget.id !== activeWidget.id) {
+          const targetVars = normalizeCustomWidgetVariables(targetWidget);
+          const targetPrimaryVar = targetVars.find(v => v.type === "text" || v.type === "list") || targetVars[0];
+          targetValuesMap = { ...valuesMap };
+          if (targetPrimaryVar) {
+            targetValuesMap[targetPrimaryVar.key] = targetPrimaryVar.type === "list"
+              ? (rawPrimaryText ? rawPrimaryText.split(",").map(s => s.trim()).filter(Boolean) : [])
+              : rawPrimaryText;
+          }
+        }
+
+        if (!isValidCustomSearchUrlTemplate(targetWidget.urlTemplate)) return;
+        if (targetWidget.mode === "json" && !isValidCustomSearchJsonTemplate(targetWidget.jsonTemplate)) return;
+        const targetUrl = buildCustomSearchTargetUrl(targetWidget, targetValuesMap);
+        if (targetWidget.openInNewTab) {
           window.open(targetUrl, "_blank", "noopener,noreferrer");
         } else {
           window.location.href = targetUrl;
@@ -1491,9 +1657,18 @@ function syncCustomSearchWidgetElements(customWidgets = []) {
     };
 
     if (form.dataset.configSig !== configSig) {
+      const hasPrevAutoRoute = form.dataset.autoRouteActive === "true" || form.dataset.autoRouteActive === "false";
       form.dataset.configSig = configSig;
-      const currentActive = members.find(m => m.id === form.dataset.activeEngineId) || rep;
-      renderEngineForm(currentActive);
+      const nextAutoRoute = hasAutoRouting
+        ? (hasPrevAutoRoute && form.dataset.defaultAutoRouteSig === String(isAutoRouteDefault)
+            ? form.dataset.autoRouteActive === "true"
+            : isAutoRouteDefault)
+        : false;
+      form.dataset.defaultAutoRouteSig = String(isAutoRouteDefault);
+      const currentActive = nextAutoRoute
+        ? resolveCustomSearchRouteEngine(members, form.querySelector(".custom-search-input")?.value || "", rep)
+        : (members.find(m => m.id === form.dataset.activeEngineId) || rep);
+      renderEngineForm(currentActive, nextAutoRoute);
     }
 
     elementMap[rep.id] = form;
@@ -1640,8 +1815,14 @@ export async function applySideSpaces(config = null) {
     ? "disabled"
     : normalizeWidgetSpace(appearance.bookmarksCountSpace, "footer");
   const customWidgets = Array.isArray(appearance.customWidgets) ? appearance.customWidgets : [];
+  const autoRouteDefaults = (appearance.customSearchAutoRouteDefaults && typeof appearance.customSearchAutoRouteDefaults === "object")
+    ? appearance.customSearchAutoRouteDefaults
+    : {};
+  const autoRouteIcons = (appearance.customSearchAutoRouteIcons && typeof appearance.customSearchAutoRouteIcons === "object")
+    ? appearance.customSearchAutoRouteIcons
+    : {};
   const customElements = {
-    ...syncCustomSearchWidgetElements(customWidgets),
+    ...syncCustomSearchWidgetElements(customWidgets, autoRouteDefaults, autoRouteIcons),
     ...syncCustomTimeZoneWidgetElements(customWidgets)
   };
   const widgetOrder = normalizeWidgetOrder(appearance.widgetOrder, customWidgets);
