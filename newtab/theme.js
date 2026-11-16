@@ -1,7 +1,7 @@
 import { THEME_KEY } from "./state.js";
 import { loadConfig, saveConfig } from "./config.js";
 import { t } from "./i18n.js";
-import { normalizeCustomIconValue, isUrlLikeIcon } from "./color-utils.js";
+import { normalizeCustomIconValue, isUrlLikeIcon, applyCachedIconImageSrc } from "./color-utils.js";
 
 const BACKGROUND_IMAGE_CACHE_KEY = "myspeeddial-background-image-cache";
 const CUSTOM_THEME_CSS_CACHE_KEY = "myspeeddial-custom-theme-css-cache";
@@ -1148,7 +1148,7 @@ function createCustomSearchIconContent(widget, iconEl) {
   if (customIcon) {
     const iconImg = document.createElement("img");
     iconImg.className = "custom-search-icon-img";
-    iconImg.src = customIcon;
+    applyCachedIconImageSrc(iconImg, customIcon);
     iconImg.alt = "";
     iconImg.addEventListener("error", () => {
       iconEl.textContent = emoji;
@@ -1207,7 +1207,7 @@ function renderAutoRouteIconContent(iconEl, iconValue = "") {
   if (customImageUrl) {
     const iconImg = document.createElement("img");
     iconImg.className = "custom-search-icon-img";
-    iconImg.src = customImageUrl;
+    applyCachedIconImageSrc(iconImg, customImageUrl);
     iconImg.alt = "";
     iconImg.addEventListener("error", () => {
       iconEl.textContent = "🔀";

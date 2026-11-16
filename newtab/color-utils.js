@@ -261,3 +261,116 @@ export function extractDominantColorFromEmoji(emojiText) {
 
   return sampleDominantColorFromCanvas(ctx, size, size);
 }
+
+const ICON_URL_CACHE_PREFIX = "myspeeddial-icon-url-cache:";
+const ICON_URL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const iconUrlMemoryCache = new Map();
+const inFlightIconUrlFetches = new Map();
+
+function isHttpIconUrl(url) {
+  return typeof url === "string" && /^https?:\/\//i.test(url.trim());
+}
+
+export function getCachedIconUrlDataUrl(url) {
+  if (!isHttpIconUrl(url)) return null;
+  const key = url.trim();
+  const mem = iconUrlMemoryCache.get(key);
+  if (mem) {
+    if (Date.now() - mem.updatedAt < ICON_URL_CACHE_TTL_MS) {
+      return mem.dataUrl;
+    }
+    iconUrlMemoryCache.delete(key);
+  }
+  try {
+    if (typeof localStorage === "undefined") return null;
+    const raw = localStorage.getItem(ICON_URL_CACHE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.dataUrl || typeof parsed.dataUrl !== "string") return null;
+    if (Date.now() - Number(parsed.updatedAt || 0) >= ICON_URL_CACHE_TTL_MS) {
+      localStorage.removeItem(ICON_URL_CACHE_PREFIX + key);
+      return null;
+    }
+    iconUrlMemoryCache.set(key, { dataUrl: parsed.dataUrl, updatedAt: Number(parsed.updatedAt) });
+    return parsed.dataUrl;
+  } catch {
+    return null;
+  }
+}
+
+export function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    if (typeof FileReader === "undefined") {
+      reject(new Error("icon-fetch-unsupported"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(new Error("icon-cache-read-failed"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+export async function fetchIconAsDataUrl(iconUrl, force = false, { requireImageType = false } = {}) {
+  if (typeof fetch !== "function" || typeof FileReader === "undefined") {
+    throw new Error("icon-fetch-unsupported");
+  }
+  const response = await fetch(iconUrl, {
+    cache: force ? "reload" : "default"
+  });
+  if (!response.ok) {
+    throw new Error(`icon-fetch-failed:${response.status}`);
+  }
+  const iconBlob = await response.blob();
+  if (!iconBlob || iconBlob.size === 0) {
+    throw new Error("icon-blob-empty");
+  }
+  if (requireImageType && iconBlob.type && !iconBlob.type.startsWith("image/")) {
+    throw new Error("icon-blob-not-image");
+  }
+  return await blobToDataUrl(iconBlob);
+}
+
+export async function cacheIconUrlIfNeeded(url) {
+  if (!isHttpIconUrl(url) || typeof fetch !== "function") return null;
+  const key = url.trim();
+  const existing = getCachedIconUrlDataUrl(key);
+  if (existing) return existing;
+  if (inFlightIconUrlFetches.has(key)) {
+    return inFlightIconUrlFetches.get(key);
+  }
+
+  const task = (async () => {
+    try {
+      const dataUrl = await fetchIconAsDataUrl(key, false, { requireImageType: true });
+      if (!dataUrl) return null;
+
+      const entry = { dataUrl, updatedAt: Date.now() };
+      iconUrlMemoryCache.set(key, entry);
+      try {
+        if (typeof localStorage !== "undefined" && dataUrl.length <= 64000) {
+          localStorage.setItem(ICON_URL_CACHE_PREFIX + key, JSON.stringify(entry));
+        }
+      } catch {
+        // Ignore storage quota errors for icon URL cache.
+      }
+      return dataUrl;
+    } catch {
+      return null;
+    } finally {
+      inFlightIconUrlFetches.delete(key);
+    }
+  })();
+
+  inFlightIconUrlFetches.set(key, task);
+  return task;
+}
+
+export function applyCachedIconImageSrc(imgEl, iconUrl) {
+  if (!imgEl || !iconUrl) return;
+  const cached = getCachedIconUrlDataUrl(iconUrl);
+  imgEl.src = cached || iconUrl;
+  if (!cached && isHttpIconUrl(iconUrl)) {
+    void cacheIconUrlIfNeeded(iconUrl);
+  }
+}

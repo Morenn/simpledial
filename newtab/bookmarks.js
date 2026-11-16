@@ -23,7 +23,9 @@ import {
   extractDominantColorFromEmoji,
   resolveGroupIcons,
   applyTileColorStyle,
-  isValidHexColor
+  isValidHexColor,
+  blobToDataUrl,
+  fetchIconAsDataUrl
 } from "./color-utils.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
@@ -58,15 +60,22 @@ export async function ensureHostPermission() {
 // ---------- Favicon cache (localStorage only, never synced) ----------
 const FAVICON_CACHE_PREFIX = "favicon-cache:";
 
+const faviconMemoryCache = new Map();
+
 function faviconCacheKey(item) {
   return `${FAVICON_CACHE_PREFIX}${item.id}`;
 }
 
 function getFaviconCacheEntry(item) {
   if (!item?.id) return {};
+  if (faviconMemoryCache.has(item.id)) {
+    return faviconMemoryCache.get(item.id);
+  }
   try {
     const raw = localStorage.getItem(faviconCacheKey(item));
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    faviconMemoryCache.set(item.id, parsed);
+    return parsed;
   } catch (err) {
     console.warn("[favicon] localStorage read/parse failed", err);
     return {};
@@ -75,8 +84,9 @@ function getFaviconCacheEntry(item) {
 
 function setFaviconCacheEntry(item, partial) {
   if (!item?.id) return;
+  const next = { ...getFaviconCacheEntry(item), ...partial };
+  faviconMemoryCache.set(item.id, next);
   try {
-    const next = { ...getFaviconCacheEntry(item), ...partial };
     localStorage.setItem(faviconCacheKey(item), JSON.stringify(next));
   } catch (err) {
     console.warn("[favicon] localStorage write failed (quota?)", err);
@@ -85,6 +95,7 @@ function setFaviconCacheEntry(item, partial) {
 
 function clearFaviconCacheEntry(item) {
   if (!item?.id) return;
+  faviconMemoryCache.delete(item.id);
   try {
     localStorage.removeItem(faviconCacheKey(item));
   } catch (err) {
@@ -798,32 +809,6 @@ function isIconMissing(item) {
   }
 
   return !getIconRefreshedAt(item);
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("icon-cache-read-failed"));
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function fetchIconAsDataUrl(iconUrl, force = false) {
-  const response = await fetch(iconUrl, {
-    cache: force ? "reload" : "default"
-  });
-
-  if (!response.ok) {
-    throw new Error(`icon-fetch-failed:${response.status}`);
-  }
-
-  const iconBlob = await response.blob();
-  if (!iconBlob || iconBlob.size === 0) {
-    throw new Error("icon-blob-empty");
-  }
-
-  return await blobToDataUrl(iconBlob);
 }
 
 async function refreshBookmarkIcon(item, options = {}) {

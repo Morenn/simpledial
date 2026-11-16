@@ -11,7 +11,7 @@ import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
 import { applyMassTileColorFromIcon } from "./bookmarks.js";
 import { renderGroups } from "./groups.js";
-import { normalizeCustomIconValue } from "./color-utils.js";
+import { normalizeCustomIconValue, applyCachedIconImageSrc } from "./color-utils.js";
 // ======================================================
 // SETTINGS MODAL UI
 // ======================================================
@@ -661,7 +661,7 @@ function initializeSettingsDirtyTracking() {
       if (customIcon) {
         const img = document.createElement("img");
         img.className = "widget-order-icon-img";
-        img.src = customIcon;
+        applyCachedIconImageSrc(img, customIcon);
         img.alt = "";
         img.addEventListener("error", () => {
           iconWrap.textContent = emoji;
@@ -938,7 +938,7 @@ function initializeSettingsDirtyTracking() {
         if (customAutoImgUrl) {
           const iconImg = document.createElement("img");
           iconImg.className = "widget-order-icon-img";
-          iconImg.src = customAutoImgUrl;
+          applyCachedIconImageSrc(iconImg, customAutoImgUrl);
           iconImg.alt = "";
           iconImg.addEventListener("error", () => {
             autoRouteIconBtn.textContent = "🔀";

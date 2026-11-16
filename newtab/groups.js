@@ -9,7 +9,8 @@ import {
   isValidHexColor,
   extractDominantColorFromImageSource,
   extractDominantColorFromEmoji,
-  applyTileColorStyle
+  applyTileColorStyle,
+  applyCachedIconImageSrc
 } from "./color-utils.js";
 
 let lastShowGroupBookmarkCount = true;
@@ -44,7 +45,7 @@ function setGroupElementContent(el, group, showCount) {
     const iconImg = document.createElement("img");
     iconImg.className = "group-tab-icon";
     iconImg.alt = "";
-    iconImg.src = customIcon;
+    applyCachedIconImageSrc(iconImg, customIcon);
     iconImg.addEventListener("error", () => {
       if (iconEmoji) {
         iconImg.replaceWith(createGroupEmojiSpan(iconEmoji));
