@@ -1282,5 +1282,110 @@
   },
   "defaultFallbackIconInvalid": {
     "message": "Veuillez sélectionner un fichier image valide."
+  },
+  "browserImportWizardBtn": {
+    "message": "Assistant d'import"
+  },
+  "browserImportWizardTitle": {
+    "message": "Assistant d'importation des favoris du navigateur"
+  },
+  "browserImportWizardDesc": {
+    "message": "Choisissez un dossier de départ et comment les sous-dossiers sont convertis en groupes, sections et piles."
+  },
+  "browserImportRootLabel": {
+    "message": "Dossier de départ"
+  },
+  "browserImportStructureLabel": {
+    "message": "Niveau de structure initial"
+  },
+  "browserImportStructureGroups": {
+    "message": "Les sous-dossiers deviennent des groupes"
+  },
+  "browserImportStructureSingleGroup": {
+    "message": "Le dossier sélectionné devient 1 groupe"
+  },
+  "browserImportDepthLabel": {
+    "message": "Correspondance des sous-dossiers"
+  },
+  "browserImportDepthAuto": {
+    "message": "Auto (Groupes → Sections → Piles → Favoris)"
+  },
+  "browserImportDepthSections": {
+    "message": "Groupes → Sections (aplatir au-delà)"
+  },
+  "browserImportDepthStacks": {
+    "message": "Groupes → Piles (aplatir au-delà)"
+  },
+  "browserImportDepthFlat": {
+    "message": "Groupes uniquement (tout aplatir)"
+  },
+  "browserImportModeLabel": {
+    "message": "Mode d'importation"
+  },
+  "browserImportModeMerge": {
+    "message": "Fusionner (ignorer les doublons)"
+  },
+  "browserImportModeReplace": {
+    "message": "Tout remplacer"
+  },
+  "browserImportTagImported": {
+    "message": "Étiqueter les favoris importés comme Imported"
+  },
+  "browserImportConfirmBtn": {
+    "message": "Importer"
+  },
+  "browserImportFallbackGroup": {
+    "message": "Favoris importés"
+  },
+  "browserImportPreviewGroups": {
+    "message": "Groupes"
+  },
+  "browserImportPreviewSections": {
+    "message": "Sections"
+  },
+  "browserImportPreviewStacks": {
+    "message": "Piles"
+  },
+  "browserImportPreviewBookmarks": {
+    "message": "Favoris"
+  },
+  "browserImportPreviewSkipped": {
+    "message": "Doublons ignorés"
+  },
+  "browserImportSuccess": {
+    "message": "{count} favori(s) importé(s)."
+  },
+  "browserImportTargetGroupLabel": {
+    "message": "Groupe cible"
+  },
+  "browserImportTargetGroupNew": {
+    "message": "Créer un groupe (ou associer par nom)"
+  },
+  "browserImportClearTags": {
+    "message": "Effacer les étiquettes Imported"
+  },
+  "browserImportClearTagsDone": {
+    "message": "Étiquette Imported retirée de {count} favori(s)."
+  },
+  "browserImportPreviewNew": {
+    "message": "nouveau"
+  },
+  "browserImportPreviewMerge": {
+    "message": "fusionner"
+  },
+  "browserImportPreviewReplace": {
+    "message": "remplacer"
+  },
+  "browserBookmarksOverwriteTitle": {
+    "message": "Importer depuis le dossier SimpleDial"
+  },
+  "browserBookmarksOverwriteBody": {
+    "message": "Ceci importera les favoris depuis le dossier dédié « SimpleDial » du navigateur, écrasera tous vos groupes et favoris SpeedDial actuels et désactivera la synchronisation. Pour importer d'autres dossiers ou fusionner sans écraser, utilisez plutôt l'Assistant d'import."
+  },
+  "browserBookmarksOverwriteConfirm": {
+    "message": "Écraser et importer"
+  },
+  "browserBookmarksOverwriteCheckbox": {
+    "message": "Je comprends que tous les groupes et favoris actuels seront écrasés"
   }
 }

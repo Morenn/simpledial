@@ -1655,6 +1655,17 @@ body.theme-dark .bookmark-title:hover {
   color: white;
 }
 
+.icon-btn:disabled,
+.icon-btn.primary:disabled,
+.icon-btn.danger:disabled {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--border);
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
 /* ─────────────────────────────────────────────
    SETTINGS MODAL TABS
 ───────────────────────────────────────────── */
@@ -4235,4 +4246,98 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   white-space: nowrap;
+}
+
+/* ─── BROWSER IMPORT WIZARD MODAL ─── */
+.browser-import-modal-content {
+  width: 92vw;
+  max-width: 560px;
+}
+
+.browser-import-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.browser-import-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.browser-import-field .appearance-select {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.browser-import-field > label,
+.browser-import-field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.browser-import-preview {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  font-size: 0.84rem;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.browser-import-preview-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  font-weight: 600;
+}
+
+.browser-import-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 150px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 0.45rem;
+}
+
+.browser-import-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.browser-import-preview-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-import-preview-badge {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  flex: 0 0 auto;
+}
+
+.browser-import-preview-counts {
+  opacity: 0.85;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }

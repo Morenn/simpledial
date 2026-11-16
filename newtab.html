@@ -419,6 +419,7 @@
               <div class="tile-mass-color-actions">
                 <button id="export-bookmarks-btn" class="icon-btn primary" data-i18n="exportBrowserBookmarks">📁 Export</button>
                 <button id="import-bookmarks-btn" class="icon-btn primary" data-i18n="importBrowserBookmarks">📂 Import</button>
+                <button id="import-wizard-btn" class="icon-btn" data-i18n="browserImportWizardBtn">🪄 Import Wizard</button>
               </div>
             </div>
           </div>
@@ -1009,6 +1010,88 @@
         <button type="button" id="failed-icons-exclude-all" class="icon-btn primary" data-i18n="failedIconExcludeAll">🚫 Exclude all</button>
         <button type="button" id="failed-icons-clear" class="icon-btn" data-i18n="failedIconClearList">✖️ Clear list</button>
         <button type="button" id="failed-icons-close" class="icon-btn" data-i18n="close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browser Bookmarks Import Wizard Modal -->
+  <div id="browser-import-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="browser-import-title">
+    <div class="modal-content browser-import-modal-content">
+      <h2 id="browser-import-title" data-i18n="browserImportWizardTitle">🪄 Browser Bookmarks Import Wizard</h2>
+      <p class="appearance-card-desc" data-i18n="browserImportWizardDesc">Choose a starting folder and how subfolders map into Groups, Sections, and Stacks.</p>
+
+      <div class="browser-import-form">
+        <div class="browser-import-field">
+          <label for="browser-import-root" data-i18n="browserImportRootLabel">Starting folder</label>
+          <select id="browser-import-root" name="browser-import-root" class="appearance-select"></select>
+        </div>
+
+        <div class="browser-import-field">
+          <label for="browser-import-structure" data-i18n="browserImportStructureLabel">Starting structure layer</label>
+          <select id="browser-import-structure" name="browser-import-structure" class="appearance-select">
+            <option value="groups" data-i18n="browserImportStructureGroups">Subfolders become Groups</option>
+            <option value="single-group" data-i18n="browserImportStructureSingleGroup">Selected folder becomes 1 Group</option>
+          </select>
+        </div>
+
+        <div id="browser-import-target-group-field" class="browser-import-field hidden">
+          <label for="browser-import-target-group" data-i18n="browserImportTargetGroupLabel">Target group</label>
+          <select id="browser-import-target-group" name="browser-import-target-group" class="appearance-select"></select>
+        </div>
+
+        <div class="browser-import-field">
+          <label for="browser-import-depth" data-i18n="browserImportDepthLabel">Subfolder mapping</label>
+          <select id="browser-import-depth" name="browser-import-depth" class="appearance-select">
+            <option value="auto" data-i18n="browserImportDepthAuto">Auto (Groups → Sections → Stacks → Bookmarks)</option>
+            <option value="sections" data-i18n="browserImportDepthSections">Groups → Sections (flatten deeper)</option>
+            <option value="stacks" data-i18n="browserImportDepthStacks">Groups → Stacks (flatten deeper)</option>
+            <option value="flat" data-i18n="browserImportDepthFlat">Groups only (flatten all subfolders)</option>
+          </select>
+        </div>
+
+        <div class="browser-import-field">
+          <div class="browser-import-field-label" data-i18n="browserImportModeLabel">Import mode</div>
+          <div class="choice-group appearance-choice-group">
+            <label class="choice-option choice-option-inline">
+              <input type="radio" name="browser-import-mode" id="browser-import-mode-merge" value="merge" checked>
+              <span class="choice-option-title" data-i18n="browserImportModeMerge">Merge (skip duplicates)</span>
+            </label>
+            <label class="choice-option choice-option-inline">
+              <input type="radio" name="browser-import-mode" id="browser-import-mode-replace" value="replace">
+              <span class="choice-option-title" data-i18n="browserImportModeReplace">Replace all</span>
+            </label>
+          </div>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="browser-import-tag" name="browser-import-tag" checked>
+          <span data-i18n="browserImportTagImported">Tag imported bookmarks as Imported</span>
+        </label>
+
+        <div id="browser-import-preview" class="browser-import-preview"></div>
+        <div id="browser-import-status" class="status"></div>
+      </div>
+
+      <div class="modal-buttons">
+        <button type="button" id="browser-import-confirm" class="icon-btn primary" data-i18n="browserImportConfirmBtn">📥 Import</button>
+        <button type="button" id="browser-import-clear-tags" class="icon-btn" data-i18n="browserImportClearTags">🧹 Clear Imported tags</button>
+        <button type="button" id="browser-import-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SimpleDial Folder Import Confirmation Modal -->
+  <div id="browser-bookmarks-overwrite-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="browser-bookmarks-overwrite-title">
+    <div class="modal-content browser-import-modal-content">
+      <h2 id="browser-bookmarks-overwrite-title" data-i18n="browserBookmarksOverwriteTitle">⚠️ Import from SimpleDial Folder</h2>
+      <p class="custom-widget-trust-modal-body" data-i18n="browserBookmarksOverwriteBody">This will import bookmarks from the dedicated "SimpleDial" browser bookmarks folder, overwrite all your current SpeedDial groups and bookmarks, and disable sync. To import other browser folders or merge without overwriting, use the Import Wizard instead.</p>
+      <label class="checkbox-row custom-widget-trust-checkbox-row">
+        <input type="checkbox" id="browser-bookmarks-overwrite-checkbox" name="browser-bookmarks-overwrite-checkbox">
+        <span data-i18n="browserBookmarksOverwriteCheckbox">I understand that all current groups and bookmarks will be overwritten</span>
+      </label>
+      <div class="modal-buttons">
+        <button type="button" id="browser-bookmarks-overwrite-confirm" class="icon-btn danger" data-i18n="browserBookmarksOverwriteConfirm" disabled>⚠️ Overwrite &amp; Import</button>
+        <button type="button" id="browser-bookmarks-overwrite-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>

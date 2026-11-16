@@ -6,11 +6,13 @@ export const SYSTEM_TAGS_KEY = "myspeeddial-system-tags";
 export const SYSTEM_TAG_HTTP_ID = "sys_http";
 export const SYSTEM_TAG_DEAD_LINK_ID = "sys_dead_link";
 export const SYSTEM_TAG_DUPLICATE_ID = "sys_duplicate";
+export const SYSTEM_TAG_IMPORTED_ID = "sys_imported";
 
 export const SYSTEM_TAGS = [
   { id: SYSTEM_TAG_HTTP_ID, name: "⚠️ HTTP", color: "#f59e0b", system: true },
   { id: SYSTEM_TAG_DEAD_LINK_ID, name: "⛔Dead link", color: "#ef4444", system: true },
-  { id: SYSTEM_TAG_DUPLICATE_ID, name: "🎭Duplicate", color: "#a855f7", system: true }
+  { id: SYSTEM_TAG_DUPLICATE_ID, name: "🎭Duplicate", color: "#a855f7", system: true },
+  { id: SYSTEM_TAG_IMPORTED_ID, name: "📥Imported", color: "#3b82f6", system: true }
 ];
 
 const SYSTEM_TAG_ID_SET = new Set(SYSTEM_TAGS.map(tag => tag.id));

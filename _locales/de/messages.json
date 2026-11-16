@@ -1282,5 +1282,110 @@
   },
   "defaultFallbackIconInvalid": {
     "message": "Bitte wählen Sie eine gültige Bilddatei."
+  },
+  "browserImportWizardBtn": {
+    "message": "Import-Assistent"
+  },
+  "browserImportWizardTitle": {
+    "message": "Assistent für Browser-Lesezeichenimport"
+  },
+  "browserImportWizardDesc": {
+    "message": "Wählen Sie einen Startordner und wie Unterordner auf Gruppen, Abschnitte und Stapel abgebildet werden."
+  },
+  "browserImportRootLabel": {
+    "message": "Startordner"
+  },
+  "browserImportStructureLabel": {
+    "message": "Start-Strukturebene"
+  },
+  "browserImportStructureGroups": {
+    "message": "Unterordner werden Gruppen"
+  },
+  "browserImportStructureSingleGroup": {
+    "message": "Ausgewählter Ordner wird 1 Gruppe"
+  },
+  "browserImportDepthLabel": {
+    "message": "Unterordner-Zuordnung"
+  },
+  "browserImportDepthAuto": {
+    "message": "Automatisch (Gruppen → Abschnitte → Stapel → Lesezeichen)"
+  },
+  "browserImportDepthSections": {
+    "message": "Gruppen → Abschnitte (tiefere zusammenführen)"
+  },
+  "browserImportDepthStacks": {
+    "message": "Gruppen → Stapel (tiefere zusammenführen)"
+  },
+  "browserImportDepthFlat": {
+    "message": "Nur Gruppen (alle Unterordner zusammenführen)"
+  },
+  "browserImportModeLabel": {
+    "message": "Importmodus"
+  },
+  "browserImportModeMerge": {
+    "message": "Zusammenführen (Duplikate überspringen)"
+  },
+  "browserImportModeReplace": {
+    "message": "Alles ersetzen"
+  },
+  "browserImportTagImported": {
+    "message": "Importierte Lesezeichen mit „Imported“ markieren"
+  },
+  "browserImportConfirmBtn": {
+    "message": "Importieren"
+  },
+  "browserImportFallbackGroup": {
+    "message": "Importierte Lesezeichen"
+  },
+  "browserImportPreviewGroups": {
+    "message": "Gruppen"
+  },
+  "browserImportPreviewSections": {
+    "message": "Abschnitte"
+  },
+  "browserImportPreviewStacks": {
+    "message": "Stapel"
+  },
+  "browserImportPreviewBookmarks": {
+    "message": "Lesezeichen"
+  },
+  "browserImportPreviewSkipped": {
+    "message": "Übersprungene Duplikate"
+  },
+  "browserImportSuccess": {
+    "message": "{count} Lesezeichen importiert."
+  },
+  "browserImportTargetGroupLabel": {
+    "message": "Zielgruppe"
+  },
+  "browserImportTargetGroupNew": {
+    "message": "Neue Gruppe erstellen (oder nach Namen abgleichen)"
+  },
+  "browserImportClearTags": {
+    "message": "Imported-Tags entfernen"
+  },
+  "browserImportClearTagsDone": {
+    "message": "Imported-Tag von {count} Lesezeichen entfernt."
+  },
+  "browserImportPreviewNew": {
+    "message": "neu"
+  },
+  "browserImportPreviewMerge": {
+    "message": "zusammenführen"
+  },
+  "browserImportPreviewReplace": {
+    "message": "ersetzen"
+  },
+  "browserBookmarksOverwriteTitle": {
+    "message": "Aus SimpleDial-Ordner importieren"
+  },
+  "browserBookmarksOverwriteBody": {
+    "message": "Dadurch werden Lesezeichen aus dem dedizierten Browser-Ordner „SimpleDial“ importiert, alle aktuellen SpeedDial-Gruppen und Lesezeichen überschrieben und die Synchronisierung deaktiviert. Um andere Browser-Ordner zu importieren oder ohne Überschreiben zusammenzuführen, verwenden Sie stattdessen den Import-Assistenten."
+  },
+  "browserBookmarksOverwriteConfirm": {
+    "message": "Überschreiben & importieren"
+  },
+  "browserBookmarksOverwriteCheckbox": {
+    "message": "Ich verstehe, dass alle aktuellen Gruppen und Lesezeichen überschrieben werden"
   }
 }

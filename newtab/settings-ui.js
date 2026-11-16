@@ -248,6 +248,14 @@ if (settingsCancelBtn) {
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
+    const subModalIds = ["browser-bookmarks-overwrite-modal", "browser-import-modal", "failed-icons-modal", "custom-widget-trust-modal"];
+    for (const id of subModalIds) {
+      const subModal = document.getElementById(id);
+      if (subModal && !subModal.classList.contains("hidden")) {
+        subModal.classList.add("hidden");
+        return;
+      }
+    }
     settingsModal?.classList.add("hidden");
     void revertAppearancePreviewToSaved();
   }

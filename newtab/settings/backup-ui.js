@@ -6,6 +6,7 @@ import { render, calculateGridLayout } from "../render.js";
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "../backup.js";
 import { syncBrowserBookmarks } from "../browser-bookmarks-sync.js";
 import { settingsState, setSettingsDirty } from "./context.js";
+import { initImportWizard } from "./importwizard-ui.js";
 
 const settingsModal = document.getElementById("settings-modal");
 const backupRetentionDays = document.getElementById("backup-retention-days");
@@ -20,6 +21,10 @@ const importBtn = document.getElementById("import-btn");
 const importFile = document.getElementById("import-file");
 const exportBookmarksBtn = document.getElementById("export-bookmarks-btn");
 const importBookmarksBtn = document.getElementById("import-bookmarks-btn");
+const browserBookmarksOverwriteModal = document.getElementById("browser-bookmarks-overwrite-modal");
+const browserBookmarksOverwriteCheckbox = document.getElementById("browser-bookmarks-overwrite-checkbox");
+const browserBookmarksOverwriteConfirmBtn = document.getElementById("browser-bookmarks-overwrite-confirm");
+const browserBookmarksOverwriteCancelBtn = document.getElementById("browser-bookmarks-overwrite-cancel");
 const exportNetscapeBtn = document.getElementById("export-netscape-btn");
 const importNetscapeBtn = document.getElementById("import-netscape-btn");
 const importNetscapeFile = document.getElementById("import-netscape-file");
@@ -489,11 +494,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
     }
   });
 
-  importBookmarksBtn?.addEventListener("click", async () => {
-    if (!confirm(t("browserBookmarksImportWarning"))) {
-      return;
-    }
-
+  async function executeSimpleDialFolderImport() {
     try {
       const folder = await findOrCreateSimpleDialFolder();
       const children = await getBookmarkChildren(folder.id);
@@ -586,6 +587,46 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
       setSyncStatusMessage("❌ " + t("syncFailed"));
       alert(t("syncFailed"));
     }
+  }
+
+  importBookmarksBtn?.addEventListener("click", () => {
+    if (browserBookmarksOverwriteModal) {
+      if (browserBookmarksOverwriteCheckbox) {
+        browserBookmarksOverwriteCheckbox.checked = false;
+      }
+      if (browserBookmarksOverwriteConfirmBtn) {
+        browserBookmarksOverwriteConfirmBtn.disabled = true;
+      }
+      browserBookmarksOverwriteModal.classList.remove("hidden");
+      return;
+    }
+    if (confirm(t("browserBookmarksImportWarning"))) {
+      void executeSimpleDialFolderImport();
+    }
+  });
+
+  browserBookmarksOverwriteCheckbox?.addEventListener("change", () => {
+    if (browserBookmarksOverwriteConfirmBtn) {
+      browserBookmarksOverwriteConfirmBtn.disabled = !browserBookmarksOverwriteCheckbox.checked;
+    }
+  });
+
+  browserBookmarksOverwriteCancelBtn?.addEventListener("click", () => {
+    browserBookmarksOverwriteModal?.classList.add("hidden");
+  });
+
+  browserBookmarksOverwriteModal?.addEventListener("click", (e) => {
+    if (e.target === browserBookmarksOverwriteModal) {
+      browserBookmarksOverwriteModal.classList.add("hidden");
+    }
+  });
+
+  browserBookmarksOverwriteConfirmBtn?.addEventListener("click", async () => {
+    if (browserBookmarksOverwriteCheckbox && !browserBookmarksOverwriteCheckbox.checked) {
+      return;
+    }
+    browserBookmarksOverwriteModal?.classList.add("hidden");
+    await executeSimpleDialFolderImport();
   });
 
   backupSubtabBtns.forEach(btn => {
@@ -706,4 +747,6 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
       }
     });
   }
+
+  initImportWizard({ setSyncStatusMessage });
 }

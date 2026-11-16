@@ -1282,5 +1282,110 @@
   },
   "defaultFallbackIconInvalid": {
     "message": "Selecteer een geldig afbeeldingsbestand."
+  },
+  "browserImportWizardBtn": {
+    "message": "Importwizard"
+  },
+  "browserImportWizardTitle": {
+    "message": "Wizard voor browserbladwijzers importeren"
+  },
+  "browserImportWizardDesc": {
+    "message": "Kies een startmap en hoe submappen worden omgezet in groepen, secties en stapels."
+  },
+  "browserImportRootLabel": {
+    "message": "Startmap"
+  },
+  "browserImportStructureLabel": {
+    "message": "Startstructuurlaag"
+  },
+  "browserImportStructureGroups": {
+    "message": "Submappen worden groepen"
+  },
+  "browserImportStructureSingleGroup": {
+    "message": "Geselecteerde map wordt 1 groep"
+  },
+  "browserImportDepthLabel": {
+    "message": "Submaptoewijzing"
+  },
+  "browserImportDepthAuto": {
+    "message": "Automatisch (Groepen → Secties → Stapels → Bladwijzers)"
+  },
+  "browserImportDepthSections": {
+    "message": "Groepen → Secties (diepere samenvoegen)"
+  },
+  "browserImportDepthStacks": {
+    "message": "Groepen → Stapels (diepere samenvoegen)"
+  },
+  "browserImportDepthFlat": {
+    "message": "Alleen groepen (alle submappen samenvoegen)"
+  },
+  "browserImportModeLabel": {
+    "message": "Importmodus"
+  },
+  "browserImportModeMerge": {
+    "message": "Samenvoegen (duplicaten overslaan)"
+  },
+  "browserImportModeReplace": {
+    "message": "Alles vervangen"
+  },
+  "browserImportTagImported": {
+    "message": "Geïmporteerde bladwijzers labelen als Imported"
+  },
+  "browserImportConfirmBtn": {
+    "message": "Importeren"
+  },
+  "browserImportFallbackGroup": {
+    "message": "Geïmporteerde bladwijzers"
+  },
+  "browserImportPreviewGroups": {
+    "message": "Groepen"
+  },
+  "browserImportPreviewSections": {
+    "message": "Secties"
+  },
+  "browserImportPreviewStacks": {
+    "message": "Stapels"
+  },
+  "browserImportPreviewBookmarks": {
+    "message": "Bladwijzers"
+  },
+  "browserImportPreviewSkipped": {
+    "message": "Overgeslagen duplicaten"
+  },
+  "browserImportSuccess": {
+    "message": "{count} bladwijzer(s) geïmporteerd."
+  },
+  "browserImportTargetGroupLabel": {
+    "message": "Doelgroep"
+  },
+  "browserImportTargetGroupNew": {
+    "message": "Nieuwe groep maken (of op naam koppelen)"
+  },
+  "browserImportClearTags": {
+    "message": "Imported-labels wissen"
+  },
+  "browserImportClearTagsDone": {
+    "message": "Imported-label verwijderd van {count} bladwijzer(s)."
+  },
+  "browserImportPreviewNew": {
+    "message": "nieuw"
+  },
+  "browserImportPreviewMerge": {
+    "message": "samenvoegen"
+  },
+  "browserImportPreviewReplace": {
+    "message": "vervangen"
+  },
+  "browserBookmarksOverwriteTitle": {
+    "message": "Importeren uit SimpleDial-map"
+  },
+  "browserBookmarksOverwriteBody": {
+    "message": "Dit importeert bladwijzers uit de speciale browsermap \"SimpleDial\", overschrijft al uw huidige SpeedDial-groepen en bladwijzers en schakelt synchronisatie uit. Gebruik de Importwizard om andere browsermappen te importeren of samen te voegen zonder te overschrijven."
+  },
+  "browserBookmarksOverwriteConfirm": {
+    "message": "Overschrijven en importeren"
+  },
+  "browserBookmarksOverwriteCheckbox": {
+    "message": "Ik begrijp dat alle huidige groepen en bladwijzers worden overschreven"
   }
 }

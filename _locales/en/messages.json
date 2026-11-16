@@ -1285,5 +1285,110 @@
   },
   "defaultFallbackIconInvalid": {
     "message": "Please select a valid image file."
+  },
+  "browserImportWizardBtn": {
+    "message": "Import Wizard"
+  },
+  "browserImportWizardTitle": {
+    "message": "Browser Bookmarks Import Wizard"
+  },
+  "browserImportWizardDesc": {
+    "message": "Choose a starting folder and how subfolders map into Groups, Sections, and Stacks."
+  },
+  "browserImportRootLabel": {
+    "message": "Starting folder"
+  },
+  "browserImportStructureLabel": {
+    "message": "Starting structure layer"
+  },
+  "browserImportStructureGroups": {
+    "message": "Subfolders become Groups"
+  },
+  "browserImportStructureSingleGroup": {
+    "message": "Selected folder becomes 1 Group"
+  },
+  "browserImportDepthLabel": {
+    "message": "Subfolder mapping"
+  },
+  "browserImportDepthAuto": {
+    "message": "Auto (Groups → Sections → Stacks → Bookmarks)"
+  },
+  "browserImportDepthSections": {
+    "message": "Groups → Sections (flatten deeper)"
+  },
+  "browserImportDepthStacks": {
+    "message": "Groups → Stacks (flatten deeper)"
+  },
+  "browserImportDepthFlat": {
+    "message": "Groups only (flatten all subfolders)"
+  },
+  "browserImportModeLabel": {
+    "message": "Import mode"
+  },
+  "browserImportModeMerge": {
+    "message": "Merge (skip duplicates)"
+  },
+  "browserImportModeReplace": {
+    "message": "Replace all"
+  },
+  "browserImportTagImported": {
+    "message": "Tag imported bookmarks as Imported"
+  },
+  "browserImportConfirmBtn": {
+    "message": "Import"
+  },
+  "browserImportFallbackGroup": {
+    "message": "Imported bookmarks"
+  },
+  "browserImportPreviewGroups": {
+    "message": "Groups"
+  },
+  "browserImportPreviewSections": {
+    "message": "Sections"
+  },
+  "browserImportPreviewStacks": {
+    "message": "Stacks"
+  },
+  "browserImportPreviewBookmarks": {
+    "message": "Bookmarks"
+  },
+  "browserImportPreviewSkipped": {
+    "message": "Skipped duplicates"
+  },
+  "browserImportSuccess": {
+    "message": "Imported {count} bookmark(s)."
+  },
+  "browserImportTargetGroupLabel": {
+    "message": "Target group"
+  },
+  "browserImportTargetGroupNew": {
+    "message": "Create new group (or match by name)"
+  },
+  "browserImportClearTags": {
+    "message": "Clear Imported tags"
+  },
+  "browserImportClearTagsDone": {
+    "message": "Cleared Imported tag from {count} bookmark(s)."
+  },
+  "browserImportPreviewNew": {
+    "message": "new"
+  },
+  "browserImportPreviewMerge": {
+    "message": "merge"
+  },
+  "browserImportPreviewReplace": {
+    "message": "replace"
+  },
+  "browserBookmarksOverwriteTitle": {
+    "message": "Import from SimpleDial Folder"
+  },
+  "browserBookmarksOverwriteBody": {
+    "message": "This will import bookmarks from the dedicated \"SimpleDial\" browser bookmarks folder, overwrite all your current SpeedDial groups and bookmarks, and disable sync. To import other browser folders or merge without overwriting, use the Import Wizard instead."
+  },
+  "browserBookmarksOverwriteConfirm": {
+    "message": "Overwrite & Import"
+  },
+  "browserBookmarksOverwriteCheckbox": {
+    "message": "I understand that all current groups and bookmarks will be overwritten"
   }
 }

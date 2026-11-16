@@ -1282,5 +1282,110 @@
   },
   "defaultFallbackIconInvalid": {
     "message": "Vyberte prosím platný soubor obrázku."
+  },
+  "browserImportWizardBtn": {
+    "message": "Průvodce importem"
+  },
+  "browserImportWizardTitle": {
+    "message": "Průvodce importem záložek prohlížeče"
+  },
+  "browserImportWizardDesc": {
+    "message": "Vyberte výchozí složku a způsob mapování podsložek na skupiny, sekce a balíčky."
+  },
+  "browserImportRootLabel": {
+    "message": "Výchozí složka"
+  },
+  "browserImportStructureLabel": {
+    "message": "Výchozí vrstva struktury"
+  },
+  "browserImportStructureGroups": {
+    "message": "Podsložky jako skupiny"
+  },
+  "browserImportStructureSingleGroup": {
+    "message": "Vybraná složka jako 1 skupina"
+  },
+  "browserImportDepthLabel": {
+    "message": "Mapování podsložek"
+  },
+  "browserImportDepthAuto": {
+    "message": "Automaticky (Skupiny → Sekce → Balíčky → Záložky)"
+  },
+  "browserImportDepthSections": {
+    "message": "Skupiny → Sekce (zbytek sloučit)"
+  },
+  "browserImportDepthStacks": {
+    "message": "Skupiny → Balíčky (zbytek sloučit)"
+  },
+  "browserImportDepthFlat": {
+    "message": "Pouze skupiny (sloučit všechny podsložky)"
+  },
+  "browserImportModeLabel": {
+    "message": "Režim importu"
+  },
+  "browserImportModeMerge": {
+    "message": "Sloučit (přeskočit duplicity)"
+  },
+  "browserImportModeReplace": {
+    "message": "Nahradit vše"
+  },
+  "browserImportTagImported": {
+    "message": "Označit importované záložky štítkem Imported"
+  },
+  "browserImportConfirmBtn": {
+    "message": "Importovat"
+  },
+  "browserImportFallbackGroup": {
+    "message": "Importované záložky"
+  },
+  "browserImportPreviewGroups": {
+    "message": "Skupiny"
+  },
+  "browserImportPreviewSections": {
+    "message": "Sekce"
+  },
+  "browserImportPreviewStacks": {
+    "message": "Balíčky"
+  },
+  "browserImportPreviewBookmarks": {
+    "message": "Záložky"
+  },
+  "browserImportPreviewSkipped": {
+    "message": "Přeskočeno duplicit"
+  },
+  "browserImportSuccess": {
+    "message": "Importováno záložek: {count}."
+  },
+  "browserImportTargetGroupLabel": {
+    "message": "Cílová skupina"
+  },
+  "browserImportTargetGroupNew": {
+    "message": "Vytvořit novou skupinu (nebo spárovat podle názvu)"
+  },
+  "browserImportClearTags": {
+    "message": "Smazat štítky Imported"
+  },
+  "browserImportClearTagsDone": {
+    "message": "Štítek Imported odstraněn ze záložek: {count}."
+  },
+  "browserImportPreviewNew": {
+    "message": "nová"
+  },
+  "browserImportPreviewMerge": {
+    "message": "sloučit"
+  },
+  "browserImportPreviewReplace": {
+    "message": "nahradit"
+  },
+  "browserBookmarksOverwriteTitle": {
+    "message": "Importovat ze složky SimpleDial"
+  },
+  "browserBookmarksOverwriteBody": {
+    "message": "Tímto naimportujete záložky z vyhrazené složky prohlížeče „SimpleDial“, přepíšete všechny své stávající skupiny a záložky ve SpeedDialu a vypnete synchronizaci. Chcete-li importovat jiné složky nebo záložky sloučit bez přepsání, použijte Průvodce importem."
+  },
+  "browserBookmarksOverwriteConfirm": {
+    "message": "Přepsat a importovat"
+  },
+  "browserBookmarksOverwriteCheckbox": {
+    "message": "Rozumím, že všechny současné skupiny a záložky budou přepsány"
   }
 }

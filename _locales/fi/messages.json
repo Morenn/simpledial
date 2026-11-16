@@ -1282,5 +1282,110 @@
   },
   "defaultFallbackIconInvalid": {
     "message": "Valitse kelvollinen kuvatiedosto."
+  },
+  "browserImportWizardBtn": {
+    "message": "Tuontivelho"
+  },
+  "browserImportWizardTitle": {
+    "message": "Selaimen kirjanmerkkien tuontivelho"
+  },
+  "browserImportWizardDesc": {
+    "message": "Valitse aloituskansio ja miten alikansiot muunnetaan ryhmiksi, osioiksi ja pinoiksi."
+  },
+  "browserImportRootLabel": {
+    "message": "Aloituskansio"
+  },
+  "browserImportStructureLabel": {
+    "message": "Aloitusrakennetaso"
+  },
+  "browserImportStructureGroups": {
+    "message": "Alikansioista tulee ryhmiä"
+  },
+  "browserImportStructureSingleGroup": {
+    "message": "Valitusta kansiosta tulee 1 ryhmä"
+  },
+  "browserImportDepthLabel": {
+    "message": "Alikansioiden muunnos"
+  },
+  "browserImportDepthAuto": {
+    "message": "Automaattinen (Ryhmät → Osiot → Pinot → Kirjanmerkit)"
+  },
+  "browserImportDepthSections": {
+    "message": "Ryhmät → Osiot (yhdistä syvemmät)"
+  },
+  "browserImportDepthStacks": {
+    "message": "Ryhmät → Pinot (yhdistä syvemmät)"
+  },
+  "browserImportDepthFlat": {
+    "message": "Vain ryhmät (yhdistä kaikki alikansiot)"
+  },
+  "browserImportModeLabel": {
+    "message": "Tuontitila"
+  },
+  "browserImportModeMerge": {
+    "message": "Yhdistä (ohita kaksoiskappaleet)"
+  },
+  "browserImportModeReplace": {
+    "message": "Korvaa kaikki"
+  },
+  "browserImportTagImported": {
+    "message": "Merkitse tuodut kirjanmerkit tunnisteella Imported"
+  },
+  "browserImportConfirmBtn": {
+    "message": "Tuo"
+  },
+  "browserImportFallbackGroup": {
+    "message": "Tuodut kirjanmerkit"
+  },
+  "browserImportPreviewGroups": {
+    "message": "Ryhmät"
+  },
+  "browserImportPreviewSections": {
+    "message": "Osiot"
+  },
+  "browserImportPreviewStacks": {
+    "message": "Pinot"
+  },
+  "browserImportPreviewBookmarks": {
+    "message": "Kirjanmerkit"
+  },
+  "browserImportPreviewSkipped": {
+    "message": "Ohitetut kaksoiskappaleet"
+  },
+  "browserImportSuccess": {
+    "message": "Tuotu {count} kirjanmerkkiä."
+  },
+  "browserImportTargetGroupLabel": {
+    "message": "Kohderyhmä"
+  },
+  "browserImportTargetGroupNew": {
+    "message": "Luo uusi ryhmä (tai yhdistä nimen mukaan)"
+  },
+  "browserImportClearTags": {
+    "message": "Poista Imported-tunnisteet"
+  },
+  "browserImportClearTagsDone": {
+    "message": "Imported-tunniste poistettu {count} kirjanmerkistä."
+  },
+  "browserImportPreviewNew": {
+    "message": "uusi"
+  },
+  "browserImportPreviewMerge": {
+    "message": "yhdistä"
+  },
+  "browserImportPreviewReplace": {
+    "message": "korvaa"
+  },
+  "browserBookmarksOverwriteTitle": {
+    "message": "Tuo SimpleDial-kansiosta"
+  },
+  "browserBookmarksOverwriteBody": {
+    "message": "Tämä tuo kirjanmerkit selaimen omasta \"SimpleDial\"-kirjanmerkkikansiosta, korvaa kaikki nykyiset SpeedDial-ryhmät ja kirjanmerkit sekä poistaa synkronoinnin käytöstä. Jos haluat tuoda muita kansioita tai yhdistää korvaamatta, käytä Tuontivelhoa."
+  },
+  "browserBookmarksOverwriteConfirm": {
+    "message": "Korvaa ja tuo"
+  },
+  "browserBookmarksOverwriteCheckbox": {
+    "message": "Ymmärrän, että kaikki nykyiset ryhmät ja kirjanmerkit korvataan"
   }
 }

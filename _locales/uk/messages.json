@@ -1282,5 +1282,110 @@
   },
   "defaultFallbackIconInvalid": {
     "message": "Виберіть дійсний файл зображення."
+  },
+  "browserImportWizardBtn": {
+    "message": "Майстер імпорту"
+  },
+  "browserImportWizardTitle": {
+    "message": "Майстер імпорту закладок браузера"
+  },
+  "browserImportWizardDesc": {
+    "message": "Виберіть початкову папку та спосіб відображення підпапок у групи, секції та стопки."
+  },
+  "browserImportRootLabel": {
+    "message": "Початкова папка"
+  },
+  "browserImportStructureLabel": {
+    "message": "Початковий рівень структури"
+  },
+  "browserImportStructureGroups": {
+    "message": "Підпапки стають групами"
+  },
+  "browserImportStructureSingleGroup": {
+    "message": "Вибрана папка стає 1 групою"
+  },
+  "browserImportDepthLabel": {
+    "message": "Відображення підпапок"
+  },
+  "browserImportDepthAuto": {
+    "message": "Авто (Групи → Секції → Стопки → Закладки)"
+  },
+  "browserImportDepthSections": {
+    "message": "Групи → Секції (глибші об'єднати)"
+  },
+  "browserImportDepthStacks": {
+    "message": "Групи → Стопки (глибші об'єднати)"
+  },
+  "browserImportDepthFlat": {
+    "message": "Лише групи (об'єднати всі підпапки)"
+  },
+  "browserImportModeLabel": {
+    "message": "Режим імпорту"
+  },
+  "browserImportModeMerge": {
+    "message": "Об'єднати (пропустити дублікати)"
+  },
+  "browserImportModeReplace": {
+    "message": "Замінити все"
+  },
+  "browserImportTagImported": {
+    "message": "Позначити імпортовані закладки тегом Imported"
+  },
+  "browserImportConfirmBtn": {
+    "message": "Імпортувати"
+  },
+  "browserImportFallbackGroup": {
+    "message": "Імпортовані закладки"
+  },
+  "browserImportPreviewGroups": {
+    "message": "Групи"
+  },
+  "browserImportPreviewSections": {
+    "message": "Секції"
+  },
+  "browserImportPreviewStacks": {
+    "message": "Стопки"
+  },
+  "browserImportPreviewBookmarks": {
+    "message": "Закладки"
+  },
+  "browserImportPreviewSkipped": {
+    "message": "Пропущено дублікатів"
+  },
+  "browserImportSuccess": {
+    "message": "Імпортовано закладок: {count}."
+  },
+  "browserImportTargetGroupLabel": {
+    "message": "Цільова група"
+  },
+  "browserImportTargetGroupNew": {
+    "message": "Створити нову групу (або зіставити за назвою)"
+  },
+  "browserImportClearTags": {
+    "message": "Очистити теги Imported"
+  },
+  "browserImportClearTagsDone": {
+    "message": "Тег Imported видалено з закладок: {count}."
+  },
+  "browserImportPreviewNew": {
+    "message": "нова"
+  },
+  "browserImportPreviewMerge": {
+    "message": "об'єднати"
+  },
+  "browserImportPreviewReplace": {
+    "message": "замінити"
+  },
+  "browserBookmarksOverwriteTitle": {
+    "message": "Імпортувати з папки SimpleDial"
+  },
+  "browserBookmarksOverwriteBody": {
+    "message": "Це імпортує закладки зі спеціальної папки браузера «SimpleDial», перезапише всі ваші поточні групи та закладки SpeedDial і вимкне синхронізацію. Щоб імпортувати інші папки браузера або об'єднати без перезапису, скористайтеся Майстром імпорту."
+  },
+  "browserBookmarksOverwriteConfirm": {
+    "message": "Перезаписати й імпортувати"
+  },
+  "browserBookmarksOverwriteCheckbox": {
+    "message": "Я розумію, що всі поточні групи та закладки буде перезаписано"
   }
 }
