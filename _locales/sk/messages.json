@@ -1387,5 +1387,11 @@
   },
   "browserBookmarksOverwriteCheckbox": {
     "message": "Rozumiem, že všetky súčasné skupiny a záložky budú prepísané"
+  },
+  "customTzResetLive": {
+    "message": "Obnoviť aktuálny čas"
+  },
+  "customTzClickToCalculate": {
+    "message": "Kliknutím prepočítate čas v ostatných zónach"
   }
 }

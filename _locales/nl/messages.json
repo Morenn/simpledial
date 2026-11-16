@@ -1387,5 +1387,11 @@
   },
   "browserBookmarksOverwriteCheckbox": {
     "message": "Ik begrijp dat alle huidige groepen en bladwijzers worden overschreven"
+  },
+  "customTzResetLive": {
+    "message": "Terugzetten naar live tijd"
+  },
+  "customTzClickToCalculate": {
+    "message": "Klik om de tijd in andere zones te berekenen"
   }
 }

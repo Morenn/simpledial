@@ -1,7 +1,7 @@
 import { t } from "../i18n.js";
 import { render, calculateGridLayout } from "../render.js";
+import { applySideSpaces } from "../theme.js";
 import {
-  applySideSpaces,
   normalizeWidgetOrder,
   groupCustomSearchWidgets,
   isValidCustomSearchUrlTemplate,
@@ -17,7 +17,7 @@ import {
   buildCustomSearchPreview,
   normalizeCustomWidgetVariables,
   normalizeCustomSearchRoutePrefixes
-} from "../theme.js";
+} from "../custom-widgets.js";
 import { normalizeCustomIconValue, applyCachedIconImageSrc } from "../color-utils.js";
 import { settingsState, markSettingsDirty } from "./context.js";
 import { ensureAppearanceDraft, updateDateTimeVisibility } from "./appearance-ui.js";

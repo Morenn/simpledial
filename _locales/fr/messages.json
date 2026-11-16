@@ -1387,5 +1387,11 @@
   },
   "browserBookmarksOverwriteCheckbox": {
     "message": "Je comprends que tous les groupes et favoris actuels seront écrasés"
+  },
+  "customTzResetLive": {
+    "message": "Revenir à l'heure en direct"
+  },
+  "customTzClickToCalculate": {
+    "message": "Cliquer pour calculer l'heure dans d'autres fuseaux"
   }
 }

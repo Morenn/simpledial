@@ -1,5 +1,6 @@
 import { state, saveState, generateId, loadState } from "./state.js";
-import { loadTheme, applySideSpaces, updateCustomTimeZoneWidgets } from "./theme.js";
+import { loadTheme, applySideSpaces } from "./theme.js";
+import { updateCustomTimeZoneWidgets } from "./custom-widgets.js";
 import { render, updateFooter } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";

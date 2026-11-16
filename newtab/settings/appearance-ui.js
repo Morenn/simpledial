@@ -13,9 +13,9 @@ import {
   fetchAndCacheThemeUrl,
   fetchBackgroundImageFromUrl,
   isAllowedThemeUrl,
-  getCustomThemeUrlCache,
-  normalizeWidgetOrder
+  getCustomThemeUrlCache
 } from "../theme.js";
+import { normalizeWidgetOrder } from "../custom-widgets.js";
 import { updateUIText, updateClock } from "../main.js";
 import {
   applyMassTileColorFromIcon,

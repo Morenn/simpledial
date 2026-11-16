@@ -1387,5 +1387,11 @@
   },
   "browserBookmarksOverwriteCheckbox": {
     "message": "Ymmärrän, että kaikki nykyiset ryhmät ja kirjanmerkit korvataan"
+  },
+  "customTzResetLive": {
+    "message": "Palauta reaaliaikaan"
+  },
+  "customTzClickToCalculate": {
+    "message": "Napsauta laskeaksesi ajan muilla vyöhykkeillä"
   }
 }

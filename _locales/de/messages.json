@@ -1387,5 +1387,11 @@
   },
   "browserBookmarksOverwriteCheckbox": {
     "message": "Ich verstehe, dass alle aktuellen Gruppen und Lesezeichen überschrieben werden"
+  },
+  "customTzResetLive": {
+    "message": "Auf Live-Zeit zurücksetzen"
+  },
+  "customTzClickToCalculate": {
+    "message": "Klicken, um Zeit in anderen Zonen zu berechnen"
   }
 }

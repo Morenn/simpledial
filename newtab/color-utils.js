@@ -449,3 +449,22 @@ export function applyCachedIconImageSrc(imgEl, iconUrl) {
     void cacheIconUrlIfNeeded(iconUrl);
   }
 }
+
+export function isAllowedThemeUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== "string") return false;
+  const trimmed = rawUrl.trim();
+  if (!trimmed || trimmed.startsWith("//")) return false;
+
+  try {
+    const baseHref = typeof window !== "undefined" && window.location?.href ? window.location.href : undefined;
+    const parsed = new URL(trimmed, baseHref);
+    return (
+      parsed.protocol === "http:" ||
+      parsed.protocol === "https:" ||
+      parsed.protocol === "chrome-extension:" ||
+      parsed.protocol === "moz-extension:"
+    );
+  } catch {
+    return false;
+  }
+}

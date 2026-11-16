@@ -2941,6 +2941,60 @@ body.highlight-side-spaces .workspace-side-space {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0 3px;
+  transition: background 0.15s ease;
+}
+
+.custom-timezone-time:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+}
+
+.custom-timezone-widget.is-calculator {
+  border-color: var(--accent);
+}
+
+.custom-timezone-reset-btn {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.custom-timezone-reset-btn:hover {
+  color: var(--text);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+}
+
+.custom-timezone-item.is-pinned .custom-timezone-label,
+.custom-timezone-item.is-pinned .custom-timezone-time {
+  color: var(--accent);
+}
+
+.custom-timezone-time-input {
+  width: auto;
+  min-width: 72px;
+  padding: 1px 4px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+}
+
+.custom-timezone-day-shift {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-left: 4px;
 }
 
 .custom-widget-timezone-section {

@@ -28,12 +28,14 @@ const {
   parseImportedCustomWidgets,
   groupCustomSearchWidgets,
   isValidTimeZone,
+  resolveDateForTimeInZone,
+  getTimeZoneDayShift,
   normalizeCustomTimeZones,
   formatTimeForTimeZone,
   resolveCustomWidgetIcon,
   applyCustomWidgetUpdate,
   revertCustomWidgetVersion
-} = await import("../newtab/theme.js");
+} = await import("../newtab/custom-widgets.js");
 
 test("simple mode replaces multiple placeholders and encodes values", () => {
   const widget = {
@@ -302,6 +304,18 @@ test("timeZone helpers validate IANA zones and format time without date", () => 
   assert.equal(formatted24, "14:05");
   const formattedSec = formatTimeForTimeZone(sampleDate, "UTC", { showSeconds: true, use24Hour: true });
   assert.equal(formattedSec, "14:05:09");
+
+  // TimeZone calculator: 22:00 in America/New_York (UTC-5 in Nov) -> 03:00 (+1d) UTC, 04:00 (+1d) Europe/Paris
+  const refDate = new Date("2026-11-16T12:00:00Z");
+  const resolved = resolveDateForTimeInZone("22:00", "America/New_York", refDate);
+  assert.ok(resolved instanceof Date);
+  assert.equal(formatTimeForTimeZone(resolved, "America/New_York", { use24Hour: true }), "22:00");
+  assert.equal(formatTimeForTimeZone(resolved, "UTC", { use24Hour: true }), "03:00");
+  assert.equal(formatTimeForTimeZone(resolved, "Europe/Paris", { use24Hour: true }), "04:00");
+  assert.equal(getTimeZoneDayShift(resolved, "America/New_York", "America/New_York"), "");
+  assert.equal(getTimeZoneDayShift(resolved, "Europe/Paris", "America/New_York"), "+1d");
+  assert.equal(getTimeZoneDayShift(resolved, "America/New_York", "Europe/Paris"), "-1d");
+  assert.equal(resolveDateForTimeInZone("99:99", "UTC", refDate), null);
 });
 
 test("export/import preserves timezone custom widgets and skips invalid ones", () => {

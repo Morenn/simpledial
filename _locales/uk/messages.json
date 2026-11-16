@@ -1387,5 +1387,11 @@
   },
   "browserBookmarksOverwriteCheckbox": {
     "message": "Я розумію, що всі поточні групи та закладки буде перезаписано"
+  },
+  "customTzResetLive": {
+    "message": "Скинути до поточного часу"
+  },
+  "customTzClickToCalculate": {
+    "message": "Натисніть, щоб обчислити час в інших поясах"
   }
 }

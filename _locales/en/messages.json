@@ -1390,5 +1390,11 @@
   },
   "browserBookmarksOverwriteCheckbox": {
     "message": "I understand that all current groups and bookmarks will be overwritten"
+  },
+  "customTzResetLive": {
+    "message": "Reset to live time"
+  },
+  "customTzClickToCalculate": {
+    "message": "Click to calculate time in other zones"
   }
 }
