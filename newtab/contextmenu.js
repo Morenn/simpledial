@@ -1,5 +1,5 @@
 import { handleGroupContext } from "./groups.js";
-import { handleBookmarkContext, moveBookmarkToGroup } from "./bookmarks.js";
+import { handleBookmarkContext, moveBookmarkToGroup, isBookmarkIconExcludedById } from "./bookmarks.js";
 import { state, isStackItem, findBookmarkLocation } from "./state.js";
 
 // ---------- Context menu ----------
@@ -96,6 +96,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
   const deletePermanentBtn = contextMenu.querySelector('[data-action="delete-permanent"]');
   const editBtn = contextMenu.querySelector('[data-action="edit"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
+  const excludeIconBtn = contextMenu.querySelector('[data-action="toggle-exclude-icon"]');
   const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
   const removeFromStackBtn = contextMenu.querySelector('[data-action="remove-from-stack"]');
   const unstackBtn = contextMenu.querySelector('[data-action="unstack"]');
@@ -114,6 +115,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
     if (deletePermanentBtn) deletePermanentBtn.classList.remove("hidden");
     if (editBtn) editBtn.classList.add("hidden");
     if (refreshIconBtn) refreshIconBtn.classList.add("hidden");
+    if (excludeIconBtn) excludeIconBtn.classList.add("hidden");
     if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
     if (removeFromStackBtn) removeFromStackBtn.classList.add("hidden");
     if (unstackBtn) unstackBtn.classList.add("hidden");
@@ -125,6 +127,16 @@ function updateContextMenuForBookmark(bookmarkTile) {
     if (deletePermanentBtn) deletePermanentBtn.classList.add("hidden");
     if (editBtn) editBtn.classList.remove("hidden");
     if (refreshIconBtn) refreshIconBtn.classList.toggle("hidden", isStack);
+    if (excludeIconBtn) {
+      excludeIconBtn.classList.toggle("hidden", isStack);
+      if (!isStack) {
+        const excluded = isBookmarkIconExcludedById(bookmarkId);
+        const tFn = window.t || (k => k);
+        excludeIconBtn.textContent = excluded
+          ? `✅ ${tFn("includeIconRefreshLocal")}`
+          : `🚫 ${tFn("excludeIconRefreshLocal")}`;
+      }
+    }
     if (openNewTabBtn) openNewTabBtn.classList.remove("hidden");
     if (removeFromStackBtn) removeFromStackBtn.classList.toggle("hidden", !isChildInStack);
     if (unstackBtn) unstackBtn.classList.toggle("hidden", !isStack);

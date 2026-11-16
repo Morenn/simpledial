@@ -85,6 +85,7 @@
     <div data-action="restore" class="hidden">Restore</div>
     <div data-action="delete-permanent" class="hidden">Delete permanently</div>
     <div data-action="refresh-icon">Refresh icon</div>
+    <div data-action="toggle-exclude-icon" id="context-toggle-exclude-icon" data-i18n="excludeIconRefreshLocal">🚫 Exclude icon refresh (this browser)</div>
     <div id="context-move-to" class="context-menu-has-submenu hidden">
       <span data-i18n="moveToGroup">Move to</span>
       <div id="context-move-to-submenu" class="context-submenu"></div>
@@ -795,6 +796,24 @@
                 <label for="hk-icon-refresh-hours" data-i18n="iconAutoRefreshFrequency">Refresh frequency (hours):</label>
                 <input type="number" id="hk-icon-refresh-hours" class="appearance-number-input" min="1" max="720" value="24">
               </div>
+              <div class="appearance-slider-row">
+                <label for="hk-icon-exclude-domains" data-i18n="iconAutoRefreshExcludeDomains">Exclude domains (this browser only):</label>
+                <input type="text" id="hk-icon-exclude-domains" class="sync-compact-input" data-i18n-placeholder="iconAutoRefreshExcludeDomainsPlaceholder" placeholder="intranet.local, *.corp.example">
+              </div>
+              <div class="appearance-slider-row">
+                <span data-i18n="defaultFallbackIconLabel">Fallback icon (max 128×128, 200 KB):</span>
+                <div class="tile-mass-color-actions">
+                  <img id="hk-default-icon-preview" class="bookmark-favicon" alt="">
+                  <input type="text" id="hk-default-icon-emoji" class="sync-compact-input custom-widget-icon-input" maxlength="8" placeholder="🌐" aria-label="Fallback emoji">
+                  <button type="button" id="hk-default-icon-upload-btn" class="icon-btn" data-i18n="defaultFallbackIconUpload">🖼️ Upload</button>
+                  <button type="button" id="hk-default-icon-reset-btn" class="icon-btn" title="Reset">✖️</button>
+                  <input type="file" id="hk-default-icon-file" accept="image/*" style="display: none;">
+                </div>
+              </div>
+              <div id="hk-default-icon-status" class="status"></div>
+              <div class="tile-mass-color-actions">
+                <button type="button" id="hk-show-failed-icons" class="icon-btn" data-i18n="displayFailedIconRefreshes">📋 Display failed refreshes</button>
+              </div>
             </div>
           </div>
 
@@ -960,6 +979,36 @@
       <div class="modal-buttons">
         <button type="button" id="custom-widget-trust-confirm" class="icon-btn primary" data-i18n="customSearchTrustModalContinue" disabled>Continue</button>
         <button type="button" id="custom-widget-trust-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Failed Icon Refreshes Modal -->
+  <div id="failed-icons-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="failed-icons-title">
+    <div class="modal-content failed-icons-modal-content">
+      <h2 id="failed-icons-title" data-i18n="failedIconRefreshesTitle">Failed Icon Refreshes</h2>
+      <p class="appearance-card-desc" data-i18n="failedIconRefreshesDesc">Bookmarks whose icons failed to load or refresh in this browser. Excluding a bookmark stops future refresh attempts locally without syncing.</p>
+      <div class="backups-table-wrap">
+        <table class="backups-table">
+          <thead>
+            <tr>
+              <th data-i18n="bookmarkTitle">Bookmark Title</th>
+              <th>URL</th>
+              <th data-i18n="backupActions">Actions</th>
+            </tr>
+            <tr class="failed-icons-filter-row">
+              <th colspan="3">
+                <input type="search" id="failed-icons-filter" class="sync-compact-input failed-icons-filter-input" data-i18n-placeholder="failedIconFilterPlaceholder" placeholder="Filter by title or URL...">
+              </th>
+            </tr>
+          </thead>
+          <tbody id="failed-icons-table-body"></tbody>
+        </table>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" id="failed-icons-exclude-all" class="icon-btn primary" data-i18n="failedIconExcludeAll">🚫 Exclude all</button>
+        <button type="button" id="failed-icons-clear" class="icon-btn" data-i18n="failedIconClearList">✖️ Clear list</button>
+        <button type="button" id="failed-icons-close" class="icon-btn" data-i18n="close">Close</button>
       </div>
     </div>
   </div>

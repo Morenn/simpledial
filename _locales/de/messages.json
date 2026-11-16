@@ -1231,5 +1231,56 @@
   },
   "customSearchAutoRouteIconPlaceholder": {
     "message": "Emoji oder Bild-URL (Standard: 🔀)"
+  },
+  "excludeIconRefreshLocal": {
+    "message": "Symbolaktualisierung ausschließen (dieser Browser)"
+  },
+  "includeIconRefreshLocal": {
+    "message": "Symbolaktualisierung erlauben (dieser Browser)"
+  },
+  "iconAutoRefreshExcludeDomains": {
+    "message": "Domains ausschließen (nur dieser Browser):"
+  },
+  "iconAutoRefreshExcludeDomainsPlaceholder": {
+    "message": "intranet.local, *.corp.example"
+  },
+  "displayFailedIconRefreshes": {
+    "message": "Fehlgeschlagene Aktualisierungen anzeigen"
+  },
+  "failedIconRefreshesTitle": {
+    "message": "Fehlgeschlagene Symbolaktualisierungen"
+  },
+  "failedIconRefreshesDesc": {
+    "message": "Lesezeichen, deren Symbole in diesem Browser nicht geladen oder aktualisiert werden konnten. Das Ausschließen stoppt zukünftige Versuche lokal ohne Synchronisierung."
+  },
+  "failedIconRefreshesEmpty": {
+    "message": "Keine fehlgeschlagenen Symbolaktualisierungen vorhanden."
+  },
+  "failedIconExcludeBtn": {
+    "message": "Ausschließen"
+  },
+  "failedIconExcludedBtn": {
+    "message": "Ausgeschlossen"
+  },
+  "failedIconExcludeAll": {
+    "message": "Alle ausschließen"
+  },
+  "failedIconClearList": {
+    "message": "Liste leeren"
+  },
+  "failedIconFilterPlaceholder": {
+    "message": "Nach Titel oder URL filtern..."
+  },
+  "defaultFallbackIconLabel": {
+    "message": "Fallback-Symbol (max. 128×128, 200 KB):"
+  },
+  "defaultFallbackIconUpload": {
+    "message": "Hochladen"
+  },
+  "defaultFallbackIconTooLarge": {
+    "message": "Symbol überschreitet nach Skalierung auf 128×128 das 200-KB-Limit."
+  },
+  "defaultFallbackIconInvalid": {
+    "message": "Bitte wählen Sie eine gültige Bilddatei."
   }
 }

@@ -1231,5 +1231,56 @@
   },
   "customSearchAutoRouteIconPlaceholder": {
     "message": "Emoji ou URL d'image (par défaut : 🔀)"
+  },
+  "excludeIconRefreshLocal": {
+    "message": "Exclure l'actualisation de l'icône (ce navigateur)"
+  },
+  "includeIconRefreshLocal": {
+    "message": "Autoriser l'actualisation de l'icône (ce navigateur)"
+  },
+  "iconAutoRefreshExcludeDomains": {
+    "message": "Exclure les domaines (ce navigateur uniquement) :"
+  },
+  "iconAutoRefreshExcludeDomainsPlaceholder": {
+    "message": "intranet.local, *.corp.example"
+  },
+  "displayFailedIconRefreshes": {
+    "message": "Afficher les échecs d'actualisation"
+  },
+  "failedIconRefreshesTitle": {
+    "message": "Échecs d'actualisation des icônes"
+  },
+  "failedIconRefreshesDesc": {
+    "message": "Favoris dont les icônes n'ont pas pu être chargées ou actualisées dans ce navigateur. L'exclusion arrête les futures tentatives localement sans synchronisation."
+  },
+  "failedIconRefreshesEmpty": {
+    "message": "Aucun échec d'actualisation enregistré."
+  },
+  "failedIconExcludeBtn": {
+    "message": "Exclure"
+  },
+  "failedIconExcludedBtn": {
+    "message": "Exclu"
+  },
+  "failedIconExcludeAll": {
+    "message": "Tout exclure"
+  },
+  "failedIconClearList": {
+    "message": "Vider la liste"
+  },
+  "failedIconFilterPlaceholder": {
+    "message": "Filtrer par titre ou URL..."
+  },
+  "defaultFallbackIconLabel": {
+    "message": "Icône de secours (max 128×128, 200 Ko) :"
+  },
+  "defaultFallbackIconUpload": {
+    "message": "Importer"
+  },
+  "defaultFallbackIconTooLarge": {
+    "message": "L'icône dépasse la limite de 200 Ko après redimensionnement en 128×128."
+  },
+  "defaultFallbackIconInvalid": {
+    "message": "Veuillez sélectionner un fichier image valide."
   }
 }

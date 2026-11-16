@@ -1,4 +1,4 @@
-﻿import { state, saveState, generateId, isStackItem, getAllGroupBookmarks, SYSTEM_TAG_HTTP_ID, SYSTEM_TAG_DEAD_LINK_ID, SYSTEM_TAG_DUPLICATE_ID, setBookmarkSystemTag, clearSystemTagFromAllBookmarks, saveSystemTags } from "./state.js";
+﻿import { state, saveState, generateId, isStackItem, getAllGroupBookmarks, findBookmarkLocation, SYSTEM_TAG_HTTP_ID, SYSTEM_TAG_DEAD_LINK_ID, SYSTEM_TAG_DUPLICATE_ID, setBookmarkSystemTag, clearSystemTagFromAllBookmarks, saveSystemTags } from "./state.js";
 import { loadConfig, saveConfig, defaultConfig } from "./config.js";
 import { testSyncConnection, requestHostPermission, syncNow, cleanupDeletedItems, checkDeadLinks, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "./sync.js";
 import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLanguageOverride } from "./i18n.js";
@@ -9,9 +9,9 @@ import { applyBackground, applyBgDim, applyBarOpacity, applyTileOpacity, applyTi
 import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import { syncBrowserBookmarks } from "./browser-bookmarks-sync.js";
-import { applyMassTileColorFromIcon } from "./bookmarks.js";
+import { applyMassTileColorFromIcon, getFailedIconRefreshBookmarks, setBookmarkIconExcludedById, clearFailedIconRefresh, clearAllFailedIconRefreshes, DEFAULT_FALLBACK_ICON_MAX_BYTES, DEFAULT_FALLBACK_ICON_MAX_DIM, getFallbackBookmarkIconUrl, isValidFallbackBookmarkIcon, setCustomFallbackBookmarkIcon } from "./bookmarks.js";
 import { renderGroups } from "./groups.js";
-import { normalizeCustomIconValue, applyCachedIconImageSrc } from "./color-utils.js";
+import { normalizeCustomIconValue, applyCachedIconImageSrc, getLocalExcludedIconDomainsText, setLocalExcludedIconDomainsText } from "./color-utils.js";
 // ======================================================
 // SETTINGS MODAL UI
 // ======================================================
@@ -191,6 +191,20 @@ const hkIconRefreshAll = document.getElementById("hk-icon-refresh-all");
 const hkIconRefreshMissing = document.getElementById("hk-icon-refresh-missing");
 const hkIconRefreshNone = document.getElementById("hk-icon-refresh-none");
 const hkIconRefreshHours = document.getElementById("hk-icon-refresh-hours");
+const hkIconExcludeDomains = document.getElementById("hk-icon-exclude-domains");
+const hkDefaultIconPreview = document.getElementById("hk-default-icon-preview");
+const hkDefaultIconEmojiInput = document.getElementById("hk-default-icon-emoji");
+const hkDefaultIconUploadBtn = document.getElementById("hk-default-icon-upload-btn");
+const hkDefaultIconResetBtn = document.getElementById("hk-default-icon-reset-btn");
+const hkDefaultIconFile = document.getElementById("hk-default-icon-file");
+const hkDefaultIconStatus = document.getElementById("hk-default-icon-status");
+const hkShowFailedIcons = document.getElementById("hk-show-failed-icons");
+const failedIconsModal = document.getElementById("failed-icons-modal");
+const failedIconsTableBody = document.getElementById("failed-icons-table-body");
+const failedIconsFilterInput = document.getElementById("failed-icons-filter");
+const failedIconsExcludeAll = document.getElementById("failed-icons-exclude-all");
+const failedIconsClear = document.getElementById("failed-icons-clear");
+const failedIconsClose = document.getElementById("failed-icons-close");
 
 // Advanced Elements
 const advFaviconDebugLogging = document.getElementById("enable-favicon-debug-logging");
@@ -318,6 +332,36 @@ function initializeSettingsDirtyTracking() {
   };
 
   const collapsedWidgetSpaceGroups = new Set();
+
+  const bindCollapsibleGroupToggle = (containerEl, headerEl, chevronEl, collapsedSet, key) => {
+    const isCollapsed = collapsedSet.has(key);
+    containerEl.classList.toggle("collapsed", isCollapsed);
+    chevronEl.textContent = isCollapsed ? "▸" : "▾";
+    headerEl.setAttribute("role", "button");
+    headerEl.tabIndex = 0;
+    headerEl.setAttribute("aria-expanded", String(!isCollapsed));
+
+    const toggle = () => {
+      const nextCollapsed = !collapsedSet.has(key);
+      if (nextCollapsed) {
+        collapsedSet.add(key);
+      } else {
+        collapsedSet.delete(key);
+      }
+      containerEl.classList.toggle("collapsed", nextCollapsed);
+      chevronEl.textContent = nextCollapsed ? "▸" : "▾";
+      headerEl.setAttribute("aria-expanded", String(!nextCollapsed));
+    };
+
+    headerEl.addEventListener("click", toggle);
+    headerEl.addEventListener("keydown", e => {
+      if (e.target instanceof Element && e.target !== headerEl && e.target.closest("button")) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  };
 
   const renderWidgetOrderList = (appearance = null) => {
     if (!widgetOrderList) return;
@@ -573,21 +617,16 @@ function initializeSettingsDirtyTracking() {
       const rows = spaceBuckets[spaceKey];
       if (!rows || rows.length === 0) continue;
 
-      const isCollapsed = collapsedWidgetSpaceGroups.has(spaceKey);
       const groupEl = document.createElement("div");
-      groupEl.className = `widget-space-group${spaceKey === "disabled" ? " widget-space-group-disabled" : ""}${isCollapsed ? " collapsed" : ""}`;
+      groupEl.className = `widget-space-group${spaceKey === "disabled" ? " widget-space-group-disabled" : ""}`;
 
       const headerEl = document.createElement("div");
       headerEl.className = "widget-space-group-header";
-      headerEl.setAttribute("role", "button");
-      headerEl.tabIndex = 0;
-      headerEl.setAttribute("aria-expanded", String(!isCollapsed));
 
       const titleWrap = document.createElement("span");
       titleWrap.className = "widget-space-group-title";
       const chevronSpan = document.createElement("span");
       chevronSpan.className = "widget-space-group-chevron";
-      chevronSpan.textContent = isCollapsed ? "▸" : "▾";
       const labelSpan = document.createElement("span");
       if (spaceKeyMap[spaceKey]) {
         labelSpan.setAttribute("data-i18n", spaceKeyMap[spaceKey]);
@@ -599,26 +638,7 @@ function initializeSettingsDirtyTracking() {
       countSpan.className = "widget-space-group-count";
       countSpan.textContent = String(rows.length);
       headerEl.append(titleWrap, countSpan);
-
-      const toggleGroupCollapsed = () => {
-        const nextCollapsed = !collapsedWidgetSpaceGroups.has(spaceKey);
-        if (nextCollapsed) {
-          collapsedWidgetSpaceGroups.add(spaceKey);
-        } else {
-          collapsedWidgetSpaceGroups.delete(spaceKey);
-        }
-        groupEl.classList.toggle("collapsed", nextCollapsed);
-        chevronSpan.textContent = nextCollapsed ? "▸" : "▾";
-        headerEl.setAttribute("aria-expanded", String(!nextCollapsed));
-      };
-
-      headerEl.addEventListener("click", toggleGroupCollapsed);
-      headerEl.addEventListener("keydown", e => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          toggleGroupCollapsed();
-        }
-      });
+      bindCollapsibleGroupToggle(groupEl, headerEl, chevronSpan, collapsedWidgetSpaceGroups, spaceKey);
 
       const itemsEl = document.createElement("div");
       itemsEl.className = "widget-space-group-items";
@@ -896,21 +916,16 @@ function initializeSettingsDirtyTracking() {
       }
 
       const groupKey = entry.groupName.toLowerCase();
-      const isCollapsed = collapsedCustomWidgetGroups.has(groupKey);
       const groupCard = document.createElement("div");
-      groupCard.className = `custom-widget-group-card${isCollapsed ? " collapsed" : ""}`;
+      groupCard.className = "custom-widget-group-card";
 
       const groupHeader = document.createElement("div");
       groupHeader.className = "custom-widget-group-header";
-      groupHeader.setAttribute("role", "button");
-      groupHeader.tabIndex = 0;
-      groupHeader.setAttribute("aria-expanded", String(!isCollapsed));
 
       const groupTitle = document.createElement("div");
       groupTitle.className = "custom-widget-group-title";
       const chevronSpan = document.createElement("span");
       chevronSpan.className = "widget-space-group-chevron";
-      chevronSpan.textContent = isCollapsed ? "▸" : "▾";
       const groupNameSpan = document.createElement("span");
       groupNameSpan.textContent = `📁 ${entry.groupName}`;
       const countBadge = document.createElement("span");
@@ -1057,28 +1072,8 @@ function initializeSettingsDirtyTracking() {
         exportCustomWidgetsLibrary(entry.members, `simple-dial-group-${slug}`, customWidgetsLibraryStatus);
       });
 
-      const toggleGroupCollapsed = () => {
-        const nextCollapsed = !collapsedCustomWidgetGroups.has(groupKey);
-        if (nextCollapsed) {
-          collapsedCustomWidgetGroups.add(groupKey);
-        } else {
-          collapsedCustomWidgetGroups.delete(groupKey);
-        }
-        groupCard.classList.toggle("collapsed", nextCollapsed);
-        chevronSpan.textContent = nextCollapsed ? "▸" : "▾";
-        groupHeader.setAttribute("aria-expanded", String(!nextCollapsed));
-      };
-
-      groupHeader.addEventListener("click", toggleGroupCollapsed);
-      groupHeader.addEventListener("keydown", e => {
-        if (e.target === exportGroupBtn) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          toggleGroupCollapsed();
-        }
-      });
-
       groupHeader.append(groupTitle, exportGroupBtn);
+      bindCollapsibleGroupToggle(groupCard, groupHeader, chevronSpan, collapsedCustomWidgetGroups, groupKey);
 
       const membersWrap = document.createElement("div");
       membersWrap.className = "custom-widget-group-members";
@@ -2183,6 +2178,7 @@ function createAppearanceDraftFromConfig(config) {
     customWidgets: Array.isArray(appearance.customWidgets) ? appearance.customWidgets.map(w => ({ ...w })) : [],
     customSearchAutoRouteDefaults: { ...(appearance.customSearchAutoRouteDefaults || {}) },
     customSearchAutoRouteIcons: { ...(appearance.customSearchAutoRouteIcons || {}) },
+    defaultBookmarkIcon: isValidFallbackBookmarkIcon(appearance.defaultBookmarkIcon) ? appearance.defaultBookmarkIcon.trim() : null,
     widgetOrder: normalizeWidgetOrder(appearance.widgetOrder, appearance.customWidgets),
     widgetAlign: { ...(appearance.widgetAlign || {}) },
     widgetNewRow: { ...(appearance.widgetNewRow || {}) }
@@ -3934,6 +3930,9 @@ async function persistSettings(closeAfterSave = false) {
   config.housekeeper.enableLinkCheck = hkEnableLinkCheck.checked;
   config.housekeeper.iconAutoRefreshMode = getHousekeeperIconRefreshMode();
   config.housekeeper.iconAutoRefreshHours = Math.max(1, parseInt(hkIconRefreshHours?.value, 10) || 24);
+  if (hkIconExcludeDomains) {
+    setLocalExcludedIconDomainsText(hkIconExcludeDomains.value);
+  }
 
   // Save backups config
   config.backups.retentionDays = Math.max(1, parseInt(backupRetentionDays?.value, 10) || 14);
@@ -4062,6 +4061,12 @@ async function persistSettings(closeAfterSave = false) {
   }
   if (appearanceDraft?.customSearchAutoRouteIcons) {
     config.appearance.customSearchAutoRouteIcons = { ...appearanceDraft.customSearchAutoRouteIcons };
+  }
+  if (appearanceDraft && "defaultBookmarkIcon" in appearanceDraft) {
+    config.appearance.defaultBookmarkIcon = isValidFallbackBookmarkIcon(appearanceDraft.defaultBookmarkIcon)
+      ? appearanceDraft.defaultBookmarkIcon.trim()
+      : null;
+    setCustomFallbackBookmarkIcon(config.appearance.defaultBookmarkIcon);
   }
   if (appearanceDraft?.widgetOrder) {
     config.appearance.widgetOrder = normalizeWidgetOrder(appearanceDraft.widgetOrder, config.appearance.customWidgets);
@@ -4450,6 +4455,278 @@ if (hkCheckLinks) {
     });
   }
 
+  // ---------- HouseKeeper - Failed Icon Refreshes Modal ----------
+  let failedIconsChanged = false;
+  let failedIconsModalVisibleIds = new Set();
+
+  function getFilteredFailedIcons() {
+    const query = (failedIconsFilterInput?.value || "").trim().toLowerCase();
+    const liveEntries = getFailedIconRefreshBookmarks();
+    const byId = new Map(liveEntries.map(e => [e.id, e]));
+    for (const id of failedIconsModalVisibleIds) {
+      if (!byId.has(id)) {
+        // Keep entries that were visible when the modal opened (e.g. just un-excluded)
+        // until the modal is closed or explicitly dismissed.
+        const loc = typeof findBookmarkLocation === "function" ? findBookmarkLocation(id) : null;
+        const item = loc?.item;
+        if (item && !item.deleted) {
+          byId.set(id, {
+            id: item.id,
+            title: item.title || item.url || item.id,
+            url: item.url || "",
+            excluded: false
+          });
+        }
+      }
+    }
+    const entries = [...byId.values()];
+    if (!query) return entries;
+    return entries.filter(entry =>
+      entry.title.toLowerCase().includes(query) || entry.url.toLowerCase().includes(query)
+    );
+  }
+
+  function renderFailedIconsTable() {
+    if (!failedIconsTableBody) return;
+    const entries = getFilteredFailedIcons();
+    failedIconsTableBody.innerHTML = "";
+
+    if (entries.length === 0) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 3;
+      cell.className = "backups-empty";
+      cell.textContent = t("failedIconRefreshesEmpty") || "No failed icon refreshes recorded.";
+      row.appendChild(cell);
+      failedIconsTableBody.appendChild(row);
+      return;
+    }
+
+    for (const entry of entries) {
+      const row = document.createElement("tr");
+
+      const titleCell = document.createElement("td");
+      titleCell.textContent = entry.title;
+
+      const urlCell = document.createElement("td");
+      urlCell.className = "failed-icons-url-cell";
+      urlCell.textContent = entry.url;
+      urlCell.title = entry.url;
+
+      const actionsCell = document.createElement("td");
+      actionsCell.className = "failed-icons-actions-cell";
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = `icon-btn failed-icons-action-btn${entry.excluded ? "" : " primary"}`;
+      toggleBtn.textContent = entry.excluded
+        ? `✅ ${t("failedIconExcludedBtn")}`
+        : `🚫 ${t("failedIconExcludeBtn")}`;
+      toggleBtn.addEventListener("click", () => {
+        setBookmarkIconExcludedById(entry.id, !entry.excluded);
+        failedIconsChanged = true;
+        renderFailedIconsTable();
+      });
+
+      const dismissBtn = document.createElement("button");
+      dismissBtn.type = "button";
+      dismissBtn.className = "icon-btn failed-icons-action-btn";
+      dismissBtn.textContent = "✖️";
+      dismissBtn.title = t("delete") || "Remove";
+      dismissBtn.addEventListener("click", () => {
+        failedIconsModalVisibleIds.delete(entry.id);
+        clearFailedIconRefresh(entry.id);
+        renderFailedIconsTable();
+      });
+
+      actionsCell.append(toggleBtn, dismissBtn);
+      row.append(titleCell, urlCell, actionsCell);
+      failedIconsTableBody.appendChild(row);
+    }
+  }
+
+  const closeFailedIconsModal = () => {
+    if (!failedIconsModal) return;
+    failedIconsModal.classList.add("hidden");
+    failedIconsModalVisibleIds.clear();
+    if (failedIconsChanged) {
+      failedIconsChanged = false;
+      try { render(); } catch {}
+    }
+  };
+
+  if (failedIconsFilterInput) {
+    failedIconsFilterInput.addEventListener("input", renderFailedIconsTable);
+  }
+  if (hkShowFailedIcons && failedIconsModal) {
+    hkShowFailedIcons.addEventListener("click", () => {
+      failedIconsChanged = false;
+      failedIconsModalVisibleIds = new Set(getFailedIconRefreshBookmarks().map(e => e.id));
+      if (failedIconsFilterInput) failedIconsFilterInput.value = "";
+      renderFailedIconsTable();
+      failedIconsModal.classList.remove("hidden");
+    });
+  }
+  if (failedIconsClose && failedIconsModal) {
+    failedIconsClose.addEventListener("click", closeFailedIconsModal);
+  }
+  if (failedIconsModal) {
+    failedIconsModal.addEventListener("click", (e) => {
+      if (e.target === failedIconsModal) {
+        closeFailedIconsModal();
+      }
+    });
+  }
+  if (failedIconsExcludeAll) {
+    failedIconsExcludeAll.addEventListener("click", () => {
+      for (const entry of getFilteredFailedIcons()) {
+        setBookmarkIconExcludedById(entry.id, true);
+      }
+      failedIconsChanged = true;
+      renderFailedIconsTable();
+    });
+  }
+  if (failedIconsClear) {
+    failedIconsClear.addEventListener("click", () => {
+      clearAllFailedIconRefreshes();
+      failedIconsModalVisibleIds = new Set(getFailedIconRefreshBookmarks().map(e => e.id));
+      renderFailedIconsTable();
+    });
+  }
+
+  function updateDefaultFallbackIconPreview(draftOrConfig = null) {
+    const candidate = draftOrConfig?.defaultBookmarkIcon ?? draftOrConfig?.appearance?.defaultBookmarkIcon;
+    if (hkDefaultIconEmojiInput) {
+      const str = typeof candidate === "string" ? candidate.trim() : "";
+      hkDefaultIconEmojiInput.value = (str && !str.startsWith("data:") && isValidFallbackBookmarkIcon(str)) ? str : "";
+    }
+    if (!hkDefaultIconPreview) return;
+    hkDefaultIconPreview.src = getFallbackBookmarkIconUrl(
+      candidate !== undefined ? { appearance: { defaultBookmarkIcon: candidate } } : null
+    );
+  }
+
+  if (hkDefaultIconEmojiInput) {
+    hkDefaultIconEmojiInput.addEventListener("input", async () => {
+      const raw = hkDefaultIconEmojiInput.value.trim();
+      if (raw && !isValidFallbackBookmarkIcon(raw)) {
+        if (hkDefaultIconStatus) {
+          hkDefaultIconStatus.textContent = `❌ ${t("defaultFallbackIconInvalid") || "Please enter a valid emoji or image."}`;
+          hkDefaultIconStatus.style.color = "#f44336";
+        }
+        return;
+      }
+      markSettingsDirty();
+      const draft = await ensureAppearanceDraft();
+      draft.defaultBookmarkIcon = raw || null;
+      setCustomFallbackBookmarkIcon(draft.defaultBookmarkIcon);
+      if (hkDefaultIconPreview) {
+        hkDefaultIconPreview.src = getFallbackBookmarkIconUrl({ appearance: { defaultBookmarkIcon: draft.defaultBookmarkIcon } });
+      }
+      if (hkDefaultIconStatus) hkDefaultIconStatus.textContent = "";
+      try { await render(); } catch {}
+    });
+  }
+
+  function processFallbackIconUpload(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type?.startsWith("image/")) {
+        reject(new Error("invalid-image"));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("invalid-image"));
+      reader.onload = () => {
+        const rawDataUrl = typeof reader.result === "string" ? reader.result : "";
+        if (!rawDataUrl) {
+          reject(new Error("invalid-image"));
+          return;
+        }
+        if (file.type === "image/svg+xml") {
+          if (rawDataUrl.length > DEFAULT_FALLBACK_ICON_MAX_BYTES) {
+            reject(new Error("too-large"));
+            return;
+          }
+          resolve(rawDataUrl);
+          return;
+        }
+        const img = new Image();
+        img.onerror = () => reject(new Error("invalid-image"));
+        img.onload = () => {
+          const maxDim = DEFAULT_FALLBACK_ICON_MAX_DIM;
+          const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round((img.width || maxDim) * scale));
+          canvas.height = Math.max(1, Math.round((img.height || maxDim) * scale));
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("invalid-image"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          let encoded = canvas.toDataURL("image/png");
+          if (encoded.length > DEFAULT_FALLBACK_ICON_MAX_BYTES) {
+            encoded = canvas.toDataURL("image/webp", 0.85);
+          }
+          if (encoded.length > DEFAULT_FALLBACK_ICON_MAX_BYTES) {
+            reject(new Error("too-large"));
+            return;
+          }
+          resolve(encoded);
+        };
+        img.src = rawDataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (hkDefaultIconUploadBtn && hkDefaultIconFile) {
+    hkDefaultIconUploadBtn.addEventListener("click", () => {
+      hkDefaultIconFile.value = "";
+      hkDefaultIconFile.click();
+    });
+    hkDefaultIconFile.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await processFallbackIconUpload(file);
+        if (!isValidFallbackBookmarkIcon(dataUrl)) {
+          throw new Error("too-large");
+        }
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        draft.defaultBookmarkIcon = dataUrl;
+        setCustomFallbackBookmarkIcon(dataUrl);
+        updateDefaultFallbackIconPreview(draft);
+        if (hkDefaultIconStatus) {
+          hkDefaultIconStatus.textContent = "";
+        }
+        try { await render(); } catch {}
+      } catch (err) {
+        if (hkDefaultIconStatus) {
+          const msg = err?.message === "too-large"
+            ? (t("defaultFallbackIconTooLarge") || "Icon exceeds 200 KB limit after resizing to 128×128.")
+            : (t("defaultFallbackIconInvalid") || "Please select a valid image file.");
+          hkDefaultIconStatus.textContent = `❌ ${msg}`;
+          hkDefaultIconStatus.style.color = "#f44336";
+        }
+      }
+    });
+  }
+
+  if (hkDefaultIconResetBtn) {
+    hkDefaultIconResetBtn.addEventListener("click", async () => {
+      markSettingsDirty();
+      const draft = await ensureAppearanceDraft();
+      draft.defaultBookmarkIcon = null;
+      setCustomFallbackBookmarkIcon(null);
+      updateDefaultFallbackIconPreview(draft);
+      if (hkDefaultIconStatus) {
+        hkDefaultIconStatus.textContent = "";
+      }
+      try { await render(); } catch {}
+    });
+  }
+
 // ---------- Manual Sync Button ----------
 manualSyncBtn.addEventListener("click", async () => {
   manualSyncBtn.disabled = true;
@@ -4564,6 +4841,13 @@ function updateHouseKeeperInfo(config) {
   if (hkIconRefreshHours) {
     hkIconRefreshHours.value = String(Math.max(1, parseInt(config.housekeeper.iconAutoRefreshHours, 10) || 24));
   }
+  if (hkIconExcludeDomains) {
+    hkIconExcludeDomains.value = getLocalExcludedIconDomainsText();
+  }
+  if (hkDefaultIconStatus) {
+    hkDefaultIconStatus.textContent = "";
+  }
+  updateDefaultFallbackIconPreview(appearanceDraft || config);
   updateHousekeeperIconRefreshFrequencyEnabled();
   updateChoiceOptionStates();
 

@@ -1231,5 +1231,56 @@
   },
   "customSearchAutoRouteIconPlaceholder": {
     "message": "Emoji alebo URL obrázka (predvolené: 🔀)"
+  },
+  "excludeIconRefreshLocal": {
+    "message": "Vylúčiť obnovenie ikony (tento prehliadač)"
+  },
+  "includeIconRefreshLocal": {
+    "message": "Povoliť obnovenie ikony (tento prehliadač)"
+  },
+  "iconAutoRefreshExcludeDomains": {
+    "message": "Vylúčiť domény (iba tento prehliadač):"
+  },
+  "iconAutoRefreshExcludeDomainsPlaceholder": {
+    "message": "intranet.local, *.corp.example"
+  },
+  "displayFailedIconRefreshes": {
+    "message": "Zobraziť neúspešné obnovenia"
+  },
+  "failedIconRefreshesTitle": {
+    "message": "Neúspešné obnovenia ikon"
+  },
+  "failedIconRefreshesDesc": {
+    "message": "Záložky, ktorých ikony sa v tomto prehliadači nepodarilo načítať alebo obnoviť. Vylúčenie zastaví ďalšie pokusy iba lokálne bez synchronizácie."
+  },
+  "failedIconRefreshesEmpty": {
+    "message": "Neboli zaznamenané žiadne neúspešné obnovenia ikon."
+  },
+  "failedIconExcludeBtn": {
+    "message": "Vylúčiť"
+  },
+  "failedIconExcludedBtn": {
+    "message": "Vylúčené"
+  },
+  "failedIconExcludeAll": {
+    "message": "Vylúčiť všetko"
+  },
+  "failedIconClearList": {
+    "message": "Vymazať zoznam"
+  },
+  "failedIconFilterPlaceholder": {
+    "message": "Filtrovať podľa názvu alebo URL..."
+  },
+  "defaultFallbackIconLabel": {
+    "message": "Náhradná ikona (max. 128×128, 200 KB):"
+  },
+  "defaultFallbackIconUpload": {
+    "message": "Nahrať"
+  },
+  "defaultFallbackIconTooLarge": {
+    "message": "Ikona po zmene veľkosti na 128×128 prekračuje limit 200 KB."
+  },
+  "defaultFallbackIconInvalid": {
+    "message": "Vyberte prosím platný súbor obrázka."
   }
 }

@@ -1234,5 +1234,56 @@
   },
   "customSearchAutoRouteIconPlaceholder": {
     "message": "Emoji or image URL (default: 🔀)"
+  },
+  "excludeIconRefreshLocal": {
+    "message": "Exclude icon refresh (this browser)"
+  },
+  "includeIconRefreshLocal": {
+    "message": "Allow icon refresh (this browser)"
+  },
+  "iconAutoRefreshExcludeDomains": {
+    "message": "Exclude domains (this browser only):"
+  },
+  "iconAutoRefreshExcludeDomainsPlaceholder": {
+    "message": "intranet.local, *.corp.example"
+  },
+  "displayFailedIconRefreshes": {
+    "message": "Display failed refreshes"
+  },
+  "failedIconRefreshesTitle": {
+    "message": "Failed Icon Refreshes"
+  },
+  "failedIconRefreshesDesc": {
+    "message": "Bookmarks whose icons failed to load or refresh in this browser. Excluding a bookmark stops future refresh attempts locally without syncing."
+  },
+  "failedIconRefreshesEmpty": {
+    "message": "No failed icon refreshes recorded."
+  },
+  "failedIconExcludeBtn": {
+    "message": "Exclude"
+  },
+  "failedIconExcludedBtn": {
+    "message": "Excluded"
+  },
+  "failedIconExcludeAll": {
+    "message": "Exclude all"
+  },
+  "failedIconClearList": {
+    "message": "Clear list"
+  },
+  "failedIconFilterPlaceholder": {
+    "message": "Filter by title or URL..."
+  },
+  "defaultFallbackIconLabel": {
+    "message": "Fallback icon (max 128×128, 200 KB):"
+  },
+  "defaultFallbackIconUpload": {
+    "message": "Upload"
+  },
+  "defaultFallbackIconTooLarge": {
+    "message": "Icon exceeds 200 KB limit after resizing to 128×128."
+  },
+  "defaultFallbackIconInvalid": {
+    "message": "Please select a valid image file."
   }
 }

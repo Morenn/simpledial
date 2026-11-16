@@ -1231,5 +1231,56 @@
   },
   "customSearchAutoRouteIconPlaceholder": {
     "message": "Emoji of afbeeldings-URL (standaard: 🔀)"
+  },
+  "excludeIconRefreshLocal": {
+    "message": "Pictogramvernieuwing uitsluiten (deze browser)"
+  },
+  "includeIconRefreshLocal": {
+    "message": "Pictogramvernieuwing toestaan (deze browser)"
+  },
+  "iconAutoRefreshExcludeDomains": {
+    "message": "Domeinen uitsluiten (alleen deze browser):"
+  },
+  "iconAutoRefreshExcludeDomainsPlaceholder": {
+    "message": "intranet.local, *.corp.example"
+  },
+  "displayFailedIconRefreshes": {
+    "message": "Mislukte vernieuwingen weergeven"
+  },
+  "failedIconRefreshesTitle": {
+    "message": "Mislukte pictogramvernieuwingen"
+  },
+  "failedIconRefreshesDesc": {
+    "message": "Bladwijzers waarvan pictogrammen niet konden worden geladen of vernieuwd in deze browser. Uitsluiten stopt toekomstige pogingen lokaal zonder synchronisatie."
+  },
+  "failedIconRefreshesEmpty": {
+    "message": "Geen mislukte pictogramvernieuwingen geregistreerd."
+  },
+  "failedIconExcludeBtn": {
+    "message": "Uitsluiten"
+  },
+  "failedIconExcludedBtn": {
+    "message": "Uitgesloten"
+  },
+  "failedIconExcludeAll": {
+    "message": "Alles uitsluiten"
+  },
+  "failedIconClearList": {
+    "message": "Lijst wissen"
+  },
+  "failedIconFilterPlaceholder": {
+    "message": "Filteren op titel of URL..."
+  },
+  "defaultFallbackIconLabel": {
+    "message": "Terugvalpictogram (max. 128×128, 200 KB):"
+  },
+  "defaultFallbackIconUpload": {
+    "message": "Uploaden"
+  },
+  "defaultFallbackIconTooLarge": {
+    "message": "Pictogram overschrijdt de limiet van 200 KB na schalen naar 128×128."
+  },
+  "defaultFallbackIconInvalid": {
+    "message": "Selecteer een geldig afbeeldingsbestand."
   }
 }

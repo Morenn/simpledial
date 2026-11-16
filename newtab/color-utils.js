@@ -264,8 +264,75 @@ export function extractDominantColorFromEmoji(emojiText) {
 
 const ICON_URL_CACHE_PREFIX = "myspeeddial-icon-url-cache:";
 const ICON_URL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const ICON_EXCLUDE_DOMAINS_KEY = "myspeeddial-local-icon-exclude-domains";
 const iconUrlMemoryCache = new Map();
 const inFlightIconUrlFetches = new Map();
+let excludedIconDomainsCache = null;
+
+export function parseExcludedIconDomains(rawText) {
+  if (typeof rawText !== "string") return [];
+  const seen = new Set();
+  const result = [];
+  for (const part of rawText.split(/[\n,;]+/)) {
+    const trimmed = part.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0].replace(/:\d+$/, "");
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+
+export function getLocalExcludedIconDomainsText() {
+  try {
+    if (typeof localStorage === "undefined") return "";
+    return localStorage.getItem(ICON_EXCLUDE_DOMAINS_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function getLocalExcludedIconDomains() {
+  if (Array.isArray(excludedIconDomainsCache)) return excludedIconDomainsCache;
+  excludedIconDomainsCache = parseExcludedIconDomains(getLocalExcludedIconDomainsText());
+  return excludedIconDomainsCache;
+}
+
+export function setLocalExcludedIconDomainsText(rawText) {
+  const normalized = parseExcludedIconDomains(rawText).join(", ");
+  excludedIconDomainsCache = parseExcludedIconDomains(normalized);
+  try {
+    if (typeof localStorage !== "undefined") {
+      if (normalized) {
+        localStorage.setItem(ICON_EXCLUDE_DOMAINS_KEY, normalized);
+      } else {
+        localStorage.removeItem(ICON_EXCLUDE_DOMAINS_KEY);
+      }
+    }
+  } catch {
+    // Ignore storage errors.
+  }
+  return normalized;
+}
+
+export function isUrlHostExcludedFromIconRefresh(url) {
+  if (typeof url !== "string" || !url.trim()) return false;
+  const patterns = getLocalExcludedIconDomains();
+  if (patterns.length === 0) return false;
+  let hostname = "";
+  try {
+    hostname = new URL(url.trim()).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (!hostname) return false;
+  return patterns.some(pattern => {
+    if (pattern.startsWith("*.")) {
+      const suffix = pattern.slice(2);
+      return hostname === suffix || hostname.endsWith("." + suffix);
+    }
+    return hostname === pattern;
+  });
+}
 
 function isHttpIconUrl(url) {
   return typeof url === "string" && /^https?:\/\//i.test(url.trim());
@@ -369,8 +436,16 @@ export async function cacheIconUrlIfNeeded(url) {
 export function applyCachedIconImageSrc(imgEl, iconUrl) {
   if (!imgEl || !iconUrl) return;
   const cached = getCachedIconUrlDataUrl(iconUrl);
-  imgEl.src = cached || iconUrl;
-  if (!cached && isHttpIconUrl(iconUrl)) {
+  if (cached) {
+    imgEl.src = cached;
+    return;
+  }
+  if (isHttpIconUrl(iconUrl) && isUrlHostExcludedFromIconRefresh(iconUrl)) {
+    imgEl.dispatchEvent(new Event("error"));
+    return;
+  }
+  imgEl.src = iconUrl;
+  if (isHttpIconUrl(iconUrl)) {
     void cacheIconUrlIfNeeded(iconUrl);
   }
 }

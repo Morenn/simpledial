@@ -2755,6 +2755,45 @@ body.highlight-side-spaces .workspace-side-space {
   min-width: 140px;
 }
 
+.failed-icons-modal-content {
+  max-width: 760px;
+  width: 92vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.failed-icons-modal-content .backups-table-wrap {
+  max-height: 55vh;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.failed-icons-filter-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.failed-icons-url-cell {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failed-icons-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.failed-icons-action-btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
 .custom-widget-default-btn.active {
   color: var(--accent);
   border-color: var(--accent);

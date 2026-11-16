@@ -1231,5 +1231,56 @@
   },
   "customSearchAutoRouteIconPlaceholder": {
     "message": "Emoji tai kuvan URL (oletus: 🔀)"
+  },
+  "excludeIconRefreshLocal": {
+    "message": "Ohita kuvakkeen päivitys (tämä selain)"
+  },
+  "includeIconRefreshLocal": {
+    "message": "Salli kuvakkeen päivitys (tämä selain)"
+  },
+  "iconAutoRefreshExcludeDomains": {
+    "message": "Ohitettavat verkkotunnukset (vain tämä selain):"
+  },
+  "iconAutoRefreshExcludeDomainsPlaceholder": {
+    "message": "intranet.local, *.corp.example"
+  },
+  "displayFailedIconRefreshes": {
+    "message": "Näytä epäonnistuneet päivitykset"
+  },
+  "failedIconRefreshesTitle": {
+    "message": "Epäonnistuneet kuvakepäivitykset"
+  },
+  "failedIconRefreshesDesc": {
+    "message": "Kirjanmerkit, joiden kuvakkeita ei voitu ladata tai päivittää tässä selaimessa. Ohittaminen estää tulevat yritykset paikallisesti ilman synkronointia."
+  },
+  "failedIconRefreshesEmpty": {
+    "message": "Epäonnistuneita kuvakepäivityksiä ei ole kirjattu."
+  },
+  "failedIconExcludeBtn": {
+    "message": "Ohita"
+  },
+  "failedIconExcludedBtn": {
+    "message": "Ohitettu"
+  },
+  "failedIconExcludeAll": {
+    "message": "Ohita kaikki"
+  },
+  "failedIconClearList": {
+    "message": "Tyhjennä luettelo"
+  },
+  "failedIconFilterPlaceholder": {
+    "message": "Suodata otsikon tai URL-osoitteen perusteella..."
+  },
+  "defaultFallbackIconLabel": {
+    "message": "Varakuvake (maks. 128×128, 200 Kt):"
+  },
+  "defaultFallbackIconUpload": {
+    "message": "Lataa"
+  },
+  "defaultFallbackIconTooLarge": {
+    "message": "Kuvake ylittää 200 Kt rajan 128×128-koon muuttamisen jälkeen."
+  },
+  "defaultFallbackIconInvalid": {
+    "message": "Valitse kelvollinen kuvatiedosto."
   }
 }

@@ -25,11 +25,58 @@ import {
   applyTileColorStyle,
   isValidHexColor,
   blobToDataUrl,
-  fetchIconAsDataUrl
+  fetchIconAsDataUrl,
+  isUrlHostExcludedFromIconRefresh,
+  isUrlLikeIcon
 } from "./color-utils.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
 const PLACEHOLDER_ICON_URL = chrome.runtime.getURL("icons/icon-16.png");
+export const FALLBACK_GLOBE_ICON_URL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%239aa0a6' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E";
+export const DEFAULT_FALLBACK_ICON_MAX_BYTES = 200 * 1024;
+export const DEFAULT_FALLBACK_ICON_MAX_DIM = 128;
+const VALID_FALLBACK_DATA_URL_REGEX = /^data:image\/(?:png|jpeg|jpg|webp|gif|svg\+xml|x-icon|vnd\.microsoft\.icon);/i;
+let customFallbackBookmarkIcon = null;
+
+export function isValidFallbackBookmarkIcon(value) {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("data:")) {
+    return trimmed.length <= DEFAULT_FALLBACK_ICON_MAX_BYTES && VALID_FALLBACK_DATA_URL_REGEX.test(trimmed);
+  }
+  return !isUrlLikeIcon(trimmed) && trimmed.length <= 8;
+}
+
+function emojiToSvgDataUrl(emoji) {
+  const escaped = String(emoji)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-size='18'>${escaped}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function resolveFallbackIconUrlValue(value) {
+  if (!isValidFallbackBookmarkIcon(value)) return null;
+  const trimmed = value.trim();
+  return trimmed.startsWith("data:") ? trimmed : emojiToSvgDataUrl(trimmed);
+}
+
+export function setCustomFallbackBookmarkIcon(value) {
+  customFallbackBookmarkIcon = resolveFallbackIconUrlValue(value);
+}
+
+export function getFallbackBookmarkIconUrl(config = null) {
+  const fromConfig = config?.appearance?.defaultBookmarkIcon;
+  const resolved = resolveFallbackIconUrlValue(fromConfig);
+  if (resolved) {
+    return resolved;
+  }
+  return customFallbackBookmarkIcon || FALLBACK_GLOBE_ICON_URL;
+}
 const ICON_HYDRATION_CONCURRENCY = 4;
 const iconHydrationQueue = [];
 let activeIconHydrations = 0;
@@ -101,6 +148,155 @@ function clearFaviconCacheEntry(item) {
   } catch (err) {
     console.warn("[favicon] localStorage remove failed", err);
   }
+}
+
+const ICON_EXCLUDE_BOOKMARKS_KEY = "myspeeddial-local-icon-exclude-bookmarks";
+const ICON_FAILED_BOOKMARKS_KEY = "myspeeddial-local-icon-failed-bookmarks";
+let excludedBookmarkIdsCache = null;
+let failedBookmarkIdsCache = null;
+const dismissedFailedIconIds = new Set();
+
+function readLocalIdSet(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter(id => typeof id === "string" && id) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeLocalIdSet(storageKey, set) {
+  try {
+    if (set.size > 0) {
+      localStorage.setItem(storageKey, JSON.stringify([...set]));
+    } else {
+      localStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function getExcludedBookmarkIdSet() {
+  if (!(excludedBookmarkIdsCache instanceof Set)) {
+    excludedBookmarkIdsCache = readLocalIdSet(ICON_EXCLUDE_BOOKMARKS_KEY);
+  }
+  return excludedBookmarkIdsCache;
+}
+
+export function isBookmarkIconExcludedById(bookmarkId) {
+  if (!bookmarkId) return false;
+  return getExcludedBookmarkIdSet().has(bookmarkId);
+}
+
+export function setBookmarkIconExcludedById(bookmarkId, excluded) {
+  if (!bookmarkId) return false;
+  const set = getExcludedBookmarkIdSet();
+  if (excluded) {
+    set.add(bookmarkId);
+  } else {
+    set.delete(bookmarkId);
+  }
+  writeLocalIdSet(ICON_EXCLUDE_BOOKMARKS_KEY, set);
+  return excluded;
+}
+
+export function toggleBookmarkIconExcludedById(bookmarkId) {
+  if (!bookmarkId) return false;
+  return setBookmarkIconExcludedById(bookmarkId, !isBookmarkIconExcludedById(bookmarkId));
+}
+
+function getFailedBookmarkIdSet() {
+  if (!(failedBookmarkIdsCache instanceof Set)) {
+    failedBookmarkIdsCache = readLocalIdSet(ICON_FAILED_BOOKMARKS_KEY);
+  }
+  return failedBookmarkIdsCache;
+}
+
+function saveFailedBookmarkIdSet(set) {
+  writeLocalIdSet(ICON_FAILED_BOOKMARKS_KEY, set);
+}
+
+export function recordFailedIconRefresh(bookmarkId) {
+  if (!bookmarkId) return;
+  dismissedFailedIconIds.delete(bookmarkId);
+  const set = getFailedBookmarkIdSet();
+  if (set.has(bookmarkId)) return;
+  set.add(bookmarkId);
+  saveFailedBookmarkIdSet(set);
+}
+
+export function clearFailedIconRefresh(bookmarkId) {
+  if (!bookmarkId) return;
+  dismissedFailedIconIds.add(bookmarkId);
+  const set = getFailedBookmarkIdSet();
+  if (!set.delete(bookmarkId)) return;
+  saveFailedBookmarkIdSet(set);
+}
+
+export function clearAllFailedIconRefreshes() {
+  const excludedSet = getExcludedBookmarkIdSet();
+  const set = getFailedBookmarkIdSet();
+  for (const id of [...set]) {
+    if (!excludedSet.has(id)) {
+      dismissedFailedIconIds.add(id);
+      set.delete(id);
+    }
+  }
+  if (typeof document !== "undefined") {
+    document.querySelectorAll(".bookmark-tile[data-bookmark-id]").forEach(tile => {
+      const id = tile.dataset.bookmarkId;
+      if (id && !excludedSet.has(id)) {
+        dismissedFailedIconIds.add(id);
+      }
+    });
+  }
+  saveFailedBookmarkIdSet(set);
+}
+
+export function getFailedIconRefreshBookmarks() {
+  const seenIds = new Set([
+    ...getFailedBookmarkIdSet(),
+    ...getExcludedBookmarkIdSet()
+  ]);
+  if (typeof document !== "undefined") {
+    document.querySelectorAll(".bookmark-tile[data-bookmark-id]").forEach(tile => {
+      const id = tile.dataset.bookmarkId;
+      if (!id || seenIds.has(id) || dismissedFailedIconIds.has(id)) return;
+      const img = tile.querySelector("img.bookmark-favicon");
+      if (!img || !img.complete) return;
+      const src = img.currentSrc || img.src || "";
+      if (!src || src === PLACEHOLDER_ICON_URL) return;
+      const isGoogleFallbackGlobe = isGoogleFaviconUrl(src) && img.naturalWidth > 0 && img.naturalWidth <= 16 && img.naturalHeight <= 16;
+      const isBroken = img.naturalWidth === 0;
+      if (isGoogleFallbackGlobe || isBroken) {
+        seenIds.add(id);
+      }
+    });
+  }
+
+  const results = [];
+  for (const id of seenIds) {
+    const loc = findBookmarkLocation(id);
+    const item = loc?.item;
+    if (!item || item.deleted || loc?.group?.deleted || loc?.parentStack?.deleted) continue;
+    results.push({
+      id: item.id,
+      title: item.title || item.url || item.id,
+      url: item.url || "",
+      excluded: isBookmarkIconExcludedById(item.id)
+    });
+  }
+  return results;
+}
+
+function isBookmarkIconLocallyExcluded(item) {
+  if (!item) return false;
+  if (item.id && isBookmarkIconExcludedById(item.id)) return true;
+  if (item.url && isUrlHostExcludedFromIconRefresh(item.url)) return true;
+  if (item.customIcon && isUrlHostExcludedFromIconRefresh(item.customIcon)) return true;
+  return false;
 }
 
 function getCachedFaviconDataUrl(item) {
@@ -304,7 +500,39 @@ export function createBookmarkTile(item, config = null) {
     }
   }
 
-  icon.src = getImmediateIconSrc(item);
+  if (config?.appearance && "defaultBookmarkIcon" in config.appearance) {
+    setCustomFallbackBookmarkIcon(config.appearance.defaultBookmarkIcon);
+  }
+  const fallbackIconUrl = getFallbackBookmarkIconUrl(config);
+
+  icon.addEventListener("error", () => {
+    if (icon.src !== PLACEHOLDER_ICON_URL && icon.src !== fallbackIconUrl) {
+      if (!isBookmarkIconLocallyExcluded(item)) {
+        recordFailedIconRefresh(item.id);
+        if (!getIconRefreshedAt(item)) {
+          setIconRefreshedAt(item, Date.now());
+        }
+      }
+      icon.src = fallbackIconUrl;
+    }
+  });
+
+  icon.addEventListener("load", () => {
+    const loadedSrc = icon.currentSrc || icon.src;
+    if (!loadedSrc || loadedSrc === PLACEHOLDER_ICON_URL || loadedSrc === fallbackIconUrl) return;
+    if (isGoogleFaviconUrl(loadedSrc) && icon.naturalWidth > 0 && icon.naturalWidth <= 16 && icon.naturalHeight <= 16) {
+      if (!isBookmarkIconLocallyExcluded(item)) {
+        recordFailedIconRefresh(item.id);
+        if (!getIconRefreshedAt(item)) {
+          setIconRefreshedAt(item, Date.now());
+        }
+      }
+      return;
+    }
+    clearFailedIconRefresh(item.id);
+  });
+
+  icon.src = getImmediateIconSrc(item, config);
   scheduleDeferredIconHydration(icon, item);
 
   const link = document.createElement("a");
@@ -611,17 +839,31 @@ function isGoogleFaviconUrl(url) {
   }
 }
 
-function getImmediateIconSrc(item) {
+function getImmediateIconSrc(item, config = null) {
   // Keep first paint local and immediate.
+  const isLocallyBlocked = isBookmarkIconLocallyExcluded(item) || (item?.id && getFailedBookmarkIdSet().has(item.id));
+  const fallbackIconUrl = getFallbackBookmarkIconUrl(config);
   const cached = getCachedFaviconDataUrl(item);
-  if (cached) return cached;
+  if (cached) {
+    if (isLocallyBlocked && !/^data:/i.test(cached)) {
+      return fallbackIconUrl;
+    }
+    return cached;
+  }
 
-  if (item.customIcon) return item.customIcon;
+  if (item.customIcon) {
+    if (isLocallyBlocked && !/^data:/i.test(item.customIcon)) {
+      return fallbackIconUrl;
+    }
+    return item.customIcon;
+  }
 
-  return PLACEHOLDER_ICON_URL;
+  return isLocallyBlocked ? fallbackIconUrl : PLACEHOLDER_ICON_URL;
 }
 
 function getDeferredIconSrc(item) {
+  if (isBookmarkIconLocallyExcluded(item) || (item?.id && getFailedBookmarkIdSet().has(item.id))) return null;
+
   const cached = getCachedFaviconDataUrl(item);
   if (cached) return null;
 
@@ -804,6 +1046,9 @@ function shouldRefreshIcon(lastRefreshedAt, frequencyHours, force = false) {
 }
 
 function isIconMissing(item) {
+  if (item?.id && getFailedBookmarkIdSet().has(item.id)) {
+    return true;
+  }
   if (item.customIcon) {
     return !getCachedFaviconDataUrl(item);
   }
@@ -817,6 +1062,7 @@ async function refreshBookmarkIcon(item, options = {}) {
   const frequencyHours = Math.max(1, Number(options.frequencyHours) || DEFAULT_ICON_AUTO_REFRESH_HOURS);
 
   if (!item || item.deleted) return false;
+  if (!force && isBookmarkIconLocallyExcluded(item)) return false;
 
   // "none" mode only blocks automatic/background refreshes. Explicit
   // force:true calls (triggered by saving/creating a bookmark, or by the
@@ -844,6 +1090,7 @@ async function refreshBookmarkIcon(item, options = {}) {
           const dataUrl = await fetchIconAsDataUrl(faviconUrl, true);
           resolvedIconSrc = dataUrl;
           setCachedFaviconDataUrl(item, dataUrl);
+          clearFailedIconRefresh(item.id);
         } catch (fetchErr) {
           // Fetch blocked (CORS/permissions) — <img> can still load the
           // remote URL directly without CORS, so use that instead. This is
@@ -863,8 +1110,11 @@ async function refreshBookmarkIcon(item, options = {}) {
           }
         }
       }
+    } else {
+      recordFailedIconRefresh(item.id);
     }
   } catch (err) {
+    recordFailedIconRefresh(item.id);
     console.warn("favicon refresh failed", err);
   }
 
@@ -1514,6 +1764,12 @@ export async function handleBookmarkContext(action, el) {
 
     await saveState();
     await syncWrite();
+    render();
+    return;
+  }
+
+  if (action === "toggle-exclude-icon" && !stackItem) {
+    toggleBookmarkIconExcludedById(item.id);
     render();
     return;
   }

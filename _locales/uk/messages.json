@@ -1231,5 +1231,56 @@
   },
   "customSearchAutoRouteIconPlaceholder": {
     "message": "Емодзі або URL зображення (типово: 🔀)"
+  },
+  "excludeIconRefreshLocal": {
+    "message": "Виключити оновлення значка (цей браузер)"
+  },
+  "includeIconRefreshLocal": {
+    "message": "Дозволити оновлення значка (цей браузер)"
+  },
+  "iconAutoRefreshExcludeDomains": {
+    "message": "Виключити домени (лише цей браузер):"
+  },
+  "iconAutoRefreshExcludeDomainsPlaceholder": {
+    "message": "intranet.local, *.corp.example"
+  },
+  "displayFailedIconRefreshes": {
+    "message": "Показати невдалі оновлення"
+  },
+  "failedIconRefreshesTitle": {
+    "message": "Невдалі оновлення значків"
+  },
+  "failedIconRefreshesDesc": {
+    "message": "Закладки, значки яких не вдалося завантажити або оновити в цьому браузері. Виключення зупиняє майбутні спроби локально без синхронізації."
+  },
+  "failedIconRefreshesEmpty": {
+    "message": "Невдалих оновлень значків не зафіксовано."
+  },
+  "failedIconExcludeBtn": {
+    "message": "Виключити"
+  },
+  "failedIconExcludedBtn": {
+    "message": "Виключено"
+  },
+  "failedIconExcludeAll": {
+    "message": "Виключити всі"
+  },
+  "failedIconClearList": {
+    "message": "Очистити список"
+  },
+  "failedIconFilterPlaceholder": {
+    "message": "Фільтрувати за назвою або URL..."
+  },
+  "defaultFallbackIconLabel": {
+    "message": "Резервний значок (макс. 128×128, 200 КБ):"
+  },
+  "defaultFallbackIconUpload": {
+    "message": "Завантажити"
+  },
+  "defaultFallbackIconTooLarge": {
+    "message": "Значок перевищує ліміт 200 КБ після зміни розміру до 128×128."
+  },
+  "defaultFallbackIconInvalid": {
+    "message": "Виберіть дійсний файл зображення."
   }
 }

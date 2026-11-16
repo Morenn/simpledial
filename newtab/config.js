@@ -76,7 +76,8 @@ export const defaultConfig = {
     widgetNewRow: {}, // Per-widget row break flag: { [widgetKey]: boolean }
     customWidgets: [], // User-defined declarative widgets (e.g. custom search)
     customSearchAutoRouteDefaults: {}, // Per-group auto-route default flag: { [groupKey]: boolean }
-    customSearchAutoRouteIcons: {} // Per-group auto-route custom icon: { [groupKey]: string }
+    customSearchAutoRouteIcons: {}, // Per-group auto-route custom icon: { [groupKey]: string }
+    defaultBookmarkIcon: null // Custom fallback icon data URL (max 128x128, <= 200 KB)
   },
   advanced: {
     faviconDebugLogging: false,
