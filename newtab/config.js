@@ -89,44 +89,85 @@ export const defaultConfig = {
   }
 };
 
+let cachedConfig = null;
+let inFlightConfigLoad = null;
+
+function mergeConfigWithDefaults(stored) {
+  if (!stored || typeof stored !== "object") {
+    return structuredClone(defaultConfig);
+  }
+  return {
+    ...defaultConfig,
+    ...stored,
+    sync: {
+      ...defaultConfig.sync,
+      ...(stored.sync || {})
+    },
+    housekeeper: {
+      ...defaultConfig.housekeeper,
+      ...(stored.housekeeper || {})
+    },
+    backups: {
+      ...defaultConfig.backups,
+      ...(stored.backups || {})
+    },
+    appearance: {
+      ...defaultConfig.appearance,
+      ...(stored.appearance || {})
+    },
+    advanced: {
+      ...defaultConfig.advanced,
+      ...(stored.advanced || {})
+    }
+  };
+}
+
+export function invalidateConfigCache() {
+  cachedConfig = null;
+}
+
+if (typeof chrome !== "undefined" && chrome?.storage?.onChanged?.addListener) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && Object.prototype.hasOwnProperty.call(changes, CONFIG_STORAGE_KEY)) {
+      cachedConfig = null;
+    }
+  });
+}
+
 // Load configuration from storage
 export async function loadConfig() {
-  const res = await chrome.storage.local.get(CONFIG_STORAGE_KEY);
-  const stored = res[CONFIG_STORAGE_KEY];
-
-  if (stored) {
-    // Merge with defaults to ensure new fields are present
-    return {
-      ...defaultConfig,
-      ...stored,
-      sync: {
-        ...defaultConfig.sync,
-        ...(stored.sync || {})
-      },
-      housekeeper: {
-        ...defaultConfig.housekeeper,
-        ...(stored.housekeeper || {})
-      },
-      backups: {
-        ...defaultConfig.backups,
-        ...(stored.backups || {})
-      },
-      appearance: {
-        ...defaultConfig.appearance,
-        ...(stored.appearance || {})
-      },
-      advanced: {
-        ...defaultConfig.advanced,
-        ...(stored.advanced || {})
-      }
-    };
+  const canUseLongLivedCache = typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function";
+  if (canUseLongLivedCache && cachedConfig) {
+    return structuredClone(cachedConfig);
+  }
+  if (inFlightConfigLoad) {
+    const resolved = await inFlightConfigLoad;
+    return structuredClone(resolved);
   }
 
-  return JSON.parse(JSON.stringify(defaultConfig));
+  inFlightConfigLoad = (async () => {
+    const res = await chrome.storage.local.get(CONFIG_STORAGE_KEY);
+    const merged = mergeConfigWithDefaults(res?.[CONFIG_STORAGE_KEY]);
+    if (canUseLongLivedCache) {
+      cachedConfig = merged;
+    }
+    return merged;
+  })();
+
+  try {
+    const resolved = await inFlightConfigLoad;
+    return structuredClone(resolved);
+  } finally {
+    inFlightConfigLoad = null;
+  }
 }
 
 // Save configuration to storage
 export async function saveConfig(config) {
+  const normalized = mergeConfigWithDefaults(config);
+  if (typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function") {
+    cachedConfig = structuredClone(normalized);
+  }
   await chrome.storage.local.set({ [CONFIG_STORAGE_KEY]: config });
 }
 

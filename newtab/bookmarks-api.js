@@ -47,7 +47,7 @@ export function getBookmarkChildren(parentId) {
   });
 }
 
-function normalizeBookmarkUrl(url) {
+export function normalizeBookmarkUrl(url) {
   const trimmed = url.trim();
   if (!trimmed) return trimmed;
   if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)) {

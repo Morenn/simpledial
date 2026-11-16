@@ -654,7 +654,3 @@ export function setupBookmarkDrag() {
     }
   });
 }
-
-export function setupGroupDrag() {
-  // Kept for compatibility; active group tab drag-and-drop lives in groups.js
-}

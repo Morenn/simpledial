@@ -17,6 +17,7 @@ import { render } from "./render.js";
 import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
 import { loadConfig } from "./config.js";
+import { normalizeBookmarkUrl } from "./bookmarks-api.js";
 import { faviconDebugLog } from "./debug.js";
 import {
   extractDominantColorFromImageSource,
@@ -1285,18 +1286,6 @@ export async function applyMassTileColorFromIcon(enable) {
   }
 
   return { groupsUpdated, bookmarksUpdated };
-}
-
-function normalizeBookmarkUrl(url) {
-  const trimmed = url.trim();
-  if (!trimmed) return trimmed;
-
-  // Preserve any URL with a valid protocol/scheme like http://, https://, ftp://, mailto:, etc.
-  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)) {
-    return trimmed;
-  }
-
-  return `https://${trimmed}`;
 }
 
 // ---------- Modal ----------
