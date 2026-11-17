@@ -95,6 +95,7 @@ export function clearSyncStatuses() {
   if (syncStatus) syncStatus.textContent = "";
   if (syncTestStatus) syncTestStatus.textContent = "";
   if (syncNowStatus) syncNowStatus.textContent = "";
+  if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "";
 }
 
 export function clearSyncCredentialsInConfig(config) {
@@ -116,6 +117,7 @@ export function clearSyncCredentialsInUi() {
   }
   settingsState.credentialsTouched = false;
   updateCredentialsSaveButton();
+  updateWebdavPartModeStates();
 }
 
 export function updateSyncFields() {
@@ -165,6 +167,7 @@ export function updateSyncFields() {
     syncAuthResetNote.classList.toggle("hidden", !!usingBasic || isBrowserSync);
   }
   updateCredentialsSaveButton();
+  updateWebdavPartModeStates();
 }
 
 export function updateSyncNowButtonDisabledState() {
@@ -181,6 +184,7 @@ function updateCredentialsSaveButton() {
 function markCredentialsTouched() {
   settingsState.credentialsTouched = true;
   updateCredentialsSaveButton();
+  updateWebdavPartModeStates();
 }
 
 function formatSupportedHeadersSummary(supportedHeaders) {
@@ -479,10 +483,7 @@ export function initSyncSettings({ persistSettings }) {
     });
   }
   if (syncEnable) syncEnable.addEventListener("change", updateSyncNowButtonDisabledState);
-  if (syncType) syncType.addEventListener("change", () => {
-    updateSyncFields();
-    updateWebdavPartModeStates();
-  });
+  if (syncType) syncType.addEventListener("change", updateSyncFields);
   for (const part of WEBDAV_EXTRA_PARTS) {
     part.checkbox?.addEventListener("change", updateWebdavPartModeStates);
     part.modeSelect?.addEventListener("change", updateWebdavPartModeStates);
