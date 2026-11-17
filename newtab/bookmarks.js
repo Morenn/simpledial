@@ -18,6 +18,7 @@ import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
 import { loadConfig } from "./config.js";
 import { normalizeBookmarkUrl } from "./bookmarks-api.js";
+import { syncRovingTabIndex } from "./keyboard-nav.js";
 import { faviconDebugLog } from "./debug.js";
 import {
   extractDominantColorFromImageSource,
@@ -476,6 +477,7 @@ async function syncBookmarkColorFromIcon(item, tile, iconSrc) {
 export function createBookmarkTile(item, config = null) {
   const tile = document.createElement("div");
   tile.className = "bookmark-tile";
+  tile.tabIndex = 0;
   tile.draggable = true;
   tile.dataset.bookmarkId = item.id;
   tile.title = item.url;
@@ -538,6 +540,7 @@ export function createBookmarkTile(item, config = null) {
 
   const link = document.createElement("a");
   link.className = "bookmark-title";
+  link.tabIndex = -1;
   link.draggable = false;
   link.href = item.url;
   link.textContent = item.title || item.url;
@@ -588,6 +591,7 @@ export function createStackTile(stackItem, config = null) {
 
   const tile = document.createElement("div");
   tile.className = "bookmark-tile stack-tile";
+  tile.tabIndex = 0;
   tile.draggable = true;
   tile.dataset.bookmarkId = stackItem.id;
   tile.dataset.isStack = "true";
@@ -642,7 +646,7 @@ export function createStackTile(stackItem, config = null) {
 
   tile.addEventListener("click", e => {
     e.preventDefault();
-    openStackPopover(stackItem.id);
+    openStackPopover(stackItem.id, { focusFirstTile: e.detail === 0 });
   });
 
   tile.addEventListener("auxclick", e => {
@@ -665,9 +669,15 @@ export function getActiveStackPopoverId() {
 export function closeStackPopover() {
   const backdrop = document.getElementById("stack-popover");
   if (!backdrop) return;
+  const previousStackId = activeStackPopoverId;
+  const shouldRestoreFocus = !!(document.activeElement && backdrop.contains(document.activeElement));
   backdrop.classList.add("hidden");
   backdrop.classList.remove("dragging-outside");
   activeStackPopoverId = null;
+  if (shouldRestoreFocus && previousStackId) {
+    const stackTile = document.querySelector(`.stack-tile[data-bookmark-id="${CSS.escape(previousStackId)}"]`);
+    stackTile?.focus({ preventScroll: true });
+  }
 }
 
 function populateStackPopover(stackItem, config = null) {
@@ -716,6 +726,7 @@ export async function refreshOpenStackPopover(config = null) {
   }
 
   populateStackPopover(loc.item, config);
+  syncRovingTabIndex();
   import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
 }
 
@@ -734,12 +745,19 @@ export async function openStackPopover(stackId, options = {}) {
 
   backdrop.classList.remove("hidden");
   backdrop.classList.remove("dragging-outside");
+  syncRovingTabIndex();
 
   import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
 
   if (options.focusTitle && titleInput) {
     titleInput.focus();
     titleInput.select();
+  } else if (options.focusFirstTile) {
+    const firstTile = backdrop.querySelector(".stack-popover-grid .bookmark-tile");
+    if (firstTile) {
+      firstTile.focus({ preventScroll: true });
+      syncRovingTabIndex();
+    }
   }
 }
 

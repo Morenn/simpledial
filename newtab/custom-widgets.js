@@ -2,7 +2,7 @@ import { t } from "./i18n.js";
 import { normalizeCustomIconValue, isUrlLikeIcon, applyCachedIconImageSrc, isAllowedThemeUrl } from "./color-utils.js";
 
 export const VALID_WIDGET_SPACES = new Set(["header", "left", "center", "right", "footer"]);
-export const DEFAULT_WIDGET_ORDER = ["groups", "search", "manage", "bookmarks", "syncStatus", "dateTime", "bookmarksCount"];
+export const DEFAULT_WIDGET_ORDER = ["groups", "search", "manage", "bookmarks", "syncStatus", "dateTime", "shortcutPalette", "bookmarksCount"];
 const VALID_WIDGET_KEYS = new Set(DEFAULT_WIDGET_ORDER);
 
 export function isValidCustomSearchUrlTemplate(rawUrl) {

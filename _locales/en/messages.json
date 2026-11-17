@@ -1435,5 +1435,50 @@
   },
   "syncWebdavBackgroundFile": {
     "message": "Background (background.json)"
+  },
+  "widgetShortcutPalette": {
+    "message": "Shortcut palette"
+  },
+  "shortcutPalettePrompt": {
+    "message": "Press {0} for Shortcut Palette"
+  },
+  "shortcutsModalTitle": {
+    "message": "Keyboard Shortcuts"
+  },
+  "shortcutsCategoryNavigation": {
+    "message": "Navigation"
+  },
+  "shortcutsCategoryActions": {
+    "message": "Actions"
+  },
+  "shortcutsCategoryGlobal": {
+    "message": "Global"
+  },
+  "shortcutDescArrows": {
+    "message": "Navigate between groups, columns, and bookmarks"
+  },
+  "shortcutDescHomeEnd": {
+    "message": "Jump to first or last item"
+  },
+  "shortcutDescPageUpDown": {
+    "message": "Switch focus between Groups and Bookmarks"
+  },
+  "shortcutDescTab": {
+    "message": "Move between page widgets"
+  },
+  "shortcutDescActivate": {
+    "message": "Open bookmark, expand stack, or select group"
+  },
+  "shortcutDescOpenNewTab": {
+    "message": "Open focused bookmark in a new tab"
+  },
+  "shortcutDescEscape": {
+    "message": "Close popover, dropdown, modal, or clear search"
+  },
+  "shortcutDescFind": {
+    "message": "Focus search box"
+  },
+  "shortcutDescPalette": {
+    "message": "Open Shortcut Palette"
   }
 }

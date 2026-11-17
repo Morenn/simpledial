@@ -1432,5 +1432,50 @@
   },
   "syncWebdavBackgroundFile": {
     "message": "Hintergrund (background.json)"
+  },
+  "widgetShortcutPalette": {
+    "message": "Tastenkürzel-Palette"
+  },
+  "shortcutPalettePrompt": {
+    "message": "Drücken Sie {0} für die Tastenkürzel-Palette"
+  },
+  "shortcutsModalTitle": {
+    "message": "Tastenkürzel"
+  },
+  "shortcutsCategoryNavigation": {
+    "message": "Navigation"
+  },
+  "shortcutsCategoryActions": {
+    "message": "Aktionen"
+  },
+  "shortcutsCategoryGlobal": {
+    "message": "Global"
+  },
+  "shortcutDescArrows": {
+    "message": "Zwischen Gruppen, Spalten und Lesezeichen navigieren"
+  },
+  "shortcutDescHomeEnd": {
+    "message": "Zum ersten oder letzten Element springen"
+  },
+  "shortcutDescPageUpDown": {
+    "message": "Fokus zwischen Gruppen und Lesezeichen wechseln"
+  },
+  "shortcutDescTab": {
+    "message": "Zwischen Seiten-Widgets wechseln"
+  },
+  "shortcutDescActivate": {
+    "message": "Lesezeichen öffnen, Stapel erweitern oder Gruppe wählen"
+  },
+  "shortcutDescOpenNewTab": {
+    "message": "Fokussiertes Lesezeichen in neuem Tab öffnen"
+  },
+  "shortcutDescEscape": {
+    "message": "Popover, Menü oder Modal schließen bzw. Suche leeren"
+  },
+  "shortcutDescFind": {
+    "message": "Suchfeld fokussieren"
+  },
+  "shortcutDescPalette": {
+    "message": "Tastenkürzel-Palette öffnen"
   }
 }

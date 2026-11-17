@@ -177,6 +177,7 @@ export function createAppearanceDraftFromConfig(config) {
     searchSpace: appearance.searchSpace || "header",
     manageSpace: appearance.manageSpace || "header",
     syncStatusSpace: appearance.syncStatusSpace || "footer",
+    shortcutPaletteSpace: appearance.shortcutPaletteSpace || "footer",
     bookmarksCountSpace: appearance.bookmarksCountSpace || "footer",
     headerSingleRow: appearance.headerSingleRow !== false,
     searchStyle: appearance.searchStyle || "full",
@@ -506,6 +507,7 @@ export async function applyAppearanceToConfig(config, { setSyncStatusMessage }) 
     config.appearance.searchSpace = draft.searchSpace || "header";
     config.appearance.manageSpace = draft.manageSpace || "header";
     config.appearance.syncStatusSpace = draft.syncStatusSpace || "footer";
+    config.appearance.shortcutPaletteSpace = draft.shortcutPaletteSpace || "footer";
     config.appearance.bookmarksCountSpace = draft.bookmarksCountSpace || "footer";
     config.appearance.headerSingleRow = !!draft.headerSingleRow;
   }

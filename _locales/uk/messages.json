@@ -1432,5 +1432,50 @@
   },
   "syncWebdavBackgroundFile": {
     "message": "Фон (background.json)"
+  },
+  "widgetShortcutPalette": {
+    "message": "Палітра комбінацій"
+  },
+  "shortcutPalettePrompt": {
+    "message": "Натисніть {0} для палітри комбінацій"
+  },
+  "shortcutsModalTitle": {
+    "message": "Комбінації клавіш"
+  },
+  "shortcutsCategoryNavigation": {
+    "message": "Навігація"
+  },
+  "shortcutsCategoryActions": {
+    "message": "Дії"
+  },
+  "shortcutsCategoryGlobal": {
+    "message": "Глобальні"
+  },
+  "shortcutDescArrows": {
+    "message": "Перехід між групами, стовпцями та закладками"
+  },
+  "shortcutDescHomeEnd": {
+    "message": "Перейти до першого або останнього елемента"
+  },
+  "shortcutDescPageUpDown": {
+    "message": "Перемкнути фокус між групами та закладками"
+  },
+  "shortcutDescTab": {
+    "message": "Перехід між віджетами сторінки"
+  },
+  "shortcutDescActivate": {
+    "message": "Відкрити закладку, розгорнути стек або вибрати групу"
+  },
+  "shortcutDescOpenNewTab": {
+    "message": "Відкрити вибрану закладку в новій вкладці"
+  },
+  "shortcutDescEscape": {
+    "message": "Закрити вікно, меню або очистити пошук"
+  },
+  "shortcutDescFind": {
+    "message": "Перейти до поля пошуку"
+  },
+  "shortcutDescPalette": {
+    "message": "Відкрити палітру комбінацій"
   }
 }

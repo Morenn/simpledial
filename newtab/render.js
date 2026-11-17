@@ -5,6 +5,7 @@ import { setupBookmarkDrag } from "./dragdrop.js";
 import { loadConfig } from "./config.js";
 import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
+import { restorePendingKeyboardFocus } from "./keyboard-nav.js";
 
 // ======================================================
 // GRID LAYOUT CONSTANTS
@@ -160,6 +161,7 @@ export async function render() {
 
   // Apply grid layout after rendering
   calculateGridLayout();
+  restorePendingKeyboardFocus();
 }
 
 // ======================================================
@@ -486,6 +488,7 @@ async function renderBookmarks(providedConfig = null) {
 
   const addTile = document.createElement("div");
   addTile.className = "bookmark-tile add-bookmark";
+  addTile.tabIndex = 0;
   addTile.textContent = "+";
   addTile.title = t("newBookmark") || "New bookmark";
 

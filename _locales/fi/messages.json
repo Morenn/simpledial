@@ -1432,5 +1432,50 @@
   },
   "syncWebdavBackgroundFile": {
     "message": "Tausta (background.json)"
+  },
+  "widgetShortcutPalette": {
+    "message": "Pikanäppäinpaletti"
+  },
+  "shortcutPalettePrompt": {
+    "message": "Avaa pikanäppäinpaletti painamalla {0}"
+  },
+  "shortcutsModalTitle": {
+    "message": "Pikanäppäimet"
+  },
+  "shortcutsCategoryNavigation": {
+    "message": "Navigointi"
+  },
+  "shortcutsCategoryActions": {
+    "message": "Toiminnot"
+  },
+  "shortcutsCategoryGlobal": {
+    "message": "Yleiset"
+  },
+  "shortcutDescArrows": {
+    "message": "Liiku ryhmien, sarakkeiden ja kirjanmerkkien välillä"
+  },
+  "shortcutDescHomeEnd": {
+    "message": "Siirry ensimmäiseen tai viimeiseen kohteeseen"
+  },
+  "shortcutDescPageUpDown": {
+    "message": "Vaihda kohdistus ryhmien ja kirjanmerkkien välillä"
+  },
+  "shortcutDescTab": {
+    "message": "Siirry sivun widgettien välillä"
+  },
+  "shortcutDescActivate": {
+    "message": "Avaa kirjanmerkki, laajenna pino tai valitse ryhmä"
+  },
+  "shortcutDescOpenNewTab": {
+    "message": "Avaa kohdistettu kirjanmerkki uudessa välilehdessä"
+  },
+  "shortcutDescEscape": {
+    "message": "Sulje ponnahdusikkuna, valikko tai tyhjennä haku"
+  },
+  "shortcutDescFind": {
+    "message": "Kohdista hakukenttään"
+  },
+  "shortcutDescPalette": {
+    "message": "Avaa pikanäppäinpaletti"
   }
 }

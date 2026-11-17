@@ -568,6 +568,9 @@ export async function applySideSpaces(config = null) {
   const bookmarksCountSpace = appearance.bookmarksCountSpace === "disabled"
     ? "disabled"
     : normalizeWidgetSpace(appearance.bookmarksCountSpace, "footer");
+  const shortcutPaletteSpace = appearance.shortcutPaletteSpace === "disabled"
+    ? "disabled"
+    : normalizeWidgetSpace(appearance.shortcutPaletteSpace, "footer");
   const customWidgets = Array.isArray(appearance.customWidgets) ? appearance.customWidgets : [];
   const autoRouteDefaults = (appearance.customSearchAutoRouteDefaults && typeof appearance.customSearchAutoRouteDefaults === "object")
     ? appearance.customSearchAutoRouteDefaults
@@ -605,6 +608,7 @@ export async function applySideSpaces(config = null) {
   const dateTimeDisplay = document.getElementById("date-time-display");
   const manageActions = document.getElementById("manage-actions");
   const footerSyncStatus = document.getElementById("footer-sync-status");
+  const footerShortcutPalette = document.getElementById("footer-shortcut-palette");
   const footerBookmarksTotal = document.getElementById("footer-bookmarks-total");
 
   const widgetElements = {
@@ -613,6 +617,7 @@ export async function applySideSpaces(config = null) {
     manage: manageActions,
     syncStatus: footerSyncStatus,
     dateTime: dateTimeDisplay,
+    shortcutPalette: footerShortcutPalette,
     bookmarksCount: footerBookmarksTotal,
     ...customElements
   };
@@ -622,6 +627,7 @@ export async function applySideSpaces(config = null) {
     manage: manageSpace,
     syncStatus: syncStatusSpace,
     dateTime: dateTimeSpace,
+    shortcutPalette: shortcutPaletteSpace,
     bookmarksCount: bookmarksCountSpace
   };
   const customAlignMap = {};
@@ -667,7 +673,7 @@ export async function applySideSpaces(config = null) {
       el.style.display = "block";
     } else if (key === "manage" || key === "groups" || key === "syncStatus" || customElements[key]) {
       el.style.display = "flex";
-    } else if (key === "bookmarksCount") {
+    } else if (key === "bookmarksCount" || key === "shortcutPalette") {
       el.style.display = "inline-flex";
     }
 

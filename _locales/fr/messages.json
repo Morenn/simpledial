@@ -1432,5 +1432,50 @@
   },
   "syncWebdavBackgroundFile": {
     "message": "Arrière-plan (background.json)"
+  },
+  "widgetShortcutPalette": {
+    "message": "Palette de raccourcis"
+  },
+  "shortcutPalettePrompt": {
+    "message": "Appuyez sur {0} pour la palette de raccourcis"
+  },
+  "shortcutsModalTitle": {
+    "message": "Raccourcis clavier"
+  },
+  "shortcutsCategoryNavigation": {
+    "message": "Navigation"
+  },
+  "shortcutsCategoryActions": {
+    "message": "Actions"
+  },
+  "shortcutsCategoryGlobal": {
+    "message": "Global"
+  },
+  "shortcutDescArrows": {
+    "message": "Naviguer entre groupes, colonnes et favoris"
+  },
+  "shortcutDescHomeEnd": {
+    "message": "Aller au premier ou au dernier élément"
+  },
+  "shortcutDescPageUpDown": {
+    "message": "Basculer le focus entre Groupes et Favoris"
+  },
+  "shortcutDescTab": {
+    "message": "Passer d'un widget à l'autre"
+  },
+  "shortcutDescActivate": {
+    "message": "Ouvrir le favori, développer la pile ou choisir le groupe"
+  },
+  "shortcutDescOpenNewTab": {
+    "message": "Ouvrir le favori sélectionné dans un nouvel onglet"
+  },
+  "shortcutDescEscape": {
+    "message": "Fermer la fenêtre, le menu ou effacer la recherche"
+  },
+  "shortcutDescFind": {
+    "message": "Activer la barre de recherche"
+  },
+  "shortcutDescPalette": {
+    "message": "Ouvrir la palette de raccourcis"
   }
 }

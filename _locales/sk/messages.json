@@ -1432,5 +1432,50 @@
   },
   "syncWebdavBackgroundFile": {
     "message": "Pozadie (background.json)"
+  },
+  "widgetShortcutPalette": {
+    "message": "Paleta skratiek"
+  },
+  "shortcutPalettePrompt": {
+    "message": "Stlačte {0} pre paletu skratiek"
+  },
+  "shortcutsModalTitle": {
+    "message": "Klávesové skratky"
+  },
+  "shortcutsCategoryNavigation": {
+    "message": "Navigácia"
+  },
+  "shortcutsCategoryActions": {
+    "message": "Akcie"
+  },
+  "shortcutsCategoryGlobal": {
+    "message": "Globálne"
+  },
+  "shortcutDescArrows": {
+    "message": "Pohyb medzi skupinami, stĺpcami a záložkami"
+  },
+  "shortcutDescHomeEnd": {
+    "message": "Skok na prvú alebo poslednú položku"
+  },
+  "shortcutDescPageUpDown": {
+    "message": "Prepnúť fokus medzi skupinami a záložkami"
+  },
+  "shortcutDescTab": {
+    "message": "Prechod medzi widgetmi stránky"
+  },
+  "shortcutDescActivate": {
+    "message": "Otvoriť záložku, rozbaliť zásobník alebo vybrať skupinu"
+  },
+  "shortcutDescOpenNewTab": {
+    "message": "Otvoriť vybranú záložku na novej karte"
+  },
+  "shortcutDescEscape": {
+    "message": "Zavrieť okno, ponuku alebo vymazať hľadanie"
+  },
+  "shortcutDescFind": {
+    "message": "Zamerať vyhľadávacie pole"
+  },
+  "shortcutDescPalette": {
+    "message": "Otvoriť paletu skratiek"
   }
 }

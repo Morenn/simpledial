@@ -58,6 +58,7 @@
         <span id="footer-sync-dot" class="footer-status-dot disabled"></span>
         <span id="footer-sync-text"></span>
       </div>
+      <button type="button" id="footer-shortcut-palette" class="footer-shortcut-palette"></button>
       <span id="footer-bookmarks-total" class="footer-bookmarks-total"></span>
     </div>
   </footer>
@@ -1137,6 +1138,72 @@
       </div>
     </div>
   </div>
+
+  <!-- Shortcut Palette Modal -->
+  <div id="shortcuts-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
+    <div class="modal-content shortcuts-modal-content">
+      <h2 id="shortcuts-modal-title" data-i18n="shortcutsModalTitle">⌨️ Keyboard Shortcuts</h2>
+
+      <div class="shortcuts-section">
+        <h3 data-i18n="shortcutsCategoryNavigation">Navigation</h3>
+        <div class="shortcuts-list">
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescArrows">Navigate between groups, columns, and bookmarks</span>
+            <span class="shortcut-keys"><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescHomeEnd">Jump to first or last item</span>
+            <span class="shortcut-keys"><kbd>Home</kbd> / <kbd>End</kbd></span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescPageUpDown">Switch focus between Groups and Bookmarks</span>
+            <span class="shortcut-keys"><kbd>PgUp</kbd> / <kbd>PgDn</kbd></span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescTab">Move between page widgets</span>
+            <span class="shortcut-keys"><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-section">
+        <h3 data-i18n="shortcutsCategoryActions">Actions</h3>
+        <div class="shortcuts-list">
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescActivate">Open bookmark, expand stack, or select group</span>
+            <span class="shortcut-keys"><kbd>Enter</kbd> / <kbd>Space</kbd></span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescOpenNewTab">Open focused bookmark in a new tab</span>
+            <span class="shortcut-keys"><kbd class="shortcut-mod-key">Ctrl</kbd>+<kbd>Enter</kbd></span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescEscape">Close popover, dropdown, modal, or clear search</span>
+            <span class="shortcut-keys"><kbd>Esc</kbd></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-section">
+        <h3 data-i18n="shortcutsCategoryGlobal">Global</h3>
+        <div class="shortcuts-list">
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescFind">Focus search box</span>
+            <span class="shortcut-keys"><kbd class="shortcut-mod-key">Ctrl</kbd>+<kbd>F</kbd></span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-desc" data-i18n="shortcutDescPalette">Open Shortcut Palette</span>
+            <span class="shortcut-keys"><kbd class="shortcut-mod-key">Ctrl</kbd>+<kbd>K</kbd> / <kbd>?</kbd></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-buttons">
+        <button type="button" id="shortcuts-close" class="icon-btn" data-i18n="close">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="newtab/config.js"></script>
   <script type="module" src="newtab/settings-ui.js"></script>
   <script type="module" src="newtab/main.js"></script>

@@ -283,6 +283,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups, showGroupCount) {
   visibleGroups.forEach(group => {
     const tab = document.createElement("div");
     tab.className = "group-tab";
+    tab.tabIndex = 0;
     tab.draggable = true;
     tab.dataset.groupId = group.id;
 
@@ -306,6 +307,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups, showGroupCount) {
   // + Add group button
   const addTab = document.createElement("div");
   addTab.className = "group-tab add-group";
+  addTab.tabIndex = 0;
   addTab.textContent = "+";
   addTab.addEventListener("click", () => {
     openGroupModal(null);
@@ -339,6 +341,7 @@ function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
   visibleGroups.forEach(group => {
     const option = document.createElement("div");
     option.className = "groups-dropdown-option";
+    option.tabIndex = 0;
     if (group.deleted) option.classList.add("deleted");
     if (group.id === window.activeGroupId && !group.deleted) {
       option.classList.add("active");
@@ -367,6 +370,7 @@ function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
   // Add group option
   const addOption = document.createElement("div");
   addOption.className = "groups-dropdown-option add-group-option";
+  addOption.tabIndex = 0;
   addOption.textContent = "+ Add Group";
 
   addOption.addEventListener("click", () => {

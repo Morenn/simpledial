@@ -1432,5 +1432,50 @@
   },
   "syncWebdavBackgroundFile": {
     "message": "Achtergrond (background.json)"
+  },
+  "widgetShortcutPalette": {
+    "message": "Sneltoetsenpalet"
+  },
+  "shortcutPalettePrompt": {
+    "message": "Druk op {0} voor het sneltoetsenpalet"
+  },
+  "shortcutsModalTitle": {
+    "message": "Sneltoetsen"
+  },
+  "shortcutsCategoryNavigation": {
+    "message": "Navigatie"
+  },
+  "shortcutsCategoryActions": {
+    "message": "Acties"
+  },
+  "shortcutsCategoryGlobal": {
+    "message": "Algemeen"
+  },
+  "shortcutDescArrows": {
+    "message": "Navigeer tussen groepen, kolommen en bladwijzers"
+  },
+  "shortcutDescHomeEnd": {
+    "message": "Spring naar het eerste of laatste item"
+  },
+  "shortcutDescPageUpDown": {
+    "message": "Wissel focus tussen groepen en bladwijzers"
+  },
+  "shortcutDescTab": {
+    "message": "Verplaats tussen paginawidgets"
+  },
+  "shortcutDescActivate": {
+    "message": "Open bladwijzer, klap stapel uit of kies groep"
+  },
+  "shortcutDescOpenNewTab": {
+    "message": "Open geselecteerde bladwijzer in een nieuw tabblad"
+  },
+  "shortcutDescEscape": {
+    "message": "Sluit pop-over, menu, dialoog of wis zoekopdracht"
+  },
+  "shortcutDescFind": {
+    "message": "Focus op zoekvak"
+  },
+  "shortcutDescPalette": {
+    "message": "Open sneltoetsenpalet"
   }
 }

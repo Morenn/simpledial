@@ -84,6 +84,9 @@ window.applySavedDateTimeEnabled = function applySavedDateTimeEnabled(enabled) {
 // Listener activation
 import "./groups.js";
 import "./bookmarks.js";
+import { initKeyboardNavigation, updateShortcutPaletteButton } from "./keyboard-nav.js";
+
+initKeyboardNavigation();
 
 // Load context menu and drag-drop modules asynchronously to avoid blocking initial render
 (async () => {
@@ -339,6 +342,7 @@ export function updateClock() {
 
 // Update all UI text elements
 export function updateUIText() {
+  updateShortcutPaletteButton();
   // Search box & search controls
   const searchBox = document.getElementById("search-box");
   if (searchBox) searchBox.placeholder = t("searchPlaceholder");
