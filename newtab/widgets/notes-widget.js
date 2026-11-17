@@ -369,7 +369,7 @@ function renderNotesModalContent(widgetId) {
   for (const entry of data.entries) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = `notes-entry-list-item${entry.id === activeModalEntryId ? " active" : ""}`;
+    btn.className = `notes-entry-list-item${entry.id === activeModalEntryId ? " is-active" : ""}`;
     btn.addEventListener("click", () => {
       activeModalEntryId = entry.id;
       renderNotesModalContent(widgetId);
