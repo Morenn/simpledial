@@ -2294,6 +2294,57 @@ body.theme-dark .bookmark-title:hover {
   color: var(--accent);
 }
 
+.sync-webdav-part-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sync-webdav-part-row .checkbox-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sync-webdav-part-mode {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 96px;
+  padding: 0.25rem 0.45rem;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.sync-webdav-part-mode:hover:not(:disabled),
+.sync-webdav-part-mode:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.sync-webdav-part-mode:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sync-webdav-part-mode option {
+  background: var(--bg2);
+  color: var(--text);
+}
+
+.sync-webdav-manual-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
 .shortcuts-list {
   display: flex;
   flex-direction: column;

@@ -1477,5 +1477,23 @@
   },
   "shortcutDescPalette": {
     "message": "Ouvrir la palette de raccourcis"
+  },
+  "syncWebdavPartAuto": {
+    "message": "Auto"
+  },
+  "syncWebdavPartManual": {
+    "message": "Manuel"
+  },
+  "syncWebdavManualPartsBtn": {
+    "message": "Synchroniser les éléments manuels"
+  },
+  "syncWebdavNoManualParts": {
+    "message": "Aucun élément manuel sélectionné"
+  },
+  "syncWebdavContentsTitle": {
+    "message": "Contenu de synchronisation du dossier"
+  },
+  "syncWebdavContentsHint": {
+    "message": "Choisissez les éléments du dossier WebDAV synchronisés automatiquement ou manuellement."
   }
 }

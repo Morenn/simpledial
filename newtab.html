@@ -255,28 +255,6 @@
             <div id="sync-webdav-folder-row" class="sync-field-stack hidden">
               <label for="sync-webdav-folder" data-i18n="syncWebdavFolderLabel">WebDAV folder path</label>
               <input type="text" id="sync-webdav-folder" placeholder="SimpleDial">
-              <div class="appearance-display-list">
-                <label class="checkbox-row">
-                  <input type="checkbox" id="sync-webdav-bookmarks" checked disabled>
-                  <span data-i18n="syncWebdavBookmarksFile">Bookmarks DB (bookmarks-db.json)</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="sync-webdav-widgets" checked>
-                  <span data-i18n="syncWebdavWidgetsFile">Custom Widgets (widgets.json)</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="sync-webdav-config" checked>
-                  <span data-i18n="syncWebdavConfigFile">Settings (config.json)</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="sync-webdav-backups">
-                  <span data-i18n="syncWebdavBackupsFile">Backups (backups/)</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="sync-webdav-background">
-                  <span data-i18n="syncWebdavBackgroundFile">Background (background.json)</span>
-                </label>
-              </div>
             </div>
 
             <div id="sync-browser-hint" class="sync-inline-note hidden" data-i18n="syncBrowserNativeHint">Browser native sync uses your browser account. URL and authentication are not required.</div>
@@ -383,6 +361,63 @@
               </div>
               <div id="sync-now-status" class="status"></div>
               <div id="last-sync-info" class="appearance-card-meta"></div>
+            </div>
+          </section>
+
+          <section class="sync-section-card appearance-card hidden" id="sync-webdav-contents-card">
+            <h3 class="sync-section-header" data-i18n="syncWebdavContentsTitle">Folder sync contents</h3>
+            <p class="sync-section-subtitle appearance-card-desc" data-i18n="syncWebdavContentsHint">Choose which WebDAV folder parts sync automatically or manually.</p>
+            <div class="appearance-display-list">
+              <label class="checkbox-row">
+                <input type="checkbox" id="sync-webdav-bookmarks" checked disabled>
+                <span data-i18n="syncWebdavBookmarksFile">Bookmarks DB (bookmarks-db.json)</span>
+              </label>
+              <div class="sync-webdav-part-row">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-widgets" checked>
+                  <span data-i18n="syncWebdavWidgetsFile">Custom Widgets (widgets.json)</span>
+                </label>
+                <select id="sync-webdav-widgets-mode" class="sync-webdav-part-mode" aria-label="Custom Widgets sync mode">
+                  <option value="auto" data-i18n="syncWebdavPartAuto">Auto</option>
+                  <option value="manual" data-i18n="syncWebdavPartManual">Manual</option>
+                </select>
+              </div>
+              <div class="sync-webdav-part-row">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-config" checked>
+                  <span data-i18n="syncWebdavConfigFile">Settings (config.json)</span>
+                </label>
+                <select id="sync-webdav-config-mode" class="sync-webdav-part-mode" aria-label="Settings sync mode">
+                  <option value="auto" data-i18n="syncWebdavPartAuto">Auto</option>
+                  <option value="manual" data-i18n="syncWebdavPartManual">Manual</option>
+                </select>
+              </div>
+              <div class="sync-webdav-part-row">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-backups">
+                  <span data-i18n="syncWebdavBackupsFile">Backups (backups/)</span>
+                </label>
+                <select id="sync-webdav-backups-mode" class="sync-webdav-part-mode" aria-label="Backups sync mode">
+                  <option value="auto" data-i18n="syncWebdavPartAuto">Auto</option>
+                  <option value="manual" data-i18n="syncWebdavPartManual">Manual</option>
+                </select>
+              </div>
+              <div class="sync-webdav-part-row">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-background">
+                  <span data-i18n="syncWebdavBackgroundFile">Background (background.json)</span>
+                </label>
+                <select id="sync-webdav-background-mode" class="sync-webdav-part-mode" aria-label="Background sync mode">
+                  <option value="auto" data-i18n="syncWebdavPartAuto">Auto</option>
+                  <option value="manual" data-i18n="syncWebdavPartManual">Manual</option>
+                </select>
+              </div>
+            </div>
+            <div class="appearance-card-footer">
+              <div class="sync-webdav-manual-actions">
+                <button type="button" id="sync-webdav-manual-btn" class="icon-btn" data-i18n="syncWebdavManualPartsBtn">📤 Sync Manual Parts</button>
+                <span id="sync-webdav-manual-status" class="status"></span>
+              </div>
             </div>
           </section>
         </div>

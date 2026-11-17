@@ -18,6 +18,10 @@ export const defaultConfig = {
     webdavSyncWidgets: true,
     webdavSyncBackups: false,
     webdavSyncBackground: false,
+    webdavConfigMode: "auto", // "auto" | "manual"
+    webdavWidgetsMode: "auto", // "auto" | "manual"
+    webdavBackupsMode: "auto", // "auto" | "manual"
+    webdavBackgroundMode: "auto", // "auto" | "manual"
     authMode: "none", // "none" or "basic"
     username: "",
     password: "",

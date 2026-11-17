@@ -81,7 +81,7 @@ globalThis.chrome = {
   }
 };
 
-const [{ state }, { syncNow, syncWrite }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
+const [{ state }, { syncNow, syncWrite, syncWebdavFolderExtras }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
   import("../newtab/state.js"),
   import("../newtab/sync.js"),
   import("../newtab/config.js")
@@ -935,4 +935,75 @@ test("WebDAV folder sync tests permissions and syncs bookmarks, config, widgets,
   assert.equal(nestedRes.ok, true);
   assert.ok(createdDirs.has("https://cloud.example/dav/Apps/"));
   assert.ok(createdDirs.has("https://cloud.example/dav/Apps/SimpleDial/"));
+});
+
+test("WebDAV folder sync skips manual parts during automatic syncNow() and uploads them on manual trigger", async () => {
+  const files = new Map();
+  fetchRemote = async (url, options = {}) => {
+    const method = (options.method || "GET").toUpperCase();
+    const makeRes = (status, body = "") => ({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: "",
+      redirected: false,
+      url,
+      headers: new Map([["content-type", "application/json"]]),
+      text: async () => body
+    });
+    if (method === "HEAD") return makeRes(files.has(url) ? 200 : 404);
+    if (method === "GET") return files.has(url) ? makeRes(200, files.get(url)) : makeRes(404);
+    if (method === "PUT") {
+      files.set(url, String(options.body || ""));
+      return makeRes(201);
+    }
+    if (method === "MKCOL" || method === "PROPFIND") return makeRes(201);
+    return makeRes(405);
+  };
+
+  const cfg = {
+    sync: {
+      enabled: true,
+      type: "webdav",
+      webdavMode: "folder",
+      webdavFolderPath: "SimpleDial",
+      webdavSyncConfig: true,
+      webdavConfigMode: "auto",
+      webdavSyncWidgets: true,
+      webdavWidgetsMode: "manual",
+      webdavSyncBackground: true,
+      webdavBackgroundMode: "manual",
+      webdavSyncBackups: false,
+      serverUrl: "https://cloud.example/dav",
+      authMode: "basic",
+      username: "alice",
+      password: "secret",
+      encryptionMode: "none",
+      intervalMode: "manual",
+      lastSync: 0,
+      lastSyncedLocalHash: "",
+      pendingPurgedIds: []
+    },
+    appearance: {
+      backgroundImage: "data:image/png;base64,MANUALBG",
+      customWidgets: [{ id: "cw_m1", type: "custom-search", name: "Manual", urlTemplate: "https://ex.com?q={query}" }]
+    },
+    housekeeper: { retentionDays: 30 },
+    backups: { retentionDays: 30 }
+  };
+
+  setClient([group([item("m_1", "Manual Test", 100)])], cfg, []);
+
+  // Automatic syncNow() syncs bookmarks-db.json and auto parts (config.json), but skips manual parts (widgets, background)
+  const autoRes = await syncNow();
+  assert.equal(autoRes.ok, true);
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/bookmarks-db.json"));
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/config.json"));
+  assert.equal(files.has("https://cloud.example/dav/SimpleDial/widgets.json"), false);
+  assert.equal(files.has("https://cloud.example/dav/SimpleDial/background.json"), false);
+
+  // Manual trigger uploads only manual parts
+  const manualRes = await syncWebdavFolderExtras(null, { includeManual: true, manualOnly: true });
+  assert.equal(manualRes.ok, true);
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/widgets.json"));
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/background.json"));
 });

@@ -1477,5 +1477,23 @@
   },
   "shortcutDescPalette": {
     "message": "Avaa pikanäppäinpaletti"
+  },
+  "syncWebdavPartAuto": {
+    "message": "Automaattinen"
+  },
+  "syncWebdavPartManual": {
+    "message": "Manuaalinen"
+  },
+  "syncWebdavManualPartsBtn": {
+    "message": "Synkronoi manuaaliset osat"
+  },
+  "syncWebdavNoManualParts": {
+    "message": "Manuaalisia osia ei ole valittu"
+  },
+  "syncWebdavContentsTitle": {
+    "message": "Kansion synkronoinnin sisältö"
+  },
+  "syncWebdavContentsHint": {
+    "message": "Valitse, mitkä WebDAV-kansion osat synkronoidaan automaattisesti tai manuaalisesti."
   }
 }

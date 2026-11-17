@@ -1477,5 +1477,23 @@
   },
   "shortcutDescPalette": {
     "message": "Відкрити палітру комбінацій"
+  },
+  "syncWebdavPartAuto": {
+    "message": "Авто"
+  },
+  "syncWebdavPartManual": {
+    "message": "Вручну"
+  },
+  "syncWebdavManualPartsBtn": {
+    "message": "Синхронізувати ручні частини"
+  },
+  "syncWebdavNoManualParts": {
+    "message": "Ручні частини не вибрано"
+  },
+  "syncWebdavContentsTitle": {
+    "message": "Вміст синхронізації папки"
+  },
+  "syncWebdavContentsHint": {
+    "message": "Виберіть, які частини папки WebDAV синхронізуються автоматично або вручну."
   }
 }

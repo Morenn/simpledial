@@ -1,6 +1,6 @@
 import { state, saveState } from "../state.js";
 import { loadConfig, saveConfig } from "../config.js";
-import { testSyncConnection, requestHostPermission, syncNow, syncWrite, syncRead, syncReadTest, syncWriteTest, resetLogonCount } from "../sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, syncWrite, syncRead, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount } from "../sync.js";
 import { t } from "../i18n.js";
 import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from "../crypto.js";
 import { render } from "../render.js";
@@ -22,11 +22,42 @@ const syncWebdavMode = document.getElementById("sync-webdav-mode");
 const syncWebdavModeRow = document.getElementById("sync-webdav-mode-row");
 const syncWebdavModeChoices = document.querySelectorAll('input[name="sync-webdav-mode-choice"]');
 const syncWebdavFolderRow = document.getElementById("sync-webdav-folder-row");
+const syncWebdavContentsCard = document.getElementById("sync-webdav-contents-card");
 const syncWebdavFolder = document.getElementById("sync-webdav-folder");
 const syncWebdavWidgets = document.getElementById("sync-webdav-widgets");
 const syncWebdavConfig = document.getElementById("sync-webdav-config");
 const syncWebdavBackups = document.getElementById("sync-webdav-backups");
 const syncWebdavBackground = document.getElementById("sync-webdav-background");
+const syncWebdavWidgetsMode = document.getElementById("sync-webdav-widgets-mode");
+const syncWebdavConfigMode = document.getElementById("sync-webdav-config-mode");
+const syncWebdavBackupsMode = document.getElementById("sync-webdav-backups-mode");
+const syncWebdavBackgroundMode = document.getElementById("sync-webdav-background-mode");
+const syncWebdavManualBtn = document.getElementById("sync-webdav-manual-btn");
+const syncWebdavManualStatus = document.getElementById("sync-webdav-manual-status");
+
+const WEBDAV_EXTRA_PARTS = [
+  { checkbox: syncWebdavWidgets, modeSelect: syncWebdavWidgetsMode, syncField: "webdavSyncWidgets", modeField: "webdavWidgetsMode" },
+  { checkbox: syncWebdavConfig, modeSelect: syncWebdavConfigMode, syncField: "webdavSyncConfig", modeField: "webdavConfigMode" },
+  { checkbox: syncWebdavBackups, modeSelect: syncWebdavBackupsMode, syncField: "webdavSyncBackups", modeField: "webdavBackupsMode" },
+  { checkbox: syncWebdavBackground, modeSelect: syncWebdavBackgroundMode, syncField: "webdavSyncBackground", modeField: "webdavBackgroundMode" }
+];
+
+function updateWebdavPartModeStates() {
+  let hasManualPart = false;
+  for (const part of WEBDAV_EXTRA_PARTS) {
+    const enabled = !!part.checkbox?.checked;
+    if (part.modeSelect) {
+      part.modeSelect.disabled = !enabled;
+      if (enabled && part.modeSelect.value === "manual") {
+        hasManualPart = true;
+      }
+    }
+  }
+  if (syncWebdavManualBtn) {
+    const isFolder = syncType?.value === "webdav" && syncWebdavMode?.value === "folder";
+    syncWebdavManualBtn.disabled = !isFolder || !hasManualPart;
+  }
+}
 const syncAuthMode = document.getElementById("sync-auth-mode");
 const syncUsername = document.getElementById("sync-username");
 const syncPassword = document.getElementById("sync-password");
@@ -101,6 +132,7 @@ export function updateSyncFields() {
   if (syncUrlDiv) syncUrlDiv.style.display = isBrowserSync ? "none" : "";
   if (syncWebdavModeRow) syncWebdavModeRow.classList.toggle("hidden", !isWebdav);
   if (syncWebdavFolderRow) syncWebdavFolderRow.classList.toggle("hidden", !isWebdavFolder);
+  if (syncWebdavContentsCard) syncWebdavContentsCard.classList.toggle("hidden", !isWebdavFolder);
   if (syncUrl) {
     syncUrl.placeholder = isWebdavFolder
       ? "https://cloud.example/remote.php/dav/files/user"
@@ -260,6 +292,12 @@ export async function populateSyncSettings(config) {
   if (syncWebdavConfig) syncWebdavConfig.checked = config.sync.webdavSyncConfig !== false;
   if (syncWebdavBackups) syncWebdavBackups.checked = !!config.sync.webdavSyncBackups;
   if (syncWebdavBackground) syncWebdavBackground.checked = !!config.sync.webdavSyncBackground;
+  for (const part of WEBDAV_EXTRA_PARTS) {
+    if (part.modeSelect) {
+      part.modeSelect.value = config.sync[part.modeField] === "manual" ? "manual" : "auto";
+    }
+  }
+  updateWebdavPartModeStates();
   if (syncAuthMode) syncAuthMode.value = config.sync.authMode || (config.sync.password ? "basic" : "none");
   syncRadioGroupFromModel(syncType, syncTypeChoices);
   syncRadioGroupFromModel(syncWebdavMode, syncWebdavModeChoices);
@@ -357,6 +395,11 @@ export function applySyncToConfig(config) {
   if (syncWebdavConfig) config.sync.webdavSyncConfig = !!syncWebdavConfig.checked;
   if (syncWebdavBackups) config.sync.webdavSyncBackups = !!syncWebdavBackups.checked;
   if (syncWebdavBackground) config.sync.webdavSyncBackground = !!syncWebdavBackground.checked;
+  for (const part of WEBDAV_EXTRA_PARTS) {
+    if (part.modeSelect) {
+      config.sync[part.modeField] = part.modeSelect.value === "manual" ? "manual" : "auto";
+    }
+  }
 
   if (syncType && syncType.value === "browser") {
     config.sync.serverUrl = "";
@@ -436,7 +479,14 @@ export function initSyncSettings({ persistSettings }) {
     });
   }
   if (syncEnable) syncEnable.addEventListener("change", updateSyncNowButtonDisabledState);
-  if (syncType) syncType.addEventListener("change", updateSyncFields);
+  if (syncType) syncType.addEventListener("change", () => {
+    updateSyncFields();
+    updateWebdavPartModeStates();
+  });
+  for (const part of WEBDAV_EXTRA_PARTS) {
+    part.checkbox?.addEventListener("change", updateWebdavPartModeStates);
+    part.modeSelect?.addEventListener("change", updateWebdavPartModeStates);
+  }
   if (syncUsername) syncUsername.addEventListener("input", markCredentialsTouched);
   if (syncPassword) syncPassword.addEventListener("input", markCredentialsTouched);
   const syncEncryptModeEl = document.getElementById("sync-encrypt-mode");
@@ -682,7 +732,7 @@ export function initSyncSettings({ persistSettings }) {
         }
       }
 
-      const result = await syncNow();
+      const result = await syncNow({ includeManualExtras: true });
 
       if (result.ok) {
         if (syncNowStatus) syncNowStatus.textContent = "✅ " + t("syncSuccessful");
@@ -751,6 +801,37 @@ export function initSyncSettings({ persistSettings }) {
     });
   }
 
+  if (syncWebdavManualBtn) {
+    syncWebdavManualBtn.addEventListener("click", async () => {
+      if (settingsState.settingsDirty) {
+        const saved = await persistSettings(false);
+        if (!saved) {
+          if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "❌ " + t("saveCredentialsFirst");
+          return;
+        }
+      }
+      const url = syncUrl?.value.trim() || "";
+      if (url && !await requestHostPermission(url)) {
+        if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "❌ " + t("hostPermissionRequired");
+        return;
+      }
+      syncWebdavManualBtn.disabled = true;
+      if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "⏳ " + t("syncing");
+      try {
+        const result = await syncWebdavFolderExtras(null, { includeManual: true, manualOnly: true });
+        if (result?.skipped) {
+          if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "ℹ️ " + (t("syncWebdavNoManualParts") || "No manual parts selected");
+        } else if (result?.ok) {
+          if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "✅ " + t("syncSuccessful");
+        } else {
+          if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "❌ " + getSyncFailureMessage(result);
+        }
+      } finally {
+        updateWebdavPartModeStates();
+      }
+    });
+  }
+
   if (manualSyncBtn) {
     manualSyncBtn.addEventListener("click", async () => {
       manualSyncBtn.disabled = true;
@@ -767,7 +848,7 @@ export function initSyncSettings({ persistSettings }) {
         }
       }
 
-      const result = await syncNow();
+      const result = await syncNow({ includeManualExtras: true });
 
       if (result.ok) {
         manualSyncBtn.style.opacity = "1";

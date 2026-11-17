@@ -1477,5 +1477,23 @@
   },
   "shortcutDescPalette": {
     "message": "Open sneltoetsenpalet"
+  },
+  "syncWebdavPartAuto": {
+    "message": "Automatisch"
+  },
+  "syncWebdavPartManual": {
+    "message": "Handmatig"
+  },
+  "syncWebdavManualPartsBtn": {
+    "message": "Handmatige onderdelen synchroniseren"
+  },
+  "syncWebdavNoManualParts": {
+    "message": "Geen handmatige onderdelen geselecteerd"
+  },
+  "syncWebdavContentsTitle": {
+    "message": "Inhoud van mapsynchronisatie"
+  },
+  "syncWebdavContentsHint": {
+    "message": "Kies welke WebDAV-maponderdelen automatisch of handmatig worden gesynchroniseerd."
   }
 }

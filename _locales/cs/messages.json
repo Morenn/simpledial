@@ -1477,5 +1477,23 @@
   },
   "shortcutDescPalette": {
     "message": "Otevřít paletu zkratek"
+  },
+  "syncWebdavPartAuto": {
+    "message": "Automaticky"
+  },
+  "syncWebdavPartManual": {
+    "message": "Ručně"
+  },
+  "syncWebdavManualPartsBtn": {
+    "message": "Synchronizovat ruční části"
+  },
+  "syncWebdavNoManualParts": {
+    "message": "Nejsou vybrány žádné ruční části"
+  },
+  "syncWebdavContentsTitle": {
+    "message": "Obsah synchronizace složky"
+  },
+  "syncWebdavContentsHint": {
+    "message": "Vyberte, které části složky WebDAV se synchronizují automaticky nebo ručně."
   }
 }

@@ -1715,7 +1715,14 @@ async function syncExtraJsonSection({ key, fileUrl, headers, localPayload, lastH
   return false;
 }
 
-export async function syncWebdavFolderExtras(config = null) {
+function shouldSyncExtraPart(enabled, mode, { includeManual = false, manualOnly = false } = {}) {
+  if (!enabled) return false;
+  const isManual = mode === "manual";
+  if (manualOnly) return isManual;
+  return isManual ? includeManual : true;
+}
+
+export async function syncWebdavFolderExtras(config = null, options = {}) {
   const currentConfig = config || await loadConfig();
   if (!currentConfig || currentConfig.sync?.type !== "webdav" || currentConfig.sync?.webdavMode !== "folder") {
     return { ok: true, skipped: true };
@@ -1723,6 +1730,15 @@ export async function syncWebdavFolderExtras(config = null) {
 
   const folderBase = resolveWebdavFolderBaseUrl(currentConfig.sync.serverUrl, currentConfig.sync.webdavFolderPath);
   if (!folderBase) return { ok: false, reason: "invalid-url" };
+
+  const syncConfigEnabled = shouldSyncExtraPart(currentConfig.sync.webdavSyncConfig !== false, currentConfig.sync.webdavConfigMode, options);
+  const syncWidgetsEnabled = shouldSyncExtraPart(currentConfig.sync.webdavSyncWidgets !== false, currentConfig.sync.webdavWidgetsMode, options);
+  const syncBackgroundEnabled = shouldSyncExtraPart(!!currentConfig.sync.webdavSyncBackground, currentConfig.sync.webdavBackgroundMode, options);
+  const syncBackupsEnabled = shouldSyncExtraPart(!!currentConfig.sync.webdavSyncBackups, currentConfig.sync.webdavBackupsMode, options);
+
+  if (!syncConfigEnabled && !syncWidgetsEnabled && !syncBackgroundEnabled && !syncBackupsEnabled) {
+    return { ok: true, skipped: true, configChanged: false };
+  }
 
   const resolvedCfg = await loadSyncConfig();
   const credentials = await resolveSyncCredentials(resolvedCfg, "syncWebdavFolderExtras");
@@ -1740,11 +1756,6 @@ export async function syncWebdavFolderExtras(config = null) {
     currentConfig.sync.lastSyncedExtraHashes = {};
   }
   const lastHashes = currentConfig.sync.lastSyncedExtraHashes;
-
-  const syncConfigEnabled = currentConfig.sync.webdavSyncConfig !== false;
-  const syncWidgetsEnabled = currentConfig.sync.webdavSyncWidgets !== false;
-  const syncBackgroundEnabled = !!currentConfig.sync.webdavSyncBackground;
-  const syncBackupsEnabled = !!currentConfig.sync.webdavSyncBackups;
 
   // 1. config.json
   if (syncConfigEnabled) {
@@ -1938,8 +1949,9 @@ export async function syncWebdavFolderExtras(config = null) {
   return { ok: true, configChanged };
 }
 
-export async function syncNow() {
+export async function syncNow(options = {}) {
   const config = await loadConfig();
+  const includeManual = !!options?.includeManualExtras;
 
   if (!config.sync.enabled || (!config.sync.serverUrl && config.sync.type !== 'browser')) {
     console.warn("Sync not configured or disabled");
@@ -1957,7 +1969,7 @@ export async function syncNow() {
       && !(config.sync.lastSeenRemoteMarker || '').startsWith('W/'));
   if (!hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip) {
     if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
-      await syncWebdavFolderExtras(config);
+      await syncWebdavFolderExtras(config, { includeManual });
     }
     return { ok: true, reason: 'remote-marker-unchanged', changed: false };
   }
@@ -1970,7 +1982,7 @@ export async function syncNow() {
 
   const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
   if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
-    await syncWebdavFolderExtras(config);
+    await syncWebdavFolderExtras(config, { includeManual });
   }
   return mergeResult;
 }
