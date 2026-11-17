@@ -7,7 +7,8 @@ import {
   normalizeWidgetOrder,
   syncCustomSearchWidgetElements,
   syncCustomTimeZoneWidgetElements,
-  syncCustomRestStatusWidgetElements
+  syncCustomRestStatusWidgetElements,
+  syncCustomNotesWidgetElements
 } from "./custom-widgets.js";
 
 export { isAllowedThemeUrl };
@@ -582,7 +583,8 @@ export async function applySideSpaces(config = null) {
   const customElements = {
     ...syncCustomSearchWidgetElements(customWidgets, autoRouteDefaults, autoRouteIcons),
     ...syncCustomTimeZoneWidgetElements(customWidgets),
-    ...syncCustomRestStatusWidgetElements(customWidgets)
+    ...syncCustomRestStatusWidgetElements(customWidgets),
+    ...syncCustomNotesWidgetElements(customWidgets)
   };
   const widgetOrder = normalizeWidgetOrder(appearance.widgetOrder, customWidgets);
   const rawSearchStyle = appearance.searchStyle;

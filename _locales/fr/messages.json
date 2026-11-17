@@ -1561,5 +1561,80 @@
   },
   "customWidgetEditTitle": {
     "message": "Modifier le widget personnalisé"
+  },
+  "customWidgetModeNotes": {
+    "message": "Notes / Bloc-notes"
+  },
+  "customNotesAddTitle": {
+    "message": "Ajouter un widget Notes"
+  },
+  "customNotesCompactMode": {
+    "message": "Bouton compact uniquement (éditer dans une fenêtre)"
+  },
+  "notesDefaultName": {
+    "message": "Notes"
+  },
+  "notesScratchpadLabel": {
+    "message": "Bloc-notes"
+  },
+  "notesScratchpadPlaceholder": {
+    "message": "Écrire des notes rapides..."
+  },
+  "notesTodosLabel": {
+    "message": "Tâches et rappels"
+  },
+  "notesTodoPlaceholder": {
+    "message": "Ajouter une tâche..."
+  },
+  "notesRemindNone": {
+    "message": "Aucun rappel"
+  },
+  "notesRemind10m": {
+    "message": "Dans 10 min"
+  },
+  "notesRemind15m": {
+    "message": "Dans 15 min"
+  },
+  "notesRemind30m": {
+    "message": "Dans 30 min"
+  },
+  "notesRemind60m": {
+    "message": "Dans 1 heure"
+  },
+  "notesRemindCustom": {
+    "message": "À une heure..."
+  },
+  "notesReminderDue": {
+    "message": "Échu !"
+  },
+  "notesTodoEmpty": {
+    "message": "Aucune tâche pour le moment."
+  },
+  "notesAddTodoTitle": {
+    "message": "Ajouter une tâche"
+  },
+  "notesOpenModalTitle": {
+    "message": "Ouvrir les notes"
+  },
+  "notesDoneBtn": {
+    "message": "Terminé"
+  },
+  "notesNewEntryBtn": {
+    "message": "+ Nouvelle note"
+  },
+  "notesEntryTitlePlaceholder": {
+    "message": "Titre (facultatif)..."
+  },
+  "notesUntitledEntry": {
+    "message": "Note sans titre"
+  },
+  "notesSelectOrCreateHint": {
+    "message": "Sélectionnez une note ou créez-en une."
+  },
+  "notesDeleteEntryBtn": {
+    "message": "Supprimer"
+  },
+  "open": {
+    "message": "Ouvrir"
   }
 }

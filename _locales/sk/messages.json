@@ -1561,5 +1561,80 @@
   },
   "customWidgetEditTitle": {
     "message": "Upraviť vlastný widget"
+  },
+  "customWidgetModeNotes": {
+    "message": "Poznámky / Zápisník"
+  },
+  "customNotesAddTitle": {
+    "message": "Pridať widget Poznámky / Zápisník"
+  },
+  "customNotesCompactMode": {
+    "message": "Iba kompaktné tlačidlo (úpravy v okne)"
+  },
+  "notesDefaultName": {
+    "message": "Poznámky"
+  },
+  "notesScratchpadLabel": {
+    "message": "Zápisník"
+  },
+  "notesScratchpadPlaceholder": {
+    "message": "Napíšte rýchle poznámky..."
+  },
+  "notesTodosLabel": {
+    "message": "Úlohy a pripomienky"
+  },
+  "notesTodoPlaceholder": {
+    "message": "Pridať úlohu..."
+  },
+  "notesRemindNone": {
+    "message": "Bez pripomienky"
+  },
+  "notesRemind10m": {
+    "message": "Za 10 min"
+  },
+  "notesRemind15m": {
+    "message": "Za 15 min"
+  },
+  "notesRemind30m": {
+    "message": "Za 30 min"
+  },
+  "notesRemind60m": {
+    "message": "Za 1 hodinu"
+  },
+  "notesRemindCustom": {
+    "message": "V určitý čas..."
+  },
+  "notesReminderDue": {
+    "message": "Termín!"
+  },
+  "notesTodoEmpty": {
+    "message": "Zatiaľ žiadne úlohy."
+  },
+  "notesAddTodoTitle": {
+    "message": "Pridať úlohu"
+  },
+  "notesOpenModalTitle": {
+    "message": "Otvoriť poznámky"
+  },
+  "notesDoneBtn": {
+    "message": "Hotovo"
+  },
+  "notesNewEntryBtn": {
+    "message": "+ Nová poznámka"
+  },
+  "notesEntryTitlePlaceholder": {
+    "message": "Názov (voliteľné)..."
+  },
+  "notesUntitledEntry": {
+    "message": "Nepomenovaná poznámka"
+  },
+  "notesSelectOrCreateHint": {
+    "message": "Vyberte poznámku alebo vytvorte novú."
+  },
+  "notesDeleteEntryBtn": {
+    "message": "Zmazať"
+  },
+  "open": {
+    "message": "Otvoriť"
   }
 }

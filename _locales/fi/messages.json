@@ -1561,5 +1561,80 @@
   },
   "customWidgetEditTitle": {
     "message": "Muokkaa mukautettua widgettiä"
+  },
+  "customWidgetModeNotes": {
+    "message": "Muistiinpanot"
+  },
+  "customNotesAddTitle": {
+    "message": "Lisää muistiinpanowidget"
+  },
+  "customNotesCompactMode": {
+    "message": "Vain kompakti painike (muokkaa ikkunassa)"
+  },
+  "notesDefaultName": {
+    "message": "Muistiinpanot"
+  },
+  "notesScratchpadLabel": {
+    "message": "Muistilehtiö"
+  },
+  "notesScratchpadPlaceholder": {
+    "message": "Kirjoita pikamuistiinpanoja..."
+  },
+  "notesTodosLabel": {
+    "message": "Tehtävät ja muistutukset"
+  },
+  "notesTodoPlaceholder": {
+    "message": "Lisää tehtävä..."
+  },
+  "notesRemindNone": {
+    "message": "Ei muistutusta"
+  },
+  "notesRemind10m": {
+    "message": "10 min kuluttua"
+  },
+  "notesRemind15m": {
+    "message": "15 min kuluttua"
+  },
+  "notesRemind30m": {
+    "message": "30 min kuluttua"
+  },
+  "notesRemind60m": {
+    "message": "1 tunnin kuluttua"
+  },
+  "notesRemindCustom": {
+    "message": "Kellonaikana..."
+  },
+  "notesReminderDue": {
+    "message": "Erääntynyt!"
+  },
+  "notesTodoEmpty": {
+    "message": "Ei vielä tehtäviä."
+  },
+  "notesAddTodoTitle": {
+    "message": "Lisää tehtävä"
+  },
+  "notesOpenModalTitle": {
+    "message": "Avaa muistiinpanot"
+  },
+  "notesDoneBtn": {
+    "message": "Valmis"
+  },
+  "notesNewEntryBtn": {
+    "message": "+ Uusi muistiinpano"
+  },
+  "notesEntryTitlePlaceholder": {
+    "message": "Otsikko (valinnainen)..."
+  },
+  "notesUntitledEntry": {
+    "message": "Nimetön muistiinpano"
+  },
+  "notesSelectOrCreateHint": {
+    "message": "Valitse muistiinpano tai luo uusi."
+  },
+  "notesDeleteEntryBtn": {
+    "message": "Poista"
+  },
+  "open": {
+    "message": "Avaa"
   }
 }

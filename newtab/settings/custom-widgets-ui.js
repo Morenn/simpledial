@@ -75,6 +75,8 @@ const customWidgetRestHideGroup = document.getElementById("custom-widget-rest-hi
 const customWidgetRestHideValue = document.getElementById("custom-widget-rest-hide-value");
 const customWidgetRestTestBtn = document.getElementById("custom-widget-rest-test-btn");
 const customWidgetRestTestResult = document.getElementById("custom-widget-rest-test-result");
+const customWidgetNotesSection = document.getElementById("custom-widget-notes-section");
+const customWidgetNotesCompact = document.getElementById("custom-widget-notes-compact");
 const customWidgetNewTabLabel = customWidgetNewTabInput?.closest(".custom-widget-newtab-label");
 const customWidgetDefaultLabel = customWidgetDefaultInput?.closest(".custom-widget-default-label");
 const customWidgetAddBtn = document.getElementById("custom-widget-add-btn");
@@ -485,15 +487,18 @@ export function initCustomWidgetsSettings() {
       titleEl.textContent = customDef.name || customDef.id;
       const isTimezone = customDef.type === "timezone";
       const isRestStatus = customDef.type === "rest-status";
-      const isNonSearch = isTimezone || isRestStatus;
+      const isNotes = customDef.type === "notes";
+      const isNonSearch = isTimezone || isRestStatus || isNotes;
       const tzList = isTimezone ? normalizeCustomTimeZones(customDef.timeZones) : [];
       const badge = document.createElement("span");
       badge.className = "custom-widget-mode-badge";
-      badge.textContent = isRestStatus
-        ? "REST"
-        : (isTimezone
-          ? `🕒 ${tzList.length}`
-          : (customDef.mode === "json" ? "JSON" : "Simple"));
+      badge.textContent = isNotes
+        ? "📝"
+        : (isRestStatus
+          ? "REST"
+          : (isTimezone
+            ? `🕒 ${tzList.length}`
+            : (customDef.mode === "json" ? "JSON" : "Simple")));
       titleEl.appendChild(badge);
       const groupName = !isNonSearch && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
       if (groupName) {
@@ -513,11 +518,13 @@ export function initCustomWidgetsSettings() {
 
       const urlEl = document.createElement("div");
       urlEl.className = "custom-widget-library-url";
-      urlEl.textContent = isRestStatus
-        ? (customDef.endpointUrl || "")
-        : (isTimezone
-          ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
-          : (customDef.urlTemplate || ""));
+      urlEl.textContent = isNotes
+        ? (customDef.compactMode ? (t("customNotesCompactMode") || "Compact button only") : (t("customWidgetModeNotes") || "Notes / Scratchpad"))
+        : (isRestStatus
+          ? (customDef.endpointUrl || "")
+          : (isTimezone
+            ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
+            : (customDef.urlTemplate || "")));
       info.append(titleEl, urlEl);
       if (customDef.sourceUrl) {
         const sourceEl = document.createElement("div");
@@ -978,19 +985,24 @@ export function initCustomWidgetsSettings() {
     const isJson = mode === "json";
     const isTimezone = mode === "timezone";
     const isRestStatus = mode === "rest-status";
-    const isNonSearch = isTimezone || isRestStatus;
+    const isNotes = mode === "notes";
+    const isNonSearch = isTimezone || isRestStatus || isNotes;
 
     if (customWidgetAddTitle) {
       if (editingCustomWidgetId) {
         customWidgetAddTitle.setAttribute("data-i18n", "customWidgetEditTitle");
         customWidgetAddTitle.textContent = t("customWidgetEditTitle") || "Edit Custom Widget";
       } else {
-        const titleKey = isRestStatus
-          ? "customRestAddTitle"
-          : (isTimezone ? "customTzAddTitle" : "customSearchAddTitle");
-        const titleFallback = isRestStatus
-          ? "Add REST / JSON Status Widget"
-          : (isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget");
+        const titleKey = isNotes
+          ? "customNotesAddTitle"
+          : (isRestStatus
+            ? "customRestAddTitle"
+            : (isTimezone ? "customTzAddTitle" : "customSearchAddTitle"));
+        const titleFallback = isNotes
+          ? "Add Notes / Scratchpad Widget"
+          : (isRestStatus
+            ? "Add REST / JSON Status Widget"
+            : (isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget"));
         customWidgetAddTitle.setAttribute("data-i18n", titleKey);
         customWidgetAddTitle.textContent = t(titleKey) || titleFallback;
       }
@@ -1005,6 +1017,9 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestStatusSection) {
       customWidgetRestStatusSection.classList.toggle("hidden", !isRestStatus);
     }
+    if (customWidgetNotesSection) {
+      customWidgetNotesSection.classList.toggle("hidden", !isNotes);
+    }
     if (customWidgetVarsSection) {
       customWidgetVarsSection.classList.toggle("hidden", isNonSearch);
     }
@@ -1015,7 +1030,7 @@ export function initCustomWidgetsSettings() {
         : (t("customSearchUrlPlaceholder") || "https://www.google.com/search?q={query}");
     }
     if (customWidgetGroupInput) {
-      customWidgetGroupInput.classList.toggle("hidden", isTimezone);
+      customWidgetGroupInput.classList.toggle("hidden", isTimezone || isNotes);
     }
     if (customWidgetRoutePrefixesInput) {
       customWidgetRoutePrefixesInput.classList.toggle("hidden", isNonSearch);
@@ -1033,20 +1048,19 @@ export function initCustomWidgetsSettings() {
       customWidgetPreviewBox.classList.add("hidden");
     }
     if (customWidgetNameInput) {
-      customWidgetNameInput.placeholder = isRestStatus
-        ? (t("customRestNamePlaceholder") || "Name (e.g. Pi-hole, Proxmox)")
-        : (isTimezone
-          ? (t("customTzDefaultName") || "Time Zones")
-          : (t("customSearchNamePlaceholder") || "Name (e.g. Google)"));
+      customWidgetNameInput.placeholder = isNotes
+        ? (t("notesDefaultName") || "Notes")
+        : (isRestStatus
+          ? (t("customRestNamePlaceholder") || "Name (e.g. Pi-hole, Proxmox)")
+          : (isTimezone
+            ? (t("customTzDefaultName") || "Time Zones")
+            : (t("customSearchNamePlaceholder") || "Name (e.g. Google)")));
     }
     if (customWidgetIconInput && !editingCustomWidgetId) {
       const val = customWidgetIconInput.value;
-      if (isRestStatus && (val === "🔎" || val === "🕒")) {
-        customWidgetIconInput.value = "📡";
-      } else if (isTimezone && (val === "🔎" || val === "📡")) {
-        customWidgetIconInput.value = "🕒";
-      } else if (!isNonSearch && (val === "🕒" || val === "📡")) {
-        customWidgetIconInput.value = "🔎";
+      const defaultIcons = new Set(["🔎", "🕒", "📡", "📝"]);
+      if (defaultIcons.has(val)) {
+        customWidgetIconInput.value = isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"));
       }
     }
   };
@@ -1239,6 +1253,7 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = "";
     if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = false;
     if (customWidgetRestHideValue) customWidgetRestHideValue.checked = false;
+    if (customWidgetNotesCompact) customWidgetNotesCompact.checked = false;
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     syncCustomWidgetModeUI();
     renderCustomWidgetVarsEditor();
@@ -1249,16 +1264,19 @@ export function initCustomWidgetsSettings() {
     if (!widget) return;
     const isTimezone = widget.type === "timezone";
     const isRestStatus = widget.type === "rest-status";
-    const isNonSearch = isTimezone || isRestStatus;
+    const isNotes = widget.type === "notes";
+    const isNonSearch = isTimezone || isRestStatus || isNotes;
     editingCustomWidgetId = widget.id;
     if (customWidgetIconInput) {
-      customWidgetIconInput.value = widget.icon || (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"));
+      customWidgetIconInput.value = widget.icon || (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎")));
     }
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = widget.customIcon || "";
     if (customWidgetModeSelect) {
-      customWidgetModeSelect.value = isRestStatus
-        ? "rest-status"
-        : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple"));
+      customWidgetModeSelect.value = isNotes
+        ? "notes"
+        : (isRestStatus
+          ? "rest-status"
+          : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple")));
     }
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
     if (customWidgetGroupInput) customWidgetGroupInput.value = isTimezone ? "" : (widget.groupName || "");
@@ -1286,6 +1304,7 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = widget.authHeaderValue || "";
     if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = !!widget.hideGroupName;
     if (customWidgetRestHideValue) customWidgetRestHideValue.checked = !!widget.hideValue;
+    if (customWidgetNotesCompact) customWidgetNotesCompact.checked = !!widget.compactMode;
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
     if (customWidgetStatus) customWidgetStatus.textContent = "";
@@ -1512,12 +1531,13 @@ export function initCustomWidgetsSettings() {
       const selectedMode = customWidgetModeSelect?.value || "simple";
       const isTimezone = selectedMode === "timezone";
       const isRestStatus = selectedMode === "rest-status";
+      const isNotes = selectedMode === "notes";
       const mode = selectedMode === "json" ? "json" : "simple";
       const name = (customWidgetNameInput?.value || "").trim();
       const groupName = (customWidgetGroupInput?.value || "").trim();
       const urlTemplate = (customWidgetUrlInput?.value || "").trim();
       const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
-      const defaultIcon = isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎");
+      const defaultIcon = isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"));
       const icon = (customWidgetIconInput?.value || defaultIcon).trim() || defaultIcon;
       const rawCustomIcon = (customWidgetCustomIconInput?.value || "").trim();
       let customIcon = null;
@@ -1570,6 +1590,41 @@ export function initCustomWidgetsSettings() {
           draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
         }
 
+        closeCustomWidgetEditorModal();
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+        return;
+      }
+
+      if (isNotes) {
+        const resolvedName = name || t("notesDefaultName") || "Notes";
+        const notesFields = {
+          type: "notes",
+          name: resolvedName,
+          icon,
+          customIcon,
+          compactMode: !!customWidgetNotesCompact?.checked
+        };
+        if (customWidgetStatus) customWidgetStatus.textContent = "";
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        if (editingCustomWidgetId) {
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w.id === editingCustomWidgetId ? { ...w, ...notesFields } : w
+          );
+        } else {
+          const newWidget = {
+            id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            ...notesFields,
+            space: "right",
+            align: "auto",
+            newRow: false
+          };
+          draft.customWidgets = [...(draft.customWidgets || []), newWidget];
+          draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
+        }
         closeCustomWidgetEditorModal();
         renderWidgetOrderList(draft);
         await applySideSpaces({ appearance: draft });

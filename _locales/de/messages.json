@@ -1561,5 +1561,80 @@
   },
   "customWidgetEditTitle": {
     "message": "Benutzerdefiniertes Widget bearbeiten"
+  },
+  "customWidgetModeNotes": {
+    "message": "Notizen / Scratchpad"
+  },
+  "customNotesAddTitle": {
+    "message": "Notizen-Widget hinzufügen"
+  },
+  "customNotesCompactMode": {
+    "message": "Nur kompakter Button (im Modal bearbeiten)"
+  },
+  "notesDefaultName": {
+    "message": "Notizen"
+  },
+  "notesScratchpadLabel": {
+    "message": "Notizblock"
+  },
+  "notesScratchpadPlaceholder": {
+    "message": "Schnelle Notizen schreiben..."
+  },
+  "notesTodosLabel": {
+    "message": "Aufgaben & Erinnerungen"
+  },
+  "notesTodoPlaceholder": {
+    "message": "Aufgabe hinzufügen..."
+  },
+  "notesRemindNone": {
+    "message": "Keine Erinnerung"
+  },
+  "notesRemind10m": {
+    "message": "In 10 Min."
+  },
+  "notesRemind15m": {
+    "message": "In 15 Min."
+  },
+  "notesRemind30m": {
+    "message": "In 30 Min."
+  },
+  "notesRemind60m": {
+    "message": "In 1 Stunde"
+  },
+  "notesRemindCustom": {
+    "message": "Um Uhrzeit..."
+  },
+  "notesReminderDue": {
+    "message": "Fällig!"
+  },
+  "notesTodoEmpty": {
+    "message": "Noch keine Aufgaben."
+  },
+  "notesAddTodoTitle": {
+    "message": "Aufgabe hinzufügen"
+  },
+  "notesOpenModalTitle": {
+    "message": "Notizen öffnen"
+  },
+  "notesDoneBtn": {
+    "message": "Erledigt"
+  },
+  "notesNewEntryBtn": {
+    "message": "+ Neue Notiz"
+  },
+  "notesEntryTitlePlaceholder": {
+    "message": "Titel (optional)..."
+  },
+  "notesUntitledEntry": {
+    "message": "Unbenannte Notiz"
+  },
+  "notesSelectOrCreateHint": {
+    "message": "Notiz auswählen oder neu erstellen."
+  },
+  "notesDeleteEntryBtn": {
+    "message": "Löschen"
+  },
+  "open": {
+    "message": "Öffnen"
   }
 }

@@ -44,6 +44,16 @@ import {
   groupRestStatusWidgets,
   syncCustomRestStatusWidgetElements
 } from "./widgets/rest-status-widget.js";
+import {
+  normalizeNotesWidgetData,
+  computeReminderTimestamp,
+  formatReminderCountdown,
+  findDueNoteReminders,
+  checkDueNoteReminders,
+  startNotesReminderPolling,
+  openNotesWidgetModal,
+  syncCustomNotesWidgetElements
+} from "./widgets/notes-widget.js";
 
 export {
   VALID_WIDGET_SPACES,
@@ -81,7 +91,15 @@ export {
   pollAllRestStatusWidgets,
   startRestStatusPolling,
   groupRestStatusWidgets,
-  syncCustomRestStatusWidgetElements
+  syncCustomRestStatusWidgetElements,
+  normalizeNotesWidgetData,
+  computeReminderTimestamp,
+  formatReminderCountdown,
+  findDueNoteReminders,
+  checkDueNoteReminders,
+  startNotesReminderPolling,
+  openNotesWidgetModal,
+  syncCustomNotesWidgetElements
 };
 
 export function serializeCustomWidgetsExport(widgets = [], { includeSecrets = false } = {}) {
@@ -109,6 +127,13 @@ export function serializeCustomWidgetsExport(widgets = [], { includeSecrets = fa
           timeZones: normalizeCustomTimeZones(w.timeZones),
           showSeconds: !!w.showSeconds,
           use24Hour: w.use24Hour !== false
+        };
+      }
+      if (w?.type === "notes") {
+        return {
+          ...base,
+          type: "notes",
+          compactMode: !!w.compactMode
         };
       }
       if (w?.type === "rest-status") {
@@ -197,6 +222,26 @@ export function parseImportedCustomWidgets(parsed) {
     const sourceUrl = typeof raw.sourceUrl === "string" && /^https?:\/\//i.test(raw.sourceUrl.trim()) && isAllowedThemeUrl(raw.sourceUrl.trim())
       ? raw.sourceUrl.trim()
       : null;
+
+    if (raw.type === "notes") {
+      const name = typeof raw.name === "string" && raw.name.trim()
+        ? raw.name.trim()
+        : (t("notesDefaultName") || "Notes");
+      widgets.push({
+        id,
+        type: "notes",
+        name,
+        icon: emoji.slice(0, 4),
+        customIcon,
+        compactMode: !!raw.compactMode,
+        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "right",
+        align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
+        newRow: !!raw.newRow,
+        ...(sourceUrl ? { sourceUrl } : {}),
+        ...(typeof raw.sourceUpdatedAt === "string" && raw.sourceUpdatedAt ? { sourceUpdatedAt: raw.sourceUpdatedAt } : {})
+      });
+      continue;
+    }
 
     if (raw.type === "rest-status" || (typeof raw.endpointUrl === "string" && typeof raw.urlTemplate !== "string")) {
       const endpointUrl = typeof raw.endpointUrl === "string" ? raw.endpointUrl.trim() : "";

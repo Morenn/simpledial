@@ -1564,5 +1564,80 @@
   },
   "customWidgetEditTitle": {
     "message": "Edit Custom Widget"
+  },
+  "customWidgetModeNotes": {
+    "message": "Notes / Scratchpad"
+  },
+  "customNotesAddTitle": {
+    "message": "Add Notes / Scratchpad Widget"
+  },
+  "customNotesCompactMode": {
+    "message": "Compact button only (edit in modal)"
+  },
+  "notesDefaultName": {
+    "message": "Notes"
+  },
+  "notesScratchpadLabel": {
+    "message": "Scratchpad"
+  },
+  "notesScratchpadPlaceholder": {
+    "message": "Write quick notes..."
+  },
+  "notesTodosLabel": {
+    "message": "Todos & Reminders"
+  },
+  "notesTodoPlaceholder": {
+    "message": "Add a todo item..."
+  },
+  "notesRemindNone": {
+    "message": "No reminder"
+  },
+  "notesRemind10m": {
+    "message": "In 10 min"
+  },
+  "notesRemind15m": {
+    "message": "In 15 min"
+  },
+  "notesRemind30m": {
+    "message": "In 30 min"
+  },
+  "notesRemind60m": {
+    "message": "In 1 hour"
+  },
+  "notesRemindCustom": {
+    "message": "At time..."
+  },
+  "notesReminderDue": {
+    "message": "Due!"
+  },
+  "notesTodoEmpty": {
+    "message": "No todos yet."
+  },
+  "notesAddTodoTitle": {
+    "message": "Add todo"
+  },
+  "notesOpenModalTitle": {
+    "message": "Open notes"
+  },
+  "notesDoneBtn": {
+    "message": "Done"
+  },
+  "notesNewEntryBtn": {
+    "message": "+ New Note"
+  },
+  "notesEntryTitlePlaceholder": {
+    "message": "Title (optional)..."
+  },
+  "notesUntitledEntry": {
+    "message": "Untitled note"
+  },
+  "notesSelectOrCreateHint": {
+    "message": "Select a note or create a new one."
+  },
+  "notesDeleteEntryBtn": {
+    "message": "Delete"
+  },
+  "open": {
+    "message": "Open"
   }
 }

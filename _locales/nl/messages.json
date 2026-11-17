@@ -1561,5 +1561,80 @@
   },
   "customWidgetEditTitle": {
     "message": "Aangepaste widget bewerken"
+  },
+  "customWidgetModeNotes": {
+    "message": "Notities / Kladblok"
+  },
+  "customNotesAddTitle": {
+    "message": "Notities-widget toevoegen"
+  },
+  "customNotesCompactMode": {
+    "message": "Alleen compacte knop (bewerken in venster)"
+  },
+  "notesDefaultName": {
+    "message": "Notities"
+  },
+  "notesScratchpadLabel": {
+    "message": "Kladblok"
+  },
+  "notesScratchpadPlaceholder": {
+    "message": "Snelle notities schrijven..."
+  },
+  "notesTodosLabel": {
+    "message": "Taken en herinneringen"
+  },
+  "notesTodoPlaceholder": {
+    "message": "Taak toevoegen..."
+  },
+  "notesRemindNone": {
+    "message": "Geen herinnering"
+  },
+  "notesRemind10m": {
+    "message": "Over 10 min"
+  },
+  "notesRemind15m": {
+    "message": "Over 15 min"
+  },
+  "notesRemind30m": {
+    "message": "Over 30 min"
+  },
+  "notesRemind60m": {
+    "message": "Over 1 uur"
+  },
+  "notesRemindCustom": {
+    "message": "Op tijd..."
+  },
+  "notesReminderDue": {
+    "message": "Vervallen!"
+  },
+  "notesTodoEmpty": {
+    "message": "Nog geen taken."
+  },
+  "notesAddTodoTitle": {
+    "message": "Taak toevoegen"
+  },
+  "notesOpenModalTitle": {
+    "message": "Notities openen"
+  },
+  "notesDoneBtn": {
+    "message": "Klaar"
+  },
+  "notesNewEntryBtn": {
+    "message": "+ Nieuwe notitie"
+  },
+  "notesEntryTitlePlaceholder": {
+    "message": "Titel (optioneel)..."
+  },
+  "notesUntitledEntry": {
+    "message": "Naamloze notitie"
+  },
+  "notesSelectOrCreateHint": {
+    "message": "Selecteer een notitie of maak een nieuwe."
+  },
+  "notesDeleteEntryBtn": {
+    "message": "Verwijderen"
+  },
+  "open": {
+    "message": "Openen"
   }
 }

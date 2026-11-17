@@ -35,6 +35,10 @@ const {
   mapRestDisplayValue,
   evaluateRestResponse,
   fetchAndEvaluateRestWidget,
+  normalizeNotesWidgetData,
+  computeReminderTimestamp,
+  formatReminderCountdown,
+  findDueNoteReminders,
   resolveDateForTimeInZone,
   getTimeZoneDayShift,
   normalizeCustomTimeZones,
@@ -605,4 +609,94 @@ test("fetchAndEvaluateRestWidget handles AbortError timeouts cleanly", async () 
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("Notes / Scratchpad widget helpers compute reminders, detect due todos, and export/import", () => {
+  const baseMs = new Date("2026-11-17T10:00:00").getTime();
+  assert.equal(computeReminderTimestamp("none", "", baseMs), null);
+  assert.equal(computeReminderTimestamp("15", "", baseMs), baseMs + 15 * 60 * 1000);
+
+  const at1030 = computeReminderTimestamp("custom", "10:30", baseMs);
+  assert.equal(at1030, new Date("2026-11-17T10:30:00").getTime());
+
+  // Time earlier than now rolls over to next day
+  const at0900 = computeReminderTimestamp("custom", "09:00", baseMs);
+  assert.equal(at0900, new Date("2026-11-18T09:00:00").getTime());
+
+  assert.equal(formatReminderCountdown(baseMs + 10 * 60000, baseMs, false).label, "10m");
+  assert.equal(formatReminderCountdown(baseMs + 3 * 60000, baseMs, false).status, "soon");
+  assert.equal(formatReminderCountdown(baseMs - 1000, baseMs, false).status, "due");
+  assert.equal(formatReminderCountdown(baseMs - 1000, baseMs, true).status, "done");
+
+  // Legacy { text, todos } format auto-migrates to { entries: [...] }
+  const migrated = normalizeNotesWidgetData({
+    text: "Scratchpad",
+    todos: [
+      { id: "t1", text: "Due task", done: false, remindAt: baseMs - 5000, notified: false },
+      { id: "t2", text: "Already notified", done: false, remindAt: baseMs - 5000, notified: true },
+      { id: "t3", text: "Completed", done: true, remindAt: baseMs - 5000, notified: false },
+      { id: "t4", text: "Future", done: false, remindAt: baseMs + 60000, notified: false }
+    ]
+  });
+  assert.equal(migrated.entries.length, 1);
+  assert.equal(migrated.entries[0].body, "Scratchpad");
+  assert.equal(migrated.entries[0].todos.length, 4);
+
+  // Multi-entry format preserves entries and reports entryId & entryTitle on due reminders
+  const multi = normalizeNotesWidgetData({
+    entries: [
+      {
+        id: "entry-1",
+        title: "Deploy checklist",
+        body: "Run smoke tests before release",
+        todos: [
+          { id: "e1t1", text: "Tag release", done: false, remindAt: baseMs + 60000, notified: false }
+        ]
+      },
+      {
+        id: "entry-2",
+        title: "",
+        body: "",
+        todos: [
+          { id: "e2t1", text: "Call dentist", done: false, remindAt: baseMs - 2000, notified: false }
+        ]
+      }
+    ]
+  });
+  assert.equal(multi.entries.length, 2);
+  assert.equal(multi.entries[0].title, "Deploy checklist");
+
+  const due = findDueNoteReminders({
+    "cw-notes-1": migrated,
+    "cw-notes-2": multi
+  }, baseMs);
+  assert.equal(due.length, 2);
+  assert.equal(due[0].widgetId, "cw-notes-1");
+  assert.equal(due[0].todo.id, "t1");
+  assert.equal(due[1].widgetId, "cw-notes-2");
+  assert.equal(due[1].entryId, "entry-2");
+  assert.equal(due[1].entryTitle, "");
+  assert.equal(due[1].todo.id, "e2t1");
+
+  const exported = serializeCustomWidgetsExport([
+    { id: "cw-notes-1", type: "notes", name: "Work Notes", icon: "📝", compactMode: true, space: "left" }
+  ]);
+  const imported = parseImportedCustomWidgets(exported);
+  assert.equal(imported.validFormat, true);
+  assert.equal(imported.widgets.length, 1);
+  assert.equal(imported.widgets[0].type, "notes");
+  assert.equal(imported.widgets[0].compactMode, true);
+
+  // Character limits are enforced on title, body, and todo text
+  const bounded = normalizeNotesWidgetData({
+    entries: [{
+      id: "long-1",
+      title: "T".repeat(300),
+      body: "B".repeat(5000),
+      todos: [{ id: "lt1", text: "X".repeat(500), done: false }]
+    }]
+  });
+  assert.equal(bounded.entries[0].title.length, 120);
+  assert.equal(bounded.entries[0].body.length, 2000);
+  assert.equal(bounded.entries[0].todos[0].text.length, 240);
 });

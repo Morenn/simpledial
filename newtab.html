@@ -1177,6 +1177,7 @@
           <option value="json" data-i18n="customSearchModeJson">JSON search</option>
           <option value="timezone" data-i18n="customWidgetModeTimezone">Time zones (clock only)</option>
           <option value="rest-status" data-i18n="customWidgetModeRestStatus">REST / JSON Status Badge</option>
+          <option value="notes" data-i18n="customWidgetModeNotes">Notes / Scratchpad</option>
         </select>
       </div>
       <div class="custom-widget-add-block">
@@ -1266,6 +1267,12 @@
             <span id="custom-widget-rest-test-result" class="status"></span>
           </div>
         </div>
+        <div id="custom-widget-notes-section" class="custom-widget-notes-section hidden">
+          <label class="checkbox-row">
+            <input type="checkbox" id="custom-widget-notes-compact">
+            <span data-i18n="customNotesCompactMode">Compact button only (edit in modal)</span>
+          </label>
+        </div>
         <div id="custom-widget-preview-box" class="custom-widget-preview-box hidden">
           <div class="custom-widget-preview-header">
             <span class="custom-widget-sub-label" data-i18n="customSearchPreviewTitle">Test / Preview</span>
@@ -1288,6 +1295,57 @@
         <button type="button" id="custom-widget-add-btn" class="icon-btn primary" data-i18n="customSearchAddBtn">+ Add</button>
         <button type="button" id="custom-widget-preview-toggle-btn" class="icon-btn" data-i18n="customSearchPreviewBtn">🧪 Test / Preview</button>
         <button type="button" id="custom-widget-cancel-edit-btn" class="icon-btn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes / Scratchpad & Todo Modal -->
+  <div id="notes-widget-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="notes-modal-title">
+    <div class="modal-content notes-modal-content">
+      <div class="notes-modal-top-row">
+        <h2 id="notes-modal-title">📝 Notes</h2>
+        <button type="button" id="notes-new-entry-btn" class="icon-btn primary" data-i18n="notesNewEntryBtn">+ New Note</button>
+      </div>
+      <div class="notes-modal-layout">
+        <div class="notes-entries-sidebar">
+          <div id="notes-modal-entries-list" class="notes-modal-entries-list"></div>
+        </div>
+        <div class="notes-entry-main">
+          <div id="notes-entry-empty" class="notes-entry-empty hidden" data-i18n="notesSelectOrCreateHint">Select a note or create a new one.</div>
+          <div id="notes-entry-editor" class="notes-entry-editor">
+            <div class="notes-entry-header-row">
+              <input type="text" id="notes-entry-title" class="sync-compact-input notes-entry-title-input" maxlength="120" data-i18n-placeholder="notesEntryTitlePlaceholder" placeholder="Title (optional)...">
+              <button type="button" id="notes-entry-delete-btn" class="icon-btn danger" data-i18n="notesDeleteEntryBtn" title="Delete note">Delete</button>
+            </div>
+            <div class="notes-scratchpad-label-row">
+              <label for="notes-modal-textarea" class="custom-widget-sub-label" data-i18n="notesScratchpadLabel">Scratchpad</label>
+              <span id="notes-body-char-count" class="notes-body-char-count">0 / 2000</span>
+            </div>
+            <textarea id="notes-modal-textarea" class="notes-modal-textarea" rows="5" maxlength="2000" data-i18n-placeholder="notesScratchpadPlaceholder" placeholder="Write quick notes..."></textarea>
+
+            <div class="notes-todo-section">
+              <div class="custom-widget-sub-label" data-i18n="notesTodosLabel">Todos &amp; Reminders</div>
+              <div class="notes-todo-add-row">
+                <input type="text" id="notes-todo-input" class="sync-compact-input" maxlength="240" data-i18n-placeholder="notesTodoPlaceholder" placeholder="Add a todo item...">
+                <select id="notes-todo-remind-select" class="appearance-select notes-todo-remind-select" aria-label="Reminder time">
+                  <option value="none" data-i18n="notesRemindNone">No reminder</option>
+                  <option value="10" data-i18n="notesRemind10m">In 10 min</option>
+                  <option value="15" data-i18n="notesRemind15m">In 15 min</option>
+                  <option value="30" data-i18n="notesRemind30m">In 30 min</option>
+                  <option value="60" data-i18n="notesRemind60m">In 1 hour</option>
+                  <option value="custom" data-i18n="notesRemindCustom">At time...</option>
+                </select>
+                <input type="time" id="notes-todo-remind-custom" class="sync-compact-input notes-todo-remind-custom hidden" aria-label="Custom reminder time">
+                <button type="button" id="notes-todo-add-btn" class="icon-btn primary" data-i18n="customSearchAddBtn">+ Add</button>
+              </div>
+              <div id="notes-modal-todo-list" class="notes-modal-todo-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-buttons">
+        <button type="button" id="notes-modal-close" class="icon-btn" data-i18n="close">Close</button>
       </div>
     </div>
   </div>

@@ -1561,5 +1561,80 @@
   },
   "customWidgetEditTitle": {
     "message": "Редагувати власний віджет"
+  },
+  "customWidgetModeNotes": {
+    "message": "Нотатки / Блокнот"
+  },
+  "customNotesAddTitle": {
+    "message": "Додати віджет Нотатки"
+  },
+  "customNotesCompactMode": {
+    "message": "Лише компактна кнопка (редагувати у вікні)"
+  },
+  "notesDefaultName": {
+    "message": "Нотатки"
+  },
+  "notesScratchpadLabel": {
+    "message": "Блокнот"
+  },
+  "notesScratchpadPlaceholder": {
+    "message": "Швидкі нотатки..."
+  },
+  "notesTodosLabel": {
+    "message": "Завдання та нагадування"
+  },
+  "notesTodoPlaceholder": {
+    "message": "Додати завдання..."
+  },
+  "notesRemindNone": {
+    "message": "Без нагадування"
+  },
+  "notesRemind10m": {
+    "message": "Через 10 хв"
+  },
+  "notesRemind15m": {
+    "message": "Через 15 хв"
+  },
+  "notesRemind30m": {
+    "message": "Через 30 хв"
+  },
+  "notesRemind60m": {
+    "message": "Через 1 год"
+  },
+  "notesRemindCustom": {
+    "message": "О котрій..."
+  },
+  "notesReminderDue": {
+    "message": "Час!"
+  },
+  "notesTodoEmpty": {
+    "message": "Завдань ще немає."
+  },
+  "notesAddTodoTitle": {
+    "message": "Додати завдання"
+  },
+  "notesOpenModalTitle": {
+    "message": "Відкрити нотатки"
+  },
+  "notesDoneBtn": {
+    "message": "Готово"
+  },
+  "notesNewEntryBtn": {
+    "message": "+ Нова нотатка"
+  },
+  "notesEntryTitlePlaceholder": {
+    "message": "Назва (необов'язково)..."
+  },
+  "notesUntitledEntry": {
+    "message": "Нотатка без назви"
+  },
+  "notesSelectOrCreateHint": {
+    "message": "Виберіть нотатку або створіть нову."
+  },
+  "notesDeleteEntryBtn": {
+    "message": "Видалити"
+  },
+  "open": {
+    "message": "Відкрити"
   }
 }
