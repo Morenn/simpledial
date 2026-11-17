@@ -1011,7 +1011,7 @@
     "message": "Exported"
   },
   "customSearchImportInvalid": {
-    "message": "No valid custom search widgets found in file."
+    "message": "No valid custom widgets found in file."
   },
   "customSearchImportSuccess": {
     "message": "Imported (click Save to persist)"
@@ -1498,5 +1498,71 @@
   },
   "syncWebdavContentsHint": {
     "message": "Choose which WebDAV folder parts sync automatically or manually."
+  },
+  "customWidgetModeRestStatus": {
+    "message": "REST / JSON Status Badge"
+  },
+  "customRestAddTitle": {
+    "message": "Add REST / JSON Status Widget"
+  },
+  "customRestNamePlaceholder": {
+    "message": "Name (e.g. Pi-hole, Proxmox)"
+  },
+  "customRestUrlPlaceholder": {
+    "message": "Endpoint URL (e.g. https://homelab.local/api/health)"
+  },
+  "customRestJsonPathPlaceholder": {
+    "message": "JSON path (e.g. status, data.active_queries)"
+  },
+  "customRestSuffixPlaceholder": {
+    "message": "Unit / suffix (e.g. %, ms)"
+  },
+  "customRestOkPlaceholder": {
+    "message": "OK match (e.g. ok, true, <80)"
+  },
+  "customRestWarnPlaceholder": {
+    "message": "Warn match (e.g. degraded, >=80)"
+  },
+  "customRestLinkPlaceholder": {
+    "message": "Click URL (optional dashboard link)"
+  },
+  "customRestHeaderNamePlaceholder": {
+    "message": "Auth header name (e.g. Authorization, X-API-Key)"
+  },
+  "customRestHeaderValuePlaceholder": {
+    "message": "Header value / token (optional)"
+  },
+  "customRestTestBtn": {
+    "message": "Test Endpoint"
+  },
+  "customRestInvalidUrl": {
+    "message": "Enter a valid http(s) endpoint URL."
+  },
+  "customRestInvalidError": {
+    "message": "Enter a widget name and valid http(s) endpoint URL."
+  },
+  "customRestInvalidLinkUrl": {
+    "message": "Click URL must start with http:// or https://."
+  },
+  "testing": {
+    "message": "Testing..."
+  },
+  "refresh": {
+    "message": "Refresh"
+  },
+  "customRestHideGroupName": {
+    "message": "Hide group name"
+  },
+  "customRestValueMapPlaceholder": {
+    "message": "Value map (e.g. none=OK, minor=Minor)"
+  },
+  "customRestHideValue": {
+    "message": "Hide value (dot + name only)"
+  },
+  "customWidgetAddNewBtn": {
+    "message": "+ Add new widget"
+  },
+  "customWidgetEditTitle": {
+    "message": "Edit Custom Widget"
   }
 }

@@ -1,6 +1,6 @@
 import { state, saveState, generateId, loadState } from "./state.js";
 import { loadTheme, applySideSpaces } from "./theme.js";
-import { updateCustomTimeZoneWidgets } from "./custom-widgets.js";
+import { updateCustomTimeZoneWidgets, pollAllRestStatusWidgets, startRestStatusPolling } from "./custom-widgets.js";
 import { render, updateFooter } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
@@ -168,6 +168,8 @@ function startIconRefreshLoop() {
   setInterval(updateClock, 1000);
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
+  void pollAllRestStatusWidgets({ force: false });
+  startRestStatusPolling();
 
   // 4) Sync (in background, with re-render after data changes)
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {

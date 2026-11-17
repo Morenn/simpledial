@@ -723,80 +723,8 @@
         <div class="appearance-grid">
           <div class="sync-section-card appearance-card appearance-card-wide">
             <div class="custom-widget-add-block custom-widget-add-block-tab">
-              <div class="custom-widget-add-header">
-                <div class="custom-widget-add-title" data-i18n="customSearchAddTitle">Add Custom Search Widget</div>
-                <select id="custom-widget-mode" class="appearance-select custom-widget-mode-select" aria-label="Widget type">
-                  <option value="simple" data-i18n="customSearchModeSimple">Simple string search</option>
-                  <option value="json" data-i18n="customSearchModeJson">JSON search</option>
-                  <option value="timezone" data-i18n="customWidgetModeTimezone">Time zones (clock only)</option>
-                </select>
-              </div>
-              <div class="custom-widget-add-row">
-                <input type="text" id="custom-widget-icon" class="sync-compact-input custom-widget-icon-input" value="🔎" maxlength="4" aria-label="Widget icon">
-                <div class="custom-widget-custom-icon-group">
-                  <input type="text" id="custom-widget-custom-icon" class="sync-compact-input custom-widget-custom-icon-input" data-i18n-placeholder="customSearchCustomIconPlaceholder" placeholder="Icon URL or upload (optional)" aria-label="Custom icon URL">
-                  <button type="button" id="custom-widget-icon-upload-btn" class="icon-btn custom-widget-icon-upload-btn" data-i18n-title="customSearchUploadIconTitle" title="Upload icon image">🖼️</button>
-                  <input type="file" id="custom-widget-icon-file" accept="image/*" style="display: none;">
-                </div>
-                <input type="text" id="custom-widget-name" class="sync-compact-input custom-widget-name-input" data-i18n-placeholder="customSearchNamePlaceholder" placeholder="Name (e.g. Google)">
-                <input type="text" id="custom-widget-group" class="sync-compact-input custom-widget-group-input" data-i18n-placeholder="customSearchGroupPlaceholder" placeholder="Group (optional)">
-                <input type="text" id="custom-widget-route-prefixes" class="sync-compact-input custom-widget-route-prefixes-input" data-i18n-placeholder="customSearchRoutePrefixesPlaceholder" placeholder="Auto-route prefixes (e.g. INC, CHG)">
-                <input type="url" id="custom-widget-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customSearchUrlPlaceholder" placeholder="https://www.google.com/search?q={query}">
-                <label class="checkbox-row custom-widget-newtab-label">
-                  <input type="checkbox" id="custom-widget-newtab">
-                  <span data-i18n="customSearchNewTab">New tab</span>
-                </label>
-                <label class="checkbox-row custom-widget-default-label">
-                  <input type="checkbox" id="custom-widget-default">
-                  <span data-i18n="customSearchDefaultInGroup">Default in group</span>
-                </label>
-              </div>
-              <div id="custom-widget-json-row" class="custom-widget-json-row hidden">
-                <label for="custom-widget-json-template" class="custom-widget-sub-label" data-i18n="customSearchJsonTemplateLabel">JSON template:</label>
-                <textarea id="custom-widget-json-template" class="sync-compact-input custom-widget-json-textarea" rows="2" placeholder='{"q":"{query}","tab":"All"}'></textarea>
-              </div>
-              <div class="custom-widget-vars-section">
-                <div class="custom-widget-vars-header">
-                  <span class="custom-widget-sub-label" data-i18n="customSearchVariablesLabel">Variables:</span>
-                  <button type="button" id="custom-widget-add-var-btn" class="icon-btn" data-i18n="customSearchAddVarBtn">+ Add variable</button>
-                </div>
-                <div id="custom-widget-vars-list" class="custom-widget-vars-list"></div>
-              </div>
-              <div id="custom-widget-timezone-section" class="custom-widget-timezone-section hidden">
-                <div class="custom-widget-tz-options">
-                  <label class="checkbox-row">
-                    <input type="checkbox" id="custom-widget-tz-seconds">
-                    <span data-i18n="customTzShowSeconds">Show seconds</span>
-                  </label>
-                  <label class="checkbox-row">
-                    <input type="checkbox" id="custom-widget-tz-24h" checked>
-                    <span data-i18n="customTzUse24Hour">24-hour format</span>
-                  </label>
-                  <button type="button" id="custom-widget-tz-add-btn" class="icon-btn" data-i18n="customTzAddBtn">+ Add time zone</button>
-                </div>
-                <div id="custom-widget-tz-list" class="custom-widget-tz-list"></div>
-                <datalist id="custom-widget-tz-datalist"></datalist>
-              </div>
-              <div id="custom-widget-preview-box" class="custom-widget-preview-box hidden">
-                <div class="custom-widget-preview-header">
-                  <span class="custom-widget-sub-label" data-i18n="customSearchPreviewTitle">Test / Preview</span>
-                </div>
-                <div id="custom-widget-preview-inputs" class="custom-widget-preview-inputs"></div>
-                <div class="custom-widget-preview-output">
-                  <div class="custom-widget-preview-row">
-                    <span class="custom-widget-sub-label" data-i18n="customSearchPreviewUrlLabel">Generated URL:</span>
-                    <code id="custom-widget-preview-url" class="custom-widget-preview-code"></code>
-                  </div>
-                  <div id="custom-widget-preview-json-row" class="custom-widget-preview-row hidden">
-                    <span class="custom-widget-sub-label" data-i18n="customSearchPreviewJsonLabel">JSON payload:</span>
-                    <pre id="custom-widget-preview-json" class="custom-widget-preview-pre"></pre>
-                  </div>
-                </div>
-              </div>
               <div class="custom-widget-submit-row">
-                <button type="button" id="custom-widget-add-btn" class="icon-btn primary" data-i18n="customSearchAddBtn">+ Add</button>
-                <button type="button" id="custom-widget-cancel-edit-btn" class="icon-btn hidden" data-i18n="cancel">Cancel</button>
-                <button type="button" id="custom-widget-preview-toggle-btn" class="icon-btn" data-i18n="customSearchPreviewBtn">🧪 Test / Preview</button>
+                <button type="button" id="open-new-custom-widget-btn" class="icon-btn primary" data-i18n="customWidgetAddNewBtn">+ Add new widget</button>
                 <div class="custom-widget-library-actions">
                   <button type="button" id="custom-widget-export-btn" class="icon-btn" data-i18n="export">📥 Export</button>
                   <button type="button" id="custom-widget-import-btn" class="icon-btn" data-i18n="import">📤 Import</button>
@@ -1235,6 +1163,131 @@
 
       <div class="modal-buttons">
         <button type="button" id="shortcuts-close" class="icon-btn" data-i18n="close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Widget Add / Edit Modal -->
+  <div id="custom-widget-editor-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="custom-widget-editor-title">
+    <div class="modal-content custom-widget-editor-modal-content">
+      <div class="custom-widget-add-header">
+        <h2 id="custom-widget-editor-title" class="custom-widget-add-title" data-i18n="customSearchAddTitle">Add Custom Search Widget</h2>
+        <select id="custom-widget-mode" class="appearance-select custom-widget-mode-select" aria-label="Widget type">
+          <option value="simple" data-i18n="customSearchModeSimple">Simple string search</option>
+          <option value="json" data-i18n="customSearchModeJson">JSON search</option>
+          <option value="timezone" data-i18n="customWidgetModeTimezone">Time zones (clock only)</option>
+          <option value="rest-status" data-i18n="customWidgetModeRestStatus">REST / JSON Status Badge</option>
+        </select>
+      </div>
+      <div class="custom-widget-add-block">
+        <div class="custom-widget-add-row">
+          <input type="text" id="custom-widget-icon" class="sync-compact-input custom-widget-icon-input" value="🔎" maxlength="4" aria-label="Widget icon">
+          <div class="custom-widget-custom-icon-group">
+            <input type="text" id="custom-widget-custom-icon" class="sync-compact-input custom-widget-custom-icon-input" data-i18n-placeholder="customSearchCustomIconPlaceholder" placeholder="Icon URL or upload (optional)" aria-label="Custom icon URL">
+            <button type="button" id="custom-widget-icon-upload-btn" class="icon-btn custom-widget-icon-upload-btn" data-i18n-title="customSearchUploadIconTitle" title="Upload icon image">🖼️</button>
+            <input type="file" id="custom-widget-icon-file" accept="image/*" style="display: none;">
+          </div>
+          <input type="text" id="custom-widget-name" class="sync-compact-input custom-widget-name-input" data-i18n-placeholder="customSearchNamePlaceholder" placeholder="Name (e.g. Google)">
+          <input type="text" id="custom-widget-group" class="sync-compact-input custom-widget-group-input" data-i18n-placeholder="customSearchGroupPlaceholder" placeholder="Group (optional)">
+          <input type="text" id="custom-widget-route-prefixes" class="sync-compact-input custom-widget-route-prefixes-input" data-i18n-placeholder="customSearchRoutePrefixesPlaceholder" placeholder="Auto-route prefixes (e.g. INC, CHG)">
+          <input type="url" id="custom-widget-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customSearchUrlPlaceholder" placeholder="https://www.google.com/search?q={query}">
+          <label class="checkbox-row custom-widget-newtab-label">
+            <input type="checkbox" id="custom-widget-newtab">
+            <span data-i18n="customSearchNewTab">New tab</span>
+          </label>
+          <label class="checkbox-row custom-widget-default-label">
+            <input type="checkbox" id="custom-widget-default">
+            <span data-i18n="customSearchDefaultInGroup">Default in group</span>
+          </label>
+        </div>
+        <div id="custom-widget-json-row" class="custom-widget-json-row hidden">
+          <label for="custom-widget-json-template" class="custom-widget-sub-label" data-i18n="customSearchJsonTemplateLabel">JSON template:</label>
+          <textarea id="custom-widget-json-template" class="sync-compact-input custom-widget-json-textarea" rows="2" placeholder='{"q":"{query}","tab":"All"}'></textarea>
+        </div>
+        <div class="custom-widget-vars-section">
+          <div class="custom-widget-vars-header">
+            <span class="custom-widget-sub-label" data-i18n="customSearchVariablesLabel">Variables:</span>
+            <button type="button" id="custom-widget-add-var-btn" class="icon-btn" data-i18n="customSearchAddVarBtn">+ Add variable</button>
+          </div>
+          <div id="custom-widget-vars-list" class="custom-widget-vars-list"></div>
+        </div>
+        <div id="custom-widget-timezone-section" class="custom-widget-timezone-section hidden">
+          <div class="custom-widget-tz-options">
+            <label class="checkbox-row">
+              <input type="checkbox" id="custom-widget-tz-seconds">
+              <span data-i18n="customTzShowSeconds">Show seconds</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="custom-widget-tz-24h" checked>
+              <span data-i18n="customTzUse24Hour">24-hour format</span>
+            </label>
+            <button type="button" id="custom-widget-tz-add-btn" class="icon-btn" data-i18n="customTzAddBtn">+ Add time zone</button>
+          </div>
+          <div id="custom-widget-tz-list" class="custom-widget-tz-list"></div>
+          <datalist id="custom-widget-tz-datalist"></datalist>
+        </div>
+        <div id="custom-widget-rest-status-section" class="custom-widget-rest-status-section hidden">
+          <div class="custom-widget-add-row">
+            <input type="url" id="custom-widget-rest-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customRestUrlPlaceholder" placeholder="Endpoint URL (e.g. https://homelab.local/api/health)" aria-label="REST endpoint URL">
+            <select id="custom-widget-rest-method" class="appearance-select custom-widget-rest-method-select" aria-label="HTTP method">
+              <option value="GET">GET</option>
+              <option value="HEAD">HEAD</option>
+            </select>
+          </div>
+          <div class="custom-widget-add-row">
+            <input type="text" id="custom-widget-rest-json-path" class="sync-compact-input" data-i18n-placeholder="customRestJsonPathPlaceholder" placeholder="JSON path (e.g. status, data.active_queries)" aria-label="JSON path">
+            <input type="text" id="custom-widget-rest-suffix" class="sync-compact-input custom-widget-rest-suffix-input" data-i18n-placeholder="customRestSuffixPlaceholder" placeholder="Unit / suffix (e.g. %, ms)" aria-label="Value suffix">
+            <input type="number" id="custom-widget-rest-interval" class="appearance-number-input" min="10" max="3600" value="60" title="Refresh interval (seconds)" aria-label="Refresh interval in seconds">
+          </div>
+          <div class="custom-widget-add-row">
+            <input type="text" id="custom-widget-rest-ok" class="sync-compact-input" data-i18n-placeholder="customRestOkPlaceholder" placeholder="OK match (e.g. ok, true, &lt;80)" aria-label="Expected OK match">
+            <input type="text" id="custom-widget-rest-warn" class="sync-compact-input" data-i18n-placeholder="customRestWarnPlaceholder" placeholder="Warn match (e.g. degraded, &gt;=80)" aria-label="Warning match">
+          </div>
+          <div class="custom-widget-add-row">
+            <input type="text" id="custom-widget-rest-value-map" class="sync-compact-input" data-i18n-placeholder="customRestValueMapPlaceholder" placeholder="Value map (e.g. none=OK, minor=Minor)" aria-label="Value display map">
+          </div>
+          <div class="custom-widget-add-row">
+            <input type="url" id="custom-widget-rest-link" class="sync-compact-input" data-i18n-placeholder="customRestLinkPlaceholder" placeholder="Click URL (optional dashboard link)" aria-label="Optional dashboard link URL">
+          </div>
+          <div class="custom-widget-add-row">
+            <input type="text" id="custom-widget-rest-header-name" class="sync-compact-input" data-i18n-placeholder="customRestHeaderNamePlaceholder" placeholder="Auth header name (e.g. Authorization, X-API-Key)" aria-label="Optional header name">
+            <input type="password" id="custom-widget-rest-header-value" class="sync-compact-input" data-i18n-placeholder="customRestHeaderValuePlaceholder" placeholder="Header value / token (optional)" aria-label="Optional header value">
+          </div>
+          <div class="custom-widget-rest-test-row">
+            <label class="checkbox-row">
+              <input type="checkbox" id="custom-widget-rest-hide-group">
+              <span data-i18n="customRestHideGroupName">Hide group name</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="custom-widget-rest-hide-value">
+              <span data-i18n="customRestHideValue">Hide value (dot + name only)</span>
+            </label>
+            <button type="button" id="custom-widget-rest-test-btn" class="icon-btn" data-i18n="customRestTestBtn">🧪 Test Endpoint</button>
+            <span id="custom-widget-rest-test-result" class="status"></span>
+          </div>
+        </div>
+        <div id="custom-widget-preview-box" class="custom-widget-preview-box hidden">
+          <div class="custom-widget-preview-header">
+            <span class="custom-widget-sub-label" data-i18n="customSearchPreviewTitle">Test / Preview</span>
+          </div>
+          <div id="custom-widget-preview-inputs" class="custom-widget-preview-inputs"></div>
+          <div class="custom-widget-preview-output">
+            <div class="custom-widget-preview-row">
+              <span class="custom-widget-sub-label" data-i18n="customSearchPreviewUrlLabel">Generated URL:</span>
+              <code id="custom-widget-preview-url" class="custom-widget-preview-code"></code>
+            </div>
+            <div id="custom-widget-preview-json-row" class="custom-widget-preview-row hidden">
+              <span class="custom-widget-sub-label" data-i18n="customSearchPreviewJsonLabel">JSON payload:</span>
+              <pre id="custom-widget-preview-json" class="custom-widget-preview-pre"></pre>
+            </div>
+          </div>
+        </div>
+        <div id="custom-widget-editor-status" class="status"></div>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" id="custom-widget-add-btn" class="icon-btn primary" data-i18n="customSearchAddBtn">+ Add</button>
+        <button type="button" id="custom-widget-preview-toggle-btn" class="icon-btn" data-i18n="customSearchPreviewBtn">🧪 Test / Preview</button>
+        <button type="button" id="custom-widget-cancel-edit-btn" class="icon-btn" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>

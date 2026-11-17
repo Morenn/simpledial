@@ -1008,7 +1008,7 @@
     "message": "Exportiert"
   },
   "customSearchImportInvalid": {
-    "message": "Keine gültigen Such-Widgets in der Datei gefunden."
+    "message": "Keine gültigen benutzerdefinierten Widgets in der Datei gefunden."
   },
   "customSearchImportSuccess": {
     "message": "Importiert (zum Speichern auf Speichern klicken)"
@@ -1495,5 +1495,71 @@
   },
   "syncWebdavContentsHint": {
     "message": "Wählen Sie, welche WebDAV-Ordnerteile automatisch oder manuell synchronisiert werden."
+  },
+  "customWidgetModeRestStatus": {
+    "message": "REST / JSON Status-Badge"
+  },
+  "customRestAddTitle": {
+    "message": "REST / JSON Status-Widget hinzufügen"
+  },
+  "customRestNamePlaceholder": {
+    "message": "Name (z. B. Pi-hole, Proxmox)"
+  },
+  "customRestUrlPlaceholder": {
+    "message": "Endpunkt-URL (z. B. https://homelab.local/api/health)"
+  },
+  "customRestJsonPathPlaceholder": {
+    "message": "JSON-Pfad (z. B. status, data.active_queries)"
+  },
+  "customRestSuffixPlaceholder": {
+    "message": "Einheit (z. B. %, ms)"
+  },
+  "customRestOkPlaceholder": {
+    "message": "OK-Regel (z. B. ok, true, <80)"
+  },
+  "customRestWarnPlaceholder": {
+    "message": "Warn-Regel (z. B. degraded, >=80)"
+  },
+  "customRestLinkPlaceholder": {
+    "message": "Klick-URL (optionaler Dashboard-Link)"
+  },
+  "customRestHeaderNamePlaceholder": {
+    "message": "Auth-Header-Name (z. B. Authorization, X-API-Key)"
+  },
+  "customRestHeaderValuePlaceholder": {
+    "message": "Header-Wert / Token (optional)"
+  },
+  "customRestTestBtn": {
+    "message": "Endpunkt testen"
+  },
+  "customRestInvalidUrl": {
+    "message": "Geben Sie eine gültige http(s)-Endpunkt-URL ein."
+  },
+  "customRestInvalidError": {
+    "message": "Geben Sie einen Namen und eine gültige http(s)-Endpunkt-URL ein."
+  },
+  "customRestInvalidLinkUrl": {
+    "message": "Klick-URL muss mit http:// oder https:// beginnen."
+  },
+  "testing": {
+    "message": "Teste..."
+  },
+  "refresh": {
+    "message": "Aktualisieren"
+  },
+  "customRestHideGroupName": {
+    "message": "Gruppennamen ausblenden"
+  },
+  "customRestValueMapPlaceholder": {
+    "message": "Werte-Zuordnung (z. B. none=OK, minor=Gering)"
+  },
+  "customRestHideValue": {
+    "message": "Wert ausblenden (nur Punkt + Name)"
+  },
+  "customWidgetAddNewBtn": {
+    "message": "+ Neues Widget hinzufügen"
+  },
+  "customWidgetEditTitle": {
+    "message": "Benutzerdefiniertes Widget bearbeiten"
   }
 }

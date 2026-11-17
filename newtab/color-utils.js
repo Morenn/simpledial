@@ -19,8 +19,8 @@ export function normalizeCustomIconValue(rawValue, { allowEmoji = false } = {}) 
   const trimmed = rawValue.trim();
   if (!trimmed) return null;
 
-  if (allowEmoji && !isUrlLikeIcon(trimmed)) {
-    return trimmed;
+  if (!isUrlLikeIcon(trimmed)) {
+    return allowEmoji ? trimmed : null;
   }
 
   if (trimmed.startsWith("/")) {

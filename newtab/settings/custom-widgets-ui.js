@@ -16,7 +16,13 @@ import {
   revertCustomWidgetVersion,
   buildCustomSearchPreview,
   normalizeCustomWidgetVariables,
-  normalizeCustomSearchRoutePrefixes
+  normalizeCustomSearchRoutePrefixes,
+  isValidRestEndpointUrl,
+  normalizeRestRefreshSeconds,
+  fetchAndEvaluateRestWidget,
+  requestRestEndpointPermission,
+  pollAllRestStatusWidgets,
+  groupRestStatusWidgets
 } from "../custom-widgets.js";
 import { normalizeCustomIconValue, applyCachedIconImageSrc } from "../color-utils.js";
 import { settingsState, markSettingsDirty } from "./context.js";
@@ -53,10 +59,29 @@ const customWidgetTz24h = document.getElementById("custom-widget-tz-24h");
 const customWidgetTzAddBtn = document.getElementById("custom-widget-tz-add-btn");
 const customWidgetTzList = document.getElementById("custom-widget-tz-list");
 const customWidgetTzDatalist = document.getElementById("custom-widget-tz-datalist");
+const customWidgetRestStatusSection = document.getElementById("custom-widget-rest-status-section");
+const customWidgetRestUrl = document.getElementById("custom-widget-rest-url");
+const customWidgetRestMethod = document.getElementById("custom-widget-rest-method");
+const customWidgetRestJsonPath = document.getElementById("custom-widget-rest-json-path");
+const customWidgetRestSuffix = document.getElementById("custom-widget-rest-suffix");
+const customWidgetRestInterval = document.getElementById("custom-widget-rest-interval");
+const customWidgetRestOk = document.getElementById("custom-widget-rest-ok");
+const customWidgetRestWarn = document.getElementById("custom-widget-rest-warn");
+const customWidgetRestValueMap = document.getElementById("custom-widget-rest-value-map");
+const customWidgetRestLink = document.getElementById("custom-widget-rest-link");
+const customWidgetRestHeaderName = document.getElementById("custom-widget-rest-header-name");
+const customWidgetRestHeaderValue = document.getElementById("custom-widget-rest-header-value");
+const customWidgetRestHideGroup = document.getElementById("custom-widget-rest-hide-group");
+const customWidgetRestHideValue = document.getElementById("custom-widget-rest-hide-value");
+const customWidgetRestTestBtn = document.getElementById("custom-widget-rest-test-btn");
+const customWidgetRestTestResult = document.getElementById("custom-widget-rest-test-result");
 const customWidgetNewTabLabel = customWidgetNewTabInput?.closest(".custom-widget-newtab-label");
 const customWidgetDefaultLabel = customWidgetDefaultInput?.closest(".custom-widget-default-label");
 const customWidgetAddBtn = document.getElementById("custom-widget-add-btn");
 const customWidgetCancelEditBtn = document.getElementById("custom-widget-cancel-edit-btn");
+const openNewCustomWidgetBtn = document.getElementById("open-new-custom-widget-btn");
+const customWidgetEditorModal = document.getElementById("custom-widget-editor-modal");
+const customWidgetEditorStatus = document.getElementById("custom-widget-editor-status");
 const customWidgetPreviewToggleBtn = document.getElementById("custom-widget-preview-toggle-btn");
 const customWidgetPreviewBox = document.getElementById("custom-widget-preview-box");
 const customWidgetPreviewInputs = document.getElementById("custom-widget-preview-inputs");
@@ -125,7 +150,10 @@ export function initCustomWidgetsSettings() {
     const resolvedAppearance = appearance || settingsState.appearanceDraft || {};
     const customWidgets = Array.isArray(resolvedAppearance.customWidgets) ? resolvedAppearance.customWidgets : [];
     const customWidgetMap = new Map(customWidgets.filter(w => w?.id).map(w => [w.id, w]));
-    const customGroups = groupCustomSearchWidgets(customWidgets);
+    const customGroups = [
+      ...groupCustomSearchWidgets(customWidgets),
+      ...groupRestStatusWidgets(customWidgets)
+    ];
     const customGroupByRepId = new Map(customGroups.map(g => [g.representative.id, g]));
     const secondaryCustomIds = new Set();
     for (const g of customGroups) {
@@ -456,21 +484,25 @@ export function initCustomWidgetsSettings() {
       titleEl.className = "custom-widget-library-name";
       titleEl.textContent = customDef.name || customDef.id;
       const isTimezone = customDef.type === "timezone";
+      const isRestStatus = customDef.type === "rest-status";
+      const isNonSearch = isTimezone || isRestStatus;
       const tzList = isTimezone ? normalizeCustomTimeZones(customDef.timeZones) : [];
       const badge = document.createElement("span");
       badge.className = "custom-widget-mode-badge";
-      badge.textContent = isTimezone
-        ? `🕒 ${tzList.length}`
-        : (customDef.mode === "json" ? "JSON" : "Simple");
+      badge.textContent = isRestStatus
+        ? "REST"
+        : (isTimezone
+          ? `🕒 ${tzList.length}`
+          : (customDef.mode === "json" ? "JSON" : "Simple"));
       titleEl.appendChild(badge);
-      const groupName = !isTimezone && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
+      const groupName = !isNonSearch && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
       if (groupName) {
         const groupBadge = document.createElement("span");
         groupBadge.className = "custom-widget-group-badge";
         groupBadge.textContent = groupName;
         titleEl.appendChild(groupBadge);
       }
-      const routePrefixes = !isTimezone ? normalizeCustomSearchRoutePrefixes(customDef.routePrefixes) : [];
+      const routePrefixes = !isNonSearch ? normalizeCustomSearchRoutePrefixes(customDef.routePrefixes) : [];
       if (routePrefixes.length > 0) {
         const routeBadge = document.createElement("span");
         routeBadge.className = "custom-widget-route-badge";
@@ -481,9 +513,11 @@ export function initCustomWidgetsSettings() {
 
       const urlEl = document.createElement("div");
       urlEl.className = "custom-widget-library-url";
-      urlEl.textContent = isTimezone
-        ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
-        : (customDef.urlTemplate || "");
+      urlEl.textContent = isRestStatus
+        ? (customDef.endpointUrl || "")
+        : (isTimezone
+          ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
+          : (customDef.urlTemplate || ""));
       info.append(titleEl, urlEl);
       if (customDef.sourceUrl) {
         const sourceEl = document.createElement("div");
@@ -617,6 +651,7 @@ export function initCustomWidgetsSettings() {
       editBtn.title = t("edit") || "Edit";
       editBtn.addEventListener("click", () => {
         loadCustomWidgetIntoForm(customDef);
+        openCustomWidgetEditorModal();
       });
 
       const delBtn = document.createElement("button");
@@ -653,12 +688,12 @@ export function initCustomWidgetsSettings() {
     for (const customDef of customList) {
       if (!customDef?.id) continue;
       const isTimezone = customDef.type === "timezone";
-      const groupName = !isTimezone && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
+      const groupName = typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
       if (!groupName) {
         entries.push({ kind: "single", widget: customDef });
         continue;
       }
-      const key = groupName.toLowerCase();
+      const key = `${customDef.type || "custom-search"}:${groupName.toLowerCase()}`;
       let groupEntry = groupMap.get(key);
       if (!groupEntry) {
         groupEntry = { kind: "group", groupName, members: [] };
@@ -942,12 +977,23 @@ export function initCustomWidgetsSettings() {
     const mode = customWidgetModeSelect?.value || "simple";
     const isJson = mode === "json";
     const isTimezone = mode === "timezone";
+    const isRestStatus = mode === "rest-status";
+    const isNonSearch = isTimezone || isRestStatus;
 
     if (customWidgetAddTitle) {
-      const titleKey = isTimezone ? "customTzAddTitle" : "customSearchAddTitle";
-      const titleFallback = isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget";
-      customWidgetAddTitle.setAttribute("data-i18n", titleKey);
-      customWidgetAddTitle.textContent = t(titleKey) || titleFallback;
+      if (editingCustomWidgetId) {
+        customWidgetAddTitle.setAttribute("data-i18n", "customWidgetEditTitle");
+        customWidgetAddTitle.textContent = t("customWidgetEditTitle") || "Edit Custom Widget";
+      } else {
+        const titleKey = isRestStatus
+          ? "customRestAddTitle"
+          : (isTimezone ? "customTzAddTitle" : "customSearchAddTitle");
+        const titleFallback = isRestStatus
+          ? "Add REST / JSON Status Widget"
+          : (isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget");
+        customWidgetAddTitle.setAttribute("data-i18n", titleKey);
+        customWidgetAddTitle.textContent = t(titleKey) || titleFallback;
+      }
     }
 
     if (customWidgetJsonRow) {
@@ -956,11 +1002,14 @@ export function initCustomWidgetsSettings() {
     if (customWidgetTimezoneSection) {
       customWidgetTimezoneSection.classList.toggle("hidden", !isTimezone);
     }
+    if (customWidgetRestStatusSection) {
+      customWidgetRestStatusSection.classList.toggle("hidden", !isRestStatus);
+    }
     if (customWidgetVarsSection) {
-      customWidgetVarsSection.classList.toggle("hidden", isTimezone);
+      customWidgetVarsSection.classList.toggle("hidden", isNonSearch);
     }
     if (customWidgetUrlInput) {
-      customWidgetUrlInput.classList.toggle("hidden", isTimezone);
+      customWidgetUrlInput.classList.toggle("hidden", isNonSearch);
       customWidgetUrlInput.placeholder = isJson
         ? "https://example.com/search/"
         : (t("customSearchUrlPlaceholder") || "https://www.google.com/search?q={query}");
@@ -969,29 +1018,34 @@ export function initCustomWidgetsSettings() {
       customWidgetGroupInput.classList.toggle("hidden", isTimezone);
     }
     if (customWidgetRoutePrefixesInput) {
-      customWidgetRoutePrefixesInput.classList.toggle("hidden", isTimezone);
+      customWidgetRoutePrefixesInput.classList.toggle("hidden", isNonSearch);
     }
     if (customWidgetNewTabLabel) {
-      customWidgetNewTabLabel.classList.toggle("hidden", isTimezone);
+      customWidgetNewTabLabel.classList.toggle("hidden", isNonSearch);
     }
     if (customWidgetDefaultLabel) {
-      customWidgetDefaultLabel.classList.toggle("hidden", isTimezone);
+      customWidgetDefaultLabel.classList.toggle("hidden", isNonSearch);
     }
     if (customWidgetPreviewToggleBtn) {
-      customWidgetPreviewToggleBtn.classList.toggle("hidden", isTimezone);
+      customWidgetPreviewToggleBtn.classList.toggle("hidden", isNonSearch);
     }
-    if (isTimezone && customWidgetPreviewBox) {
+    if (isNonSearch && customWidgetPreviewBox) {
       customWidgetPreviewBox.classList.add("hidden");
     }
     if (customWidgetNameInput) {
-      customWidgetNameInput.placeholder = isTimezone
-        ? (t("customTzDefaultName") || "Time Zones")
-        : (t("customSearchNamePlaceholder") || "Name (e.g. Google)");
+      customWidgetNameInput.placeholder = isRestStatus
+        ? (t("customRestNamePlaceholder") || "Name (e.g. Pi-hole, Proxmox)")
+        : (isTimezone
+          ? (t("customTzDefaultName") || "Time Zones")
+          : (t("customSearchNamePlaceholder") || "Name (e.g. Google)"));
     }
     if (customWidgetIconInput && !editingCustomWidgetId) {
-      if (isTimezone && customWidgetIconInput.value === "🔎") {
+      const val = customWidgetIconInput.value;
+      if (isRestStatus && (val === "🔎" || val === "🕒")) {
+        customWidgetIconInput.value = "📡";
+      } else if (isTimezone && (val === "🔎" || val === "📡")) {
         customWidgetIconInput.value = "🕒";
-      } else if (!isTimezone && customWidgetIconInput.value === "🕒") {
+      } else if (!isNonSearch && (val === "🕒" || val === "📡")) {
         customWidgetIconInput.value = "🔎";
       }
     }
@@ -1163,8 +1217,8 @@ export function initCustomWidgetsSettings() {
     if (customWidgetNewTabInput) customWidgetNewTabInput.checked = false;
     if (customWidgetDefaultInput) customWidgetDefaultInput.checked = false;
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("customSearchAddBtn") || "+ Add";
-    if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.add("hidden");
     if (customWidgetStatus) customWidgetStatus.textContent = "";
+    if (customWidgetEditorStatus) customWidgetEditorStatus.textContent = "";
     customWidgetVarsDraft = [{ key: "query", label: "Search", type: "text", optionsText: "" }];
     customWidgetTzDraft = [
       { label: "UTC", timeZone: "UTC" },
@@ -1172,6 +1226,20 @@ export function initCustomWidgetsSettings() {
     ];
     if (customWidgetTzSeconds) customWidgetTzSeconds.checked = false;
     if (customWidgetTz24h) customWidgetTz24h.checked = true;
+    if (customWidgetRestUrl) customWidgetRestUrl.value = "";
+    if (customWidgetRestMethod) customWidgetRestMethod.value = "GET";
+    if (customWidgetRestJsonPath) customWidgetRestJsonPath.value = "";
+    if (customWidgetRestSuffix) customWidgetRestSuffix.value = "";
+    if (customWidgetRestInterval) customWidgetRestInterval.value = "60";
+    if (customWidgetRestOk) customWidgetRestOk.value = "";
+    if (customWidgetRestWarn) customWidgetRestWarn.value = "";
+    if (customWidgetRestValueMap) customWidgetRestValueMap.value = "";
+    if (customWidgetRestLink) customWidgetRestLink.value = "";
+    if (customWidgetRestHeaderName) customWidgetRestHeaderName.value = "";
+    if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = "";
+    if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = false;
+    if (customWidgetRestHideValue) customWidgetRestHideValue.checked = false;
+    if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     syncCustomWidgetModeUI();
     renderCustomWidgetVarsEditor();
     renderCustomWidgetTzEditor();
@@ -1180,28 +1248,48 @@ export function initCustomWidgetsSettings() {
   const loadCustomWidgetIntoForm = (widget) => {
     if (!widget) return;
     const isTimezone = widget.type === "timezone";
+    const isRestStatus = widget.type === "rest-status";
+    const isNonSearch = isTimezone || isRestStatus;
     editingCustomWidgetId = widget.id;
-    if (customWidgetIconInput) customWidgetIconInput.value = widget.icon || (isTimezone ? "🕒" : "🔎");
+    if (customWidgetIconInput) {
+      customWidgetIconInput.value = widget.icon || (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"));
+    }
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = widget.customIcon || "";
     if (customWidgetModeSelect) {
-      customWidgetModeSelect.value = isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple");
+      customWidgetModeSelect.value = isRestStatus
+        ? "rest-status"
+        : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple"));
     }
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
     if (customWidgetGroupInput) customWidgetGroupInput.value = isTimezone ? "" : (widget.groupName || "");
     if (customWidgetRoutePrefixesInput) {
-      customWidgetRoutePrefixesInput.value = isTimezone
+      customWidgetRoutePrefixesInput.value = isNonSearch
         ? ""
         : normalizeCustomSearchRoutePrefixes(widget.routePrefixes).join(", ");
     }
     if (customWidgetUrlInput) customWidgetUrlInput.value = widget.urlTemplate || "";
     if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = widget.jsonTemplate || "";
     if (customWidgetNewTabInput) customWidgetNewTabInput.checked = !!widget.openInNewTab;
-    if (customWidgetDefaultInput) customWidgetDefaultInput.checked = !isTimezone && !!widget.isDefault;
+    if (customWidgetDefaultInput) customWidgetDefaultInput.checked = !isNonSearch && !!widget.isDefault;
     if (customWidgetTzSeconds) customWidgetTzSeconds.checked = !!widget.showSeconds;
     if (customWidgetTz24h) customWidgetTz24h.checked = widget.use24Hour !== false;
+    if (customWidgetRestUrl) customWidgetRestUrl.value = widget.endpointUrl || "";
+    if (customWidgetRestMethod) customWidgetRestMethod.value = widget.method === "HEAD" ? "HEAD" : "GET";
+    if (customWidgetRestJsonPath) customWidgetRestJsonPath.value = widget.jsonPath || "";
+    if (customWidgetRestSuffix) customWidgetRestSuffix.value = widget.valueSuffix || "";
+    if (customWidgetRestInterval) customWidgetRestInterval.value = String(normalizeRestRefreshSeconds(widget.refreshSeconds));
+    if (customWidgetRestOk) customWidgetRestOk.value = widget.okMatch || "";
+    if (customWidgetRestWarn) customWidgetRestWarn.value = widget.warnMatch || "";
+    if (customWidgetRestValueMap) customWidgetRestValueMap.value = widget.valueMap || "";
+    if (customWidgetRestLink) customWidgetRestLink.value = widget.linkUrl || "";
+    if (customWidgetRestHeaderName) customWidgetRestHeaderName.value = widget.authHeaderName || "";
+    if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = widget.authHeaderValue || "";
+    if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = !!widget.hideGroupName;
+    if (customWidgetRestHideValue) customWidgetRestHideValue.checked = !!widget.hideValue;
+    if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
-    if (customWidgetCancelEditBtn) customWidgetCancelEditBtn.classList.remove("hidden");
     if (customWidgetStatus) customWidgetStatus.textContent = "";
+    if (customWidgetEditorStatus) customWidgetEditorStatus.textContent = "";
     customWidgetVarsDraft = Array.isArray(widget.variables) && widget.variables.length > 0
       ? widget.variables.map(v => ({ ...v }))
       : [{ key: "query", label: widget.name || "Search", type: "text", optionsText: "" }];
@@ -1255,8 +1343,37 @@ export function initCustomWidgetsSettings() {
     });
   }
 
+  const openCustomWidgetEditorModal = () => {
+    if (!customWidgetEditorModal) return;
+    customWidgetEditorModal.classList.remove("hidden");
+    customWidgetNameInput?.focus();
+  };
+
+  const closeCustomWidgetEditorModal = () => {
+    if (customWidgetEditorModal) {
+      customWidgetEditorModal.classList.add("hidden");
+    }
+    resetCustomWidgetForm();
+  };
+  window.closeCustomWidgetEditorModal = closeCustomWidgetEditorModal;
+
+  if (openNewCustomWidgetBtn) {
+    openNewCustomWidgetBtn.addEventListener("click", () => {
+      resetCustomWidgetForm();
+      openCustomWidgetEditorModal();
+    });
+  }
+
+  if (customWidgetEditorModal) {
+    customWidgetEditorModal.addEventListener("click", (e) => {
+      if (e.target === customWidgetEditorModal) {
+        closeCustomWidgetEditorModal();
+      }
+    });
+  }
+
   if (customWidgetCancelEditBtn) {
-    customWidgetCancelEditBtn.addEventListener("click", resetCustomWidgetForm);
+    customWidgetCancelEditBtn.addEventListener("click", closeCustomWidgetEditorModal);
   }
 
   const readWidgetIconFile = (file, onDataUrl) => {
@@ -1351,24 +1468,64 @@ export function initCustomWidgetsSettings() {
       await applySideSpaces({ appearance: draft });
     });
   }
+  if (customWidgetRestTestBtn) {
+    customWidgetRestTestBtn.addEventListener("click", async () => {
+      const endpointUrl = (customWidgetRestUrl?.value || "").trim();
+      if (!isValidRestEndpointUrl(endpointUrl)) {
+        if (customWidgetRestTestResult) {
+          customWidgetRestTestResult.textContent = "❌ " + (t("customRestInvalidUrl") || "Enter a valid http(s) endpoint URL.");
+        }
+        return;
+      }
+      const permitted = await requestRestEndpointPermission(endpointUrl);
+      if (!permitted) {
+        if (customWidgetRestTestResult) {
+          customWidgetRestTestResult.textContent = "❌ " + (t("hostPermissionRequired") || "Host permission is required.");
+        }
+        return;
+      }
+      if (customWidgetRestTestResult) {
+        customWidgetRestTestResult.textContent = "⏳ " + (t("testing") || "Testing...");
+      }
+      const testWidget = {
+        name: (customWidgetNameInput?.value || "Test").trim() || "Test",
+        endpointUrl,
+        method: customWidgetRestMethod?.value === "HEAD" ? "HEAD" : "GET",
+        jsonPath: (customWidgetRestJsonPath?.value || "").trim(),
+        valueSuffix: customWidgetRestSuffix?.value || "",
+        valueMap: (customWidgetRestValueMap?.value || "").trim(),
+        okMatch: (customWidgetRestOk?.value || "").trim(),
+        warnMatch: (customWidgetRestWarn?.value || "").trim(),
+        authHeaderName: (customWidgetRestHeaderName?.value || "").trim(),
+        authHeaderValue: customWidgetRestHeaderValue?.value || ""
+      };
+      const result = await fetchAndEvaluateRestWidget(testWidget);
+      const badge = result.state === "ok" ? "🟢" : (result.state === "warn" ? "🟡" : "🔴");
+      if (customWidgetRestTestResult) {
+        customWidgetRestTestResult.textContent = `${badge} ${result.text} (${result.detail})`;
+      }
+    });
+  }
+
   if (customWidgetAddBtn) {
     customWidgetAddBtn.addEventListener('click', async () => {
       const selectedMode = customWidgetModeSelect?.value || "simple";
       const isTimezone = selectedMode === "timezone";
+      const isRestStatus = selectedMode === "rest-status";
       const mode = selectedMode === "json" ? "json" : "simple";
       const name = (customWidgetNameInput?.value || "").trim();
       const groupName = (customWidgetGroupInput?.value || "").trim();
       const urlTemplate = (customWidgetUrlInput?.value || "").trim();
       const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
-      const defaultIcon = isTimezone ? "🕒" : "🔎";
+      const defaultIcon = isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎");
       const icon = (customWidgetIconInput?.value || defaultIcon).trim() || defaultIcon;
       const rawCustomIcon = (customWidgetCustomIconInput?.value || "").trim();
       let customIcon = null;
       if (rawCustomIcon) {
         customIcon = normalizeCustomIconValue(rawCustomIcon, { allowEmoji: false });
         if (!customIcon) {
-          if (customWidgetStatus) {
-            customWidgetStatus.textContent = "❌ " + (t("customSearchInvalidIcon") || "Enter a valid icon URL or upload an image.");
+          if (customWidgetEditorStatus) {
+            customWidgetEditorStatus.textContent = "❌ " + (t("customSearchInvalidIcon") || "Enter a valid icon URL or upload an image.");
           }
           return;
         }
@@ -1377,8 +1534,8 @@ export function initCustomWidgetsSettings() {
       if (isTimezone) {
         const timeZones = normalizeCustomTimeZones(customWidgetTzDraft);
         if (timeZones.length === 0) {
-          if (customWidgetStatus) {
-            customWidgetStatus.textContent = "❌ " + (t("customTzInvalidError") || "Add at least one valid IANA time zone (e.g. UTC, Europe/Prague, America/New_York).");
+          if (customWidgetEditorStatus) {
+            customWidgetEditorStatus.textContent = "❌ " + (t("customTzInvalidError") || "Add at least one valid IANA time zone (e.g. UTC, Europe/Prague, America/New_York).");
           }
           return;
         }
@@ -1413,11 +1570,77 @@ export function initCustomWidgetsSettings() {
           draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
         }
 
-        resetCustomWidgetForm();
+        closeCustomWidgetEditorModal();
         renderWidgetOrderList(draft);
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();
+        return;
+      }
+
+      if (isRestStatus) {
+        const endpointUrl = (customWidgetRestUrl?.value || "").trim();
+        if (!name || !isValidRestEndpointUrl(endpointUrl)) {
+          if (customWidgetEditorStatus) {
+            customWidgetEditorStatus.textContent = "❌ " + (t("customRestInvalidError") || "Enter a widget name and valid http(s) endpoint URL.");
+          }
+          return;
+        }
+        const rawLinkUrl = (customWidgetRestLink?.value || "").trim();
+        if (rawLinkUrl && !isValidRestEndpointUrl(rawLinkUrl)) {
+          if (customWidgetEditorStatus) {
+            customWidgetEditorStatus.textContent = "❌ " + (t("customRestInvalidLinkUrl") || "Click URL must start with http:// or https://.");
+          }
+          return;
+        }
+        await requestRestEndpointPermission(endpointUrl);
+
+        const restFields = {
+          type: "rest-status",
+          name,
+          groupName,
+          hideGroupName: !!customWidgetRestHideGroup?.checked,
+          hideValue: !!customWidgetRestHideValue?.checked,
+          icon,
+          customIcon,
+          endpointUrl,
+          method: customWidgetRestMethod?.value === "HEAD" ? "HEAD" : "GET",
+          jsonPath: (customWidgetRestJsonPath?.value || "").trim(),
+          valueSuffix: customWidgetRestSuffix?.value || "",
+          valueMap: (customWidgetRestValueMap?.value || "").trim(),
+          refreshSeconds: normalizeRestRefreshSeconds(customWidgetRestInterval?.value),
+          okMatch: (customWidgetRestOk?.value || "").trim(),
+          warnMatch: (customWidgetRestWarn?.value || "").trim(),
+          linkUrl: rawLinkUrl,
+          authHeaderName: (customWidgetRestHeaderName?.value || "").trim(),
+          authHeaderValue: customWidgetRestHeaderValue?.value || ""
+        };
+
+        if (customWidgetStatus) customWidgetStatus.textContent = "";
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        if (editingCustomWidgetId) {
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w.id === editingCustomWidgetId ? { ...w, ...restFields } : w
+          );
+        } else {
+          const newWidget = {
+            id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            ...restFields,
+            space: "right",
+            align: "auto",
+            newRow: false
+          };
+          draft.customWidgets = [...(draft.customWidgets || []), newWidget];
+          draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
+        }
+
+        closeCustomWidgetEditorModal();
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+        void pollAllRestStatusWidgets({ force: true });
         return;
       }
 
@@ -1434,14 +1657,14 @@ export function initCustomWidgetsSettings() {
         .filter(v => v.key);
 
       if (!name || !isValidCustomSearchUrlTemplate(urlTemplate)) {
-        if (customWidgetStatus) {
-          customWidgetStatus.textContent = "❌ " + (t("customSearchInvalidUrl") || "Enter a name and valid http(s) URL template.");
+        if (customWidgetEditorStatus) {
+          customWidgetEditorStatus.textContent = "❌ " + (t("customSearchInvalidUrl") || "Enter a name and valid http(s) URL template.");
         }
         return;
       }
       if (mode === "json" && !isValidCustomSearchJsonTemplate(jsonTemplate)) {
-        if (customWidgetStatus) {
-          customWidgetStatus.textContent = "❌ " + (t("customSearchInvalidJson") || "Enter a valid JSON template.");
+        if (customWidgetEditorStatus) {
+          customWidgetEditorStatus.textContent = "❌ " + (t("customSearchInvalidJson") || "Enter a valid JSON template.");
         }
         return;
       }
@@ -1489,7 +1712,7 @@ export function initCustomWidgetsSettings() {
         draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
       }
 
-      resetCustomWidgetForm();
+      closeCustomWidgetEditorModal();
       renderWidgetOrderList(draft);
       await applySideSpaces({ appearance: draft });
       await render();
@@ -1637,6 +1860,9 @@ export function initCustomWidgetsSettings() {
     await applySideSpaces({ appearance: draft });
     await render();
     calculateGridLayout();
+    if (importedWidgets.some(w => w?.type === "rest-status")) {
+      void pollAllRestStatusWidgets({ force: true });
+    }
     return { addedCount, updatedCount, total: addedCount + updatedCount };
   };
 
@@ -1700,7 +1926,7 @@ export function initCustomWidgetsSettings() {
         const { widgets: importedWidgets, validFormat } = parseImportedCustomWidgets(parsed);
         if (!validFormat || importedWidgets.length === 0) {
           if (statusEl) {
-            statusEl.textContent = "❌ " + (t("customSearchImportInvalid") || "No valid custom search widgets found in file.");
+            statusEl.textContent = "❌ " + (t("customSearchImportInvalid") || "No valid custom widgets found in file.");
           }
           return;
         }
@@ -1709,9 +1935,10 @@ export function initCustomWidgetsSettings() {
         if (statusEl) {
           statusEl.textContent = "✅ " + (t("customSearchImportSuccess") || "Imported") + ` (${total})`;
         }
-      } catch {
+      } catch (err) {
+        console.error("Custom widget import failed", err);
         if (statusEl) {
-          statusEl.textContent = "❌ " + (t("customSearchImportInvalid") || "No valid custom search widgets found in file.");
+          statusEl.textContent = "❌ " + (t("customSearchImportInvalid") || "No valid custom widgets found in file.");
         }
       } finally {
         customWidgetImportFile.value = "";

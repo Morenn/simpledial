@@ -1,0 +1,27 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-github-status",
+      "type": "rest-status",
+      "name": "GitHub",
+      "icon": "🐙",
+      "customIcon": "https://github.githubassets.com/favicons/favicon.svg",
+      "endpointUrl": "https://www.githubstatus.com/api/v2/status.json",
+      "method": "GET",
+      "jsonPath": "status.indicator",
+      "valueSuffix": "",
+      "valueMap": "none=OK, minor=Minor, major=Major, critical=Critical",
+      "refreshSeconds": 60,
+      "okMatch": "none",
+      "warnMatch": "minor",
+      "linkUrl": "https://www.githubstatus.com/",
+      "authHeaderName": "",
+      "authHeaderValue": "",
+      "space": "footer",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

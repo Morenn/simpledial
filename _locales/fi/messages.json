@@ -1008,7 +1008,7 @@
     "message": "Viety"
   },
   "customSearchImportInvalid": {
-    "message": "Tiedostosta ei löytynyt kelvollisia hakuwidgetejä."
+    "message": "Tiedostosta ei löytynyt kelvollisia mukautettuja widgettejä."
   },
   "customSearchImportSuccess": {
     "message": "Tuotu (tallenna napsauttamalla Tallenna)"
@@ -1495,5 +1495,71 @@
   },
   "syncWebdavContentsHint": {
     "message": "Valitse, mitkä WebDAV-kansion osat synkronoidaan automaattisesti tai manuaalisesti."
+  },
+  "customWidgetModeRestStatus": {
+    "message": "REST / JSON-tilamerkki"
+  },
+  "customRestAddTitle": {
+    "message": "Lisää REST / JSON-tilawidget"
+  },
+  "customRestNamePlaceholder": {
+    "message": "Nimi (esim. Pi-hole, Proxmox)"
+  },
+  "customRestUrlPlaceholder": {
+    "message": "Päätepisteen URL (esim. https://homelab.local/api/health)"
+  },
+  "customRestJsonPathPlaceholder": {
+    "message": "JSON-polku (esim. status, data.active_queries)"
+  },
+  "customRestSuffixPlaceholder": {
+    "message": "Yksikkö (esim. %, ms)"
+  },
+  "customRestOkPlaceholder": {
+    "message": "OK-ehto (esim. ok, true, <80)"
+  },
+  "customRestWarnPlaceholder": {
+    "message": "Varoitusehto (esim. degraded, >=80)"
+  },
+  "customRestLinkPlaceholder": {
+    "message": "Klikkauksen URL (valinnainen linkki)"
+  },
+  "customRestHeaderNamePlaceholder": {
+    "message": "Otsikon nimi (esim. Authorization, X-API-Key)"
+  },
+  "customRestHeaderValuePlaceholder": {
+    "message": "Otsikon arvo / tunnus (valinnainen)"
+  },
+  "customRestTestBtn": {
+    "message": "Testaa päätepiste"
+  },
+  "customRestInvalidUrl": {
+    "message": "Anna kelvollinen http(s)-päätepisteen URL."
+  },
+  "customRestInvalidError": {
+    "message": "Anna widgetin nimi ja kelvollinen http(s)-päätepisteen URL."
+  },
+  "customRestInvalidLinkUrl": {
+    "message": "Klikkauksen URL:n on alettava http:// tai https://."
+  },
+  "testing": {
+    "message": "Testataan..."
+  },
+  "refresh": {
+    "message": "Päivitä"
+  },
+  "customRestHideGroupName": {
+    "message": "Piilota ryhmän nimi"
+  },
+  "customRestValueMapPlaceholder": {
+    "message": "Arvomuunnokset (esim. none=OK, minor=Pieni)"
+  },
+  "customRestHideValue": {
+    "message": "Piilota arvo (vain piste + nimi)"
+  },
+  "customWidgetAddNewBtn": {
+    "message": "+ Lisää uusi widget"
+  },
+  "customWidgetEditTitle": {
+    "message": "Muokkaa mukautettua widgettiä"
   }
 }

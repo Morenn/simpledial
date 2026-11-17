@@ -248,11 +248,15 @@ if (settingsCancelBtn) {
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
-    const subModalIds = ["browser-bookmarks-overwrite-modal", "browser-import-modal", "failed-icons-modal", "custom-widget-trust-modal"];
+    const subModalIds = ["browser-bookmarks-overwrite-modal", "browser-import-modal", "failed-icons-modal", "custom-widget-trust-modal", "custom-widget-editor-modal"];
     for (const id of subModalIds) {
       const subModal = document.getElementById(id);
       if (subModal && !subModal.classList.contains("hidden")) {
-        subModal.classList.add("hidden");
+        if (id === "custom-widget-editor-modal" && typeof window.closeCustomWidgetEditorModal === "function") {
+          window.closeCustomWidgetEditorModal();
+        } else {
+          subModal.classList.add("hidden");
+        }
         return;
       }
     }

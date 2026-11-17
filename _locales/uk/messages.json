@@ -1008,7 +1008,7 @@
     "message": "Експортовано"
   },
   "customSearchImportInvalid": {
-    "message": "У файлі не знайдено дійсних пошукових віджетів."
+    "message": "У файлі не знайдено дійсних власних віджетів."
   },
   "customSearchImportSuccess": {
     "message": "Імпортовано (натисніть Зберегти для збереження)"
@@ -1495,5 +1495,71 @@
   },
   "syncWebdavContentsHint": {
     "message": "Виберіть, які частини папки WebDAV синхронізуються автоматично або вручну."
+  },
+  "customWidgetModeRestStatus": {
+    "message": "Значок статусу REST / JSON"
+  },
+  "customRestAddTitle": {
+    "message": "Додати віджет статусу REST / JSON"
+  },
+  "customRestNamePlaceholder": {
+    "message": "Назва (напр. Pi-hole, Proxmox)"
+  },
+  "customRestUrlPlaceholder": {
+    "message": "URL ендпоінта (напр. https://homelab.local/api/health)"
+  },
+  "customRestJsonPathPlaceholder": {
+    "message": "Шлях JSON (напр. status, data.active_queries)"
+  },
+  "customRestSuffixPlaceholder": {
+    "message": "Одиниця (напр. %, ms)"
+  },
+  "customRestOkPlaceholder": {
+    "message": "Правило OK (напр. ok, true, <80)"
+  },
+  "customRestWarnPlaceholder": {
+    "message": "Правило попередження (напр. degraded, >=80)"
+  },
+  "customRestLinkPlaceholder": {
+    "message": "URL при кліку (необов'язково)"
+  },
+  "customRestHeaderNamePlaceholder": {
+    "message": "Назва заголовка (напр. Authorization, X-API-Key)"
+  },
+  "customRestHeaderValuePlaceholder": {
+    "message": "Значення заголовка / токен (необов'язково)"
+  },
+  "customRestTestBtn": {
+    "message": "Перевірити ендпоінт"
+  },
+  "customRestInvalidUrl": {
+    "message": "Введіть дійсний http(s) URL ендпоінта."
+  },
+  "customRestInvalidError": {
+    "message": "Введіть назву віджета та дійсний http(s) URL ендпоінта."
+  },
+  "customRestInvalidLinkUrl": {
+    "message": "URL при кліку має починатися з http:// або https://."
+  },
+  "testing": {
+    "message": "Перевірка..."
+  },
+  "refresh": {
+    "message": "Оновити"
+  },
+  "customRestHideGroupName": {
+    "message": "Приховати назву групи"
+  },
+  "customRestValueMapPlaceholder": {
+    "message": "Зіставлення значень (напр. none=OK, minor=Незначні)"
+  },
+  "customRestHideValue": {
+    "message": "Приховати значення (лише крапка + назва)"
+  },
+  "customWidgetAddNewBtn": {
+    "message": "+ Додати новий віджет"
+  },
+  "customWidgetEditTitle": {
+    "message": "Редагувати власний віджет"
   }
 }

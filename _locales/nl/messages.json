@@ -1008,7 +1008,7 @@
     "message": "Geëxporteerd"
   },
   "customSearchImportInvalid": {
-    "message": "Geen geldige zoekwidgets gevonden in het bestand."
+    "message": "Geen geldige aangepaste widgets gevonden in het bestand."
   },
   "customSearchImportSuccess": {
     "message": "Geïmporteerd (klik op Opslaan om te bewaren)"
@@ -1495,5 +1495,71 @@
   },
   "syncWebdavContentsHint": {
     "message": "Kies welke WebDAV-maponderdelen automatisch of handmatig worden gesynchroniseerd."
+  },
+  "customWidgetModeRestStatus": {
+    "message": "REST / JSON-statusbadge"
+  },
+  "customRestAddTitle": {
+    "message": "REST / JSON-statuswidget toevoegen"
+  },
+  "customRestNamePlaceholder": {
+    "message": "Naam (bijv. Pi-hole, Proxmox)"
+  },
+  "customRestUrlPlaceholder": {
+    "message": "Endpoint-URL (bijv. https://homelab.local/api/health)"
+  },
+  "customRestJsonPathPlaceholder": {
+    "message": "JSON-pad (bijv. status, data.active_queries)"
+  },
+  "customRestSuffixPlaceholder": {
+    "message": "Eenheid (bijv. %, ms)"
+  },
+  "customRestOkPlaceholder": {
+    "message": "OK-regel (bijv. ok, true, <80)"
+  },
+  "customRestWarnPlaceholder": {
+    "message": "Waarschuwingsregel (bijv. degraded, >=80)"
+  },
+  "customRestLinkPlaceholder": {
+    "message": "Klik-URL (optionele link)"
+  },
+  "customRestHeaderNamePlaceholder": {
+    "message": "Headernaam (bijv. Authorization, X-API-Key)"
+  },
+  "customRestHeaderValuePlaceholder": {
+    "message": "Headerwaarde / token (optioneel)"
+  },
+  "customRestTestBtn": {
+    "message": "Endpoint testen"
+  },
+  "customRestInvalidUrl": {
+    "message": "Voer een geldige http(s)-endpoint-URL in."
+  },
+  "customRestInvalidError": {
+    "message": "Voer een widgetnaam en geldige http(s)-endpoint-URL in."
+  },
+  "customRestInvalidLinkUrl": {
+    "message": "Klik-URL moet beginnen met http:// of https://."
+  },
+  "testing": {
+    "message": "Testen..."
+  },
+  "refresh": {
+    "message": "Vernieuwen"
+  },
+  "customRestHideGroupName": {
+    "message": "Groepsnaam verbergen"
+  },
+  "customRestValueMapPlaceholder": {
+    "message": "Waardekoppeling (bijv. none=OK, minor=Klein)"
+  },
+  "customRestHideValue": {
+    "message": "Waarde verbergen (alleen stip + naam)"
+  },
+  "customWidgetAddNewBtn": {
+    "message": "+ Nieuwe widget toevoegen"
+  },
+  "customWidgetEditTitle": {
+    "message": "Aangepaste widget bewerken"
   }
 }

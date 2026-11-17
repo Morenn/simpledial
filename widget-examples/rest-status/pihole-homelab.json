@@ -1,0 +1,26 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-pihole",
+      "type": "rest-status",
+      "name": "Pi-hole",
+      "icon": "🛡️",
+      "customIcon": null,
+      "endpointUrl": "http://pi.hole/admin/api.php?summary",
+      "method": "GET",
+      "jsonPath": "status",
+      "valueSuffix": "",
+      "refreshSeconds": 30,
+      "okMatch": "enabled",
+      "warnMatch": "disabled",
+      "linkUrl": "http://pi.hole/admin/",
+      "authHeaderName": "",
+      "authHeaderValue": "",
+      "space": "header",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

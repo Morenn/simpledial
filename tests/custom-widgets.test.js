@@ -27,7 +27,14 @@ const {
   serializeCustomWidgetsExport,
   parseImportedCustomWidgets,
   groupCustomSearchWidgets,
+  groupRestStatusWidgets,
   isValidTimeZone,
+  isValidRestEndpointUrl,
+  extractJsonPath,
+  evaluateRestStatusRule,
+  mapRestDisplayValue,
+  evaluateRestResponse,
+  fetchAndEvaluateRestWidget,
   resolveDateForTimeInZone,
   getTimeZoneDayShift,
   normalizeCustomTimeZones,
@@ -415,4 +422,187 @@ test("routePrefixes normalize, export/import, and route queries by longest match
     routePrefixes: []
   });
   assert.deepEqual(updatedFromOlder.routePrefixes, ["IN", "INC"]);
+});
+
+test("REST / JSON status badge helpers extract paths, evaluate rules, and export/import safely", () => {
+  assert.equal(isValidRestEndpointUrl("https://homelab.local/api/health"), true);
+  assert.equal(isValidRestEndpointUrl("http://192.168.1.10:8080/status"), true);
+  assert.equal(isValidRestEndpointUrl("javascript:alert(1)"), false);
+
+  const sample = {
+    status: "healthy",
+    data: { active_queries: 42, load: 85 },
+    services: [{ state: "running" }],
+    metrics: { "cpu.temp": 61 }
+  };
+  assert.equal(extractJsonPath(sample, "status"), "healthy");
+  assert.equal(extractJsonPath(sample, "data.active_queries"), 42);
+  assert.equal(extractJsonPath(sample, "services[0].state"), "running");
+  assert.equal(extractJsonPath(sample, "metrics['cpu.temp']"), 61);
+  assert.equal(extractJsonPath(sample, "__proto__"), undefined);
+  assert.equal(extractJsonPath(sample, "missing.key"), undefined);
+
+  assert.equal(evaluateRestStatusRule("Healthy", "ok, healthy, true"), true);
+  assert.equal(evaluateRestStatusRule(75, "<80"), true);
+  assert.equal(evaluateRestStatusRule(85, "<80"), false);
+  assert.equal(evaluateRestStatusRule(85, ">=80"), true);
+
+  assert.deepEqual(
+    evaluateRestResponse({ ok: true, status: 200, data: sample, latencyMs: 12 }, {
+      jsonPath: "data.load",
+      valueSuffix: "%",
+      okMatch: "<80",
+      warnMatch: ">=80"
+    }),
+    { state: "warn", text: "85%", detail: "HTTP 200 · 12 ms" }
+  );
+
+  assert.deepEqual(
+    evaluateRestResponse({ ok: true, status: 200, data: sample, latencyMs: 15 }, {
+      jsonPath: "status",
+      okMatch: "ok, healthy"
+    }),
+    { state: "ok", text: "healthy", detail: "HTTP 200 · 15 ms" }
+  );
+
+  assert.deepEqual(
+    evaluateRestResponse({ ok: false, status: 502 }, { jsonPath: "status" }),
+    { state: "err", text: "HTTP 502", detail: "HTTP 502" }
+  );
+
+  assert.deepEqual(
+    evaluateRestResponse({ ok: true, status: 200, latencyMs: 9 }, { method: "HEAD" }),
+    { state: "ok", text: "9ms", detail: "HTTP 200 · 9 ms" }
+  );
+
+  // Plain-text and HTML status page matching without jsonPath
+  assert.deepEqual(
+    evaluateRestResponse({ ok: true, status: 200, data: "OK", latencyMs: 7 }, { okMatch: "OK, UP" }),
+    { state: "ok", text: "OK", detail: "HTTP 200 · 7 ms" }
+  );
+  assert.deepEqual(
+    evaluateRestResponse(
+      { ok: true, status: 200, data: "<html><body><h1>All Systems Operational</h1></body></html>", latencyMs: 18 },
+      { okMatch: "~All Systems Operational", warnMatch: "~Degraded Performance" }
+    ),
+    { state: "ok", text: "18ms", detail: "HTTP 200 · 18 ms" }
+  );
+  assert.deepEqual(
+    evaluateRestResponse(
+      { ok: true, status: 200, data: "<html><body>Degraded Performance</body></html>", latencyMs: 22 },
+      { okMatch: "~All Systems Operational", warnMatch: "~Degraded Performance" }
+    ),
+    { state: "warn", text: "22ms", detail: "HTTP 200 · 22 ms" }
+  );
+
+  const exported = serializeCustomWidgetsExport([
+    {
+      id: "cw-rest-1",
+      type: "rest-status",
+      name: "Pi-hole",
+      icon: "📡",
+      endpointUrl: "https://pihole.local/admin/api.php?summary",
+      method: "GET",
+      jsonPath: "status",
+      valueSuffix: "",
+      refreshSeconds: 30,
+      okMatch: "enabled",
+      warnMatch: "disabled",
+      linkUrl: "https://pihole.local/admin",
+      groupName: "Homelab",
+      space: "header"
+    }
+  ]);
+  const imported = parseImportedCustomWidgets(exported);
+  assert.equal(imported.validFormat, true);
+  assert.equal(imported.widgets.length, 1);
+  assert.equal(imported.widgets[0].type, "rest-status");
+  assert.equal(imported.widgets[0].endpointUrl, "https://pihole.local/admin/api.php?summary");
+  assert.equal(imported.widgets[0].groupName, "Homelab");
+  assert.equal(imported.widgets[0].refreshSeconds, 30);
+
+  const grouped = groupRestStatusWidgets([
+    { id: "r1", type: "rest-status", name: "Pi-hole", groupName: "Homelab", endpointUrl: "http://pi.hole/api" },
+    { id: "r2", type: "rest-status", name: "Proxmox", groupName: "homelab", endpointUrl: "https://pve.local/api" },
+    { id: "r3", type: "rest-status", name: "GitHub", groupName: "", endpointUrl: "https://www.githubstatus.com/api/v2/status.json" }
+  ]);
+  assert.equal(grouped.length, 2);
+  assert.equal(grouped[0].groupName, "Homelab");
+  assert.equal(grouped[0].members.length, 2);
+  assert.equal(grouped[0].representative.id, "r1");
+  assert.equal(grouped[1].members.length, 1);
+
+  // Array .length path & valueMap display mapping
+  assert.equal(extractJsonPath({ incidents: [{ id: 1 }, { id: 2 }] }, "incidents.length"), 2);
+  assert.equal(mapRestDisplayValue("none", "none=OK, minor=Minor"), "OK");
+  assert.deepEqual(
+    evaluateRestResponse(
+      { ok: true, status: 200, data: { status: { indicator: "none" } }, latencyMs: 14 },
+      { jsonPath: "status.indicator", okMatch: "none", valueMap: "none=OK, minor=Minor" }
+    ),
+    { state: "ok", text: "OK", detail: "HTTP 200 · 14 ms" }
+  );
+
+  // Redact authHeaderValue on export by default
+  const redactedExport = serializeCustomWidgetsExport([
+    {
+      id: "r-secret",
+      type: "rest-status",
+      name: "SecretAPI",
+      endpointUrl: "https://api.internal/health",
+      authHeaderName: "Authorization",
+      authHeaderValue: "Bearer super-secret-token"
+    }
+  ]);
+  assert.equal(redactedExport.widgets[0].authHeaderValue, "");
+  const withSecretsExport = serializeCustomWidgetsExport(
+    [{ id: "r-secret", type: "rest-status", name: "SecretAPI", endpointUrl: "https://api.internal/health", authHeaderValue: "Bearer super-secret-token" }],
+    { includeSecrets: true }
+  );
+  assert.equal(withSecretsExport.widgets[0].authHeaderValue, "Bearer super-secret-token");
+
+  const badImport = parseImportedCustomWidgets([
+    { type: "rest-status", name: "Bad", endpointUrl: "javascript:alert(1)" }
+  ]);
+  assert.equal(badImport.widgets.length, 0);
+  assert.equal(badImport.skipped, 1);
+});
+
+test("widget-examples/rest-status/*.json presets parse cleanly", () => {
+  const presetsDir = path.resolve("widget-examples/rest-status");
+  const files = fs.readdirSync(presetsDir).filter(f => f.endsWith(".json")).sort();
+  assert.equal(files.length, 3);
+  for (const file of files) {
+    const raw = JSON.parse(fs.readFileSync(path.join(presetsDir, file), "utf8"));
+    const parsed = parseImportedCustomWidgets(raw);
+    assert.equal(parsed.validFormat, true, `${file} should have validFormat`);
+    assert.equal(parsed.skipped, 0, `${file} should have 0 skipped`);
+    assert.equal(parsed.widgets.length, 1, `${file} should contain 1 widget`);
+    assert.equal(parsed.widgets[0].type, "rest-status");
+  }
+});
+
+test("resolveCustomWidgetIcon keeps emoji icons as emoji without converting to punycode URLs", () => {
+  assert.deepEqual(resolveCustomWidgetIcon({ icon: "🕒" }), { emoji: "🕒", customIcon: null });
+  assert.deepEqual(resolveCustomWidgetIcon({ icon: "📡" }), { emoji: "📡", customIcon: null });
+  assert.deepEqual(
+    resolveCustomWidgetIcon({ icon: "📡", customIcon: "example.com/icon.png" }),
+    { emoji: "📡", customIcon: "https://example.com/icon.png" }
+  );
+});
+
+test("fetchAndEvaluateRestWidget handles AbortError timeouts cleanly", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const err = new Error("Aborted");
+    err.name = "AbortError";
+    throw err;
+  };
+  try {
+    const res = await fetchAndEvaluateRestWidget({ endpointUrl: "https://homelab.local/api/health" });
+    assert.equal(res.state, "err");
+    assert.equal(res.text, "TIMEOUT");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

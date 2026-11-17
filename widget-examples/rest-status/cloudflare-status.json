@@ -1,0 +1,27 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-cloudflare-status",
+      "type": "rest-status",
+      "name": "Cloudflare",
+      "icon": "☁️",
+      "customIcon": "https://www.cloudflare.com/favicon.ico",
+      "endpointUrl": "https://www.cloudflarestatus.com/api/v2/status.json",
+      "method": "GET",
+      "jsonPath": "status.indicator",
+      "valueSuffix": "",
+      "valueMap": "none=OK, minor=Minor, major=Major, critical=Critical",
+      "refreshSeconds": 60,
+      "okMatch": "none",
+      "warnMatch": "minor",
+      "linkUrl": "https://www.cloudflarestatus.com/",
+      "authHeaderName": "",
+      "authHeaderValue": "",
+      "space": "footer",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

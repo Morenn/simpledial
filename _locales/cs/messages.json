@@ -1008,7 +1008,7 @@
     "message": "Exportováno"
   },
   "customSearchImportInvalid": {
-    "message": "V souboru nebyly nalezeny žádné platné vyhledávací widgety."
+    "message": "V souboru nebyly nalezeny žádné platné vlastní widgety."
   },
   "customSearchImportSuccess": {
     "message": "Importováno (pro trvalé uložení klikněte na Uložit)"
@@ -1495,5 +1495,71 @@
   },
   "syncWebdavContentsHint": {
     "message": "Vyberte, které části složky WebDAV se synchronizují automaticky nebo ručně."
+  },
+  "customWidgetModeRestStatus": {
+    "message": "REST / JSON stavový odznak"
+  },
+  "customRestAddTitle": {
+    "message": "Přidat REST / JSON stavový widget"
+  },
+  "customRestNamePlaceholder": {
+    "message": "Název (např. Pi-hole, Proxmox)"
+  },
+  "customRestUrlPlaceholder": {
+    "message": "URL endpointu (např. https://homelab.local/api/health)"
+  },
+  "customRestJsonPathPlaceholder": {
+    "message": "Cesta JSON (např. status, data.active_queries)"
+  },
+  "customRestSuffixPlaceholder": {
+    "message": "Jednotka (např. %, ms)"
+  },
+  "customRestOkPlaceholder": {
+    "message": "Shoda OK (např. ok, true, <80)"
+  },
+  "customRestWarnPlaceholder": {
+    "message": "Shoda varování (např. degraded, >=80)"
+  },
+  "customRestLinkPlaceholder": {
+    "message": "URL po kliknutí (volitelný odkaz)"
+  },
+  "customRestHeaderNamePlaceholder": {
+    "message": "Název hlavičky (např. Authorization, X-API-Key)"
+  },
+  "customRestHeaderValuePlaceholder": {
+    "message": "Hodnota hlavičky / token (volitelné)"
+  },
+  "customRestTestBtn": {
+    "message": "Otestovat endpoint"
+  },
+  "customRestInvalidUrl": {
+    "message": "Zadejte platnou http(s) URL endpointu."
+  },
+  "customRestInvalidError": {
+    "message": "Zadejte název widgetu a platnou http(s) URL endpointu."
+  },
+  "customRestInvalidLinkUrl": {
+    "message": "URL po kliknutí musí začínat http:// nebo https://."
+  },
+  "testing": {
+    "message": "Testování..."
+  },
+  "refresh": {
+    "message": "Obnovit"
+  },
+  "customRestHideGroupName": {
+    "message": "Skrýt název skupiny"
+  },
+  "customRestValueMapPlaceholder": {
+    "message": "Mapování hodnot (např. none=OK, minor=Drobné)"
+  },
+  "customRestHideValue": {
+    "message": "Skrýt hodnotu (jen tečka + název)"
+  },
+  "customWidgetAddNewBtn": {
+    "message": "+ Přidat nový widget"
+  },
+  "customWidgetEditTitle": {
+    "message": "Upravit vlastní widget"
   }
 }

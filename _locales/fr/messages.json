@@ -1008,7 +1008,7 @@
     "message": "Exporté"
   },
   "customSearchImportInvalid": {
-    "message": "Aucun widget de recherche valide trouvé dans le fichier."
+    "message": "Aucun widget personnalisé valide trouvé dans le fichier."
   },
   "customSearchImportSuccess": {
     "message": "Importé (cliquez sur Enregistrer pour conserver)"
@@ -1495,5 +1495,71 @@
   },
   "syncWebdavContentsHint": {
     "message": "Choisissez les éléments du dossier WebDAV synchronisés automatiquement ou manuellement."
+  },
+  "customWidgetModeRestStatus": {
+    "message": "Badge de statut REST / JSON"
+  },
+  "customRestAddTitle": {
+    "message": "Ajouter un widget de statut REST / JSON"
+  },
+  "customRestNamePlaceholder": {
+    "message": "Nom (ex. Pi-hole, Proxmox)"
+  },
+  "customRestUrlPlaceholder": {
+    "message": "URL du point d'accès (ex. https://homelab.local/api/health)"
+  },
+  "customRestJsonPathPlaceholder": {
+    "message": "Chemin JSON (ex. status, data.active_queries)"
+  },
+  "customRestSuffixPlaceholder": {
+    "message": "Unité / suffixe (ex. %, ms)"
+  },
+  "customRestOkPlaceholder": {
+    "message": "Règle OK (ex. ok, true, <80)"
+  },
+  "customRestWarnPlaceholder": {
+    "message": "Règle avertissement (ex. degraded, >=80)"
+  },
+  "customRestLinkPlaceholder": {
+    "message": "URL au clic (lien optionnel)"
+  },
+  "customRestHeaderNamePlaceholder": {
+    "message": "Nom d'en-tête (ex. Authorization, X-API-Key)"
+  },
+  "customRestHeaderValuePlaceholder": {
+    "message": "Valeur d'en-tête / jeton (optionnel)"
+  },
+  "customRestTestBtn": {
+    "message": "Tester le point d'accès"
+  },
+  "customRestInvalidUrl": {
+    "message": "Saisissez une URL http(s) valide."
+  },
+  "customRestInvalidError": {
+    "message": "Saisissez un nom et une URL http(s) valide."
+  },
+  "customRestInvalidLinkUrl": {
+    "message": "L'URL au clic doit commencer par http:// ou https://."
+  },
+  "testing": {
+    "message": "Test en cours..."
+  },
+  "refresh": {
+    "message": "Actualiser"
+  },
+  "customRestHideGroupName": {
+    "message": "Masquer le nom du groupe"
+  },
+  "customRestValueMapPlaceholder": {
+    "message": "Mappage de valeurs (ex. none=OK, minor=Mineur)"
+  },
+  "customRestHideValue": {
+    "message": "Masquer la valeur (point + nom)"
+  },
+  "customWidgetAddNewBtn": {
+    "message": "+ Ajouter un widget"
+  },
+  "customWidgetEditTitle": {
+    "message": "Modifier le widget personnalisé"
   }
 }
