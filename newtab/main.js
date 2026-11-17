@@ -617,3 +617,18 @@ function showSyncUnavailableNotification() {
     setTimeout(() => notification.remove(), 300);
   }, 5000);
 }
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("simpledial:config-synced", async () => {
+    try {
+      const cfg = await loadConfig();
+      await loadTheme();
+      await applySideSpaces(cfg);
+      await render();
+      updateUIText();
+      updateClock();
+    } catch (err) {
+      console.warn("Failed to apply synced config to UI", err);
+    }
+  });
+}

@@ -12,6 +12,12 @@ export const defaultConfig = {
     enabled: false,
     serverUrl: "",
     type: "direct", // "direct", "webdav" or "browser"
+    webdavMode: "file", // "file" (single JSON) or "folder" (full folder sync)
+    webdavFolderPath: "",
+    webdavSyncConfig: true,
+    webdavSyncWidgets: true,
+    webdavSyncBackups: false,
+    webdavSyncBackground: false,
     authMode: "none", // "none" or "basic"
     username: "",
     password: "",
@@ -22,6 +28,7 @@ export const defaultConfig = {
     intervalMode: "default", // "immediate", "custom", "manual", "default"
     lastSync: 0,
     lastSyncedLocalHash: "",
+    lastSyncedExtraHashes: {},
     remoteChangeHeaderType: null, // null=unknown, false=unsupported, or 'sha256'|'etag'|'last-modified'
     lastSeenRemoteMarker: "",
     lastRemoteMarkerCheck: 0,

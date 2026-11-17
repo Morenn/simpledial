@@ -18,6 +18,15 @@ const syncReadTestBtn = document.getElementById("sync-read-test");
 const syncWriteTestBtn = document.getElementById("sync-write-test");
 const syncEnable = document.getElementById("sync-enable");
 const syncType = document.getElementById("sync-type");
+const syncWebdavMode = document.getElementById("sync-webdav-mode");
+const syncWebdavModeRow = document.getElementById("sync-webdav-mode-row");
+const syncWebdavModeChoices = document.querySelectorAll('input[name="sync-webdav-mode-choice"]');
+const syncWebdavFolderRow = document.getElementById("sync-webdav-folder-row");
+const syncWebdavFolder = document.getElementById("sync-webdav-folder");
+const syncWebdavWidgets = document.getElementById("sync-webdav-widgets");
+const syncWebdavConfig = document.getElementById("sync-webdav-config");
+const syncWebdavBackups = document.getElementById("sync-webdav-backups");
+const syncWebdavBackground = document.getElementById("sync-webdav-background");
 const syncAuthMode = document.getElementById("sync-auth-mode");
 const syncUsername = document.getElementById("sync-username");
 const syncPassword = document.getElementById("sync-password");
@@ -82,6 +91,7 @@ export function updateSyncFields() {
   const isBrowserSync = syncType && syncType.value === "browser";
   const isDirect = syncType && syncType.value === "direct";
   const isWebdav = syncType && syncType.value === "webdav";
+  const isWebdavFolder = isWebdav && syncWebdavMode && syncWebdavMode.value === "folder";
   const syncUrlDiv = document.getElementById("sync-url-row");
   const authDiv = syncAuthCard;
   const encryptDiv = syncEncryptSection;
@@ -89,6 +99,13 @@ export function updateSyncFields() {
   const passDiv = syncPasswordRow;
 
   if (syncUrlDiv) syncUrlDiv.style.display = isBrowserSync ? "none" : "";
+  if (syncWebdavModeRow) syncWebdavModeRow.classList.toggle("hidden", !isWebdav);
+  if (syncWebdavFolderRow) syncWebdavFolderRow.classList.toggle("hidden", !isWebdavFolder);
+  if (syncUrl) {
+    syncUrl.placeholder = isWebdavFolder
+      ? "https://cloud.example/remote.php/dav/files/user"
+      : "https://sync.local/speeddial.json";
+  }
   if (syncTest) syncTest.style.display = isBrowserSync ? "none" : "";
   if (authDiv) authDiv.style.display = isBrowserSync ? "none" : "";
   if (syncBrowserHint) syncBrowserHint.classList.toggle("hidden", !isBrowserSync);
@@ -237,8 +254,15 @@ export async function populateSyncSettings(config) {
   if (syncUrl) syncUrl.value = config.sync.serverUrl || "";
   if (syncEnable) syncEnable.checked = config.sync.enabled;
   if (syncType) syncType.value = config.sync.type || "direct";
+  if (syncWebdavMode) syncWebdavMode.value = config.sync.webdavMode === "folder" ? "folder" : "file";
+  if (syncWebdavFolder) syncWebdavFolder.value = config.sync.webdavFolderPath || "";
+  if (syncWebdavWidgets) syncWebdavWidgets.checked = config.sync.webdavSyncWidgets !== false;
+  if (syncWebdavConfig) syncWebdavConfig.checked = config.sync.webdavSyncConfig !== false;
+  if (syncWebdavBackups) syncWebdavBackups.checked = !!config.sync.webdavSyncBackups;
+  if (syncWebdavBackground) syncWebdavBackground.checked = !!config.sync.webdavSyncBackground;
   if (syncAuthMode) syncAuthMode.value = config.sync.authMode || (config.sync.password ? "basic" : "none");
   syncRadioGroupFromModel(syncType, syncTypeChoices);
+  syncRadioGroupFromModel(syncWebdavMode, syncWebdavModeChoices);
   syncRadioGroupFromModel(syncAuthMode, syncAuthChoices);
 
   const syncEncryptMode = document.getElementById("sync-encrypt-mode");
@@ -323,6 +347,16 @@ export function applySyncToConfig(config) {
   if (syncType) {
     config.sync.type = syncType.value || "direct";
   }
+  if (syncWebdavMode) {
+    config.sync.webdavMode = syncWebdavMode.value === "folder" ? "folder" : "file";
+  }
+  if (syncWebdavFolder) {
+    config.sync.webdavFolderPath = syncWebdavFolder.value.trim().replace(/^\/+|\/+$/g, "");
+  }
+  if (syncWebdavWidgets) config.sync.webdavSyncWidgets = !!syncWebdavWidgets.checked;
+  if (syncWebdavConfig) config.sync.webdavSyncConfig = !!syncWebdavConfig.checked;
+  if (syncWebdavBackups) config.sync.webdavSyncBackups = !!syncWebdavBackups.checked;
+  if (syncWebdavBackground) config.sync.webdavSyncBackground = !!syncWebdavBackground.checked;
 
   if (syncType && syncType.value === "browser") {
     config.sync.serverUrl = "";
@@ -365,8 +399,13 @@ export function applySyncToConfig(config) {
 
 export function initSyncSettings({ persistSettings }) {
   bindRadioGroupToModel(syncType, syncTypeChoices);
+  bindRadioGroupToModel(syncWebdavMode, syncWebdavModeChoices);
   bindRadioGroupToModel(syncAuthMode, syncAuthChoices);
   bindRadioGroupToModel(document.getElementById("sync-encrypt-mode"), syncEncryptChoices);
+
+  if (syncWebdavMode) {
+    syncWebdavMode.addEventListener("change", updateSyncFields);
+  }
 
   if (syncImmediate) {
     syncImmediate.addEventListener("change", () => {
@@ -509,22 +548,36 @@ export function initSyncSettings({ persistSettings }) {
       if (syncTestStatus) syncTestStatus.textContent = "🔍 " + t("testingConnection");
 
       const useBasic = syncAuthMode && syncAuthMode.value === "basic";
+      const webdavMode = syncWebdavMode && syncWebdavMode.value === "folder" ? "folder" : "file";
+      const webdavFolderPath = syncWebdavFolder ? syncWebdavFolder.value.trim() : "";
       const result = await testSyncConnection(
         url,
         useBasic ? (syncUsername ? syncUsername.value : "") : "",
         useBasic ? (syncPassword ? syncPassword.value : "") : "",
-        syncType && syncType.value ? syncType.value : "direct"
+        syncType && syncType.value ? syncType.value : "direct",
+        { webdavMode, webdavFolderPath }
       );
 
       let message = "";
       if (result.ok) {
-        if (result.reason === "not-found-will-create") {
+        if (result.reason === "folder-ready") {
+          message = "✅ " + (t("syncWebdavFolderReady") || "WebDAV folder read/write permissions verified.");
+        } else if (result.reason === "not-found-will-create") {
           message = "✅ " + t("serverResponds") + " " + t("fileWillBeCreated");
         } else {
           message = "✅ " + t("serverResponds");
         }
       } else {
         switch (result.reason) {
+          case "folder-create-failed":
+            message = "❌ " + (t("syncWebdavFolderCreateFailed") || "Cannot create WebDAV folder.") + ` (${result.status ?? "?"})`;
+            break;
+          case "folder-not-writable":
+            message = "❌ " + (t("syncWebdavFolderNotWritable") || "WebDAV folder is not writable.") + ` (${result.status ?? "?"})`;
+            break;
+          case "folder-not-readable":
+            message = "❌ " + (t("syncWebdavFolderNotReadable") || "WebDAV folder is not readable.") + ` (${result.status ?? "?"})`;
+            break;
           case "auth-redirect":
             message = "❌ " + t("syncAuthRedirectOpened");
             break;

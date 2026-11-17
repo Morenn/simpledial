@@ -1396,5 +1396,44 @@
   },
   "customTzClickToCalculate": {
     "message": "Click to calculate time in other zones"
+  },
+  "syncWebdavModeLabel": {
+    "message": "WebDAV sync mode"
+  },
+  "syncWebdavModeFile": {
+    "message": "Single file"
+  },
+  "syncWebdavModeFolder": {
+    "message": "Folder (full sync)"
+  },
+  "syncWebdavFolderLabel": {
+    "message": "WebDAV folder path"
+  },
+  "syncWebdavFolderReady": {
+    "message": "WebDAV folder read/write permissions verified."
+  },
+  "syncWebdavFolderCreateFailed": {
+    "message": "Cannot create WebDAV folder."
+  },
+  "syncWebdavFolderNotWritable": {
+    "message": "WebDAV folder is not writable."
+  },
+  "syncWebdavFolderNotReadable": {
+    "message": "WebDAV folder is not readable."
+  },
+  "syncWebdavBookmarksFile": {
+    "message": "Bookmarks DB (bookmarks-db.json)"
+  },
+  "syncWebdavWidgetsFile": {
+    "message": "Custom Widgets (widgets.json)"
+  },
+  "syncWebdavConfigFile": {
+    "message": "Settings (config.json)"
+  },
+  "syncWebdavBackupsFile": {
+    "message": "Backups (backups/)"
+  },
+  "syncWebdavBackgroundFile": {
+    "message": "Background (background.json)"
   }
 }

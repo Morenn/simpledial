@@ -23,9 +23,23 @@ function normalizeWebdavUrl(url) {
   return url;
 }
 
-function getSyncFetchUrl(url, type) {
+export function resolveWebdavFolderBaseUrl(serverUrl, folderPath = "") {
+  const base = ensureNoTrailingSlash(normalizeWebdavUrl((serverUrl || "").trim()));
+  if (!base) return "";
+  const cleanPath = String(folderPath || "").trim().replace(/^\/+|\/+$/g, "");
+  return cleanPath ? `${base}/${cleanPath}` : base;
+}
+
+function getSyncFetchUrl(url, type, cfg = null) {
   const normalized = ensureNoTrailingSlash((url || "").trim());
-  return type === 'webdav' ? normalizeWebdavUrl(normalized) : normalized;
+  if (type === 'webdav') {
+    if (cfg?.webdavMode === 'folder') {
+      const folderBase = resolveWebdavFolderBaseUrl(normalized, cfg?.webdavFolderPath || "");
+      return folderBase ? `${folderBase}/bookmarks-db.json` : "";
+    }
+    return normalizeWebdavUrl(normalized);
+  }
+  return normalized;
 }
 
 const AUTH_REDIRECT_TAB_COOLDOWN_MS = 60 * 1000;
@@ -156,7 +170,10 @@ function isValidRemoteMarker(type, value) {
 // Marker capability is scoped to a specific backend; a new/changed URL
 // must be re-probed rather than inheriting a stale supported/unsupported verdict.
 function resetRemoteMarkerStateIfUrlChanged(config) {
-  const currentKey = `${config.sync.type || 'direct'}::${config.sync.serverUrl || ''}`;
+  const isFolder = config.sync.type === 'webdav' && config.sync.webdavMode === 'folder';
+  const currentKey = isFolder
+    ? `${config.sync.type}::folder::${config.sync.webdavFolderPath || ''}::${config.sync.serverUrl || ''}`
+    : `${config.sync.type || 'direct'}::${config.sync.serverUrl || ''}`;
   if (config.sync.lastMarkerCheckUrl === currentKey) {
     return false;
   }
@@ -192,7 +209,7 @@ async function getRemoteChangeMarker(cfg, options = {}) {
     return null;
   }
 
-  const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type);
+  const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type, resolvedCfg);
   const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
   if (!credentials.ok) {
     return null;
@@ -268,7 +285,7 @@ export async function probeSupportedRemoteMarkers(cfg = null) {
     return null;
   }
 
-  const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type);
+  const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type, resolvedCfg);
   const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
   if (!credentials.ok) {
     return null;
@@ -344,6 +361,8 @@ export async function loadSyncConfig() {
   return {
     url: config.sync.serverUrl,
     type: config.sync.type || 'direct',
+    webdavMode: config.sync.webdavMode === 'folder' ? 'folder' : 'file',
+    webdavFolderPath: config.sync.webdavFolderPath || '',
     username: config.sync.username || '',
     password: config.sync.password || '',
     authMode: config.sync.authMode || (config.sync.password ? 'basic' : 'none'),
@@ -407,9 +426,107 @@ function applyWebdavCompatibilityHeaders(headers, cfg) {
  * - 'auth-encoding-failed': Failed to encode credentials (non-ASCII issue)
  * - 'invalid-url': URL is invalid
  */
-export async function testSyncConnection(url, username = '', password = '', type = 'direct') {
+async function createWebdavFolderRecursive(serverUrl, folderPath, headers) {
+  const base = ensureNoTrailingSlash(normalizeWebdavUrl((serverUrl || "").trim()));
+  const segments = String(folderPath || "").trim().replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  if (!base || segments.length === 0) {
+    return { ok: false, reason: 'folder-create-failed', status: 409 };
+  }
+
+  let current = base;
+  for (const seg of segments) {
+    current = `${current}/${seg}`;
+    const mkRes = await fetchWithTimeout(`${current}/`, { method: "MKCOL", headers });
+    if (mkRes.status === 401 || mkRes.status === 403) {
+      return { ok: false, reason: 'auth', status: mkRes.status };
+    }
+    // 405 Method Not Allowed usually means the collection already exists on WebDAV
+    if (!mkRes.ok && mkRes.status !== 405) {
+      return { ok: false, reason: 'folder-create-failed', status: mkRes.status };
+    }
+  }
+  return { ok: true };
+}
+
+async function testWebdavFolderPermissions(folderBaseUrl, headers, serverUrl = "", folderPath = "") {
+  const folderCheckUrl = `${folderBaseUrl}/`;
+  const checkRes = await fetchWithTimeout(folderCheckUrl, {
+    method: "PROPFIND",
+    headers: { Depth: "0", ...headers }
+  });
+
+  const redirectInfo = getAuthRedirectInfo(folderCheckUrl, checkRes);
+  if (redirectInfo) {
+    await maybeOpenAuthRedirectTab(redirectInfo.redirectUrl);
+    return { ok: false, ...redirectInfo };
+  }
+
+  if (checkRes.status === 401 || checkRes.status === 403) {
+    return { ok: false, reason: 'auth', status: checkRes.status };
+  }
+
+  if (checkRes.status === 404) {
+    const mkcolRes = await fetchWithTimeout(folderCheckUrl, {
+      method: "MKCOL",
+      headers
+    });
+    if (mkcolRes.status === 401 || mkcolRes.status === 403) {
+      return { ok: false, reason: 'auth', status: mkcolRes.status };
+    }
+    if (mkcolRes.status === 409 && folderPath) {
+      const recRes = await createWebdavFolderRecursive(serverUrl, folderPath, headers);
+      if (!recRes.ok) return recRes;
+    } else if (!mkcolRes.ok && mkcolRes.status !== 405) {
+      return { ok: false, reason: 'folder-create-failed', status: mkcolRes.status };
+    }
+  } else if (!checkRes.ok && checkRes.status !== 207 && checkRes.status !== 405) {
+    return { ok: false, reason: 'http-error', status: checkRes.status };
+  }
+
+  const probeUrl = `${folderBaseUrl}/.simple-dial-permission-test.tmp`;
+  const probeBody = JSON.stringify({ probe: true, ts: Date.now() });
+  const putRes = await fetchWithTimeout(probeUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: probeBody
+  });
+  if (putRes.status === 401 || putRes.status === 403) {
+    return { ok: false, reason: 'auth', status: putRes.status };
+  }
+  if (!putRes.ok) {
+    return { ok: false, reason: 'folder-not-writable', status: putRes.status };
+  }
+
+  const getRes = await fetchWithTimeout(probeUrl, {
+    method: "GET",
+    cache: "no-cache",
+    headers
+  });
+  if (getRes.status === 401 || getRes.status === 403) {
+    return { ok: false, reason: 'auth', status: getRes.status };
+  }
+  if (!getRes.ok) {
+    return { ok: false, reason: 'folder-not-readable', status: getRes.status };
+  }
+
+  let deleteSupported = true;
   try {
-    const endpoint = getSyncFetchUrl(url, type);
+    const delRes = await fetchWithTimeout(probeUrl, { method: "DELETE", headers });
+    deleteSupported = delRes.ok || delRes.status === 404;
+  } catch {
+    deleteSupported = false;
+  }
+
+  return { ok: true, reason: 'folder-ready', folderUrl: folderBaseUrl, deleteSupported };
+}
+
+export async function testSyncConnection(url, username = '', password = '', type = 'direct', options = {}) {
+  const webdavMode = options?.webdavMode === 'folder' ? 'folder' : 'file';
+  const webdavFolderPath = options?.webdavFolderPath || '';
+  const cfgObj = { type, webdavMode, webdavFolderPath };
+
+  try {
+    const endpoint = getSyncFetchUrl(url, type, cfgObj);
 
     // Validate URL format
     try {
@@ -426,6 +543,11 @@ export async function testSyncConnection(url, username = '', password = '', type
       } catch (e) {
         return { ok: false, reason: 'auth-encoding-failed' };
       }
+    }
+
+    if (type === 'webdav' && webdavMode === 'folder') {
+      const folderBase = resolveWebdavFolderBaseUrl(url, webdavFolderPath);
+      return await testWebdavFolderPermissions(folderBase, headers, url, webdavFolderPath);
     }
 
     const res = await fetchWithTimeout(endpoint, {
@@ -457,7 +579,7 @@ export async function testSyncConnection(url, username = '', password = '', type
     // Some external auth proxies complete login via browser redirect flow.
     // If fetch is blocked by CORS before redirect info is exposed, open endpoint
     // directly so the user can authenticate in a regular tab.
-    const endpoint = getSyncFetchUrl(url, type);
+    const endpoint = getSyncFetchUrl(url, type, cfgObj);
     const opened = await maybeOpenAuthRedirectTab(endpoint);
     if (opened) {
       return { ok: false, reason: 'auth-redirect', redirectUrl: endpoint };
@@ -628,7 +750,7 @@ async function syncReadDetailed(cfg = null) {
   }
 
   const url = resolvedCfg.url;
-  const fetchUrl = getSyncFetchUrl(url, resolvedCfg.type);
+  const fetchUrl = getSyncFetchUrl(url, resolvedCfg.type, resolvedCfg);
 
   try {
     new URL(fetchUrl);
@@ -754,7 +876,7 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
     }
   }
 
-  const fetchUrl = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type);
+  const fetchUrl = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type, resolvedCfg);
 
   try {
     new URL(fetchUrl);
@@ -1442,6 +1564,380 @@ export async function checkRemoteMarkerUnchanged(config) {
   return false;
 }
 
+const WEBDAV_BACKUP_STORAGE_KEYS = {
+  bookmarks: "myspeeddial-backups",
+  config: "myspeeddial-backups-config",
+  widgets: "myspeeddial-backups-widgets"
+};
+
+async function webdavGetJsonFile(fileUrl, headers) {
+  try {
+    const res = await fetchWithTimeout(fileUrl, {
+      method: "GET",
+      cache: "no-cache",
+      headers
+    });
+    if (res.status === 404) {
+      return { ok: true, notFound: true, data: null };
+    }
+    if (!res.ok) {
+      return { ok: false, status: res.status };
+    }
+    const text = await res.text();
+    const data = text.trim() ? JSON.parse(text) : null;
+    return { ok: true, notFound: false, data };
+  } catch (err) {
+    return { ok: false, error: err };
+  }
+}
+
+async function webdavPutJsonFile(fileUrl, headers, payload) {
+  try {
+    const res = await fetchWithTimeout(fileUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify(payload)
+    });
+    return { ok: res.ok, status: res.status };
+  } catch (err) {
+    return { ok: false, error: err };
+  }
+}
+
+function buildConfigExtraPayload(config) {
+  const appearance = { ...(config.appearance || {}) };
+  delete appearance.backgroundImage;
+  delete appearance.backgroundImageUrl;
+  delete appearance.backgroundSize;
+  delete appearance.bgDim;
+  delete appearance.showDeleted;
+  delete appearance.lockTiles;
+  delete appearance.customWidgets;
+  delete appearance.customSearchAutoRouteDefaults;
+  delete appearance.customSearchAutoRouteIcons;
+  delete appearance.widgetOrder;
+  delete appearance.widgetAlign;
+  delete appearance.widgetNewRow;
+
+  const housekeeper = { ...(config.housekeeper || {}) };
+  delete housekeeper.lastCleanup;
+  delete housekeeper.lastLinkCheck;
+
+  const backups = { ...(config.backups || {}) };
+  delete backups.lastAutoBackup;
+
+  return {
+    appearance,
+    housekeeper,
+    backups
+  };
+}
+
+function buildWidgetsExtraPayload(config) {
+  const a = config.appearance || {};
+  return {
+    customWidgets: Array.isArray(a.customWidgets) ? a.customWidgets : [],
+    customSearchAutoRouteDefaults: a.customSearchAutoRouteDefaults || {},
+    customSearchAutoRouteIcons: a.customSearchAutoRouteIcons || {},
+    widgetOrder: Array.isArray(a.widgetOrder) ? a.widgetOrder : [],
+    widgetAlign: a.widgetAlign || {},
+    widgetNewRow: a.widgetNewRow || {}
+  };
+}
+
+function buildBackgroundExtraPayload(config) {
+  const a = config.appearance || {};
+  return {
+    backgroundImage: a.backgroundImage ?? null,
+    backgroundImageUrl: a.backgroundImageUrl || "",
+    backgroundSize: a.backgroundSize || "stretched",
+    bgDim: a.bgDim ?? 0
+  };
+}
+
+function mergeBackupArrays(localList = [], remoteList = [], retentionDays = 14, now = Date.now()) {
+  const byFilename = new Map();
+  for (const entry of [...(Array.isArray(localList) ? localList : []), ...(Array.isArray(remoteList) ? remoteList : [])]) {
+    if (!entry || typeof entry.filename !== "string") continue;
+    const prev = byFilename.get(entry.filename);
+    if (!prev || Number(entry.timestamp || 0) >= Number(prev.timestamp || 0)) {
+      byFilename.set(entry.filename, entry);
+    }
+  }
+  const sorted = [...byFilename.values()].sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+  if (sorted.length <= 1) return sorted;
+
+  const retentionMs = Math.max(1, Number(retentionDays) || 14) * 24 * 60 * 60 * 1000;
+  const cutoff = now - retentionMs;
+  const kept = sorted.filter(entry => Number(entry.timestamp || 0) >= cutoff);
+  return kept.length > 0 ? kept : [sorted[0]];
+}
+
+async function hashExtraPayload(payload) {
+  const bytes = new TextEncoder().encode(stableSerialize(payload));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function syncExtraJsonSection({ key, fileUrl, headers, localPayload, lastHashes, lastExtrasSync, applyRemote }) {
+  const localHash = await hashExtraPayload(localPayload);
+  const remoteRes = await webdavGetJsonFile(fileUrl, headers);
+  if (!remoteRes.ok) return false;
+
+  const r = remoteRes.data;
+  const remoteHash = r && r.data !== undefined ? await hashExtraPayload(r.data) : "";
+  const lastHash = lastHashes[key] || "";
+
+  const remoteChanged = !!r && r.data !== undefined && remoteHash !== lastHash;
+  const localChanged = localHash !== lastHash;
+
+  if (remoteChanged && (!localChanged || !lastHash || Number(r.updatedAt || 0) > lastExtrasSync)) {
+    if (remoteHash !== localHash) {
+      applyRemote(r.data);
+      lastHashes[key] = remoteHash;
+      return true;
+    }
+    lastHashes[key] = localHash;
+    return false;
+  }
+
+  if (remoteRes.notFound || localHash !== remoteHash) {
+    const putRes = await webdavPutJsonFile(fileUrl, headers, {
+      updatedAt: Date.now(),
+      data: localPayload
+    });
+    if (putRes.ok) {
+      lastHashes[key] = localHash;
+    }
+  } else {
+    lastHashes[key] = localHash;
+  }
+  return false;
+}
+
+export async function syncWebdavFolderExtras(config = null) {
+  const currentConfig = config || await loadConfig();
+  if (!currentConfig || currentConfig.sync?.type !== "webdav" || currentConfig.sync?.webdavMode !== "folder") {
+    return { ok: true, skipped: true };
+  }
+
+  const folderBase = resolveWebdavFolderBaseUrl(currentConfig.sync.serverUrl, currentConfig.sync.webdavFolderPath);
+  if (!folderBase) return { ok: false, reason: "invalid-url" };
+
+  const resolvedCfg = await loadSyncConfig();
+  const credentials = await resolveSyncCredentials(resolvedCfg, "syncWebdavFolderExtras");
+  if (!credentials.ok) return credentials;
+
+  const headers = {};
+  applyWebdavCompatibilityHeaders(headers, resolvedCfg);
+  if (credentials.password) {
+    headers["Authorization"] = safeBasicAuthHeader(credentials.username || "", credentials.password);
+  }
+
+  let configChanged = false;
+  const lastExtrasSync = Number(currentConfig.sync.lastFolderExtrasSync || 0);
+  if (!currentConfig.sync.lastSyncedExtraHashes || typeof currentConfig.sync.lastSyncedExtraHashes !== "object") {
+    currentConfig.sync.lastSyncedExtraHashes = {};
+  }
+  const lastHashes = currentConfig.sync.lastSyncedExtraHashes;
+
+  const syncConfigEnabled = currentConfig.sync.webdavSyncConfig !== false;
+  const syncWidgetsEnabled = currentConfig.sync.webdavSyncWidgets !== false;
+  const syncBackgroundEnabled = !!currentConfig.sync.webdavSyncBackground;
+  const syncBackupsEnabled = !!currentConfig.sync.webdavSyncBackups;
+
+  // 1. config.json
+  if (syncConfigEnabled) {
+    const changed = await syncExtraJsonSection({
+      key: "config",
+      fileUrl: `${folderBase}/config.json`,
+      headers,
+      localPayload: buildConfigExtraPayload(currentConfig),
+      lastHashes,
+      lastExtrasSync,
+      applyRemote: (remoteData) => {
+        if (remoteData?.appearance) {
+          const { showDeleted: _sd, lockTiles: _lt, ...remoteAppearance } = remoteData.appearance;
+          currentConfig.appearance = { ...currentConfig.appearance, ...remoteAppearance };
+        }
+        if (remoteData?.housekeeper) {
+          const { lastCleanup: _lc, lastLinkCheck: _llc, ...remoteHk } = remoteData.housekeeper;
+          currentConfig.housekeeper = { ...currentConfig.housekeeper, ...remoteHk };
+        }
+        if (remoteData?.backups) {
+          const { lastAutoBackup: _lab, ...remoteBackups } = remoteData.backups;
+          currentConfig.backups = { ...currentConfig.backups, ...remoteBackups };
+        }
+      }
+    });
+    if (changed) configChanged = true;
+  }
+
+  // 2. widgets.json
+  if (syncWidgetsEnabled) {
+    const changed = await syncExtraJsonSection({
+      key: "widgets",
+      fileUrl: `${folderBase}/widgets.json`,
+      headers,
+      localPayload: buildWidgetsExtraPayload(currentConfig),
+      lastHashes,
+      lastExtrasSync,
+      applyRemote: (remoteData) => {
+        if (remoteData && typeof remoteData === "object") {
+          currentConfig.appearance = { ...currentConfig.appearance, ...remoteData };
+        }
+      }
+    });
+    if (changed) configChanged = true;
+  }
+
+  // 3. background.json
+  if (syncBackgroundEnabled) {
+    const changed = await syncExtraJsonSection({
+      key: "background",
+      fileUrl: `${folderBase}/background.json`,
+      headers,
+      localPayload: buildBackgroundExtraPayload(currentConfig),
+      lastHashes,
+      lastExtrasSync,
+      applyRemote: (remoteData) => {
+        if (remoteData && typeof remoteData === "object") {
+          currentConfig.appearance = { ...currentConfig.appearance, ...remoteData };
+        }
+      }
+    });
+    if (changed) configChanged = true;
+  }
+
+  // 4. backups/ (<folder>/backups/<type>/<filename> + <folder>/backups/index.json)
+  if (syncBackupsEnabled) {
+    try {
+      const retentionDays = Math.max(1, Number(currentConfig.backups?.retentionDays) || 14);
+      const backupsRootUrl = `${folderBase}/backups`;
+      const backupTypes = Object.keys(WEBDAV_BACKUP_STORAGE_KEYS);
+
+      // Ensure backups/ and backups/<type>/ directories exist
+      for (const dirUrl of [`${backupsRootUrl}/`, ...backupTypes.map(t => `${backupsRootUrl}/${t}/`)]) {
+        try {
+          await fetchWithTimeout(dirUrl, { method: "MKCOL", headers });
+        } catch {}
+      }
+
+      const [bmStored, cfgStored, wgtStored] = await Promise.all([
+        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.bookmarks),
+        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.config),
+        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.widgets)
+      ]);
+      const localBackups = {
+        bookmarks: Array.isArray(bmStored[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]) ? bmStored[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks] : [],
+        config: Array.isArray(cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config]) ? cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config] : [],
+        widgets: Array.isArray(wgtStored[WEBDAV_BACKUP_STORAGE_KEYS.widgets]) ? wgtStored[WEBDAV_BACKUP_STORAGE_KEYS.widgets] : []
+      };
+
+      const indexUrl = `${backupsRootUrl}/index.json`;
+      const remoteIndexRes = await webdavGetJsonFile(indexUrl, headers);
+      if (remoteIndexRes.ok) {
+        const remoteIndex = remoteIndexRes.data?.data || {};
+        const nextLocalBackups = {};
+        const nextIndex = {};
+        let localChanged = false;
+
+        const stripData = (entry) => {
+          const { data: _d, ...meta } = entry;
+          return meta;
+        };
+
+        for (const type of backupTypes) {
+          const localList = localBackups[type];
+          const remoteMetaList = Array.isArray(remoteIndex[type]) ? remoteIndex[type] : [];
+          const localByName = new Map(localList.map(e => [e.filename, e]));
+          const remoteByName = new Map(remoteMetaList.map(e => [e.filename, e]));
+
+          const mergedMeta = mergeBackupArrays(
+            localList.map(stripData),
+            remoteMetaList,
+            retentionDays
+          );
+          const keptNames = new Set(mergedMeta.map(e => e.filename));
+
+          // Upload new local backups not yet on remote
+          for (const meta of mergedMeta) {
+            if (!remoteByName.has(meta.filename) && localByName.has(meta.filename)) {
+              const entry = localByName.get(meta.filename);
+              const fileUrl = `${backupsRootUrl}/${type}/${encodeURIComponent(entry.filename)}`;
+              await fetchWithTimeout(fileUrl, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", ...headers },
+                body: typeof entry.data === "string" ? entry.data : JSON.stringify(entry.data || {})
+              });
+            }
+          }
+
+          // Delete expired remote backups that were pruned by retentionDays
+          for (const rMeta of remoteMetaList) {
+            if (!keptNames.has(rMeta.filename)) {
+              const fileUrl = `${backupsRootUrl}/${type}/${encodeURIComponent(rMeta.filename)}`;
+              try {
+                await fetchWithTimeout(fileUrl, { method: "DELETE", headers });
+              } catch {}
+            }
+          }
+
+          // Reconstruct local list: download remote entries missing locally
+          const finalLocalList = [];
+          for (const meta of mergedMeta) {
+            if (localByName.has(meta.filename)) {
+              finalLocalList.push(localByName.get(meta.filename));
+            } else {
+              const fileUrl = `${backupsRootUrl}/${type}/${encodeURIComponent(meta.filename)}`;
+              try {
+                const fileRes = await fetchWithTimeout(fileUrl, { method: "GET", cache: "no-cache", headers });
+                if (fileRes.ok) {
+                  const dataText = await fileRes.text();
+                  finalLocalList.push({ ...meta, data: dataText, sizeBytes: meta.sizeBytes ?? dataText.length });
+                  localChanged = true;
+                }
+              } catch {}
+            }
+          }
+
+          if (stableSerialize(finalLocalList.map(stripData)) !== stableSerialize(localList.map(stripData))) {
+            localChanged = true;
+          }
+          nextLocalBackups[type] = finalLocalList;
+          nextIndex[type] = mergedMeta;
+        }
+
+        if (localChanged) {
+          await chrome.storage.local.set({
+            [WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]: nextLocalBackups.bookmarks,
+            [WEBDAV_BACKUP_STORAGE_KEYS.config]: nextLocalBackups.config,
+            [WEBDAV_BACKUP_STORAGE_KEYS.widgets]: nextLocalBackups.widgets
+          });
+        }
+
+        if (remoteIndexRes.notFound || stableSerialize(nextIndex) !== stableSerialize(remoteIndex)) {
+          await webdavPutJsonFile(indexUrl, headers, {
+            updatedAt: Date.now(),
+            data: nextIndex
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("syncWebdavFolderExtras: backups sync failed", err);
+    }
+  }
+
+  currentConfig.sync.lastFolderExtrasSync = Date.now();
+  await saveConfig(currentConfig);
+
+  if (configChanged && typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+    window.dispatchEvent(new CustomEvent("simpledial:config-synced", { detail: { config: currentConfig } }));
+  }
+
+  return { ok: true, configChanged };
+}
+
 export async function syncNow() {
   const config = await loadConfig();
 
@@ -1460,6 +1956,9 @@ export async function syncNow() {
     || (config.sync.remoteChangeHeaderType === 'etag'
       && !(config.sync.lastSeenRemoteMarker || '').startsWith('W/'));
   if (!hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip) {
+    if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
+      await syncWebdavFolderExtras(config);
+    }
     return { ok: true, reason: 'remote-marker-unchanged', changed: false };
   }
 
@@ -1469,7 +1968,11 @@ export async function syncNow() {
     return readResult;
   }
 
-  return await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
+  const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
+  if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
+    await syncWebdavFolderExtras(config);
+  }
+  return mergeResult;
 }
 
 // ─────────────────────────────────────────────────────────────

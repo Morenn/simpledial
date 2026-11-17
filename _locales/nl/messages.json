@@ -1393,5 +1393,44 @@
   },
   "customTzClickToCalculate": {
     "message": "Klik om de tijd in andere zones te berekenen"
+  },
+  "syncWebdavModeLabel": {
+    "message": "WebDAV-synchronisatiemodus"
+  },
+  "syncWebdavModeFile": {
+    "message": "Enkel bestand"
+  },
+  "syncWebdavModeFolder": {
+    "message": "Map (volledige synchronisatie)"
+  },
+  "syncWebdavFolderLabel": {
+    "message": "WebDAV-mappad"
+  },
+  "syncWebdavFolderReady": {
+    "message": "Lees-/schrijfrechten voor WebDAV-map geverifieerd."
+  },
+  "syncWebdavFolderCreateFailed": {
+    "message": "Kan WebDAV-map niet aanmaken."
+  },
+  "syncWebdavFolderNotWritable": {
+    "message": "WebDAV-map is niet beschrijfbaar."
+  },
+  "syncWebdavFolderNotReadable": {
+    "message": "WebDAV-map is niet leesbaar."
+  },
+  "syncWebdavBookmarksFile": {
+    "message": "Bladwijzer-DB (bookmarks-db.json)"
+  },
+  "syncWebdavWidgetsFile": {
+    "message": "Aangepaste widgets (widgets.json)"
+  },
+  "syncWebdavConfigFile": {
+    "message": "Instellingen (config.json)"
+  },
+  "syncWebdavBackupsFile": {
+    "message": "Back-ups (backups/)"
+  },
+  "syncWebdavBackgroundFile": {
+    "message": "Achtergrond (background.json)"
   }
 }

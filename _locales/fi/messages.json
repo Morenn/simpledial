@@ -1393,5 +1393,44 @@
   },
   "customTzClickToCalculate": {
     "message": "Napsauta laskeaksesi ajan muilla vyöhykkeillä"
+  },
+  "syncWebdavModeLabel": {
+    "message": "WebDAV-synkronointitila"
+  },
+  "syncWebdavModeFile": {
+    "message": "Yksittäinen tiedosto"
+  },
+  "syncWebdavModeFolder": {
+    "message": "Kansio (täysi synkronointi)"
+  },
+  "syncWebdavFolderLabel": {
+    "message": "WebDAV-kansion polku"
+  },
+  "syncWebdavFolderReady": {
+    "message": "WebDAV-kansion luku-/kirjoitusoikeudet vahvistettu."
+  },
+  "syncWebdavFolderCreateFailed": {
+    "message": "WebDAV-kansiota ei voi luoda."
+  },
+  "syncWebdavFolderNotWritable": {
+    "message": "WebDAV-kansioon ei voi kirjoittaa."
+  },
+  "syncWebdavFolderNotReadable": {
+    "message": "WebDAV-kansiota ei voi lukea."
+  },
+  "syncWebdavBookmarksFile": {
+    "message": "Kirjanmerkkitietokanta (bookmarks-db.json)"
+  },
+  "syncWebdavWidgetsFile": {
+    "message": "Mukautetut widgetit (widgets.json)"
+  },
+  "syncWebdavConfigFile": {
+    "message": "Asetukset (config.json)"
+  },
+  "syncWebdavBackupsFile": {
+    "message": "Varmuuskopiot (backups/)"
+  },
+  "syncWebdavBackgroundFile": {
+    "message": "Tausta (background.json)"
   }
 }

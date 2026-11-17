@@ -1393,5 +1393,44 @@
   },
   "customTzClickToCalculate": {
     "message": "Klicken, um Zeit in anderen Zonen zu berechnen"
+  },
+  "syncWebdavModeLabel": {
+    "message": "WebDAV-Synchronisationsmodus"
+  },
+  "syncWebdavModeFile": {
+    "message": "Einzelne Datei"
+  },
+  "syncWebdavModeFolder": {
+    "message": "Ordner (vollständige Synchronisierung)"
+  },
+  "syncWebdavFolderLabel": {
+    "message": "WebDAV-Ordnerpfad"
+  },
+  "syncWebdavFolderReady": {
+    "message": "Lese-/Schreibrechte für WebDAV-Ordner bestätigt."
+  },
+  "syncWebdavFolderCreateFailed": {
+    "message": "WebDAV-Ordner konnte nicht erstellt werden."
+  },
+  "syncWebdavFolderNotWritable": {
+    "message": "WebDAV-Ordner ist nicht beschreibbar."
+  },
+  "syncWebdavFolderNotReadable": {
+    "message": "WebDAV-Ordner ist nicht lesbar."
+  },
+  "syncWebdavBookmarksFile": {
+    "message": "Lesezeichen-DB (bookmarks-db.json)"
+  },
+  "syncWebdavWidgetsFile": {
+    "message": "Benutzerdefinierte Widgets (widgets.json)"
+  },
+  "syncWebdavConfigFile": {
+    "message": "Einstellungen (config.json)"
+  },
+  "syncWebdavBackupsFile": {
+    "message": "Sicherungen (backups/)"
+  },
+  "syncWebdavBackgroundFile": {
+    "message": "Hintergrund (background.json)"
   }
 }

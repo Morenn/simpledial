@@ -1393,5 +1393,44 @@
   },
   "customTzClickToCalculate": {
     "message": "Kliknutím prepočítate čas v ostatných zónach"
+  },
+  "syncWebdavModeLabel": {
+    "message": "Režim synchronizácie WebDAV"
+  },
+  "syncWebdavModeFile": {
+    "message": "Jeden súbor"
+  },
+  "syncWebdavModeFolder": {
+    "message": "Priečinok (úplná synchronizácia)"
+  },
+  "syncWebdavFolderLabel": {
+    "message": "Cesta k priečinku na WebDAV"
+  },
+  "syncWebdavFolderReady": {
+    "message": "Oprávnenia na čítanie a zápis priečinka WebDAV overené."
+  },
+  "syncWebdavFolderCreateFailed": {
+    "message": "Priečinok WebDAV sa nepodarilo vytvoriť."
+  },
+  "syncWebdavFolderNotWritable": {
+    "message": "Do priečinka WebDAV sa nedá zapisovať."
+  },
+  "syncWebdavFolderNotReadable": {
+    "message": "Priečinok WebDAV sa nedá čítať."
+  },
+  "syncWebdavBookmarksFile": {
+    "message": "Databáza záložiek (bookmarks-db.json)"
+  },
+  "syncWebdavWidgetsFile": {
+    "message": "Vlastné widgety (widgets.json)"
+  },
+  "syncWebdavConfigFile": {
+    "message": "Nastavenia (config.json)"
+  },
+  "syncWebdavBackupsFile": {
+    "message": "Zálohy (backups/)"
+  },
+  "syncWebdavBackgroundFile": {
+    "message": "Pozadie (background.json)"
   }
 }

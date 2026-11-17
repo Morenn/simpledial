@@ -1393,5 +1393,44 @@
   },
   "customTzClickToCalculate": {
     "message": "Kliknutím přepočítáte čas v ostatních zónách"
+  },
+  "syncWebdavModeLabel": {
+    "message": "Režim synchronizace WebDAV"
+  },
+  "syncWebdavModeFile": {
+    "message": "Jeden soubor"
+  },
+  "syncWebdavModeFolder": {
+    "message": "Složka (úplná synchronizace)"
+  },
+  "syncWebdavFolderLabel": {
+    "message": "Cesta ke složce na WebDAV"
+  },
+  "syncWebdavFolderReady": {
+    "message": "Oprávnění pro čtení a zápis složky WebDAV ověřeno."
+  },
+  "syncWebdavFolderCreateFailed": {
+    "message": "Složku WebDAV nelze vytvořit."
+  },
+  "syncWebdavFolderNotWritable": {
+    "message": "Do složky WebDAV nelze zapisovat."
+  },
+  "syncWebdavFolderNotReadable": {
+    "message": "Složku WebDAV nelze číst."
+  },
+  "syncWebdavBookmarksFile": {
+    "message": "Databáze záložek (bookmarks-db.json)"
+  },
+  "syncWebdavWidgetsFile": {
+    "message": "Vlastní widgety (widgets.json)"
+  },
+  "syncWebdavConfigFile": {
+    "message": "Nastavení (config.json)"
+  },
+  "syncWebdavBackupsFile": {
+    "message": "Zálohy (backups/)"
+  },
+  "syncWebdavBackgroundFile": {
+    "message": "Pozadí (background.json)"
   }
 }

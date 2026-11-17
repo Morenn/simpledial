@@ -764,3 +764,175 @@ test("syncWrite with purgedIds permanently deletes bookmarks, stacks, and groups
     ["hb_fresh", "hb_keep"]
   );
 });
+
+test("WebDAV folder sync tests permissions and syncs bookmarks, config, widgets, background, and backups", async () => {
+  const { resolveWebdavFolderBaseUrl, testSyncConnection } = await import("../newtab/sync.js");
+
+  assert.equal(
+    resolveWebdavFolderBaseUrl("https://cloud.example/dav/", "/SimpleDial/"),
+    "https://cloud.example/dav/SimpleDial"
+  );
+  assert.equal(
+    resolveWebdavFolderBaseUrl("davs://cloud.example/dav/SimpleDial/", ""),
+    "https://cloud.example/dav/SimpleDial"
+  );
+
+  const files = new Map();
+  let folderExists = false;
+  const methodsSeen = [];
+
+  fetchRemote = async (url, options = {}) => {
+    const method = (options.method || "GET").toUpperCase();
+    methodsSeen.push(`${method} ${url}`);
+    const makeRes = (status, body = "") => ({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: status === 200 ? "OK" : "",
+      redirected: false,
+      url,
+      headers: new Map([["content-type", "application/json"]]),
+      text: async () => body,
+      json: async () => (body ? JSON.parse(body) : null)
+    });
+
+    if (method === "PROPFIND") {
+      return makeRes(folderExists ? 207 : 404);
+    }
+    if (method === "MKCOL") {
+      folderExists = true;
+      return makeRes(201);
+    }
+    if (method === "PUT") {
+      files.set(url, options.body || "");
+      return makeRes(201);
+    }
+    if (method === "GET" || method === "HEAD") {
+      if (!files.has(url)) return makeRes(404);
+      return makeRes(200, method === "HEAD" ? "" : files.get(url));
+    }
+    if (method === "DELETE") {
+      files.delete(url);
+      return makeRes(204);
+    }
+    return makeRes(405);
+  };
+
+  const permResult = await testSyncConnection(
+    "https://cloud.example/dav",
+    "alice",
+    "secret",
+    "webdav",
+    { webdavMode: "folder", webdavFolderPath: "SimpleDial" }
+  );
+  assert.equal(permResult.ok, true);
+  assert.equal(permResult.reason, "folder-ready");
+  assert.ok(methodsSeen.some(m => m.startsWith("MKCOL https://cloud.example/dav/SimpleDial/")));
+  assert.ok(!files.has("https://cloud.example/dav/SimpleDial/.simple-dial-permission-test.tmp"));
+
+  const folderCfg = {
+    sync: {
+      enabled: true,
+      type: "webdav",
+      webdavMode: "folder",
+      webdavFolderPath: "SimpleDial",
+      serverUrl: "https://cloud.example/dav",
+      authMode: "basic",
+      username: "alice",
+      password: "secret",
+      encryptionMode: "none",
+      intervalMode: "manual",
+      lastSync: 0,
+      lastSyncedLocalHash: "",
+      pendingPurgedIds: []
+    },
+    appearance: {
+      theme: "autumn",
+      tileOpacity: 0.85,
+      showDeleted: true,
+      lockTiles: true,
+      backgroundImage: "data:image/png;base64,AAAA",
+      customWidgets: [{ id: "cw1", type: "custom-search", name: "Test" }]
+    },
+    housekeeper: { retentionDays: 21, lastCleanup: 12345, lastLinkCheck: 67890 },
+    backups: { retentionDays: 7, frequencyHours: 12, lastAutoBackup: 99999 },
+    browserBookmarksAutoSync: true
+  };
+
+  setClient([group([item("wf_1", "WebDAV Item", 100)])], folderCfg, []);
+  localStorage.set("myspeeddial-backups", [{ filename: "bm-1.json", timestamp: Date.now(), data: "{}" }]);
+
+  // Default flags: bookmarks-db.json, config.json, widgets.json synced; background.json & backups.json skipped
+  const syncRes = await syncNow();
+  assert.equal(syncRes.ok, true);
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/bookmarks-db.json"));
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/config.json"));
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/widgets.json"));
+  assert.equal(files.has("https://cloud.example/dav/SimpleDial/background.json"), false);
+  assert.equal(files.has("https://cloud.example/dav/SimpleDial/backups.json"), false);
+
+  const savedCfg = JSON.parse(files.get("https://cloud.example/dav/SimpleDial/config.json"));
+  assert.equal("browserBookmarksAutoSync" in savedCfg.data, false);
+  assert.equal("lastCleanup" in savedCfg.data.housekeeper, false);
+  assert.equal("lastLinkCheck" in savedCfg.data.housekeeper, false);
+  assert.equal("lastAutoBackup" in savedCfg.data.backups, false);
+  assert.equal("showDeleted" in savedCfg.data.appearance, false);
+  assert.equal("lockTiles" in savedCfg.data.appearance, false);
+
+  // Enable background & backups sync (and verify retention pruning removes expired backup while keeping newest)
+  const nowMs = Date.now();
+  const expiredMs = nowMs - 20 * 24 * 60 * 60 * 1000;
+  folderCfg.sync.webdavSyncBackups = true;
+  folderCfg.sync.webdavSyncBackground = true;
+  setClient([group([item("wf_1", "WebDAV Item", 100)])], folderCfg, []);
+  localStorage.set("myspeeddial-backups", [
+    { filename: "bm-new.json", timestamp: nowMs, data: "{}" },
+    { filename: "bm-old.json", timestamp: expiredMs, data: "{}" }
+  ]);
+
+  const syncAllRes = await syncNow();
+  assert.equal(syncAllRes.ok, true);
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/background.json"));
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/backups/index.json"));
+  assert.ok(files.has("https://cloud.example/dav/SimpleDial/backups/bookmarks/bm-new.json"));
+  assert.equal(files.has("https://cloud.example/dav/SimpleDial/backups/bookmarks/bm-old.json"), false);
+
+  const savedBg = JSON.parse(files.get("https://cloud.example/dav/SimpleDial/background.json"));
+  assert.equal(savedBg.data.backgroundImage, "data:image/png;base64,AAAA");
+  const savedIndex = JSON.parse(files.get("https://cloud.example/dav/SimpleDial/backups/index.json"));
+  assert.deepEqual(savedIndex.data.bookmarks.map(b => b.filename), ["bm-new.json"]);
+
+  // Nested folder path with 409 on leaf MKCOL falls back to segment-by-segment MKCOL
+  const createdDirs = new Set();
+  fetchRemote = async (url, options = {}) => {
+    const method = (options.method || "GET").toUpperCase();
+    const makeRes = (status, body = "") => ({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: "",
+      redirected: false,
+      url,
+      headers: new Map([["content-type", "application/json"]]),
+      text: async () => body
+    });
+    if (method === "PROPFIND") return makeRes(createdDirs.has(url) ? 207 : 404);
+    if (method === "MKCOL") {
+      if (url.endsWith("/Apps/SimpleDial/") && !createdDirs.has("https://cloud.example/dav/Apps/")) {
+        return makeRes(409);
+      }
+      createdDirs.add(url);
+      return makeRes(201);
+    }
+    if (method === "PUT" || method === "GET" || method === "DELETE") return makeRes(200, "{}");
+    return makeRes(405);
+  };
+  const nestedRes = await testSyncConnection(
+    "https://cloud.example/dav",
+    "alice",
+    "secret",
+    "webdav",
+    { webdavMode: "folder", webdavFolderPath: "Apps/SimpleDial" }
+  );
+  assert.equal(nestedRes.ok, true);
+  assert.ok(createdDirs.has("https://cloud.example/dav/Apps/"));
+  assert.ok(createdDirs.has("https://cloud.example/dav/Apps/SimpleDial/"));
+});

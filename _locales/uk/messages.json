@@ -1393,5 +1393,44 @@
   },
   "customTzClickToCalculate": {
     "message": "Натисніть, щоб обчислити час в інших поясах"
+  },
+  "syncWebdavModeLabel": {
+    "message": "Режим синхронізації WebDAV"
+  },
+  "syncWebdavModeFile": {
+    "message": "Один файл"
+  },
+  "syncWebdavModeFolder": {
+    "message": "Папка (повна синхронізація)"
+  },
+  "syncWebdavFolderLabel": {
+    "message": "Шлях до папки WebDAV"
+  },
+  "syncWebdavFolderReady": {
+    "message": "Права на читання/запис папки WebDAV підтверджено."
+  },
+  "syncWebdavFolderCreateFailed": {
+    "message": "Не вдалося створити папку WebDAV."
+  },
+  "syncWebdavFolderNotWritable": {
+    "message": "Папка WebDAV недоступна для запису."
+  },
+  "syncWebdavFolderNotReadable": {
+    "message": "Папка WebDAV недоступна для читання."
+  },
+  "syncWebdavBookmarksFile": {
+    "message": "База закладок (bookmarks-db.json)"
+  },
+  "syncWebdavWidgetsFile": {
+    "message": "Власні віджети (widgets.json)"
+  },
+  "syncWebdavConfigFile": {
+    "message": "Налаштування (config.json)"
+  },
+  "syncWebdavBackupsFile": {
+    "message": "Резервні копії (backups/)"
+  },
+  "syncWebdavBackgroundFile": {
+    "message": "Фон (background.json)"
   }
 }

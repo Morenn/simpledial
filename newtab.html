@@ -231,9 +231,51 @@
             <h3 class="sync-section-header" data-i18n="syncConnection">Connection</h3>
             <p class="sync-section-subtitle appearance-card-desc" data-i18n="syncConnectionHint">Set endpoint details and verify the connection.</p>
 
+            <div id="sync-webdav-mode-row" class="appearance-card-spaced hidden">
+              <div class="sync-sub-label" data-i18n="syncWebdavModeLabel">WebDAV sync mode</div>
+              <input type="hidden" id="sync-webdav-mode" value="file">
+              <div class="choice-group appearance-choice-group" id="sync-webdav-mode-choice-group">
+                <label class="choice-option choice-option-inline">
+                  <input type="radio" name="sync-webdav-mode-choice" value="file" checked>
+                  <span class="choice-option-title" data-i18n="syncWebdavModeFile">Single file</span>
+                </label>
+                <label class="choice-option choice-option-inline">
+                  <input type="radio" name="sync-webdav-mode-choice" value="folder">
+                  <span class="choice-option-title" data-i18n="syncWebdavModeFolder">Folder (full sync)</span>
+                </label>
+              </div>
+            </div>
+
             <div id="sync-url-row" class="sync-field-stack">
               <label for="sync-url" id="sync-url-label" data-i18n="serverUrl">Server URL</label>
               <input type="text" id="sync-url" placeholder="https://sync.local/speeddial.json">
+            </div>
+
+            <div id="sync-webdav-folder-row" class="sync-field-stack hidden">
+              <label for="sync-webdav-folder" data-i18n="syncWebdavFolderLabel">WebDAV folder path</label>
+              <input type="text" id="sync-webdav-folder" placeholder="SimpleDial">
+              <div class="appearance-display-list">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-bookmarks" checked disabled>
+                  <span data-i18n="syncWebdavBookmarksFile">Bookmarks DB (bookmarks-db.json)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-widgets" checked>
+                  <span data-i18n="syncWebdavWidgetsFile">Custom Widgets (widgets.json)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-config" checked>
+                  <span data-i18n="syncWebdavConfigFile">Settings (config.json)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-backups">
+                  <span data-i18n="syncWebdavBackupsFile">Backups (backups/)</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sync-webdav-background">
+                  <span data-i18n="syncWebdavBackgroundFile">Background (background.json)</span>
+                </label>
+              </div>
             </div>
 
             <div id="sync-browser-hint" class="sync-inline-note hidden" data-i18n="syncBrowserNativeHint">Browser native sync uses your browser account. URL and authentication are not required.</div>
