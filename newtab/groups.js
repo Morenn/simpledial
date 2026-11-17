@@ -1,5 +1,5 @@
 import { state, saveState, generateId, saveActiveGroupId, getAllGroupBookmarks } from "./state.js";
-import { render } from "./render.js";
+import { render, clearBookmarkSearch } from "./render.js";
 import { syncWrite } from "./sync.js";
 import { t } from "./i18n.js";
 import { ensureHostPermission } from "./bookmarks.js";
@@ -298,6 +298,7 @@ function renderGroupsTabs(groupsHeader, visibleGroups, showGroupCount) {
       if (group.deleted) return;
       window.activeGroupId = group.id;
       saveActiveGroupId(group.id);
+      clearBookmarkSearch({ rerender: false });
       render();
     });
 
@@ -355,6 +356,7 @@ function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
       await saveActiveGroupId(group.id);
       setGroupElementContent(dropdownBtn, group, showGroupCount);
       dropdownMenu.classList.remove("show");
+      clearBookmarkSearch({ rerender: false });
       render();
     });
 
