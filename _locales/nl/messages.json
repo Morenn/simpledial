@@ -1804,5 +1804,14 @@
   },
   "securityMuteSyncLockedWarning": {
     "message": "Pop-upwaarschuwing rechtsboven voor vergrendelde sync-kluis dempen (sync-statusbalk toont nog steeds vergrendelde status)"
+  },
+  "uploadRestoreBackup": {
+    "message": "Uploaden & herstellen"
+  },
+  "backupUploadTrustWarning": {
+    "message": "Herstel alleen back-upbestanden van vertrouwde bronnen."
+  },
+  "backupAddonVersion": {
+    "message": "Versie"
   }
 }

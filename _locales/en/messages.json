@@ -1807,5 +1807,14 @@
   },
   "securityMuteSyncLockedWarning": {
     "message": "Mute top-right Sync locked-vault warning popup (sync status bar still shows locked state)"
+  },
+  "uploadRestoreBackup": {
+    "message": "Upload & Restore"
+  },
+  "backupUploadTrustWarning": {
+    "message": "Only restore backup files from trusted sources."
+  },
+  "backupAddonVersion": {
+    "message": "Version"
   }
 }

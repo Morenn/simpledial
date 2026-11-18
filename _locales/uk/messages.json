@@ -1804,5 +1804,14 @@
   },
   "securityMuteSyncLockedWarning": {
     "message": "Вимкнути спливаюче попередження у правому верхньому куті про заблоковане сховище синхронізації (рядок стану й надалі показуватиме блокування)"
+  },
+  "uploadRestoreBackup": {
+    "message": "Завантажити та відновити"
+  },
+  "backupUploadTrustWarning": {
+    "message": "Відновлюйте резервні копії лише з надійних джерел."
+  },
+  "backupAddonVersion": {
+    "message": "Версія"
   }
 }

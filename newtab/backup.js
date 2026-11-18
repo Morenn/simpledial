@@ -61,7 +61,16 @@ function normalizeBackupFrequencyHours(config) {
   return raw;
 }
 
+function getAddonVersion() {
+  try {
+    return globalThis.chrome?.runtime?.getManifest?.()?.version || null;
+  } catch {
+    return null;
+  }
+}
+
 async function buildBackupSnapshot(resolvedType) {
+  const addonVersion = getAddonVersion();
   let payload;
   let metadata = {};
 
@@ -84,8 +93,9 @@ async function buildBackupSnapshot(resolvedType) {
         return copy;
       });
     }
-    payload = { appearance: appearanceToBackup };
+    payload = { ...(addonVersion ? { addonVersion } : {}), appearance: appearanceToBackup };
     metadata = {
+      ...(addonVersion ? { addonVersion } : {}),
       theme: appearanceToBackup.theme || "default",
       settingCount: Object.keys(appearanceToBackup).length,
       customWidgetCount: Array.isArray(appearanceToBackup.customWidgets) ? appearanceToBackup.customWidgets.length : 0
@@ -105,8 +115,8 @@ async function buildBackupSnapshot(resolvedType) {
         return itemSum + 1;
       }, 0);
     }, 0);
-    payload = { groups, tags };
-    metadata = { groupCount, bookmarkCount };
+    payload = { ...(addonVersion ? { addonVersion } : {}), groups, tags };
+    metadata = { ...(addonVersion ? { addonVersion } : {}), groupCount, bookmarkCount };
   }
 
   const json = JSON.stringify(payload, null, 2);
@@ -162,26 +172,7 @@ export async function deleteBackup(file, type = "bookmarks") {
   };
 }
 
-export async function restoreBackup(file, type = "bookmarks") {
-  const resolvedType = normalizeBackupType(type);
-  const parsed = parseBackupInput(file);
-  if (!parsed) {
-    throw new Error("invalid-backup-file");
-  }
-
-  const entries = await readBackupEntries(resolvedType);
-  const target = entries.find(entry => entry.filename === parsed.filename);
-  if (!target) {
-    throw new Error("backup-not-found");
-  }
-
-  let parsedData = null;
-  try {
-    parsedData = JSON.parse(target.data);
-  } catch (error) {
-    throw new Error("invalid-backup-json");
-  }
-
+async function restoreParsedBackupData(parsedData, resolvedType, filename = "backup.json") {
   if (resolvedType === "config") {
     if (!parsedData || typeof parsedData.appearance !== "object" || parsedData.appearance === null || Array.isArray(parsedData.appearance)) {
       throw new Error("invalid-backup-structure");
@@ -214,7 +205,7 @@ export async function restoreBackup(file, type = "bookmarks") {
     return {
       ok: true,
       type: "config",
-      filename: target.filename,
+      filename,
       config,
       secretsRemoved
     };
@@ -238,8 +229,53 @@ export async function restoreBackup(file, type = "bookmarks") {
     ok: true,
     type: "bookmarks",
     warning: "Sync has been disabled before restoring a backup.",
-    filename: target.filename
+    filename
   };
+}
+
+export async function restoreBackupFromJson(jsonText, type = "auto", filename = "uploaded-backup.json") {
+  let parsedData = null;
+  try {
+    parsedData = JSON.parse(String(jsonText || ""));
+  } catch {
+    throw new Error("invalid-backup-json");
+  }
+  let resolvedType;
+  if (type === "auto") {
+    if (parsedData && typeof parsedData.appearance === "object" && parsedData.appearance !== null && !Array.isArray(parsedData.appearance)) {
+      resolvedType = "config";
+    } else if (parsedData && Array.isArray(parsedData.groups)) {
+      resolvedType = "bookmarks";
+    } else {
+      throw new Error("invalid-backup-structure");
+    }
+  } else {
+    resolvedType = normalizeBackupType(type);
+  }
+  return restoreParsedBackupData(parsedData, resolvedType, filename);
+}
+
+export async function restoreBackup(file, type = "bookmarks") {
+  const resolvedType = normalizeBackupType(type);
+  const parsed = parseBackupInput(file);
+  if (!parsed) {
+    throw new Error("invalid-backup-file");
+  }
+
+  const entries = await readBackupEntries(resolvedType);
+  const target = entries.find(entry => entry.filename === parsed.filename);
+  if (!target) {
+    throw new Error("backup-not-found");
+  }
+
+  let parsedData = null;
+  try {
+    parsedData = JSON.parse(target.data);
+  } catch (error) {
+    throw new Error("invalid-backup-json");
+  }
+
+  return restoreParsedBackupData(parsedData, resolvedType, target.filename);
 }
 
 export async function cleanupOldBackups(retentionDays, type = null) {

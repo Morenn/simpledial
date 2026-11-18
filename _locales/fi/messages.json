@@ -1804,5 +1804,14 @@
   },
   "securityMuteSyncLockedWarning": {
     "message": "Mykistä oikean yläkulman lukitun synkronointiholvin ponnahdusvaroitus (tilapalkki näyttää silti lukitun tilan)"
+  },
+  "uploadRestoreBackup": {
+    "message": "Lataa ja palauta"
+  },
+  "backupUploadTrustWarning": {
+    "message": "Palauta varmuuskopiotiedostoja vain luotetuista lähteistä."
+  },
+  "backupAddonVersion": {
+    "message": "Versio"
   }
 }

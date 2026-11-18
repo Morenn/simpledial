@@ -1804,5 +1804,14 @@
   },
   "securityMuteSyncLockedWarning": {
     "message": "Popup-Warnung oben rechts für gesperrten Sync-Tresor stummschalten (Statusleiste zeigt weiterhin gesperrten Status)"
+  },
+  "uploadRestoreBackup": {
+    "message": "Hochladen & Wiederherstellen"
+  },
+  "backupUploadTrustWarning": {
+    "message": "Stellen Sie nur Sicherungsdateien aus vertrauenswürdigen Quellen wieder her."
+  },
+  "backupAddonVersion": {
+    "message": "Version"
   }
 }

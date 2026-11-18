@@ -1804,5 +1804,14 @@
   },
   "securityMuteSyncLockedWarning": {
     "message": "Désactiver la notification en haut à droite lorsque le coffre de synchronisation est verrouillé (la barre d'état reste affichée)"
+  },
+  "uploadRestoreBackup": {
+    "message": "Importer et restaurer"
+  },
+  "backupUploadTrustWarning": {
+    "message": "Ne restaurez que des fichiers de sauvegarde provenant de sources fiables."
+  },
+  "backupAddonVersion": {
+    "message": "Version"
   }
 }

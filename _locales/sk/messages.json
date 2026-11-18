@@ -1804,5 +1804,14 @@
   },
   "securityMuteSyncLockedWarning": {
     "message": "Stlmiť vyskakovacie upozornenie na zamknutý trezor synchronizácie vpravo hore (stavový riadok synchronizácie naďalej zobrazí zamknutý stav)"
+  },
+  "uploadRestoreBackup": {
+    "message": "Nahrať a obnoviť"
+  },
+  "backupUploadTrustWarning": {
+    "message": "Obnovujte iba záložné súbory z dôveryhodných zdrojov."
+  },
+  "backupAddonVersion": {
+    "message": "Verzia"
   }
 }

@@ -3,7 +3,7 @@ import { loadConfig, saveConfig } from "../config.js";
 import { t } from "../i18n.js";
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from "../bookmarks-api.js";
 import { render, calculateGridLayout } from "../render.js";
-import { createBackup, listBackups, restoreBackup, deleteBackup, cleanupOldBackups, getBackup } from "../backup.js";
+import { createBackup, listBackups, restoreBackup, restoreBackupFromJson, deleteBackup, cleanupOldBackups, getBackup } from "../backup.js";
 import { syncBrowserBookmarks } from "../browser-bookmarks-sync.js";
 import { settingsState, setSettingsDirty } from "./context.js";
 import { initImportWizard } from "./importwizard-ui.js";
@@ -12,6 +12,8 @@ const settingsModal = document.getElementById("settings-modal");
 const backupRetentionDays = document.getElementById("backup-retention-days");
 const backupFrequencyHours = document.getElementById("backup-frequency-hours");
 const backupCreateNowBtn = document.getElementById("backup-create-now");
+const backupUploadRestoreBtn = document.getElementById("backup-upload-restore-btn");
+const backupUploadRestoreFile = document.getElementById("backup-upload-restore-file");
 const backupStatus = document.getElementById("backup-status");
 const backupsTableBody = document.getElementById("backups-table-body");
 const backupSubtabBtns = document.querySelectorAll(".backups-subtab-btn");
@@ -277,7 +279,7 @@ export async function refreshBackupsTable() {
   if (!backups.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 4;
+    cell.colSpan = 5;
     cell.className = "backups-empty";
     cell.textContent = t("noBackupsYet");
     row.appendChild(cell);
@@ -285,11 +287,37 @@ export async function refreshBackupsTable() {
     return;
   }
 
+  let currentAddonVersion = null;
+  try {
+    currentAddonVersion = chrome?.runtime?.getManifest?.()?.version || null;
+  } catch {
+    currentAddonVersion = null;
+  }
+
   backups.forEach(backup => {
     const row = document.createElement("tr");
 
     const timestampCell = document.createElement("td");
     timestampCell.textContent = formatBackupTimestamp(backup.timestamp);
+
+    let backupVersion = typeof backup.addonVersion === "string" && backup.addonVersion ? backup.addonVersion : null;
+    if (!backupVersion && typeof backup.data === "string") {
+      try {
+        const parsed = JSON.parse(backup.data);
+        if (typeof parsed?.addonVersion === "string" && parsed.addonVersion) {
+          backupVersion = parsed.addonVersion;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const versionCell = document.createElement("td");
+    if (backupVersion) {
+      const differs = currentAddonVersion && backupVersion !== currentAddonVersion;
+      versionCell.textContent = differs ? `v${backupVersion} ⚠️` : `v${backupVersion}`;
+    } else {
+      versionCell.textContent = "—";
+    }
 
     const sizeCell = document.createElement("td");
     sizeCell.textContent = formatBytes(backup.sizeBytes);
@@ -323,6 +351,7 @@ export async function refreshBackupsTable() {
     actionsCell.appendChild(downloadBtn);
 
     row.appendChild(timestampCell);
+    row.appendChild(versionCell);
     row.appendChild(sizeCell);
     row.appendChild(statsCell);
     row.appendChild(actionsCell);
@@ -665,6 +694,74 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
     });
   }
 
+  const applyRestoredBackupResult = async (result, restoredType) => {
+    if (restoredType === "config" && result.config) {
+      settingsState.pendingLanguageReset = false;
+      setSettingsDirty(false);
+      await revertAppearancePreviewToSaved();
+      updateDateTimeVisibility(result.config.appearance?.dateTimeSpace !== "disabled");
+      await render();
+      calculateGridLayout();
+      if (result.secretsRemoved) {
+        const warningMsg = t("backupConfigRestoredSecretsWarning")
+          || "Configuration restored. Widget secrets are not stored in backups — please re-enter your API tokens.";
+        if (backupStatus) {
+          backupStatus.textContent = "⚠️ " + warningMsg;
+        }
+        alert(warningMsg);
+      } else if (backupStatus) {
+        backupStatus.textContent = "✅ " + t("backupConfigRestored");
+      }
+    } else {
+      await refreshBackupsTable();
+      if (backupStatus) {
+        backupStatus.textContent = `⚠️ ${result.warning}`;
+      }
+      alert(result.warning);
+    }
+  };
+
+  if (backupUploadRestoreBtn && backupUploadRestoreFile) {
+    backupUploadRestoreBtn.addEventListener("click", () => {
+      backupUploadRestoreFile.click();
+    });
+
+    backupUploadRestoreFile.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        let parsed;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          alert(t("invalidFileFormat"));
+          return;
+        }
+        const detectedType = (parsed && typeof parsed.appearance === "object" && parsed.appearance !== null && !Array.isArray(parsed.appearance))
+          ? "config"
+          : (parsed && Array.isArray(parsed.groups) ? "bookmarks" : null);
+        if (!detectedType) {
+          alert(t("invalidFileFormat"));
+          return;
+        }
+        const confirmKey = detectedType === "config"
+          ? "confirmRestoreConfigBackup"
+          : "confirmRestoreBackup";
+        const trustWarning = t("backupUploadTrustWarning")
+          || "Only restore backup files from trusted sources.";
+        if (!confirm(`⚠️ ${trustWarning}\n\n${t(confirmKey)}`)) return;
+        const result = await restoreBackupFromJson(text, detectedType, file.name);
+        await applyRestoredBackupResult(result, detectedType);
+      } catch (error) {
+        if (backupStatus) backupStatus.textContent = "❌ " + t("backupRestoreFailed");
+        console.error("restoreBackupFromJson failed", error);
+      } finally {
+        backupUploadRestoreFile.value = "";
+      }
+    });
+  }
+
   if (backupsTableBody) {
     backupsTableBody.addEventListener("click", async (event) => {
       const target = event.target;
@@ -706,30 +803,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
 
         try {
           const result = await restoreBackup(restoreFile, currentBackupTabType);
-          if (currentBackupTabType === "config" && result.config) {
-            settingsState.pendingLanguageReset = false;
-            setSettingsDirty(false);
-            await revertAppearancePreviewToSaved();
-            updateDateTimeVisibility(result.config.appearance?.dateTimeSpace !== "disabled");
-            await render();
-            calculateGridLayout();
-            if (result.secretsRemoved) {
-              const warningMsg = t("backupConfigRestoredSecretsWarning")
-                || "Configuration restored. Widget secrets are not stored in backups — please re-enter your API tokens.";
-              if (backupStatus) {
-                backupStatus.textContent = "⚠️ " + warningMsg;
-              }
-              alert(warningMsg);
-            } else if (backupStatus) {
-              backupStatus.textContent = "✅ " + t("backupConfigRestored");
-            }
-          } else {
-            await refreshBackupsTable();
-            if (backupStatus) {
-              backupStatus.textContent = `⚠️ ${result.warning}`;
-            }
-            alert(result.warning);
-          }
+          await applyRestoredBackupResult(result, currentBackupTabType);
         } catch (error) {
           if (backupStatus) backupStatus.textContent = "❌ " + t("backupRestoreFailed");
           console.error("restoreBackup failed", error);

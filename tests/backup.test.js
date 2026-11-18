@@ -75,7 +75,8 @@ const {
   deleteBackup,
   cleanupOldBackups,
   runBackupInitCheck,
-  getBackup
+  getBackup,
+  restoreBackupFromJson
 } = await import("../newtab/backup.js");
 
 function resetStore() {
@@ -285,4 +286,32 @@ test("deleteBackup and getBackup operate per type and throw on missing entries",
   const deleted = await deleteBackup(entry.filename, "config");
   assert.equal(deleted.ok, true);
   assert.equal((await listBackups("config")).length, 0);
+});
+
+test("restoreBackupFromJson auto-detects and restores uploaded bookmarks and config backups", async () => {
+  resetStore();
+  const bmJson = JSON.stringify({
+    groups: [{ id: "g-up", name: "Uploaded", items: [{ id: "b-up", title: "Site", url: "https://site.example" }] }],
+    tags: [{ id: "t-up", name: "Tag" }]
+  });
+  const bmRes = await restoreBackupFromJson(bmJson, "auto", "uploaded-bm.json");
+  assert.equal(bmRes.ok, true);
+  assert.equal(bmRes.type, "bookmarks");
+  assert.equal(state.groups[0].name, "Uploaded");
+  assert.equal(state.tags[0].name, "Tag");
+
+  const cfgJson = JSON.stringify({
+    appearance: {
+      theme: "autumn",
+      tileOpacity: 0.7,
+      customWidgets: []
+    }
+  });
+  const cfgRes = await restoreBackupFromJson(cfgJson, "auto", "uploaded-cfg.json");
+  assert.equal(cfgRes.ok, true);
+  assert.equal(cfgRes.type, "config");
+  assert.equal(cfgRes.config.appearance.theme, "autumn");
+
+  await assert.rejects(() => restoreBackupFromJson("{bad", "auto"), /invalid-backup-json/);
+  await assert.rejects(() => restoreBackupFromJson("{}", "auto"), /invalid-backup-structure/);
 });
