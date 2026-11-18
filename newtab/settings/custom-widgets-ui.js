@@ -108,7 +108,6 @@ const customWidgetPreviewInputs = document.getElementById("custom-widget-preview
 const customWidgetPreviewUrl = document.getElementById("custom-widget-preview-url");
 const customWidgetPreviewJsonRow = document.getElementById("custom-widget-preview-json-row");
 const customWidgetPreviewJson = document.getElementById("custom-widget-preview-json");
-const customWidgetExportBtn = document.getElementById("custom-widget-export-btn");
 const customWidgetImportBtn = document.getElementById("custom-widget-import-btn");
 const customWidgetImportFile = document.getElementById("custom-widget-import-file");
 const customWidgetToggleUrlBtn = document.getElementById("custom-widget-toggle-url-btn");
@@ -121,7 +120,7 @@ const customWidgetsLibraryStatus = document.getElementById("custom-widgets-libra
 const exportWidgetsBtn = document.getElementById("export-widgets-btn");
 const importWidgetsBtn = document.getElementById("import-widgets-btn");
 const widgetsExportStatus = document.getElementById("widgets-export-status");
-const customWidgetStatus = document.getElementById("custom-widget-status") || customWidgetsLibraryStatus;
+const customWidgetStatus = customWidgetsLibraryStatus;
 
 export function initCustomWidgetsSettings() {
   const WIDGET_REGISTRY = {
@@ -2338,9 +2337,6 @@ export function initCustomWidgetsSettings() {
     }
   };
 
-  if (customWidgetExportBtn) {
-    customWidgetExportBtn.addEventListener("click", () => triggerCustomWidgetExport(customWidgetStatus));
-  }
   if (customWidgetExportAllBtn) {
     customWidgetExportAllBtn.addEventListener("click", () => triggerCustomWidgetExport(customWidgetsLibraryStatus));
   }

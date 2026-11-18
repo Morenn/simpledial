@@ -620,17 +620,6 @@ body.is-dragging-bookmark #bookmarks-grid {
   transform: scale(1.02);
 }
 
-.drop-indicator {
-  position: absolute;
-  background: var(--accent);
-  border-radius: 2px;
-  pointer-events: none;
-  transition: all 0.15s ease;
-  box-shadow: 0 0 8px var(--accent),
-              0 0 16px rgba(74, 107, 255, 0.4);
-  z-index: 1000;
-}
-
 /* Appearance Tab Compact Grid Layout */
 .appearance-grid {
   display: grid;
@@ -655,8 +644,7 @@ body.is-dragging-bookmark #bookmarks-grid {
   font-weight: 700;
 }
 
-.appearance-theme-section,
-.appearance-background-section {
+.appearance-theme-section {
   margin-top: 0.65rem;
   padding-top: 0.55rem;
   border-top: 1px solid var(--border);
@@ -1582,20 +1570,6 @@ body.theme-dark .bookmark-title:hover {
   SYNC ICONS AND CONTROLS
 ───────────────────────────────────────────── */
 
-.sync-icon {
-  height: 32px;
-  aspect-ratio: 1 / 1;
-  vertical-align: middle;
-  cursor: pointer;
-  margin-right: 8px;
-  opacity: 0.9;
-  transition: opacity 0.2s;
-}
-
-.sync-icon:hover {
-  opacity: 1;
-}
-
 #sync-icon {
   border: 1px solid var(--border);
   background: var(--bg3);
@@ -1781,11 +1755,6 @@ body.theme-dark .bookmark-title:hover {
   gap: 0.5rem;
 }
 
-.choice-group-inline {
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-
 .choice-option {
   display: flex;
   flex-direction: column;
@@ -1935,46 +1904,6 @@ body.theme-dark .bookmark-title:hover {
   font-size: 0.8rem;
 }
 
-.export-import-grid {
-  display: grid;
-  gap: 1rem;
-  margin-top: 0.5rem;
-}
-
-.export-import-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--bg2);
-}
-
-.export-import-card h4 {
-  margin: 0 0 0.4rem 0;
-  font-size: 0.95rem;
-}
-
-.export-import-card p {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #bbb;
-  max-width: 38rem;
-}
-
-.export-import-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.export-import-actions .icon-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 /* ─────────────────────────────────────────────
    Maximize Settings Modal Button
 ───────────────────────────────────────────── */
@@ -1999,7 +1928,6 @@ body.theme-dark .bookmark-title:hover {
    RADIO AND CHECKBOX ROWS
 ───────────────────────────────────────────── */
 
-.radio-row,
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -2010,20 +1938,12 @@ body.theme-dark .bookmark-title:hover {
   user-select: none;
 }
 
-.radio-row input[type="radio"],
-.radio-row input[type="checkbox"],
 .checkbox-row input[type="radio"],
 .checkbox-row input[type="checkbox"] {
   cursor: pointer;
   width: 14px;
   height: 14px;
   margin: 0;
-}
-
-.radio-row input[type="number"] {
-  width: 60px;
-  padding: 0.3rem;
-  margin-left: 0.25rem;
 }
 
 .status {
@@ -2057,10 +1977,6 @@ body.theme-dark .bookmark-title:hover {
   .settings-tab-btn {
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
-  }
-
-  .choice-group-inline {
-    flex-direction: column;
   }
 }
 
@@ -2718,14 +2634,6 @@ body.theme-dark .bookmark-title:hover {
   background: var(--bg2);
 }
 
-.notes-compact-entry-title {
-  flex: 1 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .notes-compact-todo {
   display: flex;
   align-items: center;
@@ -2741,7 +2649,6 @@ body.theme-dark .bookmark-title:hover {
   text-overflow: ellipsis;
 }
 
-.notes-compact-snippet,
 .notes-compact-more {
   font-size: 0.74rem;
   opacity: 0.78;
@@ -3346,12 +3253,6 @@ body.highlight-side-spaces .workspace-side-space {
   grid-column: 1 / -1;
 }
 
-.appearance-slider-row.widget-order-row {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.4rem;
-}
-
 .widget-order-list {
   display: flex;
   flex-direction: column;
@@ -3581,10 +3482,6 @@ body.highlight-side-spaces .workspace-side-space {
   flex-shrink: 0;
 }
 
-.custom-widget-group-input {
-  width: 130px;
-}
-
 .custom-widget-group-badge {
   font-size: 0.72rem;
   padding: 0.1rem 0.4rem;
@@ -3681,13 +3578,6 @@ body.highlight-side-spaces .workspace-side-space {
   border-color: var(--accent);
 }
 
-.custom-widgets-library-header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  align-items: center;
-}
-
 .custom-widget-group-card {
   display: flex;
   flex-direction: column;
@@ -3746,11 +3636,6 @@ body.highlight-side-spaces .workspace-side-space {
   flex-direction: column;
   gap: 0.35rem;
   padding-left: 0.35rem;
-}
-
-.custom-widget-group-export-btn {
-  font-size: 0.78rem;
-  padding: 0.22rem 0.55rem;
 }
 
 /* Custom TimeZone Widget */
@@ -4111,12 +3996,6 @@ body.highlight-side-spaces .workspace-side-space {
   box-sizing: border-box;
 }
 
-.custom-widget-add-block-tab {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-}
-
 .custom-widgets-empty {
   font-size: 0.85rem;
   color: var(--muted);
@@ -4160,14 +4039,6 @@ body.highlight-side-spaces .workspace-side-space {
 .custom-widgets-type-filter {
   flex: 0 0 auto;
   min-width: 110px;
-}
-
-.custom-widget-library-space-select {
-  flex: 0 0 auto;
-  width: auto;
-  max-width: 120px;
-  padding: 0.18rem 0.35rem;
-  font-size: 0.78rem;
 }
 
 .custom-widget-space-pill {
@@ -4403,14 +4274,6 @@ body.highlight-side-spaces .workspace-side-space {
   white-space: nowrap;
 }
 
-.custom-widget-library-source {
-  font-size: 0.72rem;
-  color: var(--accent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .custom-widget-url-import-row {
   margin-top: 0.55rem;
   padding-top: 0.55rem;
@@ -4629,14 +4492,6 @@ body.highlight-side-spaces .workspace-side-space {
 
 .custom-widget-var-options.hidden {
   display: none;
-}
-
-.custom-widget-submit-row {
-  margin-top: 0.55rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
 }
 
 .custom-widget-library-actions {

@@ -618,35 +618,6 @@ export function updateUIText() {
     if (grpCancelBtn) grpCancelBtn.textContent = t("cancel");
   }
 
-  // Sync modal
-  const syncModal = document.getElementById("sync-modal");
-  if (syncModal) {
-    const syncTitle = syncModal.querySelector("h2");
-    if (syncTitle) syncTitle.textContent = t("syncServer");
-
-    const serverLabel = syncModal.querySelector("label");
-    if (serverLabel && serverLabel.textContent.includes("Server URL")) {
-      serverLabel.textContent = t("serverUrl");
-    }
-
-    const syncUrl = document.getElementById("sync-url");
-    if (syncUrl) syncUrl.placeholder = "https://sync.local/speeddial.json"; // Keep placeholder as-is for now
-
-    const testBtn = document.getElementById("sync-test");
-    if (testBtn) testBtn.textContent = t("testConnection");
-
-    const enableLabel = syncModal.querySelector(".checkbox-row");
-    if (enableLabel && enableLabel.lastElementChild) {
-      enableLabel.lastElementChild.textContent = t("enableSync");
-    }
-
-    const saveSyncBtn = document.getElementById("sync-save");
-    if (saveSyncBtn) saveSyncBtn.textContent = t("saveSettings");
-
-    const closeBtn = document.getElementById("sync-cancel");
-    if (closeBtn) closeBtn.textContent = t("close");
-  }
-
   // Update settings modal text
   updateSettingsModalText();
 }
