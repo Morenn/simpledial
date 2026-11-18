@@ -1656,15 +1656,18 @@ bmSave.addEventListener("click", async () => {
 
   await syncWrite();
 
-  // Check link health asynchronously in background (don't delay UI update)
+  // Check link health asynchronously in background only when enabled in HouseKeeper
   const itemToCheck = findBookmarkInState(targetBookmarkId);
   if (itemToCheck && itemToCheck.url) {
     try {
-      const isValid = await validateSingleLink(itemToCheck.url);
-      const liveItem = findBookmarkInState(targetBookmarkId);
-      if (liveItem && setBookmarkSystemTag(liveItem.id, SYSTEM_TAG_DEAD_LINK_ID, !isValid)) {
-        await saveSystemTags();
-        render();
+      const cfg = await loadConfig();
+      if (cfg?.housekeeper?.enableLinkCheck) {
+        const isValid = await validateSingleLink(itemToCheck.url);
+        const liveItem = findBookmarkInState(targetBookmarkId);
+        if (liveItem && setBookmarkSystemTag(liveItem.id, SYSTEM_TAG_DEAD_LINK_ID, !isValid)) {
+          await saveSystemTags();
+          render();
+        }
       }
     } catch (e) {
       console.error('Link validation failed:', e);
