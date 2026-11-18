@@ -17,7 +17,7 @@ import {
   getCustomThemeUrlCache
 } from "../theme.js";
 import { normalizeWidgetOrder } from "../custom-widgets.js";
-import { updateUIText, updateClock } from "../main.js";
+import { updateUIText, updateClock, updateShowDeletedButtonAppearance } from "../main.js";
 import {
   applyMassTileColorFromIcon,
   isValidFallbackBookmarkIcon,
@@ -125,16 +125,7 @@ export function setBgPreviewImage(dataUrl) {
   });
 }
 
-export function updateShowDeletedButtonAppearance() {
-  if (!showDeletedBtn || !showDeletedToggle) return;
-  if (showDeletedToggle.checked) {
-    showDeletedBtn.style.opacity = "1";
-    showDeletedBtn.style.transform = "scale(1.1)";
-  } else {
-    showDeletedBtn.style.opacity = "0.6";
-    showDeletedBtn.style.transform = "scale(1)";
-  }
-}
+export { updateShowDeletedButtonAppearance };
 
 export function updateDateTimeVisibility(isVisible) {
   if (typeof window.setDateTimePreviewEnabled === "function") {
@@ -981,20 +972,6 @@ export function initAppearanceSettings() {
   if (massDisableColorFromIconBtn) {
     massDisableColorFromIconBtn.addEventListener("click", () => {
       void handleMassColorFromIconAction(false);
-    });
-  }
-
-  if (showDeletedBtn && showDeletedToggle) {
-    showDeletedBtn.addEventListener("click", () => {
-      showDeletedToggle.checked = !showDeletedToggle.checked;
-      showDeletedToggle.dispatchEvent(new Event("change"));
-      updateShowDeletedButtonAppearance();
-    });
-  }
-
-  if (showDeletedToggle) {
-    showDeletedToggle.addEventListener("change", () => {
-      updateShowDeletedButtonAppearance();
     });
   }
 

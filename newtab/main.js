@@ -212,6 +212,19 @@ function startIconRefreshLoop() {
   }, ICON_REFRESH_CHECK_INTERVAL_MS);
 }
 
+export function updateShowDeletedButtonAppearance() {
+  const showDeletedBtn = document.getElementById("show-deleted-btn");
+  const showDeletedToggle = document.getElementById("show-deleted-toggle");
+  if (!showDeletedBtn || !showDeletedToggle) return;
+  if (showDeletedToggle.checked) {
+    showDeletedBtn.style.opacity = "1";
+    showDeletedBtn.style.transform = "scale(1.1)";
+  } else {
+    showDeletedBtn.style.opacity = "0.6";
+    showDeletedBtn.style.transform = "scale(1)";
+  }
+}
+
 (async function init() {
   // 1-3) Load language, bookmark state, and config in parallel
   let [, , config] = await Promise.all([
@@ -224,10 +237,26 @@ function startIconRefreshLoop() {
   await loadTheme(config);
   updateDateTimeEnabledFromConfig(config);
 
+  const showDeletedBtn = document.getElementById("show-deleted-btn");
   const showDeletedToggle = document.getElementById("show-deleted-toggle");
+  if (showDeletedBtn && showDeletedToggle && !showDeletedBtn.dataset.bound) {
+    showDeletedBtn.dataset.bound = "true";
+    showDeletedBtn.addEventListener("click", () => {
+      showDeletedToggle.checked = !showDeletedToggle.checked;
+      showDeletedToggle.dispatchEvent(new Event("change"));
+      updateShowDeletedButtonAppearance();
+    });
+  }
   if (showDeletedToggle) {
+    if (!showDeletedToggle.dataset.appearanceBound) {
+      showDeletedToggle.dataset.appearanceBound = "true";
+      showDeletedToggle.addEventListener("change", () => {
+        updateShowDeletedButtonAppearance();
+      });
+    }
     showDeletedToggle.checked = !!config.appearance?.showDeleted;
     showDeletedToggle.dispatchEvent(new Event("change"));
+    updateShowDeletedButtonAppearance();
   }
 
   // 7) Setup language selector

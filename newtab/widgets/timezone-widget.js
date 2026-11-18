@@ -302,7 +302,11 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
           const closeTimeEditor = () => {
             if (timeEl.dataset.editing !== "true") return;
             delete timeEl.dataset.editing;
+            delete timeEl.dataset.lastFormatted;
+            delete timeEl.dataset.lastDayShift;
+            input.blur();
             updateCustomTimeZoneWidgets();
+            timeEl.blur();
           };
 
           input.addEventListener("input", applyCalculatedTime);
@@ -310,6 +314,7 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
           input.addEventListener("keydown", (ev) => {
             if (ev.key === "Enter") {
               ev.preventDefault();
+              ev.stopPropagation();
               applyCalculatedTime();
               closeTimeEditor();
             } else if (ev.key === "Escape") {
@@ -330,8 +335,10 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
           openTimeEditor();
         });
         timeEl.addEventListener("keydown", (e) => {
+          if (e.target !== timeEl || timeEl.dataset.editing === "true") return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
+            e.stopPropagation();
             openTimeEditor();
           }
         });

@@ -9,6 +9,8 @@ const notesDataCache = new Map();
 const notesWidgetElementCache = new Map();
 let notesStoreLoaded = false;
 let notesStoreLoadPromise = null;
+let notesStorageListenerBound = false;
+let notesWriteQueue = Promise.resolve();
 let activeNotesWidgets = [];
 let activeModalWidgetId = null;
 let activeModalEntryId = null;
@@ -135,7 +137,30 @@ export function findDueNoteReminders(notesByWidgetId, nowMs = Date.now()) {
   return due;
 }
 
+function ensureNotesStorageSyncListener() {
+  if (notesStorageListenerBound || typeof chrome === "undefined" || !chrome.storage?.onChanged) return;
+  notesStorageListenerBound = true;
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local" || !changes?.[NOTES_STORAGE_KEY]) return;
+    const nextStored = changes[NOTES_STORAGE_KEY].newValue;
+    notesDataCache.clear();
+    if (nextStored && typeof nextStored === "object") {
+      for (const [id, data] of Object.entries(nextStored)) {
+        notesDataCache.set(id, normalizeNotesWidgetData(data));
+      }
+    }
+    notesStoreLoaded = true;
+    for (const w of activeNotesWidgets) {
+      refreshNotesWidgetDom(w.id);
+    }
+    if (activeModalWidgetId) {
+      renderNotesModalContent(activeModalWidgetId);
+    }
+  });
+}
+
 async function ensureNotesStoreLoaded() {
+  ensureNotesStorageSyncListener();
   if (notesStoreLoaded) return;
   if (notesStoreLoadPromise) {
     await notesStoreLoadPromise;
@@ -182,17 +207,22 @@ function getNotesDataSync(widgetId) {
   return notesDataCache.get(widgetId);
 }
 
-async function updateNotesData(widgetId, updater) {
-  await ensureNotesStoreLoaded();
-  const current = normalizeNotesWidgetData(getNotesDataSync(widgetId));
-  const next = normalizeNotesWidgetData(updater(current));
-  notesDataCache.set(widgetId, next);
-  await persistNotesStore();
-  refreshNotesWidgetDom(widgetId);
-  if (activeModalWidgetId === widgetId) {
-    renderNotesModalContent(widgetId);
-  }
-  return next;
+function updateNotesData(widgetId, updater) {
+  const run = async () => {
+    await ensureNotesStoreLoaded();
+    const current = normalizeNotesWidgetData(getNotesDataSync(widgetId));
+    const next = normalizeNotesWidgetData(updater(current));
+    notesDataCache.set(widgetId, next);
+    await persistNotesStore();
+    refreshNotesWidgetDom(widgetId);
+    if (activeModalWidgetId === widgetId) {
+      renderNotesModalContent(widgetId);
+    }
+    return next;
+  };
+  const task = notesWriteQueue.then(run, run);
+  notesWriteQueue = task.catch(() => {});
+  return task;
 }
 
 function mutateTodoInEntry(data, entryId, todoId, mutator) {
@@ -258,14 +288,19 @@ function showDueReminderToast(widget, entryId, entryTitle, todo) {
   snoozeBtn.className = "icon-btn";
   snoozeBtn.textContent = "+10m";
   snoozeBtn.addEventListener("click", async () => {
-    await updateNotesData(widget.id, data =>
-      mutateTodoInEntry(data, entryId, todo.id, item => ({
-        ...item,
-        remindAt: Date.now() + 10 * 60 * 1000,
-        notified: false
-      }))
-    );
-    toast.remove();
+    snoozeBtn.disabled = true;
+    try {
+      await updateNotesData(widget.id, data =>
+        mutateTodoInEntry(data, entryId, todo.id, item => ({
+          ...item,
+          remindAt: Date.now() + 10 * 60 * 1000,
+          notified: false
+        }))
+      );
+      toast.remove();
+    } finally {
+      snoozeBtn.disabled = false;
+    }
   });
 
   const dismissBtn = document.createElement("button");
@@ -279,34 +314,39 @@ function showDueReminderToast(widget, entryId, entryTitle, todo) {
   host.appendChild(toast);
 }
 
-export async function checkDueNoteReminders() {
-  await ensureNotesStoreLoaded();
-  const dueList = findDueNoteReminders(notesDataCache, Date.now());
-  if (dueList.length === 0) return;
+export function checkDueNoteReminders() {
+  const run = async () => {
+    await ensureNotesStoreLoaded();
+    const dueList = findDueNoteReminders(notesDataCache, Date.now());
+    if (dueList.length === 0) return;
 
-  const byWidgetId = new Map(activeNotesWidgets.map(w => [w.id, w]));
-  const dueTodoIdsByWidget = new Map();
-  for (const { widgetId, entryId, entryTitle, todo } of dueList) {
-    if (!dueTodoIdsByWidget.has(widgetId)) dueTodoIdsByWidget.set(widgetId, new Set());
-    dueTodoIdsByWidget.get(widgetId).add(todo.id);
-    const widget = byWidgetId.get(widgetId);
-    if (widget && widget.space !== "disabled") {
-      showDueReminderToast(widget, entryId, entryTitle, todo);
+    const byWidgetId = new Map(activeNotesWidgets.map(w => [w.id, w]));
+    const dueTodoIdsByWidget = new Map();
+    for (const { widgetId, entryId, entryTitle, todo } of dueList) {
+      if (!dueTodoIdsByWidget.has(widgetId)) dueTodoIdsByWidget.set(widgetId, new Set());
+      dueTodoIdsByWidget.get(widgetId).add(todo.id);
+      const widget = byWidgetId.get(widgetId);
+      if (widget && widget.space !== "disabled") {
+        showDueReminderToast(widget, entryId, entryTitle, todo);
+      }
     }
-  }
 
-  for (const [widgetId, todoIds] of dueTodoIdsByWidget.entries()) {
-    const data = getNotesDataSync(widgetId);
-    data.entries = data.entries.map(entry => ({
-      ...entry,
-      todos: entry.todos.map(item => todoIds.has(item.id) ? { ...item, notified: true } : item)
-    }));
-    refreshNotesWidgetDom(widgetId);
-    if (activeModalWidgetId === widgetId) {
-      renderNotesModalContent(widgetId);
+    for (const [widgetId, todoIds] of dueTodoIdsByWidget.entries()) {
+      const data = getNotesDataSync(widgetId);
+      data.entries = data.entries.map(entry => ({
+        ...entry,
+        todos: entry.todos.map(item => todoIds.has(item.id) ? { ...item, notified: true } : item)
+      }));
+      refreshNotesWidgetDom(widgetId);
+      if (activeModalWidgetId === widgetId) {
+        renderNotesModalContent(widgetId);
+      }
     }
-  }
-  await persistNotesStore();
+    await persistNotesStore();
+  };
+  const task = notesWriteQueue.then(run, run);
+  notesWriteQueue = task.catch(() => {});
+  return task;
 }
 
 export function startNotesReminderPolling() {

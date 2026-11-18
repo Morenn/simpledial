@@ -433,7 +433,7 @@ body.is-dragging-group #groups-header {
 }
 
 .context-menu-has-submenu::after {
-  content: "▶";
+  content: "\25B6";
   position: absolute;
   right: 0.6rem;
   font-size: 0.7rem;
@@ -1839,7 +1839,7 @@ body.theme-dark .bookmark-title:hover {
 }
 
 .settings-unsaved-indicator::before {
-  content: "●";
+  content: "\25CF";
   margin-right: 0.3rem;
 }
 
@@ -4995,7 +4995,7 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
 }
 
 .bm-tags-list:empty::after {
-  content: "—";
+  content: "\2014";
   font-size: 0.78rem;
   opacity: 0.5;
 }

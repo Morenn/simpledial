@@ -1,20 +1,31 @@
 # Simple SpeedDial
 
-A clean, lightweight browser new-tab speed dial extension with organized bookmark groups, live search, customizable themes, multi-device sync, automatic backups, and maintenance tools.
+A clean, privacy-focused, and customizable Speed Dial new-tab browser extension with instant search, custom widgets, groups, sections, stacks, tags, seasonal themes, WebDAV/HTTP sync, an encrypted Secrets Vault, and automatic backups.
 
-## Install
+## Installation
 
+### From store
 - **Firefox Add-ons:** [Simple Dial for Firefox](https://addons.mozilla.org/en-US/firefox/addon/simple-dial/)
 - **Microsoft Edge Add-ons:** [Simple SpeedDial for Edge](https://microsoftedge.microsoft.com/addons/detail/simple-speeddial/apbaccnojalophdpgohmbappaehdkljo)
+
+### Manually
+- **Chrome / Edge (Chromium):** Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, and click **Load unpacked** to select the repository root (or package it from the repository root).
+- **Firefox:** Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on...**, and select `manifest.json` from the repository root (or package the repository root as a `.zip`/`.xpi`).
 
 ## Features
 
 - **Groups, Sections, Stacks & Tags** — Organize bookmarks into tabbed groups with per-group sections, folder-like bookmark stacks, and global searchable tags. Supports emojis or custom icon URLs, drag-and-drop ordering, tile lock toggle, hover notes, custom tile colors, tall tile layout, and automatic tile colors extracted from favicons.
-- **Instant Search & Custom Search Widgets** — Search bookmarks across groups (including tags and notes) with selectable search bar styles, or build declarative custom search widgets in the **Custom Widgets** tab. Supports simple URL templates and multi-variable JSON templates (text, comma list, dropdown, multi-select) with live URL/JSON preview, custom icons (URL or uploaded image), duplication, JSON library export/import, and manual **Load from URL** with **Update** and **Revert**. See the [Custom Search Widgets Guide](docs/custom-search-widgets.md).
+- **Instant Search & Custom Widgets** — Search bookmarks across groups (including tags and notes) with selectable search bar styles, or build declarative custom widgets in **Settings → Custom Widgets** with JSON export/import, duplication, and manual **Load from URL** with **Update** and **Revert**:
+  - **Custom Search** — Simple URL templates and multi-variable JSON templates (text, comma list, dropdown, multi-select), custom icons, grouped engine switchers, and prefix auto-routing. See [Search Widgets Guide & Examples](widget-examples/search/README.md).
+  - **TimeZone** — Multi-zone live clocks (12h/24h, optional seconds) with an interactive click-to-edit TimeZone Calculator and day-shift badges. See [TimeZone Widgets Guide & Examples](widget-examples/timezone/README.md).
+  - **REST / JSON Status** — Poll `GET`/`HEAD` JSON endpoints with dot/bracket `jsonPath` extraction, value mapping, scaling, `ok`/`warn`/`err` rule matching, up to 6 collapsible extra metrics, widget grouping, and optional Secrets Vault-encrypted auth headers. See [REST Status Widgets Guide & Examples](widget-examples/rest-status/README.md).
+  - **Simple Notes / Scratchpad** — Multi-entry notes, checkable to-do lists, timed reminders with live countdowns, and compact modal mode. See [Notes Widgets Guide & Examples](widget-examples/notes/README.md).
 - **Workspace Layout & Widget Placement** — Place built-in and custom widgets across **Header**, **Left**, **Center**, **Right**, and **Footer** spaces with per-widget ordering, alignment, and row-break controls, plus a footer status bar and movable Date & Time display.
-- **Themes & Appearance** — Switch between Dark and Light modes, built-in seasonal themes (**Spring**, **Summer**, **Autumn**, **Winter**), or load custom CSS from a file or URL. Customize background images (file or URL), background dim overlay, header/footer and tile transparency, and independent tile/group sizes.
-- **Synchronization** — Sync bookmarks via built-in browser sync, Direct HTTP/HTTPS endpoints, or WebDAV with optional credential encryption, configurable auto-sync intervals, and permanent-delete tracking.
-- **Backups & Import/Export** — Automatic scheduled local backups with retention limits, manual backup snapshots, JSON and NETSCAPE HTML bookmark import/export, custom widget library export/import, and optional browser bookmarks folder sync.
+- **Keyboard Navigation & Shortcuts** — Navigate groups, tiles, and search with the keyboard and view the built-in shortcut palette.
+- **Themes & Appearance** — Switch between Dark and Light modes, built-in seasonal themes (**Spring**, **Summer**, **Autumn**, **Winter**), or load custom CSS from a file or URL. Customize background images (file or URL, with automatic native WebP/JPEG downscaling up to `1920×1080` / `2 MB`), background dim overlay, header/footer and tile transparency, and independent tile/group sizes.
+- **Synchronization** — Sync bookmarks via built-in browser sync, Direct HTTP/HTTPS endpoints, or WebDAV (including **WebDAV Folder Sync** for config, custom widgets, backups, and background) with optional credential encryption, configurable auto-sync intervals, and permanent-delete tracking.
+- **Secrets Vault** — Encrypt sync credentials and REST widget auth tokens at rest using `AES-GCM` with `PBKDF2` (`PBKDF2-SHA512` / `PBKDF2-SHA256`), RAM-only session unlock, optional idle auto-lock, and 90-day password expiry reminders.
+- **Backups & Import/Export** — Automatic scheduled local backups with retention limits, manual bookmark & config snapshots, **Upload & Restore** from backup files, JSON and NETSCAPE HTML bookmark import/export, a **Browser Bookmarks Import Wizard** with folder depth mapping, custom widget library export/import, and optional browser bookmarks folder sync.
 - **HouseKeeper** — Soft-delete recovery and automatic cleanup, dead-link checking/highlighting, and automatic favicon refreshing.
 - **Localization** — Supports English, Czech, German, Finnish, French, Dutch, Slovak, and Ukrainian.
 
