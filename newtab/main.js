@@ -1,4 +1,4 @@
-import { state, saveState, generateId, loadState } from "./state.js";
+import { state, saveState, generateId, loadState, STORAGE_KEY, applyStateFromStorageChange } from "./state.js";
 import { loadTheme, applySideSpaces } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
@@ -373,6 +373,11 @@ export function updateShowDeletedButtonAppearance() {
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
+  const dataChange = changes[STORAGE_KEY];
+  if (dataChange?.newValue && applyStateFromStorageChange(dataChange.newValue)) {
+    render();
+    void updateFooter();
+  }
   const configChange = changes["myspeeddial-config"];
   if (!configChange || !configChange.newValue) return;
 

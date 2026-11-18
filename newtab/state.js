@@ -117,9 +117,25 @@ export function generateId(prefix) {
   return prefix + "_" + Math.random().toString(36).slice(2, 10);
 }
 
+let localSaveDepth = 0;
+let suppressLocalStateChange = false;
+
 export async function saveState() {
-  await chrome.storage.local.set({ [STORAGE_KEY]: state });
-  window.dispatchEvent(new Event("speeddial:state-saved"));
+  localSaveDepth++;
+  suppressLocalStateChange = true;
+  try {
+    await chrome.storage.local.set({ [STORAGE_KEY]: state });
+    window.dispatchEvent(new Event("speeddial:state-saved"));
+  } finally {
+    localSaveDepth--;
+    if (typeof setTimeout === "function") {
+      setTimeout(() => {
+        if (localSaveDepth === 0) suppressLocalStateChange = false;
+      }, 0);
+    } else if (localSaveDepth === 0) {
+      suppressLocalStateChange = false;
+    }
+  }
 }
 
 export async function saveActiveGroupId(groupId) {
@@ -213,25 +229,20 @@ export async function saveSystemTags() {
   }
 }
 
-export async function loadState() {
-  await loadSystemTags();
-  const res = await chrome.storage.local.get(STORAGE_KEY);
-  const stored = res[STORAGE_KEY];
+function applyStoredState(stored) {
+  if (!stored || typeof stored !== "object") return;
+  // 🔥 Preserve reference — don't assign a new state object
+  // Mutate the existing object
+  state.groups = Array.isArray(stored.groups) ? stored.groups : [];
+  state.tags = Array.isArray(stored.tags) ? stored.tags : [];
 
-  if (stored) {
-    // 🔥 Preserve reference — don't assign a new state object
-    // Mutate the existing object
-    state.groups = Array.isArray(stored.groups) ? stored.groups : [];
-    state.tags = Array.isArray(stored.tags) ? stored.tags : [];
+  state.sync.enabled = stored.sync?.enabled ?? false;
+  state.sync.lastSync = stored.sync?.lastSync ?? 0;
 
-    state.sync.enabled = stored.sync?.enabled ?? false;
-    state.sync.lastSync = stored.sync?.lastSync ?? 0;
-
-    // If additional fields are added later, include them here
-    for (const key of Object.keys(stored)) {
-      if (key !== "groups" && key !== "tags" && key !== "sync") {
-        state[key] = stored[key];
-      }
+  // If additional fields are added later, include them here
+  for (const key of Object.keys(stored)) {
+    if (key !== "groups" && key !== "tags" && key !== "sync") {
+      state[key] = stored[key];
     }
   }
 
@@ -241,6 +252,42 @@ export async function loadState() {
     if (!Array.isArray(group.items)) group.items = [];
     if (!Array.isArray(group.sections)) group.sections = [];
   });
+}
+
+export function applyStateFromStorageChange(stored) {
+  if (suppressLocalStateChange) {
+    suppressLocalStateChange = false;
+    return false;
+  }
+  if (!stored || typeof stored !== "object") return false;
+  applyStoredState(stored);
+
+  if (typeof window !== "undefined") {
+    const activeValid = window.activeGroupId
+      && state.groups.some(g => g && g.id === window.activeGroupId && !g.deleted);
+    if (!activeValid) {
+      const first = state.groups.find(g => g && !g.deleted);
+      window.activeGroupId = first ? first.id : null;
+    }
+  }
+  return true;
+}
+
+export async function loadState() {
+  await loadSystemTags();
+  const res = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = res[STORAGE_KEY];
+
+  if (stored) {
+    applyStoredState(stored);
+  } else {
+    state.tags = Array.isArray(state.tags) ? state.tags : [];
+    state.groups.forEach(group => {
+      if (!group) return;
+      if (!Array.isArray(group.items)) group.items = [];
+      if (!Array.isArray(group.sections)) group.sections = [];
+    });
+  }
 
   // 🔥 Initialize activeGroupId
   if (!window.activeGroupId) {

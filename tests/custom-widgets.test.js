@@ -270,8 +270,27 @@ test("serializeCustomWidgetsExport and parseImportedCustomWidgets preserve group
   assert.equal(parsed.widgets[0].isDefault, true);
 });
 
-test("widget-examples/search/*.json presets parse cleanly", () => {
-  const searchDir = path.resolve("widget-examples/search");
+function resolveWidgetExamplesDir(t, subdir) {
+  const candidates = [
+    path.resolve("../simple-dial-widget-examples", subdir),
+    path.resolve("widget-examples", subdir)
+  ];
+  for (const dir of candidates) {
+    try {
+      if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+        return dir;
+      }
+    } catch {
+      // ignore inaccessible candidate
+    }
+  }
+  t.skip(`widget examples directory not present for ${subdir}`);
+  return null;
+}
+
+test("widget-examples/search/*.json presets parse cleanly", (t) => {
+  const searchDir = resolveWidgetExamplesDir(t, "search");
+  if (!searchDir) return;
   const expectedFiles = [
     "google.json",
     "brave.json",
@@ -643,8 +662,9 @@ test("REST status widgets support extra metrics from the same response", () => {
   assert.equal(imported.widgets[0].collapseMetrics, true);
 });
 
-test("widget-examples/rest-status/*.json presets parse cleanly", () => {
-  const presetsDir = path.resolve("widget-examples/rest-status");
+test("widget-examples/rest-status/*.json presets parse cleanly", (t) => {
+  const presetsDir = resolveWidgetExamplesDir(t, "rest-status");
+  if (!presetsDir) return;
   const files = fs.readdirSync(presetsDir).filter(f => f.endsWith(".json")).sort();
   assert.equal(files.length, 9);
   for (const file of files) {
@@ -657,8 +677,9 @@ test("widget-examples/rest-status/*.json presets parse cleanly", () => {
   }
 });
 
-test("widget-examples/timezone/*.json presets parse cleanly", () => {
-  const presetsDir = path.resolve("widget-examples/timezone");
+test("widget-examples/timezone/*.json presets parse cleanly", (t) => {
+  const presetsDir = resolveWidgetExamplesDir(t, "timezone");
+  if (!presetsDir) return;
   const files = fs.readdirSync(presetsDir).filter(f => f.endsWith(".json")).sort();
   assert.equal(files.length, 3);
   for (const file of files) {
@@ -671,8 +692,9 @@ test("widget-examples/timezone/*.json presets parse cleanly", () => {
   }
 });
 
-test("widget-examples/notes/*.json presets parse cleanly", () => {
-  const presetsDir = path.resolve("widget-examples/notes");
+test("widget-examples/notes/*.json presets parse cleanly", (t) => {
+  const presetsDir = resolveWidgetExamplesDir(t, "notes");
+  if (!presetsDir) return;
   const files = fs.readdirSync(presetsDir).filter(f => f.endsWith(".json")).sort();
   assert.equal(files.length, 3);
   for (const file of files) {
