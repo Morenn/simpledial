@@ -220,7 +220,7 @@ export function createAppearanceDraftFromConfig(config) {
       ? "disabled"
       : (appearance.dateTimeSpace || "footer"),
     groupsSpace: appearance.groupsSpace || "header",
-    searchSpace: appearance.searchSpace || "header",
+    searchSpace: appearance.searchSpace || "center",
     manageSpace: appearance.manageSpace || "header",
     syncStatusSpace: appearance.syncStatusSpace || "footer",
     shortcutPaletteSpace: appearance.shortcutPaletteSpace || "footer",
@@ -537,7 +537,7 @@ export async function applyAppearanceToConfig(config, { setSyncStatusMessage }) 
     config.appearance.dateTimeSpace = draft.dateTimeSpace || "footer";
     config.appearance.showDateTime = config.appearance.dateTimeSpace !== "disabled";
     config.appearance.groupsSpace = draft.groupsSpace || "header";
-    config.appearance.searchSpace = draft.searchSpace || "header";
+    config.appearance.searchSpace = draft.searchSpace || "center";
     config.appearance.manageSpace = draft.manageSpace || "header";
     config.appearance.syncStatusSpace = draft.syncStatusSpace || "footer";
     config.appearance.shortcutPaletteSpace = draft.shortcutPaletteSpace || "footer";

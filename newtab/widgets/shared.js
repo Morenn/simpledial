@@ -4,13 +4,13 @@ export const VALID_WIDGET_SPACES = new Set(["header", "left", "center", "right",
 export const VALID_WIDGET_ALIGNS = new Set(["auto", "top", "bottom", "left", "right", "center"]);
 export const DEFAULT_WIDGET_ORDER = [
   "groups",
-  "search",
   "manage",
+  "search",
   "bookmarks",
   "syncStatus",
   "dateTime",
-  "shortcutPalette",
-  "bookmarksCount"
+  "bookmarksCount",
+  "shortcutPalette"
 ];
 export const VALID_WIDGET_KEYS = new Set(DEFAULT_WIDGET_ORDER);
 

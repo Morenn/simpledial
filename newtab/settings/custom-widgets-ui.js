@@ -40,6 +40,9 @@ const searchStyleSelect = document.getElementById("search-style-select");
 const headerSingleRowToggle = document.getElementById("header-single-row-toggle");
 const widgetOrderList = document.getElementById("widget-order-list");
 const customWidgetsList = document.getElementById("custom-widgets-list");
+const customWidgetsFilterBar = document.getElementById("custom-widgets-filter-bar");
+const customWidgetsFilterInput = document.getElementById("custom-widgets-filter-input");
+const customWidgetsTypeFilter = document.getElementById("custom-widgets-type-filter");
 const customWidgetIconInput = document.getElementById("custom-widget-icon");
 const customWidgetCustomIconInput = document.getElementById("custom-widget-custom-icon");
 const customWidgetIconUploadBtn = document.getElementById("custom-widget-icon-upload-btn");
@@ -47,9 +50,18 @@ const customWidgetIconFile = document.getElementById("custom-widget-icon-file");
 const customWidgetModeSelect = document.getElementById("custom-widget-mode");
 const customWidgetAddTitle = document.querySelector(".custom-widget-add-title");
 const customWidgetNameInput = document.getElementById("custom-widget-name");
-const customWidgetGroupInput = document.getElementById("custom-widget-group");
+const customWidgetGroupField = document.getElementById("custom-widget-group-field");
+const customWidgetGroupSelect = document.getElementById("custom-widget-group-select");
+const customWidgetNewGroupModal = document.getElementById("custom-widget-new-group-modal");
+const customWidgetNewGroupInput = document.getElementById("custom-widget-new-group-input");
+const customWidgetNewGroupCreateBtn = document.getElementById("custom-widget-new-group-create-btn");
+const customWidgetNewGroupCancelBtn = document.getElementById("custom-widget-new-group-cancel-btn");
+const customWidgetUrlField = document.getElementById("custom-widget-url-field");
 const customWidgetRoutePrefixesInput = document.getElementById("custom-widget-route-prefixes");
 const customWidgetUrlInput = document.getElementById("custom-widget-url");
+const customWidgetAdvancedDetails = document.getElementById("custom-widget-advanced-details");
+const customWidgetSearchAdvanced = document.getElementById("custom-widget-search-advanced");
+const customWidgetRestAdvanced = document.getElementById("custom-widget-rest-advanced");
 const customWidgetNewTabInput = document.getElementById("custom-widget-newtab");
 const customWidgetDefaultInput = document.getElementById("custom-widget-default");
 const customWidgetJsonRow = document.getElementById("custom-widget-json-row");
@@ -99,6 +111,8 @@ const customWidgetPreviewJson = document.getElementById("custom-widget-preview-j
 const customWidgetExportBtn = document.getElementById("custom-widget-export-btn");
 const customWidgetImportBtn = document.getElementById("custom-widget-import-btn");
 const customWidgetImportFile = document.getElementById("custom-widget-import-file");
+const customWidgetToggleUrlBtn = document.getElementById("custom-widget-toggle-url-btn");
+const customWidgetUrlImportBox = document.getElementById("custom-widget-url-import-box");
 const customWidgetSourceUrlInput = document.getElementById("custom-widget-source-url");
 const customWidgetLoadUrlBtn = document.getElementById("custom-widget-load-url-btn");
 const customWidgetUpdateAllBtn = document.getElementById("custom-widget-update-all-btn");
@@ -107,12 +121,12 @@ const customWidgetsLibraryStatus = document.getElementById("custom-widgets-libra
 const exportWidgetsBtn = document.getElementById("export-widgets-btn");
 const importWidgetsBtn = document.getElementById("import-widgets-btn");
 const widgetsExportStatus = document.getElementById("widgets-export-status");
-const customWidgetStatus = document.getElementById("custom-widget-status");
+const customWidgetStatus = document.getElementById("custom-widget-status") || customWidgetsLibraryStatus;
 
 export function initCustomWidgetsSettings() {
   const WIDGET_REGISTRY = {
     groups: { key: "widgetGroups", fallback: "Group selector", field: "groupsSpace", defaultSpace: "header", allowDisabled: false },
-    search: { key: "widgetSearch", fallback: "Search bar", field: "searchSpace", defaultSpace: "header", allowDisabled: false },
+    search: { key: "widgetSearch", fallback: "Search bar", field: "searchSpace", defaultSpace: "center", allowDisabled: false },
     manage: { key: "widgetManage", fallback: "Manage buttons", field: "manageSpace", defaultSpace: "header", allowDisabled: false },
     bookmarks: { key: "widgetBookmarks", fallback: "Bookmarks", field: null, defaultSpace: "center", allowDisabled: false, fixedSpace: true },
     syncStatus: { key: "widgetSyncStatus", fallback: "Sync status", field: "syncStatusSpace", defaultSpace: "footer", allowDisabled: true },
@@ -221,7 +235,35 @@ export function initCustomWidgetsSettings() {
     const visibleOrder = order.filter(key =>
       (WIDGET_REGISTRY[key] || customWidgetMap.get(key)) && !secondaryCustomIds.has(key)
     );
-    visibleOrder.forEach((key, visibleIdx) => {
+    const getWidgetSpaceForKey = (key) => {
+      const builtInDef = WIDGET_REGISTRY[key];
+      const customDef = customWidgetMap.get(key);
+      if (customDef) {
+        return ["disabled", "header", "left", "center", "right", "footer"].includes(customDef.space)
+          ? customDef.space
+          : "header";
+      }
+      if (key === "dateTime") {
+        return (resolvedAppearance.dateTimeSpace === "disabled" || resolvedAppearance.showDateTime === false)
+          ? "disabled"
+          : (resolvedAppearance.dateTimeSpace || builtInDef.defaultSpace);
+      }
+      return builtInDef?.field ? (resolvedAppearance[builtInDef.field] || builtInDef.defaultSpace) : (builtInDef?.defaultSpace || "center");
+    };
+    const spaceKeyBuckets = {
+      header: [],
+      left: [],
+      center: [],
+      right: [],
+      footer: [],
+      disabled: []
+    };
+    for (const key of visibleOrder) {
+      const sp = getWidgetSpaceForKey(key);
+      const bk = spaceKeyBuckets[sp] ? sp : "right";
+      spaceKeyBuckets[bk].push(key);
+    }
+    visibleOrder.forEach((key) => {
       const builtInDef = WIDGET_REGISTRY[key];
       const customDef = customWidgetMap.get(key);
       if (!builtInDef && !customDef) return;
@@ -287,9 +329,15 @@ export function initCustomWidgetsSettings() {
           markSettingsDirty();
           const draft = await ensureAppearanceDraft();
           if (isCustom) {
-            draft.customWidgets = (draft.customWidgets || []).map(w =>
-              w.id === key ? { ...w, space: spaceControl.value } : w
-            );
+            draft.customWidgets = (draft.customWidgets || []).map(w => {
+              if (w.id !== key) return w;
+              const prevActive = (w.space && w.space !== "disabled") ? w.space : (w.lastActiveSpace || "right");
+              return {
+                ...w,
+                space: spaceControl.value,
+                lastActiveSpace: spaceControl.value !== "disabled" ? spaceControl.value : prevActive
+              };
+            });
           } else {
             draft[def.field] = spaceControl.value;
             if (key === "dateTime") {
@@ -298,6 +346,7 @@ export function initCustomWidgetsSettings() {
             }
           }
           renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -320,6 +369,7 @@ export function initCustomWidgetsSettings() {
           const draft = await ensureAppearanceDraft();
           draft.widgetAlign = { ...(draft.widgetAlign || {}), [key]: alignControl.value };
           renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -344,6 +394,7 @@ export function initCustomWidgetsSettings() {
           draft.widgetNewRow = { ...(draft.widgetNewRow || {}), [key]: nextVal };
           renderWidgetOrderList(draft);
           renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -351,51 +402,43 @@ export function initCustomWidgetsSettings() {
         actions.appendChild(newRowBtn);
       }
 
-      const upBtn = document.createElement("button");
-      upBtn.type = "button";
-      upBtn.className = "widget-order-btn";
-      upBtn.textContent = "↑";
-      upBtn.title = t("moveWidgetUp") || "Move up";
-      upBtn.disabled = visibleIdx === 0;
-      upBtn.addEventListener("click", async () => {
+      const bucketKey = spaceBuckets[currentSpace] ? currentSpace : "right";
+      const sameSpaceKeys = spaceKeyBuckets[bucketKey] || [];
+      const spaceIdx = sameSpaceKeys.indexOf(key);
+
+      const moveWithinSpace = async (delta) => {
+        const targetIdx = spaceIdx + delta;
+        if (spaceIdx === -1 || targetIdx < 0 || targetIdx >= sameSpaceKeys.length) return;
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
         const nextOrder = normalizeWidgetOrder(draft.widgetOrder, draft.customWidgets);
-        if (visibleIdx <= 0) return;
-        const prevKey = visibleOrder[visibleIdx - 1];
+        const targetKey = sameSpaceKeys[targetIdx];
         const curPos = nextOrder.indexOf(key);
-        const prevPos = nextOrder.indexOf(prevKey);
-        if (curPos === -1 || prevPos === -1) return;
-        [nextOrder[prevPos], nextOrder[curPos]] = [nextOrder[curPos], nextOrder[prevPos]];
+        const targetPos = nextOrder.indexOf(targetKey);
+        if (curPos === -1 || targetPos === -1) return;
+        [nextOrder[targetPos], nextOrder[curPos]] = [nextOrder[curPos], nextOrder[targetPos]];
         draft.widgetOrder = nextOrder;
         renderWidgetOrderList(draft);
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();
-      });
+      };
+
+      const upBtn = document.createElement("button");
+      upBtn.type = "button";
+      upBtn.className = "widget-order-btn";
+      upBtn.textContent = "↑";
+      upBtn.title = t("moveWidgetUp") || "Move up";
+      upBtn.disabled = spaceIdx <= 0;
+      upBtn.addEventListener("click", () => { void moveWithinSpace(-1); });
 
       const downBtn = document.createElement("button");
       downBtn.type = "button";
       downBtn.className = "widget-order-btn";
       downBtn.textContent = "↓";
       downBtn.title = t("moveWidgetDown") || "Move down";
-      downBtn.disabled = visibleIdx === visibleOrder.length - 1;
-      downBtn.addEventListener("click", async () => {
-        markSettingsDirty();
-        const draft = await ensureAppearanceDraft();
-        const nextOrder = normalizeWidgetOrder(draft.widgetOrder, draft.customWidgets);
-        if (visibleIdx >= visibleOrder.length - 1) return;
-        const nextKey = visibleOrder[visibleIdx + 1];
-        const curPos = nextOrder.indexOf(key);
-        const nextPos = nextOrder.indexOf(nextKey);
-        if (curPos === -1 || nextPos === -1) return;
-        [nextOrder[curPos], nextOrder[nextPos]] = [nextOrder[nextPos], nextOrder[curPos]];
-        draft.widgetOrder = nextOrder;
-        renderWidgetOrderList(draft);
-        await applySideSpaces({ appearance: draft });
-        await render();
-        calculateGridLayout();
-      });
+      downBtn.disabled = spaceIdx === -1 || spaceIdx >= sameSpaceKeys.length - 1;
+      downBtn.addEventListener("click", () => { void moveWithinSpace(1); });
 
       actions.append(upBtn, downBtn);
       if (alignControl) {
@@ -403,7 +446,6 @@ export function initCustomWidgetsSettings() {
       } else {
         row.append(nameEl, spaceControl, actions);
       }
-      const bucketKey = spaceBuckets[currentSpace] ? currentSpace : "right";
       spaceBuckets[bucketKey].push(row);
     });
 
@@ -447,10 +489,90 @@ export function initCustomWidgetsSettings() {
 
   const collapsedCustomWidgetGroups = new Set();
 
+  const closeAllWidgetMoreMenus = (exceptMenu = null) => {
+    if (!customWidgetsList) return;
+    customWidgetsList.querySelectorAll(".custom-widget-more-menu:not(.hidden)").forEach(menu => {
+      if (menu !== exceptMenu) menu.classList.add("hidden");
+    });
+  };
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Element) || !e.target.closest(".custom-widget-more-wrap")) {
+      closeAllWidgetMoreMenus();
+    }
+  });
+
+  const formatCompactWidgetSubtitle = (rawText) => {
+    const trimmed = typeof rawText === "string" ? rawText.trim() : "";
+    if (!trimmed) return "";
+    try {
+      const parsed = new URL(trimmed.replace(/\{[a-zA-Z0-9_-]+\}/g, "query"));
+      const pathPart = parsed.pathname && parsed.pathname !== "/" ? parsed.pathname : "";
+      return `${parsed.host}${pathPart}`;
+    } catch {
+      return trimmed;
+    }
+  };
+
+  const createCustomWidgetSpacePill = (targetWidgetId, currentSpace) => {
+    const validSpaces = ["disabled", "header", "left", "center", "right", "footer"];
+    const resolvedSpace = validSpaces.includes(currentSpace) ? currentSpace : "header";
+    const isDisabled = resolvedSpace === "disabled";
+    const spaceLabels = {
+      disabled: t("spaceDisabled") || "Disabled",
+      header: t("spaceHeader") || "Header",
+      left: t("spaceLeft") || "Left space",
+      center: t("spaceCenter") || "Center space",
+      right: t("spaceRight") || "Right space",
+      footer: t("spaceFooter") || "Footer"
+    };
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = `custom-widget-space-pill${isDisabled ? " is-disabled" : ""}`;
+    const labelText = spaceLabels[resolvedSpace] || resolvedSpace;
+    pill.textContent = labelText;
+    pill.title = `${labelText} — click to ${isDisabled ? "enable" : "disable"} (change placement in Appearance → Widgets)`;
+    pill.setAttribute("aria-pressed", String(!isDisabled));
+    pill.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      markSettingsDirty();
+      const draft = await ensureAppearanceDraft();
+      draft.customWidgets = (draft.customWidgets || []).map(w => {
+        if (w.id !== targetWidgetId) return w;
+        const currentlyDisabled = w.space === "disabled";
+        if (currentlyDisabled) {
+          const restoreSpace = (w.lastActiveSpace && w.lastActiveSpace !== "disabled") ? w.lastActiveSpace : "right";
+          return { ...w, space: restoreSpace, lastActiveSpace: restoreSpace };
+        }
+        const activeSpace = validSpaces.includes(w.space) ? w.space : "right";
+        return { ...w, space: "disabled", lastActiveSpace: activeSpace };
+      });
+      renderWidgetOrderList(draft);
+      renderCustomWidgetsList(draft);
+      await applySideSpaces({ appearance: draft });
+      await render();
+      calculateGridLayout();
+    });
+    return pill;
+  };
+
+  if (customWidgetsFilterInput) {
+    customWidgetsFilterInput.addEventListener("input", () => {
+      renderCustomWidgetsList(settingsState.appearanceDraft);
+    });
+  }
+  if (customWidgetsTypeFilter) {
+    customWidgetsTypeFilter.addEventListener("change", () => {
+      renderCustomWidgetsList(settingsState.appearanceDraft);
+    });
+  }
+
   const renderCustomWidgetsList = (appearance = null) => {
     if (!customWidgetsList) return;
     const customList = Array.isArray(appearance?.customWidgets) ? appearance.customWidgets : [];
     customWidgetsList.innerHTML = "";
+    if (customWidgetsFilterBar) {
+      customWidgetsFilterBar.classList.toggle("hidden", customList.length === 0);
+    }
     if (customWidgetExportAllBtn) {
       customWidgetExportAllBtn.classList.toggle("hidden", customList.length === 0);
     }
@@ -466,9 +588,59 @@ export function initCustomWidgetsSettings() {
       return;
     }
 
-    const buildCustomWidgetLibraryRow = (customDef) => {
+    const filterQuery = (customWidgetsFilterInput?.value || "").trim().toLowerCase();
+    const filterType = customWidgetsTypeFilter?.value || "all";
+    const groupSpaceByKey = new Map();
+    for (const w of customList) {
+      const gName = typeof w?.groupName === "string" ? w.groupName.trim() : "";
+      if (!gName) continue;
+      const gKey = `${w.type || "custom-search"}:${gName.toLowerCase()}`;
+      const existing = groupSpaceByKey.get(gKey);
+      if (!existing || w.isDefault) {
+        groupSpaceByKey.set(gKey, w.space || "header");
+      }
+    }
+    const filteredList = customList.filter(w => {
+      if (!w?.id) return false;
+      const wType = w.type || "custom-search";
+      const gName = typeof w.groupName === "string" ? w.groupName.trim() : "";
+      const effSpace = gName ? groupSpaceByKey.get(`${wType}:${gName.toLowerCase()}`) : w.space;
+      if (filterType === "disabled") {
+        if (effSpace !== "disabled") return false;
+      } else if (filterType !== "all" && wType !== filterType) {
+        return false;
+      }
+      if (filterQuery) {
+        const haystack = [w.name, gName, w.urlTemplate, w.endpointUrl, w.sourceUrl]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(filterQuery)) return false;
+      }
+      return true;
+    });
+
+    if (filteredList.length === 0) {
+      const emptyEl = document.createElement("div");
+      emptyEl.className = "custom-widgets-empty";
+      emptyEl.textContent = t("customWidgetsFilterEmpty") || "No matching widgets.";
+      customWidgetsList.appendChild(emptyEl);
+      return;
+    }
+
+    const createDisabledStatusDot = () => {
+      const dot = document.createElement("span");
+      dot.className = "custom-widget-disabled-dot";
+      const label = t("spaceDisabled") || "Disabled";
+      dot.title = label;
+      dot.setAttribute("aria-label", label);
+      return dot;
+    };
+
+    const buildCustomWidgetLibraryRow = (customDef, effectiveSpace = customDef?.space, { insideGroup = false } = {}) => {
+      const isDisabled = effectiveSpace === "disabled";
       const row = document.createElement("div");
-      row.className = "widget-order-item custom-widget-library-item";
+      row.className = `widget-order-item custom-widget-library-item${isDisabled ? " is-disabled" : ""}`;
 
       const { emoji, customIcon } = resolveCustomWidgetIcon(customDef);
       const iconWrap = document.createElement("span");
@@ -488,9 +660,16 @@ export function initCustomWidgetsSettings() {
 
       const info = document.createElement("div");
       info.className = "custom-widget-library-info";
+      info.addEventListener("click", () => {
+        loadCustomWidgetIntoForm(customDef);
+        openCustomWidgetEditorModal();
+      });
       const titleEl = document.createElement("div");
       titleEl.className = "custom-widget-library-name";
       titleEl.textContent = customDef.name || customDef.id;
+      if (isDisabled) {
+        titleEl.appendChild(createDisabledStatusDot());
+      }
       const isTimezone = customDef.type === "timezone";
       const isRestStatus = customDef.type === "rest-status";
       const isNotes = customDef.type === "notes";
@@ -507,7 +686,7 @@ export function initCustomWidgetsSettings() {
             : (customDef.mode === "json" ? "JSON" : "Simple")));
       titleEl.appendChild(badge);
       const groupName = !isNonSearch && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
-      if (groupName) {
+      if (groupName && !insideGroup) {
         const groupBadge = document.createElement("span");
         groupBadge.className = "custom-widget-group-badge";
         groupBadge.textContent = groupName;
@@ -521,102 +700,31 @@ export function initCustomWidgetsSettings() {
         routeBadge.title = `${t("customSearchAutoRoutedBadge") || "Auto-routed"}: ${routePrefixes.join(", ")}`;
         titleEl.appendChild(routeBadge);
       }
+      if (customDef.sourceUrl) {
+        const srcBadge = document.createElement("span");
+        srcBadge.className = "custom-widget-mode-badge";
+        srcBadge.textContent = "🌐";
+        srcBadge.title = customDef.sourceUrl;
+        titleEl.appendChild(srcBadge);
+      }
 
       const urlEl = document.createElement("div");
       urlEl.className = "custom-widget-library-url";
-      urlEl.textContent = isNotes
+      const rawSubtitle = isNotes
         ? (customDef.compactMode ? (t("customNotesCompactMode") || "Compact button only") : (t("customWidgetModeNotes") || "Notes / Scratchpad"))
         : (isRestStatus
           ? (customDef.endpointUrl || "")
           : (isTimezone
             ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
             : (customDef.urlTemplate || "")));
-      info.append(titleEl, urlEl);
-      if (customDef.sourceUrl) {
-        const sourceEl = document.createElement("div");
-        sourceEl.className = "custom-widget-library-source";
-        sourceEl.textContent = customDef.sourceUrl;
-        info.appendChild(sourceEl);
+      urlEl.textContent = (isNotes || isTimezone) ? rawSubtitle : formatCompactWidgetSubtitle(rawSubtitle);
+      if (rawSubtitle) {
+        urlEl.title = rawSubtitle;
       }
+      info.append(titleEl, urlEl);
 
       const actions = document.createElement("div");
       actions.className = "widget-order-actions";
-
-      if (customDef.sourceUrl) {
-        const updateBtn = document.createElement("button");
-        updateBtn.type = "button";
-        updateBtn.className = "widget-order-btn";
-        updateBtn.textContent = "🔄";
-        updateBtn.title = t("customSearchUpdateWidgetTitle") || "Update from URL";
-        updateBtn.addEventListener("click", async () => {
-          await updateSingleCustomWidgetFromUrl(customDef.id);
-        });
-        actions.appendChild(updateBtn);
-      }
-
-      if (customDef.previousVersion) {
-        const revertBtn = document.createElement("button");
-        revertBtn.type = "button";
-        revertBtn.className = "widget-order-btn";
-        revertBtn.textContent = "↩️";
-        revertBtn.title = t("customSearchRevertWidgetTitle") || "Revert to previous version";
-        revertBtn.addEventListener("click", async () => {
-          markSettingsDirty();
-          const draft = await ensureAppearanceDraft();
-          draft.customWidgets = (draft.customWidgets || []).map(w =>
-            w.id === customDef.id ? revertCustomWidgetVersion(w) : w
-          );
-          if (editingCustomWidgetId === customDef.id) {
-            const reverted = draft.customWidgets.find(w => w.id === customDef.id);
-            if (reverted) loadCustomWidgetIntoForm(reverted);
-          }
-          renderWidgetOrderList(draft);
-          await applySideSpaces({ appearance: draft });
-          await render();
-          calculateGridLayout();
-          if (customWidgetsLibraryStatus) {
-            customWidgetsLibraryStatus.textContent = "↩️ " + (t("customSearchRevertedSuccess") || "Reverted to previous version (click Save to persist).");
-          }
-        });
-        actions.appendChild(revertBtn);
-      }
-
-      const exportOneBtn = document.createElement("button");
-      exportOneBtn.type = "button";
-      exportOneBtn.className = "widget-order-btn";
-      exportOneBtn.textContent = "📥";
-      exportOneBtn.title = t("exportWidgetTitle") || "Export widget";
-      exportOneBtn.addEventListener("click", () => {
-        const slug = (customDef.name || "widget").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "widget";
-        exportCustomWidgetsLibrary([customDef], `simple-dial-widget-${slug}`, customWidgetStatus);
-      });
-
-      const dupBtn = document.createElement("button");
-      dupBtn.type = "button";
-      dupBtn.className = "widget-order-btn";
-      dupBtn.textContent = "📋";
-      dupBtn.title = t("customSearchDuplicateWidgetTitle") || "Duplicate widget";
-      dupBtn.addEventListener("click", async () => {
-        markSettingsDirty();
-        const draft = await ensureAppearanceDraft();
-        const copyLabel = t("customSearchCopySuffix") || "Copy";
-        const cloned = {
-          ...customDef,
-          id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-          name: `${customDef.name || "Widget"} (${copyLabel})`,
-          variables: Array.isArray(customDef.variables) ? customDef.variables.map(v => ({ ...v })) : []
-        };
-        delete cloned.sourceUrl;
-        delete cloned.sourceUpdatedAt;
-        delete cloned.previousVersion;
-        if ("authHeaderValue" in cloned) cloned.authHeaderValue = "";
-        draft.customWidgets = [...(draft.customWidgets || []), cloned];
-        draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), cloned.id], draft.customWidgets);
-        renderWidgetOrderList(draft);
-        await applySideSpaces({ appearance: draft });
-        await render();
-        calculateGridLayout();
-      });
 
       if (groupName) {
         const gKey = groupName.toLowerCase();
@@ -650,12 +758,16 @@ export function initCustomWidgetsSettings() {
             [gKey]: false
           };
           renderWidgetOrderList(draft);
-          renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
         });
         actions.appendChild(defaultBtn);
+      }
+
+      if (!(typeof customDef.groupName === "string" && customDef.groupName.trim())) {
+        actions.appendChild(createCustomWidgetSpacePill(customDef.id, customDef.space));
       }
 
       const editBtn = document.createElement("button");
@@ -668,12 +780,90 @@ export function initCustomWidgetsSettings() {
         openCustomWidgetEditorModal();
       });
 
-      const delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "widget-order-btn widget-delete-btn";
-      delBtn.textContent = "🗑️";
-      delBtn.title = t("deleteWidgetTitle") || "Delete widget";
-      delBtn.addEventListener("click", async () => {
+      const moreWrap = document.createElement("div");
+      moreWrap.className = "custom-widget-more-wrap";
+
+      const moreBtn = document.createElement("button");
+      moreBtn.type = "button";
+      moreBtn.className = "widget-order-btn custom-widget-more-btn";
+      moreBtn.textContent = "⋯";
+      moreBtn.title = t("moreActions") || "More actions";
+      moreBtn.setAttribute("aria-haspopup", "menu");
+
+      const moreMenu = document.createElement("div");
+      moreMenu.className = "custom-widget-more-menu hidden";
+      moreMenu.setAttribute("role", "menu");
+
+      const addMenuItem = (label, onClick, { danger = false } = {}) => {
+        const itemBtn = document.createElement("button");
+        itemBtn.type = "button";
+        itemBtn.className = `custom-widget-more-item${danger ? " danger" : ""}`;
+        itemBtn.setAttribute("role", "menuitem");
+        itemBtn.textContent = label;
+        itemBtn.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          moreMenu.classList.add("hidden");
+          await onClick();
+        });
+        moreMenu.appendChild(itemBtn);
+      };
+
+      addMenuItem(`📋 ${t("customSearchDuplicateWidgetTitle") || "Duplicate"}`, async () => {
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        const copyLabel = t("customSearchCopySuffix") || "Copy";
+        const cloned = {
+          ...customDef,
+          id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          name: `${customDef.name || "Widget"} (${copyLabel})`,
+          variables: Array.isArray(customDef.variables) ? customDef.variables.map(v => ({ ...v })) : []
+        };
+        delete cloned.sourceUrl;
+        delete cloned.sourceUpdatedAt;
+        delete cloned.previousVersion;
+        if ("authHeaderValue" in cloned) cloned.authHeaderValue = "";
+        draft.customWidgets = [...(draft.customWidgets || []), cloned];
+        draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), cloned.id], draft.customWidgets);
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      });
+
+      addMenuItem(`📥 ${t("exportWidgetTitle") || "Export"}`, () => {
+        const slug = (customDef.name || "widget").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "widget";
+        exportCustomWidgetsLibrary([customDef], `simple-dial-widget-${slug}`, customWidgetStatus);
+      });
+
+      if (customDef.sourceUrl) {
+        addMenuItem(`🔄 ${t("customSearchUpdateWidgetTitle") || "Update from URL"}`, async () => {
+          await updateSingleCustomWidgetFromUrl(customDef.id);
+        });
+      }
+
+      if (customDef.previousVersion) {
+        addMenuItem(`↩️ ${t("customSearchRevertWidgetTitle") || "Revert"}`, async () => {
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w.id === customDef.id ? revertCustomWidgetVersion(w) : w
+          );
+          if (editingCustomWidgetId === customDef.id) {
+            const reverted = draft.customWidgets.find(w => w.id === customDef.id);
+            if (reverted) loadCustomWidgetIntoForm(reverted);
+          }
+          renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+          if (customWidgetsLibraryStatus) {
+            customWidgetsLibraryStatus.textContent = "↩️ " + (t("customSearchRevertedSuccess") || "Reverted to previous version (click Save to persist).");
+          }
+        });
+      }
+
+      addMenuItem(`🗑️ ${t("deleteWidgetTitle") || "Delete"}`, async () => {
         markSettingsDirty();
         if (editingCustomWidgetId === customDef.id) {
           resetCustomWidgetForm();
@@ -690,16 +880,24 @@ export function initCustomWidgetsSettings() {
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();
+      }, { danger: true });
+
+      moreBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const wasHidden = moreMenu.classList.contains("hidden");
+        closeAllWidgetMoreMenus(moreMenu);
+        moreMenu.classList.toggle("hidden", !wasHidden);
       });
 
-      actions.append(exportOneBtn, dupBtn, editBtn, delBtn);
+      moreWrap.append(moreBtn, moreMenu);
+      actions.append(editBtn, moreWrap);
       row.append(iconWrap, info, actions);
       return row;
     };
 
     const entries = [];
     const groupMap = new Map();
-    for (const customDef of customList) {
+    for (const customDef of filteredList) {
       if (!customDef?.id) continue;
       const isTimezone = customDef.type === "timezone";
       const groupName = typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
@@ -724,8 +922,10 @@ export function initCustomWidgetsSettings() {
       }
 
       const groupKey = entry.groupName.toLowerCase();
+      const groupRep = entry.members.find(m => m?.isDefault) || entry.members[0];
+      const isGroupDisabled = groupRep?.space === "disabled";
       const groupCard = document.createElement("div");
-      groupCard.className = "custom-widget-group-card";
+      groupCard.className = `custom-widget-group-card${isGroupDisabled ? " is-disabled" : ""}`;
 
       const groupHeader = document.createElement("div");
       groupHeader.className = "custom-widget-group-header";
@@ -740,6 +940,9 @@ export function initCustomWidgetsSettings() {
       countBadge.className = "custom-widget-group-count";
       countBadge.textContent = String(entry.members.length);
       groupTitle.append(chevronSpan, groupNameSpan, countBadge);
+      if (isGroupDisabled) {
+        groupTitle.appendChild(createDisabledStatusDot());
+      }
 
       const groupPrefixes = entry.members.flatMap(m => normalizeCustomSearchRoutePrefixes(m?.routePrefixes));
       let autoRouteIconEditor = null;
@@ -824,6 +1027,7 @@ export function initCustomWidgetsSettings() {
           }
           draft.customSearchAutoRouteIcons = nextIcons;
           renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -865,6 +1069,7 @@ export function initCustomWidgetsSettings() {
             [groupKey]: true
           };
           renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
           calculateGridLayout();
@@ -872,23 +1077,92 @@ export function initCustomWidgetsSettings() {
         groupTitle.append(autoRouteIconBtn, autoRouteDefaultBtn);
       }
 
+      const groupActions = document.createElement("div");
+      groupActions.className = "custom-widget-group-actions";
+
+      const groupSpacePill = createCustomWidgetSpacePill(groupRep.id, groupRep?.space);
+
+      const renameGroupBtn = document.createElement("button");
+      renameGroupBtn.type = "button";
+      renameGroupBtn.className = "widget-order-btn";
+      renameGroupBtn.textContent = "✏️";
+      renameGroupBtn.title = t("rename") || "Rename group";
+      renameGroupBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const entered = prompt(t("customWidgetsRenameGroupPrompt") || "New group name:", entry.groupName);
+        if (entered === null) return;
+        const nextName = entered.trim();
+        if (!nextName || nextName === entry.groupName) return;
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        const memberIds = new Set(entry.members.map(m => m.id));
+        draft.customWidgets = (draft.customWidgets || []).map(w =>
+          memberIds.has(w.id) ? { ...w, groupName: nextName } : w
+        );
+        const nextKey = nextName.toLowerCase();
+        if (nextKey !== groupKey) {
+          if (draft.customSearchAutoRouteDefaults && Object.prototype.hasOwnProperty.call(draft.customSearchAutoRouteDefaults, groupKey)) {
+            draft.customSearchAutoRouteDefaults[nextKey] = draft.customSearchAutoRouteDefaults[groupKey];
+            delete draft.customSearchAutoRouteDefaults[groupKey];
+          }
+          if (draft.customSearchAutoRouteIcons && Object.prototype.hasOwnProperty.call(draft.customSearchAutoRouteIcons, groupKey)) {
+            draft.customSearchAutoRouteIcons[nextKey] = draft.customSearchAutoRouteIcons[groupKey];
+            delete draft.customSearchAutoRouteIcons[groupKey];
+          }
+        }
+        renderWidgetOrderList(draft);
+        renderCustomWidgetsList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      });
+
       const exportGroupBtn = document.createElement("button");
       exportGroupBtn.type = "button";
-      exportGroupBtn.className = "icon-btn custom-widget-group-export-btn";
-      exportGroupBtn.textContent = "📥 " + (t("customWidgetsExportGroupBtn") || "Export group");
+      exportGroupBtn.className = "widget-order-btn";
+      exportGroupBtn.textContent = "📥";
+      exportGroupBtn.title = t("customWidgetsExportGroupBtn") || "Export group";
       exportGroupBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         const slug = entry.groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "group";
         exportCustomWidgetsLibrary(entry.members, `simple-dial-group-${slug}`, customWidgetsLibraryStatus);
       });
 
-      groupHeader.append(groupTitle, exportGroupBtn);
+      const deleteGroupBtn = document.createElement("button");
+      deleteGroupBtn.type = "button";
+      deleteGroupBtn.className = "widget-order-btn danger";
+      deleteGroupBtn.textContent = "🗑️";
+      deleteGroupBtn.title = t("delete") || "Delete group";
+      deleteGroupBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete group "${entry.groupName}" and all ${entry.members.length} widgets in it?`)) return;
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        const memberIds = new Set(entry.members.map(m => m.id));
+        draft.customWidgets = (draft.customWidgets || []).filter(w => !memberIds.has(w.id));
+        draft.widgetOrder = normalizeWidgetOrder(
+          (draft.widgetOrder || []).filter(id => !memberIds.has(id)),
+          draft.customWidgets
+        );
+        for (const id of memberIds) {
+          if (draft.widgetAlign) delete draft.widgetAlign[id];
+          if (draft.widgetNewRow) delete draft.widgetNewRow[id];
+        }
+        renderWidgetOrderList(draft);
+        renderCustomWidgetsList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+      });
+
+      groupActions.append(groupSpacePill, renameGroupBtn, exportGroupBtn, deleteGroupBtn);
+      groupHeader.append(groupTitle, groupActions);
       bindCollapsibleGroupToggle(groupCard, groupHeader, chevronSpan, collapsedCustomWidgetGroups, groupKey);
 
       const membersWrap = document.createElement("div");
       membersWrap.className = "custom-widget-group-members";
       for (const member of entry.members) {
-        membersWrap.appendChild(buildCustomWidgetLibraryRow(member));
+        membersWrap.appendChild(buildCustomWidgetLibraryRow(member, groupRep?.space, { insideGroup: true }));
       }
 
       groupCard.appendChild(groupHeader);
@@ -1013,6 +1287,118 @@ export function initCustomWidgetsSettings() {
     });
   }
 
+  let lastSelectedWidgetGroup = "";
+
+  const renderCustomWidgetGroupSelect = (selectedValue = null) => {
+    if (!customWidgetGroupSelect) return;
+    const mode = customWidgetModeSelect?.value || "simple";
+    if (mode === "timezone" || mode === "notes") {
+      customWidgetGroupSelect.innerHTML = "";
+      customWidgetGroupSelect.classList.add("hidden");
+      return;
+    }
+    const isRest = mode === "rest-status";
+    const list = Array.isArray(settingsState.appearanceDraft?.customWidgets)
+      ? settingsState.appearanceDraft.customWidgets
+      : [];
+    const seen = new Map();
+    for (const w of list) {
+      if (!w) continue;
+      const wIsRest = w.type === "rest-status";
+      const wIsUnsupported = w.type === "timezone" || w.type === "notes";
+      if (wIsUnsupported || wIsRest !== isRest) continue;
+      const name = typeof w.groupName === "string" ? w.groupName.trim() : "";
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (!seen.has(key)) seen.set(key, name);
+    }
+
+    const desiredRaw = selectedValue !== null
+      ? String(selectedValue).trim()
+      : (customWidgetGroupSelect.value === "__create__" ? lastSelectedWidgetGroup : customWidgetGroupSelect.value.trim());
+    if (desiredRaw && desiredRaw !== "__create__" && !seen.has(desiredRaw.toLowerCase())) {
+      seen.set(desiredRaw.toLowerCase(), desiredRaw);
+    }
+
+    const groupNames = Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+    customWidgetGroupSelect.innerHTML = "";
+
+    const placeholderOpt = document.createElement("option");
+    placeholderOpt.value = "";
+    placeholderOpt.textContent = `— ${t("customSearchGroupPlaceholder") || "Group (optional)"} —`;
+    customWidgetGroupSelect.appendChild(placeholderOpt);
+
+    let matchedValue = "";
+    const desiredKey = desiredRaw.toLowerCase();
+    for (const groupName of groupNames) {
+      const opt = document.createElement("option");
+      opt.value = groupName;
+      opt.textContent = groupName;
+      if (desiredKey && groupName.toLowerCase() === desiredKey) {
+        matchedValue = groupName;
+      }
+      customWidgetGroupSelect.appendChild(opt);
+    }
+
+    const createOpt = document.createElement("option");
+    createOpt.value = "__create__";
+    createOpt.textContent = "+ Create New Group...";
+    customWidgetGroupSelect.appendChild(createOpt);
+
+    customWidgetGroupSelect.value = matchedValue;
+    lastSelectedWidgetGroup = matchedValue;
+    customWidgetGroupSelect.classList.remove("hidden");
+  };
+
+  const closeNewWidgetGroupModal = ({ restorePrevious = true } = {}) => {
+    if (customWidgetNewGroupModal) {
+      customWidgetNewGroupModal.classList.add("hidden");
+    }
+    if (restorePrevious && customWidgetGroupSelect) {
+      customWidgetGroupSelect.value = lastSelectedWidgetGroup || "";
+    }
+  };
+
+  const confirmNewWidgetGroupModal = () => {
+    const entered = (customWidgetNewGroupInput?.value || "").trim();
+    if (!entered) {
+      customWidgetNewGroupInput?.focus();
+      return;
+    }
+    closeNewWidgetGroupModal({ restorePrevious: false });
+    renderCustomWidgetGroupSelect(entered);
+  };
+
+  if (customWidgetGroupSelect) {
+    customWidgetGroupSelect.addEventListener("change", () => {
+      if (customWidgetGroupSelect.value === "__create__") {
+        if (customWidgetNewGroupInput) customWidgetNewGroupInput.value = "";
+        customWidgetNewGroupModal?.classList.remove("hidden");
+        customWidgetNewGroupInput?.focus();
+        return;
+      }
+      lastSelectedWidgetGroup = customWidgetGroupSelect.value || "";
+    });
+  }
+  customWidgetNewGroupCreateBtn?.addEventListener("click", confirmNewWidgetGroupModal);
+  customWidgetNewGroupCancelBtn?.addEventListener("click", () => closeNewWidgetGroupModal({ restorePrevious: true }));
+  customWidgetNewGroupInput?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      ev.stopPropagation();
+      confirmNewWidgetGroupModal();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeNewWidgetGroupModal({ restorePrevious: true });
+    }
+  });
+  customWidgetNewGroupModal?.addEventListener("click", (ev) => {
+    if (ev.target === customWidgetNewGroupModal) {
+      closeNewWidgetGroupModal({ restorePrevious: true });
+    }
+  });
+
   const syncCustomWidgetModeUI = () => {
     const mode = customWidgetModeSelect?.value || "simple";
     const isJson = mode === "json";
@@ -1056,23 +1442,23 @@ export function initCustomWidgetsSettings() {
     if (customWidgetVarsSection) {
       customWidgetVarsSection.classList.toggle("hidden", isNonSearch);
     }
+    if (customWidgetUrlField) {
+      customWidgetUrlField.classList.toggle("hidden", isNonSearch);
+    }
     if (customWidgetUrlInput) {
-      customWidgetUrlInput.classList.toggle("hidden", isNonSearch);
       customWidgetUrlInput.placeholder = isJson
         ? "https://example.com/search/"
         : (t("customSearchUrlPlaceholder") || "https://www.google.com/search?q={query}");
     }
-    if (customWidgetGroupInput) {
-      customWidgetGroupInput.classList.toggle("hidden", isTimezone || isNotes);
+    if (customWidgetGroupField) {
+      customWidgetGroupField.classList.toggle("hidden", isTimezone || isNotes);
     }
-    if (customWidgetRoutePrefixesInput) {
-      customWidgetRoutePrefixesInput.classList.toggle("hidden", isNonSearch);
+    renderCustomWidgetGroupSelect();
+    if (customWidgetSearchAdvanced) {
+      customWidgetSearchAdvanced.classList.toggle("hidden", isNonSearch);
     }
-    if (customWidgetNewTabLabel) {
-      customWidgetNewTabLabel.classList.toggle("hidden", isNonSearch);
-    }
-    if (customWidgetDefaultLabel) {
-      customWidgetDefaultLabel.classList.toggle("hidden", isNonSearch);
+    if (customWidgetRestAdvanced) {
+      customWidgetRestAdvanced.classList.toggle("hidden", !isRestStatus);
     }
     if (customWidgetPreviewToggleBtn) {
       customWidgetPreviewToggleBtn.classList.toggle("hidden", isNonSearch);
@@ -1259,7 +1645,8 @@ export function initCustomWidgetsSettings() {
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = "";
     if (customWidgetModeSelect) customWidgetModeSelect.value = "simple";
     if (customWidgetNameInput) customWidgetNameInput.value = "";
-    if (customWidgetGroupInput) customWidgetGroupInput.value = "";
+    if (customWidgetGroupSelect) customWidgetGroupSelect.value = "";
+    lastSelectedWidgetGroup = "";
     if (customWidgetRoutePrefixesInput) customWidgetRoutePrefixesInput.value = "";
     if (customWidgetUrlInput) customWidgetUrlInput.value = "";
     if (customWidgetJsonTemplateInput) customWidgetJsonTemplateInput.value = "";
@@ -1292,7 +1679,9 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestCollapseMetrics) customWidgetRestCollapseMetrics.checked = false;
     if (customWidgetNotesCompact) customWidgetNotesCompact.checked = false;
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
+    if (customWidgetAdvancedDetails) customWidgetAdvancedDetails.open = false;
     syncCustomWidgetModeUI();
+    renderCustomWidgetGroupSelect("");
     renderCustomWidgetVarsEditor();
     renderCustomWidgetTzEditor();
   };
@@ -1316,7 +1705,8 @@ export function initCustomWidgetsSettings() {
           : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple")));
     }
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
-    if (customWidgetGroupInput) customWidgetGroupInput.value = isTimezone ? "" : (widget.groupName || "");
+    const initialGroupName = isTimezone || isNotes ? "" : (widget.groupName || "");
+    lastSelectedWidgetGroup = initialGroupName;
     if (customWidgetRoutePrefixesInput) {
       customWidgetRoutePrefixesInput.value = isNonSearch
         ? ""
@@ -1376,6 +1766,26 @@ export function initCustomWidgetsSettings() {
       ? widget.timeZones.map(z => ({ label: z.label || "", timeZone: z.timeZone || "" }))
       : [{ label: "UTC", timeZone: "UTC" }];
     syncCustomWidgetModeUI();
+    renderCustomWidgetGroupSelect(initialGroupName);
+    if (customWidgetAdvancedDetails) {
+      const hasAdvanced = Boolean(
+        widget.customIcon ||
+        (!isNonSearch && normalizeCustomSearchRoutePrefixes(widget.routePrefixes).length > 0) ||
+        (!isNonSearch && widget.openInNewTab) ||
+        (!isNonSearch && widget.isDefault) ||
+        (isRestStatus && (
+          widget.valueMap ||
+          widget.linkUrl ||
+          (Array.isArray(widget.metrics) && widget.metrics.length > 0) ||
+          widget.collapseMetrics ||
+          widget.hideGroupName ||
+          widget.hideValue ||
+          widget.authHeaderName ||
+          widget.authHeaderValue
+        ))
+      );
+      customWidgetAdvancedDetails.open = hasAdvanced;
+    }
     renderCustomWidgetVarsEditor();
     renderCustomWidgetTzEditor();
   };
@@ -1586,7 +1996,8 @@ export function initCustomWidgetsSettings() {
       const isNotes = selectedMode === "notes";
       const mode = selectedMode === "json" ? "json" : "simple";
       const name = (customWidgetNameInput?.value || "").trim();
-      const groupName = (customWidgetGroupInput?.value || "").trim();
+      const rawGroupName = (customWidgetGroupSelect?.value || "").trim();
+      const groupName = rawGroupName === "__create__" ? "" : rawGroupName;
       const urlTemplate = (customWidgetUrlInput?.value || "").trim();
       const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
       const defaultIcon = isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"));
@@ -2063,6 +2474,15 @@ export function initCustomWidgetsSettings() {
     });
   }
 
+  if (customWidgetToggleUrlBtn && customWidgetUrlImportBox) {
+    customWidgetToggleUrlBtn.addEventListener("click", () => {
+      const isNowHidden = customWidgetUrlImportBox.classList.toggle("hidden");
+      if (!isNowHidden) {
+        customWidgetSourceUrlInput?.focus();
+      }
+    });
+  }
+
   if (customWidgetLoadUrlBtn && customWidgetSourceUrlInput) {
     customWidgetLoadUrlBtn.addEventListener("click", async () => {
       const rawUrl = customWidgetSourceUrlInput.value.trim();
@@ -2081,6 +2501,7 @@ export function initCustomWidgetsSettings() {
         const { url, widgets } = await fetchCustomWidgetsFromUrl(rawUrl);
         const { total } = await mergeImportedCustomWidgets(widgets, { sourceUrl: url });
         customWidgetSourceUrlInput.value = "";
+        customWidgetUrlImportBox?.classList.add("hidden");
         if (customWidgetStatus) {
           customWidgetStatus.textContent = "✅ " + (t("customSearchImportSuccess") || "Imported") + ` (${total})`;
         }

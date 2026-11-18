@@ -726,33 +726,38 @@
       <div id="widgets-tab" class="settings-tab-content">
         <div class="appearance-grid">
           <div class="sync-section-card appearance-card appearance-card-wide">
-            <div class="custom-widget-add-block custom-widget-add-block-tab">
-              <div class="custom-widget-submit-row">
-                <button type="button" id="open-new-custom-widget-btn" class="icon-btn primary" data-i18n="customWidgetAddNewBtn">+ Add new widget</button>
-                <div class="custom-widget-library-actions">
-                  <button type="button" id="custom-widget-export-btn" class="icon-btn" data-i18n="export">📥 Export</button>
-                  <button type="button" id="custom-widget-import-btn" class="icon-btn" data-i18n="import">📤 Import</button>
-                </div>
-                <input type="file" id="custom-widget-import-file" accept=".json" style="display: none;">
-              </div>
-              <div class="custom-widget-url-import-row">
-                <input type="url" id="custom-widget-source-url" class="sync-compact-input custom-widget-source-url-input" data-i18n-placeholder="customSearchSourceUrlPlaceholder" placeholder="https://example.com/custom-widgets.json" aria-label="Widget JSON URL">
-                <button type="button" id="custom-widget-load-url-btn" class="icon-btn" data-i18n="customSearchLoadUrlBtn">🌐 Load from URL</button>
-              </div>
-              <div class="custom-widget-trust-warning" data-i18n="customSearchTrustedSourceWarning">⚠️ Only import or load custom widgets from sources you trust.</div>
-              <div id="custom-widget-status" class="status"></div>
-            </div>
-          </div>
-
-          <div class="sync-section-card appearance-card appearance-card-wide">
             <div class="custom-widgets-library-header">
-              <h3 data-i18n="customWidgetsLibraryTitle">Saved Custom Widgets</h3>
-              <div class="custom-widgets-library-header-actions">
-                <button type="button" id="custom-widget-export-all-btn" class="icon-btn hidden" data-i18n="customWidgetsExportAllBtn">📥 Export all</button>
+              <div class="custom-widgets-toolbar-left">
+                <button type="button" id="open-new-custom-widget-btn" class="icon-btn primary" data-i18n="customWidgetAddNewBtn">+ Add new widget</button>
+                <a id="custom-widget-examples-link" class="icon-btn" href="https://github.com/Morenn/simpledial-widget-examples" target="_blank" rel="noopener noreferrer" data-i18n="customWidgetExamplesBtn">🧩 Widget Examples ↗</a>
+              </div>
+              <div class="custom-widget-library-actions">
+                <button type="button" id="custom-widget-import-btn" class="icon-btn" data-i18n="import">📤 Import</button>
+                <button type="button" id="custom-widget-toggle-url-btn" class="icon-btn" data-i18n="customSearchLoadUrlBtn">🌐 Load from URL</button>
+                <button type="button" id="custom-widget-export-all-btn" class="icon-btn hidden" data-i18n="export">📥 Export</button>
                 <button type="button" id="custom-widget-update-all-btn" class="icon-btn hidden" data-i18n="customSearchUpdateAllBtn">🔄 Update from URL</button>
               </div>
+              <input type="file" id="custom-widget-import-file" accept=".json" style="display: none;">
+            </div>
+            <div id="custom-widget-url-import-box" class="custom-widget-url-import-box hidden">
+              <div class="custom-widget-url-import-row">
+                <input type="url" id="custom-widget-source-url" class="sync-compact-input custom-widget-source-url-input" data-i18n-placeholder="customSearchSourceUrlPlaceholder" placeholder="https://example.com/custom-widgets.json" aria-label="Widget JSON URL">
+                <button type="button" id="custom-widget-load-url-btn" class="icon-btn primary" data-i18n="customSearchLoadUrlBtn">🌐 Load from URL</button>
+              </div>
+              <div class="custom-widget-trust-warning" data-i18n="customSearchTrustedSourceWarning">⚠️ Only import or load custom widgets from sources you trust.</div>
             </div>
             <div id="custom-widgets-library-status" class="status"></div>
+            <div id="custom-widgets-filter-bar" class="custom-widgets-filter-bar hidden">
+              <input type="search" id="custom-widgets-filter-input" class="sync-compact-input custom-widgets-filter-input" placeholder="Filter widgets..." aria-label="Filter widgets">
+              <select id="custom-widgets-type-filter" class="appearance-select custom-widgets-type-filter" aria-label="Filter widgets by type">
+                <option value="all">All</option>
+                <option value="custom-search">Search</option>
+                <option value="timezone">TimeZone</option>
+                <option value="rest-status">REST</option>
+                <option value="notes">Notes</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </div>
             <div id="custom-widgets-list" class="widget-order-list"></div>
           </div>
         </div>
@@ -1265,30 +1270,31 @@
         </select>
       </div>
       <div class="custom-widget-add-block">
-        <div class="custom-widget-add-row">
-          <input type="text" id="custom-widget-icon" class="sync-compact-input custom-widget-icon-input" value="🔎" maxlength="4" aria-label="Widget icon">
-          <div class="custom-widget-custom-icon-group">
-            <input type="text" id="custom-widget-custom-icon" class="sync-compact-input custom-widget-custom-icon-input" data-i18n-placeholder="customSearchCustomIconPlaceholder" placeholder="Icon URL or upload (optional)" aria-label="Custom icon URL">
-            <button type="button" id="custom-widget-icon-upload-btn" class="icon-btn custom-widget-icon-upload-btn" data-i18n-title="customSearchUploadIconTitle" title="Upload icon image">🖼️</button>
-            <input type="file" id="custom-widget-icon-file" accept="image/*" style="display: none;">
+        <div class="custom-widget-core-grid">
+          <div class="custom-widget-field custom-widget-field-icon">
+            <label for="custom-widget-icon" class="custom-widget-field-label">Icon</label>
+            <input type="text" id="custom-widget-icon" class="sync-compact-input custom-widget-icon-input" value="🔎" maxlength="4" aria-label="Widget icon">
           </div>
-          <input type="text" id="custom-widget-name" class="sync-compact-input custom-widget-name-input" data-i18n-placeholder="customSearchNamePlaceholder" placeholder="Name (e.g. Google)">
-          <input type="text" id="custom-widget-group" class="sync-compact-input custom-widget-group-input" data-i18n-placeholder="customSearchGroupPlaceholder" placeholder="Group (optional)">
-          <input type="text" id="custom-widget-route-prefixes" class="sync-compact-input custom-widget-route-prefixes-input" data-i18n-placeholder="customSearchRoutePrefixesPlaceholder" placeholder="Auto-route prefixes (e.g. INC, CHG)">
-          <input type="url" id="custom-widget-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customSearchUrlPlaceholder" placeholder="https://www.google.com/search?q={query}">
-          <label class="checkbox-row custom-widget-newtab-label">
-            <input type="checkbox" id="custom-widget-newtab">
-            <span data-i18n="customSearchNewTab">New tab</span>
-          </label>
-          <label class="checkbox-row custom-widget-default-label">
-            <input type="checkbox" id="custom-widget-default">
-            <span data-i18n="customSearchDefaultInGroup">Default in group</span>
-          </label>
+          <div class="custom-widget-field">
+            <label for="custom-widget-name" class="custom-widget-field-label">Name</label>
+            <input type="text" id="custom-widget-name" class="sync-compact-input custom-widget-name-input" data-i18n-placeholder="customSearchNamePlaceholder" placeholder="Name (e.g. Google)">
+          </div>
+          <div id="custom-widget-group-field" class="custom-widget-field">
+            <label for="custom-widget-group-select" class="custom-widget-field-label">Group</label>
+            <select id="custom-widget-group-select" class="appearance-select custom-widget-group-select" aria-label="Widget group"></select>
+          </div>
         </div>
+
+        <div id="custom-widget-url-field" class="custom-widget-field">
+          <label for="custom-widget-url" class="custom-widget-field-label">URL Template</label>
+          <input type="url" id="custom-widget-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customSearchUrlPlaceholder" placeholder="https://www.google.com/search?q={query}">
+        </div>
+
         <div id="custom-widget-json-row" class="custom-widget-json-row hidden">
           <label for="custom-widget-json-template" class="custom-widget-sub-label" data-i18n="customSearchJsonTemplateLabel">JSON template:</label>
           <textarea id="custom-widget-json-template" class="sync-compact-input custom-widget-json-textarea" rows="2" placeholder='{"q":"{query}","tab":"All"}'></textarea>
         </div>
+
         <div class="custom-widget-vars-section">
           <div class="custom-widget-vars-header">
             <span class="custom-widget-sub-label" data-i18n="customSearchVariablesLabel">Variables:</span>
@@ -1296,6 +1302,7 @@
           </div>
           <div id="custom-widget-vars-list" class="custom-widget-vars-list"></div>
         </div>
+
         <div id="custom-widget-timezone-section" class="custom-widget-timezone-section hidden">
           <div class="custom-widget-tz-options">
             <label class="checkbox-row">
@@ -1311,64 +1318,129 @@
           <div id="custom-widget-tz-list" class="custom-widget-tz-list"></div>
           <datalist id="custom-widget-tz-datalist"></datalist>
         </div>
+
         <div id="custom-widget-rest-status-section" class="custom-widget-rest-status-section hidden">
-          <div class="custom-widget-add-row">
-            <input type="url" id="custom-widget-rest-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customRestUrlPlaceholder" placeholder="Endpoint URL (e.g. https://homelab.local/api/health)" aria-label="REST endpoint URL">
-            <select id="custom-widget-rest-method" class="appearance-select custom-widget-rest-method-select" aria-label="HTTP method">
-              <option value="GET">GET</option>
-              <option value="HEAD">HEAD</option>
-            </select>
+          <div class="custom-widget-core-grid custom-widget-rest-endpoint-grid">
+            <div class="custom-widget-field">
+              <label for="custom-widget-rest-url" class="custom-widget-field-label">Endpoint URL</label>
+              <input type="url" id="custom-widget-rest-url" class="sync-compact-input custom-widget-url-input" data-i18n-placeholder="customRestUrlPlaceholder" placeholder="Endpoint URL (e.g. https://homelab.local/api/health)" aria-label="REST endpoint URL">
+            </div>
+            <div class="custom-widget-field custom-widget-field-compact">
+              <label for="custom-widget-rest-method" class="custom-widget-field-label">Method</label>
+              <select id="custom-widget-rest-method" class="appearance-select custom-widget-rest-method-select" aria-label="HTTP method">
+                <option value="GET">GET</option>
+                <option value="HEAD">HEAD</option>
+              </select>
+            </div>
           </div>
-          <div class="custom-widget-add-row">
-            <input type="text" id="custom-widget-rest-json-path" class="sync-compact-input" data-i18n-placeholder="customRestJsonPathPlaceholder" placeholder="JSON path (e.g. status, data.active_queries)" aria-label="JSON path">
-            <input type="text" id="custom-widget-rest-suffix" class="sync-compact-input custom-widget-rest-suffix-input" data-i18n-placeholder="customRestSuffixPlaceholder" placeholder="Unit / suffix (e.g. %, ms)" aria-label="Value suffix">
-            <input type="number" id="custom-widget-rest-interval" class="appearance-number-input" min="10" max="3600" value="60" title="Refresh interval (seconds)" aria-label="Refresh interval in seconds">
+          <div class="custom-widget-core-grid custom-widget-rest-parse-grid">
+            <div class="custom-widget-field">
+              <label for="custom-widget-rest-json-path" class="custom-widget-field-label">JSON Path</label>
+              <input type="text" id="custom-widget-rest-json-path" class="sync-compact-input" data-i18n-placeholder="customRestJsonPathPlaceholder" placeholder="e.g. status, data.active_queries" aria-label="JSON path">
+            </div>
+            <div class="custom-widget-field">
+              <label for="custom-widget-rest-suffix" class="custom-widget-field-label">Unit / Suffix</label>
+              <input type="text" id="custom-widget-rest-suffix" class="sync-compact-input custom-widget-rest-suffix-input" data-i18n-placeholder="customRestSuffixPlaceholder" placeholder="e.g. %, ms" aria-label="Value suffix">
+            </div>
+            <div class="custom-widget-field custom-widget-field-compact">
+              <label for="custom-widget-rest-interval" class="custom-widget-field-label">Refresh (s)</label>
+              <input type="number" id="custom-widget-rest-interval" class="appearance-number-input" min="10" max="3600" value="60" title="Refresh interval (seconds)" aria-label="Refresh interval in seconds">
+            </div>
           </div>
-          <div class="custom-widget-add-row">
-            <input type="text" id="custom-widget-rest-ok" class="sync-compact-input" data-i18n-placeholder="customRestOkPlaceholder" placeholder="OK match (e.g. ok, true, &lt;80)" aria-label="Expected OK match">
-            <input type="text" id="custom-widget-rest-warn" class="sync-compact-input" data-i18n-placeholder="customRestWarnPlaceholder" placeholder="Warn match (e.g. degraded, &gt;=80)" aria-label="Warning match">
+          <div class="custom-widget-core-grid custom-widget-rest-match-grid">
+            <div class="custom-widget-field">
+              <label for="custom-widget-rest-ok" class="custom-widget-field-label">OK Match</label>
+              <input type="text" id="custom-widget-rest-ok" class="sync-compact-input" data-i18n-placeholder="customRestOkPlaceholder" placeholder="e.g. ok, true, &lt;80" aria-label="Expected OK match">
+            </div>
+            <div class="custom-widget-field">
+              <label for="custom-widget-rest-warn" class="custom-widget-field-label">Warn Match</label>
+              <input type="text" id="custom-widget-rest-warn" class="sync-compact-input" data-i18n-placeholder="customRestWarnPlaceholder" placeholder="e.g. degraded, &gt;=80" aria-label="Warning match">
+            </div>
           </div>
-          <div class="custom-widget-add-row">
-            <input type="text" id="custom-widget-rest-value-map" class="sync-compact-input" data-i18n-placeholder="customRestValueMapPlaceholder" placeholder="Value map (e.g. none=OK, minor=Minor)" aria-label="Value display map">
-          </div>
-          <div class="custom-widget-add-row">
-            <textarea id="custom-widget-rest-metrics" class="sync-compact-input custom-widget-rest-metrics-input" rows="3" data-i18n-placeholder="customRestMetricsPlaceholder" placeholder="Extra stats from the same response, one per line:&#10;Label | json.path | suffix | OK match | Warn match | value map | scale&#10;CPU | data.cpu | % | &lt;90 | &gt;=90 | | 100" aria-label="Extra metrics"></textarea>
-          </div>
-          <div class="custom-widget-add-row">
-            <label class="checkbox-row">
-              <input type="checkbox" id="custom-widget-rest-collapse-metrics">
-              <span data-i18n="customRestCollapseMetrics">Show extra stats in tooltip only</span>
-            </label>
-          </div>
-          <div class="custom-widget-add-row">
-            <input type="url" id="custom-widget-rest-link" class="sync-compact-input" data-i18n-placeholder="customRestLinkPlaceholder" placeholder="Click URL (optional dashboard link)" aria-label="Optional dashboard link URL">
-          </div>
-          <div class="custom-widget-add-row formatted-tooltip-anchor">
-            <input type="text" id="custom-widget-rest-header-name" class="sync-compact-input" maxlength="128" autocomplete="off" data-i18n-placeholder="customRestHeaderNamePlaceholder" placeholder="Auth header name (e.g. Authorization, X-API-Key)" aria-label="Optional header name">
-            <input type="password" id="custom-widget-rest-header-value" class="sync-compact-input" maxlength="2048" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-i18n-placeholder="customRestHeaderValuePlaceholder" placeholder="Header value / token (optional)" aria-label="Optional header value">
-            <span class="formatted-tooltip-badge" tabindex="0" role="note" aria-label="API key security advice">🛡️</span>
-            <div class="formatted-tooltip-box" role="tooltip" data-i18n="customRestAuthScopeTooltip">Security best practice: use a dedicated read-only API key with minimal, narrow permissions (never an admin or write token) to limit impact if compromised.</div>
-          </div>
-          <div class="custom-widget-rest-auth-warning" data-i18n="customRestAuthWarning">⚠️ Experimental: header tokens stay local only (never backed up, exported, or synced; re-enter after restore). Enable Vault in Security tab to encrypt.</div>
           <div class="custom-widget-rest-test-row">
-            <label class="checkbox-row">
-              <input type="checkbox" id="custom-widget-rest-hide-group">
-              <span data-i18n="customRestHideGroupName">Hide group name</span>
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" id="custom-widget-rest-hide-value">
-              <span data-i18n="customRestHideValue">Hide value (dot + name only)</span>
-            </label>
             <button type="button" id="custom-widget-rest-test-btn" class="icon-btn" data-i18n="customRestTestBtn">🧪 Test Endpoint</button>
             <span id="custom-widget-rest-test-result" class="status"></span>
           </div>
         </div>
+
         <div id="custom-widget-notes-section" class="custom-widget-notes-section hidden">
           <label class="checkbox-row">
             <input type="checkbox" id="custom-widget-notes-compact">
             <span data-i18n="customNotesCompactMode">Compact button only (edit in modal)</span>
           </label>
         </div>
+
+        <details id="custom-widget-advanced-details" class="custom-widget-advanced-details">
+          <summary class="custom-widget-advanced-summary">⚙️ Advanced options</summary>
+          <div class="custom-widget-advanced-body">
+            <div class="custom-widget-field">
+              <label for="custom-widget-custom-icon" class="custom-widget-field-label">Custom Icon URL / Upload</label>
+              <div class="custom-widget-custom-icon-group">
+                <input type="text" id="custom-widget-custom-icon" class="sync-compact-input custom-widget-custom-icon-input" data-i18n-placeholder="customSearchCustomIconPlaceholder" placeholder="Icon URL or upload (optional)" aria-label="Custom icon URL">
+                <button type="button" id="custom-widget-icon-upload-btn" class="icon-btn custom-widget-icon-upload-btn" data-i18n-title="customSearchUploadIconTitle" title="Upload icon image">🖼️</button>
+                <input type="file" id="custom-widget-icon-file" accept="image/*" style="display: none;">
+              </div>
+            </div>
+
+            <div id="custom-widget-search-advanced" class="custom-widget-advanced-group">
+              <div class="custom-widget-field">
+                <label for="custom-widget-route-prefixes" class="custom-widget-field-label">Auto-route Prefixes</label>
+                <input type="text" id="custom-widget-route-prefixes" class="sync-compact-input custom-widget-route-prefixes-input" data-i18n-placeholder="customSearchRoutePrefixesPlaceholder" placeholder="e.g. INC, CHG" aria-label="Auto-route prefixes">
+              </div>
+              <div class="custom-widget-advanced-checks">
+                <label class="checkbox-row custom-widget-newtab-label">
+                  <input type="checkbox" id="custom-widget-newtab">
+                  <span data-i18n="customSearchNewTab">New tab</span>
+                </label>
+                <label class="checkbox-row custom-widget-default-label">
+                  <input type="checkbox" id="custom-widget-default">
+                  <span data-i18n="customSearchDefaultInGroup">Default in group</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="custom-widget-rest-advanced" class="custom-widget-advanced-group hidden">
+              <div class="custom-widget-core-grid custom-widget-rest-match-grid">
+                <div class="custom-widget-field">
+                  <label for="custom-widget-rest-value-map" class="custom-widget-field-label">Value Map</label>
+                  <input type="text" id="custom-widget-rest-value-map" class="sync-compact-input" data-i18n-placeholder="customRestValueMapPlaceholder" placeholder="e.g. none=OK, minor=Minor" aria-label="Value display map">
+                </div>
+                <div class="custom-widget-field">
+                  <label for="custom-widget-rest-link" class="custom-widget-field-label">Click URL</label>
+                  <input type="url" id="custom-widget-rest-link" class="sync-compact-input" data-i18n-placeholder="customRestLinkPlaceholder" placeholder="Optional dashboard link" aria-label="Optional dashboard link URL">
+                </div>
+              </div>
+              <div class="custom-widget-field">
+                <label for="custom-widget-rest-metrics" class="custom-widget-field-label">Extra Metrics</label>
+                <textarea id="custom-widget-rest-metrics" class="sync-compact-input custom-widget-rest-metrics-input" rows="3" data-i18n-placeholder="customRestMetricsPlaceholder" placeholder="Extra stats from the same response, one per line:&#10;Label | json.path | suffix | OK match | Warn match | value map | scale&#10;CPU | data.cpu | % | &lt;90 | &gt;=90 | | 100" aria-label="Extra metrics"></textarea>
+              </div>
+              <div class="custom-widget-advanced-checks">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="custom-widget-rest-collapse-metrics">
+                  <span data-i18n="customRestCollapseMetrics">Show extra stats in tooltip only</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="custom-widget-rest-hide-group">
+                  <span data-i18n="customRestHideGroupName">Hide group name</span>
+                </label>
+                <label class="checkbox-row">
+                  <input type="checkbox" id="custom-widget-rest-hide-value">
+                  <span data-i18n="customRestHideValue">Hide value (dot + name only)</span>
+                </label>
+              </div>
+              <div class="custom-widget-field">
+                <label for="custom-widget-rest-header-name" class="custom-widget-field-label">Authentication Header</label>
+                <div class="custom-widget-add-row custom-widget-rest-auth-row formatted-tooltip-anchor">
+                  <input type="text" id="custom-widget-rest-header-name" class="sync-compact-input" maxlength="128" autocomplete="off" data-i18n-placeholder="customRestHeaderNamePlaceholder" placeholder="Auth header name (e.g. Authorization, X-API-Key)" aria-label="Optional header name">
+                  <input type="password" id="custom-widget-rest-header-value" class="sync-compact-input" maxlength="2048" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-i18n-placeholder="customRestHeaderValuePlaceholder" placeholder="Header value / token (optional)" aria-label="Optional header value">
+                  <span class="formatted-tooltip-badge" tabindex="0" role="note" aria-label="API key security advice">🛡️</span>
+                  <div class="formatted-tooltip-box" role="tooltip" data-i18n="customRestAuthScopeTooltip">Security best practice: use a dedicated read-only API key with minimal, narrow permissions (never an admin or write token) to limit impact if compromised.</div>
+                </div>
+              </div>
+              <div class="custom-widget-rest-auth-warning" data-i18n="customRestAuthWarning">⚠️ Experimental: header tokens stay local only (never backed up, exported, or synced; re-enter after restore). Enable Vault in Security tab to encrypt.</div>
+            </div>
+          </div>
+        </details>
         <div id="custom-widget-preview-box" class="custom-widget-preview-box hidden">
           <div class="custom-widget-preview-header">
             <span class="custom-widget-sub-label" data-i18n="customSearchPreviewTitle">Test / Preview</span>
@@ -1391,6 +1463,18 @@
         <button type="button" id="custom-widget-add-btn" class="icon-btn primary" data-i18n="customSearchAddBtn">+ Add</button>
         <button type="button" id="custom-widget-preview-toggle-btn" class="icon-btn" data-i18n="customSearchPreviewBtn">🧪 Test / Preview</button>
         <button type="button" id="custom-widget-cancel-edit-btn" class="icon-btn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create New Widget Group Modal -->
+  <div id="custom-widget-new-group-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="custom-widget-new-group-title">
+    <div class="modal-content custom-widget-new-group-modal-content">
+      <h2 id="custom-widget-new-group-title">New Widget Group</h2>
+      <input type="text" id="custom-widget-new-group-input" class="sync-compact-input" maxlength="60" placeholder="Group name..." aria-label="New group name">
+      <div class="modal-buttons">
+        <button type="button" id="custom-widget-new-group-create-btn" class="icon-btn primary" data-i18n="create">Create</button>
+        <button type="button" id="custom-widget-new-group-cancel-btn" class="icon-btn" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>

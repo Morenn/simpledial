@@ -1559,6 +1559,9 @@
   "customWidgetAddNewBtn": {
     "message": "+ Lisää uusi widget"
   },
+  "customWidgetExamplesBtn": {
+    "message": "🧩 Widget-esimerkit ↗"
+  },
   "customWidgetEditTitle": {
     "message": "Muokkaa mukautettua widgettiä"
   },

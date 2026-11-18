@@ -1559,6 +1559,9 @@
   "customWidgetAddNewBtn": {
     "message": "+ Pridať nový widget"
   },
+  "customWidgetExamplesBtn": {
+    "message": "🧩 Príklady widgetov ↗"
+  },
   "customWidgetEditTitle": {
     "message": "Upraviť vlastný widget"
   },

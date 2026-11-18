@@ -1559,6 +1559,9 @@
   "customWidgetAddNewBtn": {
     "message": "+ Додати новий віджет"
   },
+  "customWidgetExamplesBtn": {
+    "message": "🧩 Приклади віджетів ↗"
+  },
   "customWidgetEditTitle": {
     "message": "Редагувати власний віджет"
   },

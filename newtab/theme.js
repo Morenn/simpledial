@@ -669,7 +669,7 @@ export async function applySideSpaces(config = null) {
   const showSideSpaces = !!appearance.showSideSpaces;
   const highlightSideSpaces = !!appearance.highlightSideSpaces;
   const groupsSpace = normalizeWidgetSpace(appearance.groupsSpace, "header");
-  const searchSpace = normalizeWidgetSpace(appearance.searchSpace, "header");
+  const searchSpace = normalizeWidgetSpace(appearance.searchSpace, "center");
   const manageSpace = normalizeWidgetSpace(appearance.manageSpace, "header");
   const syncStatusSpace = appearance.syncStatusSpace === "disabled"
     ? "disabled"

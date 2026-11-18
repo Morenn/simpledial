@@ -1559,6 +1559,9 @@
   "customWidgetAddNewBtn": {
     "message": "+ Neues Widget hinzufügen"
   },
+  "customWidgetExamplesBtn": {
+    "message": "🧩 Widget-Beispiele ↗"
+  },
   "customWidgetEditTitle": {
     "message": "Benutzerdefiniertes Widget bearbeiten"
   },
