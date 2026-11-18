@@ -1,0 +1,23 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-tz-global-ops",
+      "type": "timezone",
+      "name": "Global Ops",
+      "icon": "🌐",
+      "timeZones": [
+        { "label": "UTC", "timeZone": "UTC" },
+        { "label": "Frankfurt", "timeZone": "Europe/Berlin" },
+        { "label": "Singapore", "timeZone": "Asia/Singapore" },
+        { "label": "Sydney", "timeZone": "Australia/Sydney" }
+      ],
+      "showSeconds": true,
+      "use24Hour": true,
+      "space": "header",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-github-search",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "GitHub",
+      "icon": "🐙",
+      "customIcon": "https://github.githubassets.com/favicons/favicon.svg",
+      "urlTemplate": "https://github.com/search?q={query}&type={type}",
+      "jsonTemplate": "",
+      "groupName": "Dev Tools",
+      "isDefault": true,
+      "routePrefixes": ["gh", "git"],
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Search",
+          "type": "text",
+          "optionsText": ""
+        },
+        {
+          "key": "type",
+          "label": "Type",
+          "type": "select",
+          "optionsText": "repositories\ncode\nissues\nusers"
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-reddit-status",
+      "type": "rest-status",
+      "name": "Reddit",
+      "icon": "🤖",
+      "customIcon": "https://www.reddit.com/favicon.ico",
+      "endpointUrl": "https://www.redditstatus.com/api/v2/status.json",
+      "method": "GET",
+      "jsonPath": "status.indicator",
+      "valueSuffix": "",
+      "valueMap": "none=OK, minor=Minor, major=Major, critical=Critical",
+      "refreshSeconds": 60,
+      "okMatch": "none",
+      "warnMatch": "minor",
+      "linkUrl": "https://www.redditstatus.com/",
+      "groupName": "Cloud Status",
+      "authHeaderName": "",
+      "authHeaderValue": "",
+      "space": "footer",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

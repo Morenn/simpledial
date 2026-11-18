@@ -1,0 +1,31 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-mdn",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "MDN Web Docs",
+      "icon": "📘",
+      "customIcon": "https://developer.mozilla.org/favicon-48x48.png",
+      "urlTemplate": "https://developer.mozilla.org/en-US/search?q={query}",
+      "jsonTemplate": "",
+      "groupName": "Dev Tools",
+      "isDefault": false,
+      "routePrefixes": ["mdn"],
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Docs",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

@@ -1636,5 +1636,14 @@
   },
   "open": {
     "message": "Ouvrir"
+  },
+  "customRestMetricsPlaceholder": {
+    "message": "Statistiques supplémentaires de la même réponse, une par ligne :\nLibellé | json.chemin | suffixe | règle OK | règle alerte | correspondance | scale\nCPU | data.cpu | % | <90 | >=90 | | 100"
+  },
+  "customRestCollapseMetrics": {
+    "message": "Afficher les statistiques supplémentaires uniquement dans l'infobulle"
+  },
+  "customRestAuthWarning": {
+    "message": "Expérimental : les jetons d'en-tête sont stockés en clair dans le stockage local."
   }
 }

@@ -1,0 +1,23 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-tz-world-24h",
+      "type": "timezone",
+      "name": "World Clocks",
+      "icon": "🕒",
+      "timeZones": [
+        { "label": "UTC", "timeZone": "UTC" },
+        { "label": "London", "timeZone": "Europe/London" },
+        { "label": "New York", "timeZone": "America/New_York" },
+        { "label": "Tokyo", "timeZone": "Asia/Tokyo" }
+      ],
+      "showSeconds": false,
+      "use24Hour": true,
+      "space": "left",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

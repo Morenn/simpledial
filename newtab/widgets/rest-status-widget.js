@@ -122,7 +122,77 @@ export function mapRestDisplayValue(rawValue, rawMap) {
   return strVal;
 }
 
+export const MAX_REST_METRICS = 6;
+
+/**
+ * Normalize optional extra metrics evaluated against the same HTTP response.
+ * Each metric: { label, jsonPath, valueSuffix, valueMap, okMatch, warnMatch }.
+ */
+export function normalizeRestMetrics(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const m of raw) {
+    if (!m || typeof m !== "object") continue;
+    const jsonPath = typeof m.jsonPath === "string" ? m.jsonPath.trim().slice(0, 200) : "";
+    if (!jsonPath) continue;
+    out.push({
+      label: typeof m.label === "string" ? m.label.trim().slice(0, 24) : "",
+      jsonPath,
+      valueSuffix: typeof m.valueSuffix === "string" ? m.valueSuffix.slice(0, 12) : "",
+      scale: Number.isFinite(Number(m.scale)) && Number(m.scale) > 0 && Number(m.scale) !== 1 ? Number(m.scale) : 1,
+      valueMap: typeof m.valueMap === "string" ? m.valueMap.trim().slice(0, 200) : "",
+      okMatch: typeof m.okMatch === "string" ? m.okMatch.trim().slice(0, 100) : "",
+      warnMatch: typeof m.warnMatch === "string" ? m.warnMatch.trim().slice(0, 100) : ""
+    });
+    if (out.length >= MAX_REST_METRICS) break;
+  }
+  return out;
+}
+
+const REST_STATE_RANK = { ok: 0, warn: 1, err: 2 };
+
+function evaluateRestMetrics(data, metrics) {
+  return normalizeRestMetrics(metrics).map(m => {
+    let extracted = extractJsonPath(data, m.jsonPath);
+    if (extracted === undefined || extracted === null) {
+      return { label: m.label, text: "N/A", state: "warn" };
+    }
+    if (m.scale !== 1) {
+      const num = Number(extracted);
+      if (Number.isFinite(num)) {
+        extracted = Math.round(num * m.scale * 100) / 100;
+      }
+    }
+    let state = "ok";
+    if (m.warnMatch && evaluateRestStatusRule(extracted, m.warnMatch)) {
+      state = "warn";
+    } else if (m.okMatch) {
+      state = evaluateRestStatusRule(extracted, m.okMatch) ? "ok" : "err";
+    }
+    return {
+      label: m.label,
+      text: `${mapRestDisplayValue(extracted, m.valueMap)}${m.valueSuffix}`,
+      state
+    };
+  });
+}
+
 export function evaluateRestResponse({ ok, status, data, error, latencyMs }, widget) {
+  const main = evaluateRestResponseMain({ ok, status, data, error, latencyMs }, widget);
+  if (error || !ok || !Array.isArray(widget?.metrics) || widget.metrics.length === 0) {
+    return main;
+  }
+  const metrics = evaluateRestMetrics(data, widget.metrics);
+  if (metrics.length === 0) return main;
+  let worst = main.state;
+  for (const m of metrics) {
+    if ((REST_STATE_RANK[m.state] ?? 0) > (REST_STATE_RANK[worst] ?? 0)) worst = m.state;
+  }
+  const metricLines = metrics.map(m => `${m.label ? `${m.label}: ` : ""}${m.text}`).join(" · ");
+  return { ...main, state: worst, metrics, detail: `${main.detail} · ${metricLines}` };
+}
+
+function evaluateRestResponseMain({ ok, status, data, error, latencyMs }, widget) {
   if (error || !ok) {
     const codeText = status ? `HTTP ${status}` : "ERR";
     return {
@@ -277,7 +347,12 @@ export async function fetchAndEvaluateRestWidget(widget) {
     if (err?.name === "AbortError") {
       return { state: "err", text: "TIMEOUT", detail: `Timed out after ${REST_REQUEST_TIMEOUT_MS / 1000}s` };
     }
-    return evaluateRestResponse({ ok: false, status: 0, error: err?.message || "Network error" }, widget);
+    const rawMessage = err?.message || "Network error";
+    const isFetchFailure = err instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(rawMessage);
+    const hint = isFetchFailure
+      ? `${rawMessage} (unreachable host, untrusted/self-signed HTTPS certificate, or blocked host permission - open the URL once in a browser tab and accept the certificate)`
+      : rawMessage;
+    return evaluateRestResponse({ ok: false, status: 0, error: hint }, widget);
   } finally {
     if (timeoutId !== null) clearTimeout(timeoutId);
   }
@@ -292,6 +367,18 @@ function applyRestStatusToElement(el, widget, result) {
   }
   if (valueEl) {
     valueEl.textContent = result.text || "...";
+  }
+  el.querySelector(".rest-status-metrics")?.remove();
+  if (!widget.collapseMetrics && Array.isArray(result.metrics) && result.metrics.length > 0 && valueEl) {
+    const wrap = document.createElement("span");
+    wrap.className = "rest-status-metrics";
+    for (const m of result.metrics) {
+      const chip = document.createElement("span");
+      chip.className = `rest-status-metric state-${m.state}`;
+      chip.textContent = m.label ? `${m.label} ${m.text}` : m.text;
+      wrap.appendChild(chip);
+    }
+    valueEl.after(wrap);
   }
   el.title = `${widget.name}${result.detail ? ` — ${result.detail}` : ""}`;
 }
@@ -504,4 +591,34 @@ export function syncCustomRestStatusWidgetElements(customWidgets = []) {
   }
 
   return elementMap;
+}
+
+/**
+ * Editor helpers: one metric per line, fields separated by "|":
+ *   Label | jsonPath | suffix | okMatch | warnMatch | valueMap
+ */
+export function parseRestMetricsText(text) {
+  if (typeof text !== "string") return [];
+  const metrics = text.split(/\r?\n/).map(line => {
+    const parts = line.split("|").map(p => p.trim());
+    if (!parts[1]) return null;
+    return {
+      label: parts[0] || "",
+      jsonPath: parts[1],
+      valueSuffix: parts[2] || "",
+      okMatch: parts[3] || "",
+      warnMatch: parts[4] || "",
+      valueMap: parts[5] || "",
+      scale: parts[6] || ""
+    };
+  }).filter(Boolean);
+  return normalizeRestMetrics(metrics);
+}
+
+export function formatRestMetricsText(metrics) {
+  return normalizeRestMetrics(metrics).map(m => {
+    const fields = [m.label, m.jsonPath, m.valueSuffix, m.okMatch, m.warnMatch, m.valueMap, m.scale !== 1 ? String(m.scale) : ""];
+    while (fields.length > 2 && fields[fields.length - 1] === "") fields.pop();
+    return fields.join(" | ");
+  }).join("\n");
 }

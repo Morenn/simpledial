@@ -1636,5 +1636,14 @@
   },
   "open": {
     "message": "Öffnen"
+  },
+  "customRestMetricsPlaceholder": {
+    "message": "Zusätzliche Werte aus derselben Antwort, einer pro Zeile:\nLabel | json.pfad | Suffix | OK-Regel | Warn-Regel | Wertzuordnung | scale\nCPU | data.cpu | % | <90 | >=90 | | 100"
+  },
+  "customRestCollapseMetrics": {
+    "message": "Zusätzliche Werte nur im Tooltip anzeigen"
+  },
+  "customRestAuthWarning": {
+    "message": "Experimentell: Header-Tokens werden unverschlüsselt im lokalen Speicher abgelegt."
   }
 }

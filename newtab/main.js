@@ -168,9 +168,11 @@ function startIconRefreshLoop() {
   setInterval(updateClock, 1000);
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
-  void pollAllRestStatusWidgets({ force: false });
-  startRestStatusPolling();
-  startNotesReminderPolling();
+  setTimeout(() => {
+    void pollAllRestStatusWidgets({ force: false });
+    startRestStatusPolling();
+    startNotesReminderPolling();
+  }, 150);
 
   // 4) Sync (in background, with re-render after data changes)
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {

@@ -1,0 +1,16 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-notes-reminders",
+      "type": "notes",
+      "name": "Reminders",
+      "icon": "⏰",
+      "compactMode": true,
+      "space": "header",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

@@ -19,6 +19,8 @@ import {
   normalizeCustomSearchRoutePrefixes,
   isValidRestEndpointUrl,
   normalizeRestRefreshSeconds,
+  parseRestMetricsText,
+  formatRestMetricsText,
   fetchAndEvaluateRestWidget,
   requestRestEndpointPermission,
   pollAllRestStatusWidgets,
@@ -73,6 +75,8 @@ const customWidgetRestHeaderName = document.getElementById("custom-widget-rest-h
 const customWidgetRestHeaderValue = document.getElementById("custom-widget-rest-header-value");
 const customWidgetRestHideGroup = document.getElementById("custom-widget-rest-hide-group");
 const customWidgetRestHideValue = document.getElementById("custom-widget-rest-hide-value");
+const customWidgetRestMetrics = document.getElementById("custom-widget-rest-metrics");
+const customWidgetRestCollapseMetrics = document.getElementById("custom-widget-rest-collapse-metrics");
 const customWidgetRestTestBtn = document.getElementById("custom-widget-rest-test-btn");
 const customWidgetRestTestResult = document.getElementById("custom-widget-rest-test-result");
 const customWidgetNotesSection = document.getElementById("custom-widget-notes-section");
@@ -902,7 +906,8 @@ export function initCustomWidgetsSettings() {
     { label: "New York", timeZone: "America/New_York" }
   ];
 
-  if (customWidgetTzDatalist && customWidgetTzDatalist.children.length === 0) {
+  const ensureTimeZoneDatalistPopulated = () => {
+    if (!customWidgetTzDatalist || customWidgetTzDatalist.children.length > 0) return;
     let zones = [];
     try {
       if (typeof Intl !== "undefined" && typeof Intl.supportedValuesOf === "function") {
@@ -921,10 +926,11 @@ export function initCustomWidgetsSettings() {
       frag.appendChild(opt);
     }
     customWidgetTzDatalist.appendChild(frag);
-  }
+  };
 
   const renderCustomWidgetTzEditor = () => {
     if (!customWidgetTzList) return;
+    ensureTimeZoneDatalistPopulated();
     customWidgetTzList.innerHTML = "";
     customWidgetTzDraft.forEach((tzItem, idx) => {
       const row = document.createElement("div");
@@ -1253,6 +1259,8 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = "";
     if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = false;
     if (customWidgetRestHideValue) customWidgetRestHideValue.checked = false;
+    if (customWidgetRestMetrics) customWidgetRestMetrics.value = "";
+    if (customWidgetRestCollapseMetrics) customWidgetRestCollapseMetrics.checked = false;
     if (customWidgetNotesCompact) customWidgetNotesCompact.checked = false;
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     syncCustomWidgetModeUI();
@@ -1304,6 +1312,8 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = widget.authHeaderValue || "";
     if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = !!widget.hideGroupName;
     if (customWidgetRestHideValue) customWidgetRestHideValue.checked = !!widget.hideValue;
+    if (customWidgetRestMetrics) customWidgetRestMetrics.value = formatRestMetricsText(widget.metrics);
+    if (customWidgetRestCollapseMetrics) customWidgetRestCollapseMetrics.checked = !!widget.collapseMetrics;
     if (customWidgetNotesCompact) customWidgetNotesCompact.checked = !!widget.compactMode;
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
@@ -1321,8 +1331,6 @@ export function initCustomWidgetsSettings() {
   };
 
   syncCustomWidgetModeUI();
-  renderCustomWidgetVarsEditor();
-  renderCustomWidgetTzEditor();
 
   if (customWidgetModeSelect) {
     customWidgetModeSelect.addEventListener("change", () => {
@@ -1380,14 +1388,6 @@ export function initCustomWidgetsSettings() {
     openNewCustomWidgetBtn.addEventListener("click", () => {
       resetCustomWidgetForm();
       openCustomWidgetEditorModal();
-    });
-  }
-
-  if (customWidgetEditorModal) {
-    customWidgetEditorModal.addEventListener("click", (e) => {
-      if (e.target === customWidgetEditorModal) {
-        closeCustomWidgetEditorModal();
-      }
     });
   }
 
@@ -1515,6 +1515,7 @@ export function initCustomWidgetsSettings() {
         valueMap: (customWidgetRestValueMap?.value || "").trim(),
         okMatch: (customWidgetRestOk?.value || "").trim(),
         warnMatch: (customWidgetRestWarn?.value || "").trim(),
+        metrics: parseRestMetricsText(customWidgetRestMetrics?.value || ""),
         authHeaderName: (customWidgetRestHeaderName?.value || "").trim(),
         authHeaderValue: customWidgetRestHeaderValue?.value || ""
       };
@@ -1656,6 +1657,8 @@ export function initCustomWidgetsSettings() {
           groupName,
           hideGroupName: !!customWidgetRestHideGroup?.checked,
           hideValue: !!customWidgetRestHideValue?.checked,
+          metrics: parseRestMetricsText(customWidgetRestMetrics?.value || ""),
+          collapseMetrics: !!customWidgetRestCollapseMetrics?.checked,
           icon,
           customIcon,
           endpointUrl,

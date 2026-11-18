@@ -1,0 +1,31 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-youtube",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "YouTube",
+      "icon": "▶️",
+      "customIcon": "https://www.youtube.com/favicon.ico",
+      "urlTemplate": "https://www.youtube.com/results?search_query={query}",
+      "jsonTemplate": "",
+      "groupName": "Media",
+      "isDefault": true,
+      "routePrefixes": ["yt"],
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Video",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

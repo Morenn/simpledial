@@ -1,0 +1,27 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-proxmox-version",
+      "type": "rest-status",
+      "name": "Proxmox VE",
+      "icon": "🖥️",
+      "customIcon": null,
+      "endpointUrl": "https://pve.local:8006/api2/json/version",
+      "method": "GET",
+      "jsonPath": "data.version",
+      "valueSuffix": "",
+      "refreshSeconds": 60,
+      "okMatch": "~.",
+      "warnMatch": "",
+      "linkUrl": "https://pve.local:8006/",
+      "groupName": "Homelab",
+      "authHeaderName": "Authorization",
+      "authHeaderValue": "PVEAPIToken=USER@REALM!TOKENID=SECRET-UUID",
+      "space": "header",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

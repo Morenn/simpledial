@@ -1248,12 +1248,22 @@
             <input type="text" id="custom-widget-rest-value-map" class="sync-compact-input" data-i18n-placeholder="customRestValueMapPlaceholder" placeholder="Value map (e.g. none=OK, minor=Minor)" aria-label="Value display map">
           </div>
           <div class="custom-widget-add-row">
+            <textarea id="custom-widget-rest-metrics" class="sync-compact-input custom-widget-rest-metrics-input" rows="3" data-i18n-placeholder="customRestMetricsPlaceholder" placeholder="Extra stats from the same response, one per line:&#10;Label | json.path | suffix | OK match | Warn match | value map | scale&#10;CPU | data.cpu | % | &lt;90 | &gt;=90 | | 100" aria-label="Extra metrics"></textarea>
+          </div>
+          <div class="custom-widget-add-row">
+            <label class="checkbox-row">
+              <input type="checkbox" id="custom-widget-rest-collapse-metrics">
+              <span data-i18n="customRestCollapseMetrics">Show extra stats in tooltip only</span>
+            </label>
+          </div>
+          <div class="custom-widget-add-row">
             <input type="url" id="custom-widget-rest-link" class="sync-compact-input" data-i18n-placeholder="customRestLinkPlaceholder" placeholder="Click URL (optional dashboard link)" aria-label="Optional dashboard link URL">
           </div>
           <div class="custom-widget-add-row">
-            <input type="text" id="custom-widget-rest-header-name" class="sync-compact-input" data-i18n-placeholder="customRestHeaderNamePlaceholder" placeholder="Auth header name (e.g. Authorization, X-API-Key)" aria-label="Optional header name">
-            <input type="password" id="custom-widget-rest-header-value" class="sync-compact-input" data-i18n-placeholder="customRestHeaderValuePlaceholder" placeholder="Header value / token (optional)" aria-label="Optional header value">
+            <input type="text" id="custom-widget-rest-header-name" class="sync-compact-input" autocomplete="off" data-i18n-placeholder="customRestHeaderNamePlaceholder" placeholder="Auth header name (e.g. Authorization, X-API-Key)" aria-label="Optional header name">
+            <input type="password" id="custom-widget-rest-header-value" class="sync-compact-input" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-i18n-placeholder="customRestHeaderValuePlaceholder" placeholder="Header value / token (optional)" aria-label="Optional header value">
           </div>
+          <div class="custom-widget-rest-auth-warning" data-i18n="customRestAuthWarning">⚠️ Experimental: header tokens are stored unencrypted in local storage.</div>
           <div class="custom-widget-rest-test-row">
             <label class="checkbox-row">
               <input type="checkbox" id="custom-widget-rest-hide-group">

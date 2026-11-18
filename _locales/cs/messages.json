@@ -1636,5 +1636,14 @@
   },
   "open": {
     "message": "Otevřít"
+  },
+  "customRestMetricsPlaceholder": {
+    "message": "Další hodnoty ze stejné odpovědi, jedna na řádek:\nPopisek | json.cesta | přípona | OK shoda | Varování | mapa hodnot | scale\nCPU | data.cpu | % | <90 | >=90 | | 100"
+  },
+  "customRestCollapseMetrics": {
+    "message": "Zobrazit další hodnoty pouze v tooltipu"
+  },
+  "customRestAuthWarning": {
+    "message": "Experimentální funkce: tokeny hlavičky jsou uloženy nešifrovaně v lokálním úložišti."
   }
 }

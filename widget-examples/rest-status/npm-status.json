@@ -1,0 +1,28 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-npm-status",
+      "type": "rest-status",
+      "name": "npm Registry",
+      "icon": "📦",
+      "customIcon": null,
+      "endpointUrl": "https://status.npmjs.org/api/v2/status.json",
+      "method": "GET",
+      "jsonPath": "status.indicator",
+      "valueSuffix": "",
+      "valueMap": "none=OK, minor=Minor, major=Major, critical=Critical",
+      "refreshSeconds": 60,
+      "okMatch": "none",
+      "warnMatch": "minor",
+      "linkUrl": "https://status.npmjs.org/",
+      "groupName": "Cloud Status",
+      "authHeaderName": "",
+      "authHeaderValue": "",
+      "space": "footer",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

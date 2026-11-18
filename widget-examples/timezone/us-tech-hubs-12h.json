@@ -1,0 +1,22 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-tz-us-12h",
+      "type": "timezone",
+      "name": "US Hubs",
+      "icon": "🇺🇸",
+      "timeZones": [
+        { "label": "San Francisco", "timeZone": "America/Los_Angeles" },
+        { "label": "Austin", "timeZone": "America/Chicago" },
+        { "label": "New York", "timeZone": "America/New_York" }
+      ],
+      "showSeconds": false,
+      "use24Hour": false,
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

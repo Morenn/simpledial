@@ -1636,5 +1636,14 @@
   },
   "open": {
     "message": "Openen"
+  },
+  "customRestMetricsPlaceholder": {
+    "message": "Extra waarden uit hetzelfde antwoord, één per regel:\nLabel | json.pad | achtervoegsel | OK-regel | Waarschuwing | waardemapping | scale\nCPU | data.cpu | % | <90 | >=90 | | 100"
+  },
+  "customRestCollapseMetrics": {
+    "message": "Extra waarden alleen in tooltip tonen"
+  },
+  "customRestAuthWarning": {
+    "message": "Experimenteel: headertokens worden onversleuteld opgeslagen in de lokale opslag."
   }
 }

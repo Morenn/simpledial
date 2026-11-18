@@ -1636,5 +1636,14 @@
   },
   "open": {
     "message": "Otvoriť"
+  },
+  "customRestMetricsPlaceholder": {
+    "message": "Ďalšie hodnoty z rovnakej odpovede, jedna na riadok:\nPopisok | json.cesta | prípona | OK zhoda | Varovanie | mapa hodnôt | scale\nCPU | data.cpu | % | <90 | >=90 | | 100"
+  },
+  "customRestCollapseMetrics": {
+    "message": "Zobraziť ďalšie hodnoty iba v tooltipe"
+  },
+  "customRestAuthWarning": {
+    "message": "Experimentálna funkcia: tokeny hlavičky sú uložené nešifrovane v lokálnom úložisku."
   }
 }

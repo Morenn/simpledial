@@ -1636,5 +1636,14 @@
   },
   "open": {
     "message": "Avaa"
+  },
+  "customRestMetricsPlaceholder": {
+    "message": "Lisäarvot samasta vastauksesta, yksi per rivi:\nNimi | json.polku | pääte | OK-sääntö | Varoitus | arvokartta | scale\nCPU | data.cpu | % | <90 | >=90 | | 100"
+  },
+  "customRestCollapseMetrics": {
+    "message": "Näytä lisäarvot vain työkaluvihjeessä"
+  },
+  "customRestAuthWarning": {
+    "message": "Kokeellinen: otsikkotunnisteet tallennetaan salaamattomina paikalliseen tallennustilaan."
   }
 }

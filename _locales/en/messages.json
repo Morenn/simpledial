@@ -1639,5 +1639,14 @@
   },
   "open": {
     "message": "Open"
+  },
+  "customRestMetricsPlaceholder": {
+    "message": "Extra stats from the same response, one per line:\nLabel | json.path | suffix | OK match | Warn match | value map | scale\nCPU | data.cpu | % | <90 | >=90 | | 100"
+  },
+  "customRestCollapseMetrics": {
+    "message": "Show extra stats in tooltip only"
+  },
+  "customRestAuthWarning": {
+    "message": "Experimental: header tokens are stored unencrypted in local storage."
   }
 }

@@ -34,6 +34,8 @@ const {
   evaluateRestStatusRule,
   mapRestDisplayValue,
   evaluateRestResponse,
+  parseRestMetricsText,
+  formatRestMetricsText,
   fetchAndEvaluateRestWidget,
   normalizeNotesWidgetData,
   computeReminderTimestamp,
@@ -277,6 +279,11 @@ test("widget-examples/search/*.json presets parse cleanly", () => {
     "bing.json",
     "ecosia.json",
     "servicenow.json",
+    "github-code.json",
+    "wikipedia.json",
+    "mdn.json",
+    "youtube.json",
+    "npm-packages.json",
     "all-search-engines.json"
   ];
   for (const file of expectedFiles) {
@@ -572,8 +579,75 @@ test("REST / JSON status badge helpers extract paths, evaluate rules, and export
   assert.equal(badImport.skipped, 1);
 });
 
+test("REST status widgets support extra metrics from the same response", () => {
+  const widget = {
+    jsonPath: "data.version",
+    metrics: [
+      { label: "CPU", jsonPath: "data.cpu", valueSuffix: "%", okMatch: "<90", warnMatch: ">=90" },
+      { label: "Up", jsonPath: "data.uptime", valueSuffix: "s" },
+      { label: "Missing", jsonPath: "data.nope" }
+    ]
+  };
+  const res = evaluateRestResponse({
+    ok: true,
+    status: 200,
+    data: { data: { version: "8.2", cpu: 95, uptime: 120 } },
+    latencyMs: 10
+  }, widget);
+  assert.equal(res.text, "8.2");
+  assert.equal(res.state, "warn");
+  assert.deepEqual(res.metrics, [
+    { label: "CPU", text: "95%", state: "warn" },
+    { label: "Up", text: "120s", state: "ok" },
+    { label: "Missing", text: "N/A", state: "warn" }
+  ]);
+
+  const worst = evaluateRestResponse({
+    ok: true, status: 200, data: { v: 1, cpu: 50 }, latencyMs: 5
+  }, { jsonPath: "v", metrics: [{ label: "CPU", jsonPath: "cpu", okMatch: ">80" }] });
+  assert.equal(worst.state, "err");
+
+  const text = "CPU | data.cpu | % | <90 | >=90\nUptime | data.uptime | s";
+  const parsed = parseRestMetricsText(text);
+  assert.equal(parsed.length, 2);
+  assert.equal(parsed[0].warnMatch, ">=90");
+  assert.equal(formatRestMetricsText(parsed), text);
+
+  const scaled = evaluateRestResponse({
+    ok: true, status: 200, data: { v: "x", cpu: 0.955, mem: 8589934592 }, latencyMs: 5
+  }, { jsonPath: "v", metrics: [
+    { label: "CPU", jsonPath: "cpu", valueSuffix: "%", warnMatch: ">=90", scale: 100 },
+    { label: "RAM", jsonPath: "mem", valueSuffix: " GB", scale: 9.313225746154785e-10 }
+  ] });
+  assert.equal(scaled.metrics[0].text, "95.5%");
+  assert.equal(scaled.metrics[0].state, "warn");
+  assert.equal(scaled.metrics[1].text, "8 GB");
+  assert.equal(parseRestMetricsText("CPU | cpu | % | | | | 100")[0].scale, 100);
+
+  const imported = parseImportedCustomWidgets(serializeCustomWidgetsExport([{
+    id: "r-m", type: "rest-status", name: "PVE", endpointUrl: "https://pve.local:8006/api2/json/nodes/pve/status",
+    jsonPath: "data.pveversion", metrics: parsed, collapseMetrics: true
+  }]));
+  assert.equal(imported.widgets[0].metrics.length, 2);
+  assert.equal(imported.widgets[0].collapseMetrics, true);
+});
+
 test("widget-examples/rest-status/*.json presets parse cleanly", () => {
   const presetsDir = path.resolve("widget-examples/rest-status");
+  const files = fs.readdirSync(presetsDir).filter(f => f.endsWith(".json")).sort();
+  assert.equal(files.length, 9);
+  for (const file of files) {
+    const raw = JSON.parse(fs.readFileSync(path.join(presetsDir, file), "utf8"));
+    const parsed = parseImportedCustomWidgets(raw);
+    assert.equal(parsed.validFormat, true, `${file} should have validFormat`);
+    assert.equal(parsed.skipped, 0, `${file} should have 0 skipped`);
+    assert.ok(parsed.widgets.length >= 1, `${file} should contain at least 1 widget`);
+    assert.ok(parsed.widgets.every(w => w.type === "rest-status"));
+  }
+});
+
+test("widget-examples/timezone/*.json presets parse cleanly", () => {
+  const presetsDir = path.resolve("widget-examples/timezone");
   const files = fs.readdirSync(presetsDir).filter(f => f.endsWith(".json")).sort();
   assert.equal(files.length, 3);
   for (const file of files) {
@@ -582,7 +656,21 @@ test("widget-examples/rest-status/*.json presets parse cleanly", () => {
     assert.equal(parsed.validFormat, true, `${file} should have validFormat`);
     assert.equal(parsed.skipped, 0, `${file} should have 0 skipped`);
     assert.equal(parsed.widgets.length, 1, `${file} should contain 1 widget`);
-    assert.equal(parsed.widgets[0].type, "rest-status");
+    assert.equal(parsed.widgets[0].type, "timezone");
+  }
+});
+
+test("widget-examples/notes/*.json presets parse cleanly", () => {
+  const presetsDir = path.resolve("widget-examples/notes");
+  const files = fs.readdirSync(presetsDir).filter(f => f.endsWith(".json")).sort();
+  assert.equal(files.length, 3);
+  for (const file of files) {
+    const raw = JSON.parse(fs.readFileSync(path.join(presetsDir, file), "utf8"));
+    const parsed = parseImportedCustomWidgets(raw);
+    assert.equal(parsed.validFormat, true, `${file} should have validFormat`);
+    assert.equal(parsed.skipped, 0, `${file} should have 0 skipped`);
+    assert.equal(parsed.widgets.length, 1, `${file} should contain 1 widget`);
+    assert.equal(parsed.widgets[0].type, "notes");
   }
 });
 

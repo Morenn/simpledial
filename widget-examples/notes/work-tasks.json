@@ -1,0 +1,16 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-notes-work-tasks",
+      "type": "notes",
+      "name": "Work Tasks",
+      "icon": "✅",
+      "compactMode": false,
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

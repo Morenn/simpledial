@@ -1,0 +1,31 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-wikipedia",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "Wikipedia",
+      "icon": "📚",
+      "customIcon": "https://en.wikipedia.org/static/favicon/wikipedia.ico",
+      "urlTemplate": "https://en.wikipedia.org/w/index.php?search={query}",
+      "jsonTemplate": "",
+      "groupName": "Reference",
+      "isDefault": true,
+      "routePrefixes": ["w", "wiki"],
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Article",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

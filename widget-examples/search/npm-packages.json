@@ -1,0 +1,31 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-npm",
+      "type": "custom-search",
+      "mode": "simple",
+      "name": "npm",
+      "icon": "📦",
+      "customIcon": "https://static-production.npmjs.com/b0f1a8318363185cc2ea6a40ac23eeb2.png",
+      "urlTemplate": "https://www.npmjs.com/search?q={query}",
+      "jsonTemplate": "",
+      "groupName": "Dev Tools",
+      "isDefault": false,
+      "routePrefixes": ["npm"],
+      "openInNewTab": false,
+      "variables": [
+        {
+          "key": "query",
+          "label": "Package",
+          "type": "text",
+          "optionsText": ""
+        }
+      ],
+      "space": "right",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

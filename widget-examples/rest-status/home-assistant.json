@@ -1,0 +1,28 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-home-assistant",
+      "type": "rest-status",
+      "name": "Home Assistant",
+      "icon": "🏠",
+      "customIcon": null,
+      "endpointUrl": "http://homeassistant.local:8123/api/",
+      "method": "GET",
+      "jsonPath": "message",
+      "valueSuffix": "",
+      "valueMap": "API running.=OK",
+      "refreshSeconds": 60,
+      "okMatch": "API running.",
+      "warnMatch": "",
+      "linkUrl": "http://homeassistant.local:8123/",
+      "groupName": "Homelab",
+      "authHeaderName": "Authorization",
+      "authHeaderValue": "",
+      "space": "header",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

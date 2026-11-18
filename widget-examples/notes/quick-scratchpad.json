@@ -1,0 +1,16 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-notes-scratchpad",
+      "type": "notes",
+      "name": "Scratchpad",
+      "icon": "📝",
+      "compactMode": false,
+      "space": "left",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}

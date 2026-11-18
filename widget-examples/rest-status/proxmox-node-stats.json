@@ -1,0 +1,132 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-proxmox-node-stats",
+      "name": "PVE1",
+      "icon": "🖥️",
+      "customIcon": null,
+      "space": "right",
+      "align": "auto",
+      "newRow": false,
+      "type": "rest-status",
+      "endpointUrl": "https://pve1.local:8006/api2/json/nodes/pve1/status",
+      "method": "GET",
+      "jsonPath": "data.pveversion",
+      "valueSuffix": "",
+      "valueMap": "",
+      "hideValue": true,
+      "metrics": [
+        {
+          "label": "CPU",
+          "jsonPath": "data.cpu",
+          "valueSuffix": "%",
+          "scale": 100,
+          "valueMap": "",
+          "okMatch": "<90",
+          "warnMatch": ">=90"
+        },
+        {
+          "label": "RAM",
+          "jsonPath": "data.memory.used",
+          "valueSuffix": "GB",
+          "scale": 9.313225746154785e-10,
+          "valueMap": "",
+          "okMatch": "",
+          "warnMatch": ""
+        },
+        {
+          "label": "Swap",
+          "jsonPath": "data.swap.used",
+          "valueSuffix": "GB",
+          "scale": 9.313225746154785e-10,
+          "valueMap": "",
+          "okMatch": "",
+          "warnMatch": ""
+        },
+        {
+          "label": "Up",
+          "jsonPath": "data.uptime",
+          "valueSuffix": "d",
+          "scale": 0.000011574074074074073,
+          "valueMap": "",
+          "okMatch": "",
+          "warnMatch": ""
+        }
+      ],
+      "collapseMetrics": true,
+      "refreshSeconds": 30,
+      "okMatch": "~pve",
+      "warnMatch": "",
+      "linkUrl": "https://pve1.local:8006/",
+      "groupName": "Proxmox Nodes",
+      "hideGroupName": false,
+      "authHeaderName": "Authorization",
+      "authHeaderValue": "PVEAPIToken=USER@REALM!TOKENID=SECRET-UUID"
+    },
+    {
+      "id": "cw-mwkyokrx-j08i",
+      "name": "PVE2",
+      "icon": "🖥️",
+      "customIcon": null,
+      "space": "right",
+      "align": "auto",
+      "newRow": false,
+      "type": "rest-status",
+      "endpointUrl": "https://pve2.local:8006/api2/json/nodes/pve2/status",
+      "method": "GET",
+      "jsonPath": "data.pveversion",
+      "valueSuffix": "",
+      "valueMap": "",
+      "hideValue": true,
+      "metrics": [
+        {
+          "label": "CPU",
+          "jsonPath": "data.cpu",
+          "valueSuffix": "%",
+          "scale": 100,
+          "valueMap": "",
+          "okMatch": "<90",
+          "warnMatch": ">=90"
+        },
+        {
+          "label": "RAM",
+          "jsonPath": "data.memory.used",
+          "valueSuffix": "GB",
+          "scale": 9.313225746154785e-10,
+          "valueMap": "",
+          "okMatch": "",
+          "warnMatch": ""
+        },
+        {
+          "label": "Swap",
+          "jsonPath": "data.swap.used",
+          "valueSuffix": "GB",
+          "scale": 9.313225746154785e-10,
+          "valueMap": "",
+          "okMatch": "",
+          "warnMatch": ""
+        },
+        {
+          "label": "Up",
+          "jsonPath": "data.uptime",
+          "valueSuffix": "d",
+          "scale": 0.000011574074074074073,
+          "valueMap": "",
+          "okMatch": "",
+          "warnMatch": ""
+        }
+      ],
+      "collapseMetrics": true,
+      "refreshSeconds": 30,
+      "okMatch": "~pve",
+      "warnMatch": "",
+      "linkUrl": "https://pve2.local:8006/",
+      "groupName": "Proxmox Nodes",
+      "hideGroupName": false,
+      "authHeaderName": "Authorization",
+      "authHeaderValue": "PVEAPIToken=USER@REALM!TOKENID=SECRET-UUID"
+    }
+  ]
+}

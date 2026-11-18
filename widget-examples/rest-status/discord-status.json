@@ -1,0 +1,28 @@
+{
+  "format": "simple-dial-custom-widgets",
+  "version": 1,
+  "widgets": [
+    {
+      "id": "cw-example-discord-status",
+      "type": "rest-status",
+      "name": "Discord",
+      "icon": "💬",
+      "customIcon": "https://discord.com/assets/f9bb9c4af2b9c32a2c5ee0014661546d.png",
+      "endpointUrl": "https://discordstatus.com/api/v2/status.json",
+      "method": "GET",
+      "jsonPath": "status.indicator",
+      "valueSuffix": "",
+      "valueMap": "none=OK, minor=Minor, major=Major, critical=Critical",
+      "refreshSeconds": 60,
+      "okMatch": "none",
+      "warnMatch": "minor",
+      "linkUrl": "https://discordstatus.com/",
+      "groupName": "Cloud Status",
+      "authHeaderName": "",
+      "authHeaderValue": "",
+      "space": "footer",
+      "align": "auto",
+      "newRow": false
+    }
+  ]
+}
