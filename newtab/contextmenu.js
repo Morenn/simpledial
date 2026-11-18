@@ -57,7 +57,7 @@ if (moveToItem && moveToSubmenu) {
 }
 
 // Open context menu on right-click
-document.addEventListener("contextmenu", e => {
+export function handleContextMenu(e) {
   const groupTab = e.target.closest(".group-tab");
   const bookmarkTile = e.target.closest(".bookmark-tile");
 
@@ -81,7 +81,9 @@ document.addEventListener("contextmenu", e => {
   contextMenu.style.left = e.pageX + "px";
   contextMenu.style.top = e.pageY + "px";
   contextMenu.classList.remove("hidden");
-});
+}
+
+document.addEventListener("contextmenu", handleContextMenu);
 
 // Update context menu visibility based on bookmark state
 function updateContextMenuForBookmark(bookmarkTile) {

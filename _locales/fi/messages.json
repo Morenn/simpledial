@@ -1813,5 +1813,8 @@
   },
   "backupAddonVersion": {
     "message": "Versio"
+  },
+  "backupFileTooLarge": {
+    "message": "Varmuuskopiotiedosto on liian suuri (enintään 3 Mt)."
   }
 }

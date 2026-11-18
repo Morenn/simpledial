@@ -373,6 +373,8 @@ export function toggleShortcutsModal() {
 export function initKeyboardNavigation() {
   if (keyboardNavInitialized || typeof document === "undefined") return;
   keyboardNavInitialized = true;
+  window._restorePendingKeyboardFocus = restorePendingKeyboardFocus;
+  window._updateShortcutPaletteButton = updateShortcutPaletteButton;
 
   updateShortcutPaletteButton();
 

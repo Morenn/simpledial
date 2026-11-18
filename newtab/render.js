@@ -1,12 +1,10 @@
 import { state, saveState, saveActiveGroupId, isStackItem, getAllGroupBookmarks, SYSTEM_TAGS, getBookmarkSystemTagIds } from "./state.js";
 import { renderGroups } from "./groups.js";
 import { createBookmarkTile, createStackTile, openBookmarkModal, refreshOpenStackPopover, closeStackPopover } from "./bookmarks.js";
-import { setupBookmarkDrag } from "./dragdrop.js";
 import { loadConfig } from "./config.js";
 import { syncWrite, syncNow, getLastSyncErrorReason, clearLastSyncErrorReason } from "./sync.js";
 import { isVaultUnlocked, tryAutoUnlockVault } from "./crypto.js";
 import { t } from "./i18n.js";
-import { restorePendingKeyboardFocus } from "./keyboard-nav.js";
 
 // ======================================================
 // GRID LAYOUT CONSTANTS
@@ -225,7 +223,9 @@ export async function render() {
 
   // Apply grid layout after rendering
   calculateGridLayout();
-  restorePendingKeyboardFocus();
+  if (typeof window !== "undefined") {
+    window._restorePendingKeyboardFocus?.();
+  }
 }
 
 // ======================================================
@@ -563,7 +563,9 @@ async function renderBookmarks(providedConfig = null) {
   grid.appendChild(addTile);
 
   await refreshOpenStackPopover(config);
-  setupBookmarkDrag();
+  if (!document.body?.classList?.contains("tiles-locked")) {
+    void import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+  }
 }
 
 // ======================================================

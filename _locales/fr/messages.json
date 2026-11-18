@@ -1813,5 +1813,8 @@
   },
   "backupAddonVersion": {
     "message": "Version"
+  },
+  "backupFileTooLarge": {
+    "message": "Le fichier de sauvegarde est trop volumineux (max 3 Mo)."
   }
 }

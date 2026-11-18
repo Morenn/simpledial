@@ -727,7 +727,9 @@ export async function refreshOpenStackPopover(config = null) {
 
   populateStackPopover(loc.item, config);
   syncRovingTabIndex();
-  import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+  if (!document.body?.classList?.contains("tiles-locked")) {
+    import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+  }
 }
 
 export async function openStackPopover(stackId, options = {}) {
@@ -747,7 +749,9 @@ export async function openStackPopover(stackId, options = {}) {
   backdrop.classList.remove("dragging-outside");
   syncRovingTabIndex();
 
-  import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+  if (!document.body?.classList?.contains("tiles-locked")) {
+    import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+  }
 
   if (options.focusTitle && titleInput) {
     titleInput.focus();

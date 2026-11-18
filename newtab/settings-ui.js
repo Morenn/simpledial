@@ -202,42 +202,40 @@ tabButtons.forEach(btn => {
 });
 
 // ---------- Open Settings Modal ----------
-if (settingsBtn) {
-  settingsBtn.addEventListener("click", async () => {
-    settingsState.isInitializingSettingsForm = true;
-    try {
-      if (typeof window.clearDateTimePreview === "function") {
-        window.clearDateTimePreview();
-      }
-      window.groupCountPreviewEnabled = null;
-      settingsState.savedLanguageSnapshot = {
-        lang: getCurrentLanguage(),
-        override: getSavedLanguageOverride()
-      };
-      settingsState.pendingLanguageReset = false;
-
-      const config = await loadConfig();
-
-      await populateSyncSettings(config);
-      updateHouseKeeperInfo(config);
-
-      if (languageSelect) {
-        languageSelect.value = getCurrentLanguage();
-      }
-
-      populateAppearanceSettings(config);
-      applyAdvancedSettingsToControls(config.advanced || {});
-      populateBackupSettings(config);
-      await refreshBackupsTable();
-      await populateSecuritySettings(config);
-
-      clearSyncStatuses();
-      settingsModal?.classList.remove("hidden");
-      setSettingsDirty(false);
-    } finally {
-      settingsState.isInitializingSettingsForm = false;
+export async function openSettingsModal() {
+  settingsState.isInitializingSettingsForm = true;
+  try {
+    if (typeof window.clearDateTimePreview === "function") {
+      window.clearDateTimePreview();
     }
-  });
+    window.groupCountPreviewEnabled = null;
+    settingsState.savedLanguageSnapshot = {
+      lang: getCurrentLanguage(),
+      override: getSavedLanguageOverride()
+    };
+    settingsState.pendingLanguageReset = false;
+
+    const config = await loadConfig();
+
+    await populateSyncSettings(config);
+    updateHouseKeeperInfo(config);
+
+    if (languageSelect) {
+      languageSelect.value = getCurrentLanguage();
+    }
+
+    populateAppearanceSettings(config);
+    applyAdvancedSettingsToControls(config.advanced || {});
+    populateBackupSettings(config);
+    await refreshBackupsTable();
+    await populateSecuritySettings(config);
+
+    clearSyncStatuses();
+    settingsModal?.classList.remove("hidden");
+    setSettingsDirty(false);
+  } finally {
+    settingsState.isInitializingSettingsForm = false;
+  }
 }
 
 // ---------- Close Settings Modal ----------

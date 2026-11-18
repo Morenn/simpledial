@@ -4,12 +4,29 @@ import { t } from "./i18n.js";
 import { isAllowedThemeUrl } from "./color-utils.js";
 import {
   VALID_WIDGET_SPACES,
-  normalizeWidgetOrder,
-  syncCustomSearchWidgetElements,
-  syncCustomTimeZoneWidgetElements,
-  syncCustomRestStatusWidgetElements,
-  syncCustomNotesWidgetElements
-} from "./custom-widgets.js";
+  normalizeWidgetOrder
+} from "./widgets/shared.js";
+
+const widgetModuleCache = new Map();
+
+async function getWidgetModuleIfActive(type, customWidgets) {
+  const hasActive = customWidgets.some(w => w?.type === type && w?.space !== "disabled");
+  if (!hasActive && !widgetModuleCache.has(type)) {
+    return null;
+  }
+  if (!widgetModuleCache.has(type)) {
+    const pathMap = {
+      "custom-search": "./widgets/search-widget.js",
+      "timezone": "./widgets/timezone-widget.js",
+      "rest-status": "./widgets/rest-status-widget.js",
+      "notes": "./widgets/notes-widget.js"
+    };
+    const modPath = pathMap[type];
+    if (!modPath) return null;
+    widgetModuleCache.set(type, await import(modPath));
+  }
+  return widgetModuleCache.get(type);
+}
 
 export { isAllowedThemeUrl };
 
@@ -673,11 +690,17 @@ export async function applySideSpaces(config = null) {
   const autoRouteIcons = (appearance.customSearchAutoRouteIcons && typeof appearance.customSearchAutoRouteIcons === "object")
     ? appearance.customSearchAutoRouteIcons
     : {};
+  const [searchMod, tzMod, restMod, notesMod] = await Promise.all([
+    getWidgetModuleIfActive("custom-search", customWidgets),
+    getWidgetModuleIfActive("timezone", customWidgets),
+    getWidgetModuleIfActive("rest-status", customWidgets),
+    getWidgetModuleIfActive("notes", customWidgets)
+  ]);
   const customElements = {
-    ...syncCustomSearchWidgetElements(customWidgets, autoRouteDefaults, autoRouteIcons),
-    ...syncCustomTimeZoneWidgetElements(customWidgets),
-    ...syncCustomRestStatusWidgetElements(customWidgets),
-    ...syncCustomNotesWidgetElements(customWidgets)
+    ...(searchMod ? searchMod.syncCustomSearchWidgetElements(customWidgets, autoRouteDefaults, autoRouteIcons) : {}),
+    ...(tzMod ? tzMod.syncCustomTimeZoneWidgetElements(customWidgets) : {}),
+    ...(restMod ? restMod.syncCustomRestStatusWidgetElements(customWidgets) : {}),
+    ...(notesMod ? notesMod.syncCustomNotesWidgetElements(customWidgets) : {})
   };
   const widgetOrder = normalizeWidgetOrder(appearance.widgetOrder, customWidgets);
   const rawSearchStyle = appearance.searchStyle;
@@ -858,5 +881,8 @@ if (lockTilesBtn) {
     config.appearance.lockTiles = !config.appearance.lockTiles;
     await saveConfig(config);
     await applyTilesLock(config);
+    if (!config.appearance.lockTiles) {
+      void import("./dragdrop.js").then(m => m.setupBookmarkDrag()).catch(() => {});
+    }
   });
 }

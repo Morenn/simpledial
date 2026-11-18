@@ -1813,5 +1813,8 @@
   },
   "backupAddonVersion": {
     "message": "Версія"
+  },
+  "backupFileTooLarge": {
+    "message": "Файл резервної копії занадто великий (макс. 3 МБ)."
   }
 }

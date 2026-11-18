@@ -1816,5 +1816,8 @@
   },
   "backupAddonVersion": {
     "message": "Version"
+  },
+  "backupFileTooLarge": {
+    "message": "Backup file is too large (max 3 MB)."
   }
 }

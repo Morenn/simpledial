@@ -1813,5 +1813,8 @@
   },
   "backupAddonVersion": {
     "message": "Verzia"
+  },
+  "backupFileTooLarge": {
+    "message": "Záložný súbor je príliš veľký (max 3 MB)."
   }
 }

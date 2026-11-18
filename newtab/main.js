@@ -1,17 +1,63 @@
 import { state, saveState, generateId, loadState } from "./state.js";
 import { loadTheme, applySideSpaces } from "./theme.js";
-import { updateCustomTimeZoneWidgets, pollAllRestStatusWidgets, startRestStatusPolling, startNotesReminderPolling } from "./custom-widgets.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
 import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems, clearLastSyncErrorReason } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
-import { runBackupInitCheck } from "./backup.js";
 import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypto.js";
-import "./browser-bookmarks-sync.js";
+
+let tzWidgetMod = null;
+let restWidgetMod = null;
+let notesReminderStarted = false;
+
+function startActiveCustomWidgets(config) {
+  const customWidgets = Array.isArray(config?.appearance?.customWidgets) ? config.appearance.customWidgets : [];
+  if (!tzWidgetMod && customWidgets.some(w => w?.type === "timezone" && w?.space !== "disabled")) {
+    void import("./widgets/timezone-widget.js").then(m => {
+      tzWidgetMod = m;
+      m.updateCustomTimeZoneWidgets();
+    });
+  }
+  if (!restWidgetMod && customWidgets.some(w => w?.type === "rest-status" && w?.space !== "disabled")) {
+    void import("./widgets/rest-status-widget.js").then(m => {
+      restWidgetMod = m;
+      void m.pollAllRestStatusWidgets({ force: false });
+      m.startRestStatusPolling();
+    });
+  }
+  if (!notesReminderStarted && customWidgets.some(w => w?.type === "notes" && w?.space !== "disabled")) {
+    notesReminderStarted = true;
+    void import("./widgets/notes-widget.js").then(m => {
+      m.startNotesReminderPolling();
+    });
+  }
+}
 
 // Make t global for modules that don't import it
 window.t = t;
+
+let settingsUiLoadPromise = null;
+async function ensureSettingsUiLoaded() {
+  if (!settingsUiLoadPromise) {
+    settingsUiLoadPromise = import("./settings-ui.js");
+  }
+  return settingsUiLoadPromise;
+}
+
+const lazyPromptUnlockVault = async () => {
+  await ensureSettingsUiLoaded();
+  if (typeof window.promptUnlockVault === "function" && window.promptUnlockVault !== lazyPromptUnlockVault) {
+    return window.promptUnlockVault();
+  }
+  return false;
+};
+window.promptUnlockVault = lazyPromptUnlockVault;
+
+document.getElementById("settings-btn")?.addEventListener("click", async () => {
+  const mod = await ensureSettingsUiLoaded();
+  await mod.openSettingsModal();
+});
 
 const dateTimeDisplay = document.getElementById("date-time-display");
 const ICON_REFRESH_CHECK_INTERVAL_MS = 60 * 60 * 1000;
@@ -85,15 +131,45 @@ window.applySavedDateTimeEnabled = function applySavedDateTimeEnabled(enabled) {
 // Listener activation
 import "./groups.js";
 import "./bookmarks.js";
-import { initKeyboardNavigation, updateShortcutPaletteButton } from "./keyboard-nav.js";
 
-initKeyboardNavigation();
+let keyboardNavPromise = null;
+function ensureKeyboardNavLoaded() {
+  if (!keyboardNavPromise) {
+    keyboardNavPromise = import("./keyboard-nav.js").then(m => {
+      m.initKeyboardNavigation();
+      return m;
+    });
+  }
+  return keyboardNavPromise;
+}
 
-// Load context menu and drag-drop modules asynchronously to avoid blocking initial render
-(async () => {
-  await import("./contextmenu.js");
-  await import("./dragdrop.js");
-})();
+document.addEventListener("keydown", () => {
+  void ensureKeyboardNavLoaded();
+}, { once: true, passive: true });
+
+document.getElementById("footer-shortcut-palette")?.addEventListener("click", async () => {
+  if (!keyboardNavPromise) {
+    const m = await ensureKeyboardNavLoaded();
+    m.updateShortcutPaletteButton?.();
+    document.getElementById("footer-shortcut-palette")?.click();
+  }
+}, { once: true });
+
+// contextmenu loads lazily on first right-click; dragdrop loads lazily only when tiles are unlocked
+
+let contextMenuLoaded = false;
+document.addEventListener("contextmenu", async e => {
+  if (contextMenuLoaded) return;
+  const groupTab = e.target?.closest?.(".group-tab");
+  const bookmarkTile = e.target?.closest?.(".bookmark-tile");
+  if (!groupTab && !bookmarkTile) return;
+  if (groupTab?.classList?.contains("add-group")) return;
+  if (bookmarkTile?.classList?.contains("add-bookmark")) return;
+  e.preventDefault();
+  contextMenuLoaded = true;
+  const mod = await import("./contextmenu.js");
+  mod.handleContextMenu(e);
+});
 
 window.addEventListener("keydown", e => {
   const isMac = navigator.platform.toUpperCase().includes("MAC");
@@ -173,10 +249,16 @@ function startIconRefreshLoop() {
   });
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
+  const initialWidgetsSnapshot = { appearance: { customWidgets: config.appearance?.customWidgets } };
+
   setTimeout(() => {
-    void pollAllRestStatusWidgets({ force: false });
-    startRestStatusPolling();
-    startNotesReminderPolling();
+    const hasBookmarks = Array.isArray(state.groups) && state.groups.some(
+      g => !g?.deleted && Array.isArray(g.items) && g.items.some(i => !i?.deleted)
+    );
+    if (hasBookmarks) {
+      void ensureKeyboardNavLoaded();
+    }
+    startActiveCustomWidgets(initialWidgetsSnapshot);
   }, 150);
 
   // Vault idle auto-lock monitoring (when vaultAutoLockMinutes > 0)
@@ -198,7 +280,7 @@ function startIconRefreshLoop() {
     const latestCfg = await loadConfig();
     if (await checkVaultAutoLock(latestCfg?.vaultAutoLockMinutes || 0)) {
       void updateFooter(latestCfg);
-      void pollAllRestStatusWidgets({ force: true });
+      void restWidgetMod?.pollAllRestStatusWidgets?.({ force: true });
     }
   }, 30000);
 
@@ -237,8 +319,14 @@ function startIconRefreshLoop() {
     shouldSkip: () => initialSyncInProgress
   });
 
-  // 5b) Backup check (in background, non-blocking)
-  runBackupInitCheck().catch(err => console.error("Backup init check failed", err));
+  // 5b) Backup check & browser bookmarks sync (deferred in background, non-blocking)
+  setTimeout(() => {
+    void import("./backup.js")
+      .then(m => m.runBackupInitCheck())
+      .catch(err => console.error("Backup init check failed", err));
+    void import("./browser-bookmarks-sync.js")
+      .catch(err => console.warn("Browser bookmarks sync init failed", err));
+  }, 800);
 
   // 6) Housekeeping cleanup (in  background, non-blocking)
   if (config.housekeeper?.autoCleanupEnabled) {
@@ -260,7 +348,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (!configChange || !configChange.newValue) return;
 
   updateDateTimeEnabledFromConfig(configChange.newValue);
-  void applySideSpaces(configChange.newValue).then(() => render());
+  void applySideSpaces(configChange.newValue).then(() => {
+    startActiveCustomWidgets(configChange.newValue);
+    render();
+  });
   updateClock();
   void updateFooter(configChange.newValue);
 });
@@ -335,7 +426,7 @@ export function setupLanguageSelector() {
  */
 export function updateClock() {
   const now = new Date();
-  updateCustomTimeZoneWidgets(now);
+  tzWidgetMod?.updateCustomTimeZoneWidgets?.(now);
 
   if (!dateTimeDisplay) return;
 
@@ -381,7 +472,7 @@ export function updateClock() {
 
 // Update all UI text elements
 export function updateUIText() {
-  updateShortcutPaletteButton();
+  window._updateShortcutPaletteButton?.();
   // Search box & search controls
   const searchBox = document.getElementById("search-box");
   if (searchBox) searchBox.placeholder = t("searchPlaceholder");

@@ -32,6 +32,8 @@ const importNetscapeBtn = document.getElementById("import-netscape-btn");
 const importNetscapeFile = document.getElementById("import-netscape-file");
 const browserBookmarksAutoSync = document.getElementById("browser-bookmarks-auto-sync");
 
+const MAX_BACKUP_UPLOAD_BYTES = 3 * 1024 * 1024; // 3 MB
+
 let currentBackupTabType = "bookmarks";
 
 function serializeExportBookmarkItem(i) {
@@ -729,6 +731,13 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
     backupUploadRestoreFile.addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (file.size > MAX_BACKUP_UPLOAD_BYTES) {
+        const msg = t("backupFileTooLarge") || "Backup file is too large (max 3 MB).";
+        if (backupStatus) backupStatus.textContent = "❌ " + msg;
+        alert(msg);
+        backupUploadRestoreFile.value = "";
+        return;
+      }
       try {
         const text = await file.text();
         let parsed;
