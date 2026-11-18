@@ -2,12 +2,19 @@ import { t } from "../i18n.js";
 import { applyCachedIconImageSrc } from "../color-utils.js";
 import { resolveCustomWidgetIcon, createCustomSearchIconContent } from "./shared.js";
 
+const validTimeZoneCache = new Map();
+const tzFormatterCache = new Map();
+
 export function isValidTimeZone(tz) {
   if (typeof tz !== "string" || !tz.trim()) return false;
+  const trimmed = tz.trim();
+  if (validTimeZoneCache.has(trimmed)) return validTimeZoneCache.get(trimmed);
   try {
-    new Intl.DateTimeFormat(undefined, { timeZone: tz.trim() });
+    new Intl.DateTimeFormat(undefined, { timeZone: trimmed });
+    validTimeZoneCache.set(trimmed, true);
     return true;
   } catch {
+    validTimeZoneCache.set(trimmed, false);
     return false;
   }
 }
@@ -33,14 +40,21 @@ export function formatTimeForTimeZone(date, timeZone, { showSeconds = false, use
   if (!(date instanceof Date) || Number.isNaN(date.getTime()) || !isValidTimeZone(timeZone)) {
     return "--:--";
   }
+  const tz = timeZone.trim();
+  const cacheKey = `${tz}|${showSeconds ? 1 : 0}|${use24Hour ? 1 : 0}`;
   try {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      ...(showSeconds ? { second: "2-digit" } : {}),
-      hour12: !use24Hour,
-      timeZone: timeZone.trim()
-    }).format(date);
+    let fmt = tzFormatterCache.get(cacheKey);
+    if (!fmt) {
+      fmt = new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        ...(showSeconds ? { second: "2-digit" } : {}),
+        hour12: !use24Hour,
+        timeZone: tz
+      });
+      tzFormatterCache.set(cacheKey, fmt);
+    }
+    return fmt.format(date);
   } catch {
     return "--:--";
   }
@@ -146,6 +160,12 @@ export function updateCustomTimeZoneWidgets(now = new Date()) {
       const use24Hour = el.dataset.use24h !== "false";
       const formatted = formatTimeForTimeZone(effectiveNow, tz, { showSeconds, use24Hour });
       const dayShift = isPinned && baseTz ? getTimeZoneDayShift(effectiveNow, tz, baseTz) : "";
+
+      if (el.dataset.lastFormatted === formatted && (el.dataset.lastDayShift || "") === dayShift) {
+        return;
+      }
+      el.dataset.lastFormatted = formatted;
+      el.dataset.lastDayShift = dayShift;
 
       if (dayShift) {
         el.textContent = "";

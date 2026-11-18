@@ -12,6 +12,7 @@ import {
   applyThemeStyle,
   fetchAndCacheThemeUrl,
   fetchBackgroundImageFromUrl,
+  downscaleBackgroundImage,
   isAllowedThemeUrl,
   getCustomThemeUrlCache
 } from "../theme.js";
@@ -69,6 +70,60 @@ const massDisableColorFromIconBtn = document.getElementById("mass-disable-color-
 const massColorFromIconStatus = document.getElementById("mass-color-from-icon-status");
 
 const SEASONAL_BACKGROUND_THEMES = new Set(["spring", "summer", "autumn", "winter"]);
+
+let bgPreviewGeneration = 0;
+
+async function createDownscaledPreviewUrl(dataUrl, maxWidth = 240, maxHeight = 135) {
+  if (!dataUrl || typeof createImageBitmap !== "function" || typeof fetch !== "function" || typeof document === "undefined") {
+    return dataUrl;
+  }
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const srcBitmap = await createImageBitmap(blob);
+    try {
+      const scale = Math.min(1, maxWidth / srcBitmap.width, maxHeight / srcBitmap.height);
+      if (scale >= 1) return dataUrl;
+      const targetW = Math.max(1, Math.round(srcBitmap.width * scale));
+      const targetH = Math.max(1, Math.round(srcBitmap.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return dataUrl;
+      let resized = null;
+      try {
+        resized = await createImageBitmap(blob, { resizeWidth: targetW, resizeHeight: targetH, resizeQuality: "medium" });
+        ctx.drawImage(resized, 0, 0, targetW, targetH);
+      } catch {
+        ctx.drawImage(srcBitmap, 0, 0, targetW, targetH);
+      } finally {
+        if (resized && resized !== srcBitmap) resized.close?.();
+      }
+      const webp = canvas.toDataURL("image/webp", 0.7);
+      return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.7);
+    } finally {
+      srcBitmap.close?.();
+    }
+  } catch {
+    return dataUrl;
+  }
+}
+
+export function setBgPreviewImage(dataUrl) {
+  if (!bgPreview) return;
+  const gen = ++bgPreviewGeneration;
+  if (!dataUrl) {
+    bgPreview.style.backgroundImage = "";
+    bgPreview.style.display = "none";
+    return;
+  }
+  void createDownscaledPreviewUrl(dataUrl).then(previewUrl => {
+    if (gen !== bgPreviewGeneration || !bgPreview) return;
+    bgPreview.style.backgroundImage = `url('${previewUrl}')`;
+    bgPreview.style.display = "block";
+  });
+}
 
 export function updateShowDeletedButtonAppearance() {
   if (!showDeletedBtn || !showDeletedToggle) return;
@@ -265,15 +320,7 @@ export function syncAppearanceControlsFromDraft(draft) {
   }
   window.renderWidgetOrderList?.(draft);
 
-  if (bgPreview) {
-    if (draft.backgroundImage) {
-      bgPreview.style.backgroundImage = `url('${draft.backgroundImage}')`;
-      bgPreview.style.display = "block";
-    } else {
-      bgPreview.style.backgroundImage = "";
-      bgPreview.style.display = "none";
-    }
-  }
+  setBgPreviewImage(draft.backgroundImage || null);
 
   if (bgImageInput) bgImageInput.value = "";
   if (bgImageUrlInput) bgImageUrlInput.value = draft.backgroundImageUrl || "";
@@ -333,12 +380,7 @@ export function populateAppearanceSettings(config) {
     bgImageUrlInput.value = config.appearance?.backgroundImageUrl || "";
   }
   setBackgroundUrlStatusMessage("");
-  if (config.appearance?.backgroundImage && bgPreview) {
-    bgPreview.style.backgroundImage = `url('${config.appearance.backgroundImage}')`;
-    bgPreview.style.display = "block";
-  } else if (bgPreview) {
-    bgPreview.style.display = "none";
-  }
+  setBgPreviewImage(config.appearance?.backgroundImage || null);
 
   if (tileOpacitySlider) {
     const opacityPercent = Math.round((config.appearance?.tileOpacity ?? 1) * 100);
@@ -560,10 +602,7 @@ async function applyBackgroundFromUrlInput() {
     bgImageUrlInput.value = url;
     if (bgImageInput) bgImageInput.value = "";
 
-    if (bgPreview) {
-      bgPreview.style.backgroundImage = `url('${dataUrl}')`;
-      bgPreview.style.display = "block";
-    }
+    setBgPreviewImage(dataUrl);
 
     await applyBackground({ appearance: { ...draft } });
     setBackgroundUrlStatusMessage("✅");
@@ -582,6 +621,14 @@ async function handleApplyThemeUrlPreview() {
 
   if (themeCssUrlApply) {
     themeCssUrlApply.disabled = true;
+  }
+  const confirmed = window.confirm(
+    t("appearanceCustomCssTrustConfirm")
+      || "Only load custom CSS from URLs you trust. Untrusted CSS can alter or spoof interface elements. Continue?"
+  );
+  if (!confirmed) {
+    if (themeCssUrlApply) themeCssUrlApply.disabled = false;
+    return false;
   }
   setThemeStatusMessage("⏳ ...");
 
@@ -649,40 +696,28 @@ async function handleMassColorFromIconAction(enable) {
 
 export function initAppearanceSettings() {
   if (bgImageInput) {
-    bgImageInput.addEventListener("change", (e) => {
+    bgImageInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Image file is too large. Please use an image smaller than 2MB.");
+      try {
+        const base64Data = await downscaleBackgroundImage(file);
+        const draft = await ensureAppearanceDraft();
+        draft.backgroundImage = base64Data;
+        draft.backgroundImageUrl = "";
+        if (bgImageUrlInput) bgImageUrlInput.value = "";
+        setBackgroundUrlStatusMessage("");
+
+        setBgPreviewImage(base64Data);
+
+        await applyBackground({ appearance: { ...draft } });
+        markSettingsDirty();
+      } catch (error) {
+        alert("Failed to load image: " + (error?.message || "Invalid image"));
+        console.error("Image load error", error);
+      } finally {
         bgImageInput.value = "";
-        return;
       }
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const base64Data = event.target.result;
-          const draft = await ensureAppearanceDraft();
-          draft.backgroundImage = base64Data;
-          draft.backgroundImageUrl = "";
-          if (bgImageUrlInput) bgImageUrlInput.value = "";
-          setBackgroundUrlStatusMessage("");
-
-          if (bgPreview) {
-            bgPreview.style.backgroundImage = `url('${base64Data}')`;
-            bgPreview.style.display = "block";
-          }
-
-          await applyBackground({ appearance: { ...draft } });
-          markSettingsDirty();
-        } catch (error) {
-          alert("Failed to load image: " + error.message);
-          console.error("Image load error", error);
-        }
-      };
-
-      reader.readAsDataURL(file);
     });
   }
 
@@ -711,10 +746,7 @@ export function initAppearanceSettings() {
       draft.backgroundImage = null;
       draft.backgroundImageUrl = "";
 
-      if (bgPreview) {
-        bgPreview.style.backgroundImage = "";
-        bgPreview.style.display = "none";
-      }
+      setBgPreviewImage(null);
       if (bgImageInput) bgImageInput.value = "";
       if (bgImageUrlInput) bgImageUrlInput.value = "";
       setBackgroundUrlStatusMessage("");

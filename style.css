@@ -2237,6 +2237,22 @@ body.theme-dark .bookmark-title:hover {
   opacity: 0.6;
 }
 
+.footer-status-dot.error {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.55);
+}
+
+.footer-status-dot.locked {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
 #footer-sync-text {
   color: var(--text);
   opacity: 0.75;
@@ -2432,6 +2448,17 @@ body.theme-dark .bookmark-title:hover {
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.55);
 }
 
+.rest-status-dot.locked {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
 .rest-status-name {
   font-weight: 600;
   white-space: nowrap;
@@ -2491,6 +2518,80 @@ body.theme-dark .bookmark-title:hover {
   color: #f59e0b;
   opacity: 0.95;
   line-height: 1.3;
+}
+
+.custom-widget-rest-auth-warning.is-encrypted {
+  color: #22c55e;
+}
+
+.formatted-tooltip-anchor {
+  position: relative;
+}
+
+.formatted-tooltip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: help;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.formatted-tooltip-box {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  width: min(360px, 100%);
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+  z-index: 300;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+
+.formatted-tooltip-anchor:hover .formatted-tooltip-box,
+.formatted-tooltip-anchor:focus-within .formatted-tooltip-box {
+  opacity: 1;
+  visibility: visible;
+}
+
+.security-vault-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.security-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.security-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.35rem 0;
+}
+
+.vault-unlock-modal-content {
+  width: min(92vw, 380px);
+  max-width: 380px;
 }
 
 .custom-widget-rest-metrics-input {

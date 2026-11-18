@@ -1647,6 +1647,165 @@
     "message": "Show extra stats in tooltip only"
   },
   "customRestAuthWarning": {
-    "message": "Experimental: header tokens are stored unencrypted in local storage."
+    "message": "Experimental: header tokens stay local only (never backed up, exported, or synced; re-enter after restore). Enable Vault in Security tab to encrypt."
+  },
+  "securityTab": {
+    "message": "Security"
+  },
+  "securityVaultTitle": {
+    "message": "Secrets Vault"
+  },
+  "securityVaultDesc": {
+    "message": "Encrypts only sensitive secrets (such as widget API tokens) using AES-GCM. Unlocked keys stay in browser session memory only."
+  },
+  "securityPasswordPlaceholder": {
+    "message": "Vault password"
+  },
+  "securityConfirmPasswordPlaceholder": {
+    "message": "Confirm password"
+  },
+  "securityEnableVaultBtn": {
+    "message": "Enable Vault & Encrypt Secrets"
+  },
+  "securityUnlockBtn": {
+    "message": "Unlock Vault"
+  },
+  "securityLockBtn": {
+    "message": "Lock Vault"
+  },
+  "securityEncryptExistingBtn": {
+    "message": "Encrypt Unencrypted Secrets"
+  },
+  "securityChangePasswordTitle": {
+    "message": "Change Vault Password"
+  },
+  "securityOldPasswordPlaceholder": {
+    "message": "Current password"
+  },
+  "securityNewPasswordPlaceholder": {
+    "message": "New password"
+  },
+  "securityChangePwBtn": {
+    "message": "Change Password"
+  },
+  "securityStatusNotSet": {
+    "message": "Vault not set up"
+  },
+  "securityStatusUnlocked": {
+    "message": "Vault unlocked"
+  },
+  "securityStatusLocked": {
+    "message": "Vault locked"
+  },
+  "securityPlaintextTokensCount": {
+    "message": "unencrypted widget token(s)"
+  },
+  "securityEnterPasswordPrompt": {
+    "message": "Enter vault password to unlock secrets:"
+  },
+  "securityWrongPassword": {
+    "message": "Incorrect vault password."
+  },
+  "securityPasswordRequired": {
+    "message": "Enter a vault password."
+  },
+  "securityPasswordMismatch": {
+    "message": "Passwords do not match."
+  },
+  "securityVaultEnabled": {
+    "message": "Vault enabled and existing tokens encrypted."
+  },
+  "securityTokensEncrypted": {
+    "message": "All widget tokens encrypted."
+  },
+  "securityPasswordChanged": {
+    "message": "Vault password updated."
+  },
+  "vaultLockedClickToUnlock": {
+    "message": "Vault locked — click badge to unlock"
+  },
+  "vaultDecryptFailed": {
+    "message": "Failed to decrypt token"
+  },
+  "customRestAuthLockedWarning": {
+    "message": "Token is encrypted, but vault is locked. Unlock in Security tab to view or change it."
+  },
+  "customRestAuthEncryptedInfo": {
+    "message": "Vault unlocked: token is encrypted locally (never backed up, exported, or synced; re-enter after restore)."
+  },
+  "backupConfigRestoredSecretsWarning": {
+    "message": "Configuration restored. Widget secrets are not stored in backups — please re-enter your API tokens."
+  },
+  "securityDestroyVaultBtn": {
+    "message": "Destroy Vault & Clear Secrets"
+  },
+  "securityConfirmDestroyVault": {
+    "message": "Destroy the vault and erase all stored widget secrets? You will need to create a new vault and re-enter your API tokens."
+  },
+  "securityVaultDestroyed": {
+    "message": "Vault destroyed and all secrets cleared. You can now set a new password."
+  },
+  "syncEncryptVault": {
+    "message": "Encrypt with vault"
+  },
+  "syncVaultNotSetupError": {
+    "message": "Enable the Vault in the Security tab first."
+  },
+  "securityPasswordExpired": {
+    "message": "Password older than {0} days — please change it"
+  },
+  "securityDaysRemaining": {
+    "message": "expires in {0} day(s)"
+  },
+  "securityPasswordPolicyError": {
+    "message": "Password must contain:"
+  },
+  "securityForceChangeTitle": {
+    "message": "Password Expired"
+  },
+  "securityForceChangeDesc": {
+    "message": "Your vault password has expired. Set a new password to continue."
+  },
+  "securityKdfLabel": {
+    "message": "Key derivation (KDF)"
+  },
+  "securityKdfSha512": {
+    "message": "PBKDF2-SHA512 (210k) — Recommended for 64-bit"
+  },
+  "securityKdfSha256": {
+    "message": "PBKDF2-SHA256 (600k) — Best for 32-bit"
+  },
+  "securityKdfHint": {
+    "message": "PBKDF2-SHA512 (210k) is faster on 64-bit systems (recommended default). Use PBKDF2-SHA256 (600k) if you are on a 32-bit system."
+  },
+  "securityKdfChangeHint": {
+    "message": "PBKDF2-SHA512 (210k) is faster on 64-bit systems (recommended default); PBKDF2-SHA256 (600k) is for 32-bit. To switch KDF, select the new algorithm above and click Change Password (you may keep the same password when migrating KDF)."
+  },
+  "securityPasswordSameError": {
+    "message": "New password must be different from your current password."
+  },
+  "customRestAuthScopeTooltip": {
+    "message": "Security best practice: use a dedicated read-only API key with minimal, narrow permissions (never an admin or write token) to limit impact if compromised."
+  },
+  "securityAutoLockLabel": {
+    "message": "Auto-lock after inactivity (minutes)"
+  },
+  "securityAutoLockHint": {
+    "message": "Optional: 0 = disabled, max 1440 min (24 hours)."
+  },
+  "securityAutoLockSaved": {
+    "message": "Auto-lock setting saved."
+  },
+  "syncPlaintextVaultWarning": {
+    "message": "Consider enabling Vault encryption in Security tab."
+  },
+  "insecureHttpAuthWarning": {
+    "message": "HTTP URL sends credentials unencrypted."
+  },
+  "appearanceCustomCssTrustConfirm": {
+    "message": "Only load custom CSS from URLs you trust. Untrusted CSS can alter or spoof interface elements. Continue?"
+  },
+  "securityMuteSyncLockedWarning": {
+    "message": "Mute top-right Sync locked-vault warning popup (sync status bar still shows locked state)"
   }
 }

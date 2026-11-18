@@ -1644,6 +1644,165 @@
     "message": "Extra waarden alleen in tooltip tonen"
   },
   "customRestAuthWarning": {
-    "message": "Experimenteel: headertokens worden onversleuteld opgeslagen in de lokale opslag."
+    "message": "Experimenteel: headertokens blijven alleen lokaal (nooit geback-upt, geëxporteerd of gesynchroniseerd; voer opnieuw in na herstel). Schakel Kluis in bij Beveiliging om te versleutelen."
+  },
+  "securityTab": {
+    "message": "Beveiliging"
+  },
+  "securityVaultTitle": {
+    "message": "Geheimenkluis"
+  },
+  "securityVaultDesc": {
+    "message": "Versleutelt alleen gevoelige geheimen (zoals widget-API-tokens) met AES-GCM. Ontgrendelde sleutels blijven alleen in het sessiegeheugen van de browser."
+  },
+  "securityPasswordPlaceholder": {
+    "message": "Kluiswachtwoord"
+  },
+  "securityConfirmPasswordPlaceholder": {
+    "message": "Wachtwoord bevestigen"
+  },
+  "securityEnableVaultBtn": {
+    "message": "Kluis inschakelen & geheimen versleutelen"
+  },
+  "securityUnlockBtn": {
+    "message": "Kluis ontgrendelen"
+  },
+  "securityLockBtn": {
+    "message": "Kluis vergrendelen"
+  },
+  "securityEncryptExistingBtn": {
+    "message": "Onversleutelde geheimen versleutelen"
+  },
+  "securityChangePasswordTitle": {
+    "message": "Kluiswachtwoord wijzigen"
+  },
+  "securityOldPasswordPlaceholder": {
+    "message": "Huidig wachtwoord"
+  },
+  "securityNewPasswordPlaceholder": {
+    "message": "Nieuw wachtwoord"
+  },
+  "securityChangePwBtn": {
+    "message": "Wachtwoord wijzigen"
+  },
+  "securityStatusNotSet": {
+    "message": "Kluis niet ingesteld"
+  },
+  "securityStatusUnlocked": {
+    "message": "Kluis ontgrendeld"
+  },
+  "securityStatusLocked": {
+    "message": "Kluis vergrendeld"
+  },
+  "securityPlaintextTokensCount": {
+    "message": "onversleutelde widget-token(s)"
+  },
+  "securityEnterPasswordPrompt": {
+    "message": "Voer het kluiswachtwoord in om geheimen te ontgrendelen:"
+  },
+  "securityWrongPassword": {
+    "message": "Onjuist kluiswachtwoord."
+  },
+  "securityPasswordRequired": {
+    "message": "Voer een kluiswachtwoord in."
+  },
+  "securityPasswordMismatch": {
+    "message": "Wachtwoorden komen niet overeen."
+  },
+  "securityVaultEnabled": {
+    "message": "Kluis ingeschakeld en bestaande tokens versleuteld."
+  },
+  "securityTokensEncrypted": {
+    "message": "Alle widget-tokens versleuteld."
+  },
+  "securityPasswordChanged": {
+    "message": "Kluiswachtwoord bijgewerkt."
+  },
+  "vaultLockedClickToUnlock": {
+    "message": "Kluis vergrendeld — klik om te ontgrendelen"
+  },
+  "vaultDecryptFailed": {
+    "message": "Ontsleutelen van token mislukt"
+  },
+  "customRestAuthLockedWarning": {
+    "message": "Token is versleuteld maar kluis is vergrendeld. Ontgrendel via Beveiliging."
+  },
+  "customRestAuthEncryptedInfo": {
+    "message": "Kluis ontgrendeld: token wordt lokaal versleuteld (nooit geback-upt, geëxporteerd of gesynchroniseerd; voer opnieuw in na herstel)."
+  },
+  "backupConfigRestoredSecretsWarning": {
+    "message": "Configuratie hersteld. Widget-geheimen worden niet opgeslagen in back-ups — voer uw API-tokens opnieuw in."
+  },
+  "securityDestroyVaultBtn": {
+    "message": "Kluis vernietigen & geheimen wissen"
+  },
+  "securityConfirmDestroyVault": {
+    "message": "De kluis vernietigen en alle opgeslagen widget-geheimen wissen? U moet een nieuwe kluis aanmaken en uw API-tokens opnieuw invoeren."
+  },
+  "securityVaultDestroyed": {
+    "message": "Kluis vernietigd en alle geheimen gewist. U kunt nu een nieuw wachtwoord instellen."
+  },
+  "syncEncryptVault": {
+    "message": "Versleutelen met kluis"
+  },
+  "syncVaultNotSetupError": {
+    "message": "Schakel eerst de Kluis in op het tabblad Beveiliging."
+  },
+  "securityPasswordExpired": {
+    "message": "Wachtwoord ouder dan {0} dagen — wijzig het alstublieft"
+  },
+  "securityDaysRemaining": {
+    "message": "verloopt over {0} dag(en)"
+  },
+  "securityPasswordPolicyError": {
+    "message": "Wachtwoord moet bevatten:"
+  },
+  "securityForceChangeTitle": {
+    "message": "Wachtwoord verlopen"
+  },
+  "securityForceChangeDesc": {
+    "message": "Uw kluiswachtwoord is verlopen. Stel een nieuw wachtwoord in om door te gaan."
+  },
+  "securityKdfLabel": {
+    "message": "Sleutelafleiding (KDF)"
+  },
+  "securityKdfSha512": {
+    "message": "PBKDF2-SHA512 (210k) — Aanbevolen voor 64-bit"
+  },
+  "securityKdfSha256": {
+    "message": "PBKDF2-SHA256 (600k) — Beter voor 32-bit"
+  },
+  "securityKdfHint": {
+    "message": "PBKDF2-SHA512 (210k) is sneller op 64-bits systemen (aanbevolen standaard). Gebruik PBKDF2-SHA256 (600k) op een 32-bits systeem."
+  },
+  "securityKdfChangeHint": {
+    "message": "PBKDF2-SHA512 (210k) is sneller op 64-bits systemen (aanbevolen standaard); PBKDF2-SHA256 (600k) is voor 32-bit. Om van KDF te wisselen, selecteert u hierboven het nieuwe algoritme en klikt u op Wachtwoord wijzigen (u mag hetzelfde wachtwoord behouden bij een KDF-migratie)."
+  },
+  "securityPasswordSameError": {
+    "message": "Het nieuwe wachtwoord moet verschillen van uw huidige wachtwoord."
+  },
+  "customRestAuthScopeTooltip": {
+    "message": "Beveiligingsadvies: gebruik een aparte alleen-lezen API-sleutel met minimale, beperkte rechten (nooit een beheerders- of schrijftoken) om de impact bij misbruik te beperken."
+  },
+  "securityAutoLockLabel": {
+    "message": "Automatisch vergrendelen bij inactiviteit (minuten)"
+  },
+  "securityAutoLockHint": {
+    "message": "Optioneel: 0 = uitgeschakeld, max 1440 min (24 uur)."
+  },
+  "securityAutoLockSaved": {
+    "message": "Automatische vergrendeling opgeslagen."
+  },
+  "syncPlaintextVaultWarning": {
+    "message": "Overweeg Kluis-versleuteling in te schakelen op het tabblad Beveiliging."
+  },
+  "insecureHttpAuthWarning": {
+    "message": "HTTP-URL verzendt inloggegevens onversleuteld."
+  },
+  "appearanceCustomCssTrustConfirm": {
+    "message": "Laad aangepaste CSS alleen van vertrouwde URL's. Onbetrouwbare CSS kan interface-elementen wijzigen of nabootsen. Doorgaan?"
+  },
+  "securityMuteSyncLockedWarning": {
+    "message": "Pop-upwaarschuwing rechtsboven voor vergrendelde sync-kluis dempen (sync-statusbalk toont nog steeds vergrendelde status)"
   }
 }

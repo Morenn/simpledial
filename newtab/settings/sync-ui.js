@@ -2,7 +2,17 @@ import { state, saveState } from "../state.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { testSyncConnection, requestHostPermission, syncNow, syncWrite, syncRead, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount } from "../sync.js";
 import { t } from "../i18n.js";
-import { deriveKeyFromPassword, generateLocalKeyRaw, importRawKey, encryptWithKey, decryptWithKey } from "../crypto.js";
+import {
+  generateLocalKeyRaw,
+  importRawKey,
+  encryptWithKey,
+  decryptWithKey,
+  setSecret,
+  getSecret,
+  isVaultUnlocked,
+  tryAutoUnlockVault,
+  isInsecureHttpUrl
+} from "../crypto.js";
 import { render } from "../render.js";
 import {
   settingsState,
@@ -328,32 +338,16 @@ export async function populateSyncSettings(config) {
         } catch (e) {
           console.warn("Failed to decrypt local credentials", e);
         }
-      } else if (config.sync.encryptionMode === "master" && config.sync.enc) {
-        if (window._speeddial_masterKey) {
-          try {
-            const plain = await decryptWithKey(window._speeddial_masterKey, config.sync.enc.ciphertext, config.sync.enc.iv);
-            const obj = JSON.parse(plain);
-            if (syncUsername) syncUsername.value = obj.username || "";
-            if (syncPassword) syncPassword.value = obj.password || "";
-          } catch (e) {
-            console.warn("Failed to decrypt with cached master key", e);
-            if (syncStatus) syncStatus.textContent = "❌ " + t("enterMasterPasswordPrompt");
-          }
+      } else if (config.sync.encryptionMode === "vault" && typeof config.sync.enc === "string") {
+        const res = await getSecret(config.sync.enc, "sync:credentials", { vaultHeader: config.vaultHeader || null });
+        if (res.ok) {
+          const obj = JSON.parse(res.value);
+          if (syncUsername) syncUsername.value = obj.username || "";
+          if (syncPassword) syncPassword.value = obj.password || "";
         } else {
-          const pw = prompt(t("enterMasterPasswordPrompt") + " (leave empty to skip)");
-          if (pw) {
-            try {
-              const derived = await deriveKeyFromPassword(pw, config.sync.enc.salt);
-              const plain = await decryptWithKey(derived.key, config.sync.enc.ciphertext, config.sync.enc.iv);
-              window._speeddial_masterKey = derived.key;
-              const obj = JSON.parse(plain);
-              if (syncUsername) syncUsername.value = obj.username || "";
-              if (syncPassword) syncPassword.value = obj.password || "";
-            } catch (e) {
-              console.warn("Master password failed", e);
-              if (syncStatus) syncStatus.textContent = "❌ " + t("enterMasterPasswordPrompt");
-            }
-          }
+          if (syncUsername) syncUsername.value = "";
+          if (syncPassword) syncPassword.value = "";
+          if (syncStatus) syncStatus.textContent = "🔒 " + (t("securityStatusLocked") || "Vault locked");
         }
       }
     }
@@ -545,29 +539,29 @@ export function initSyncSettings({ persistSettings }) {
           if (syncStatus) syncStatus.textContent = "❌ Encryption failed";
           return;
         }
-      } else if (encryptMode === "master") {
-        const pw = prompt(t("enterMasterPasswordPrompt"));
-        if (!pw) {
-          if (syncStatus) syncStatus.textContent = "❌ " + t("enterMasterPasswordPrompt");
+      } else if (encryptMode === "vault") {
+        if (!config.vaultHeader?.check) {
+          if (syncStatus) syncStatus.textContent = "❌ " + (t("syncVaultNotSetupError") || "Enable the Vault in the Security tab first.");
           return;
         }
-
-        const confirmPw = prompt(t("confirmMasterPasswordPrompt"));
-        if (pw !== confirmPw) {
-          if (syncStatus) syncStatus.textContent = "❌ " + t("confirmMasterPasswordPrompt");
+        if (!isVaultUnlocked()) {
+          await tryAutoUnlockVault(config.vaultHeader);
+        }
+        if (!isVaultUnlocked() && typeof window.promptUnlockVault === "function") {
+          await window.promptUnlockVault();
+        }
+        if (!isVaultUnlocked()) {
+          if (syncStatus) syncStatus.textContent = "🔒 " + (t("securityStatusLocked") || "Vault locked");
           return;
         }
-
         try {
-          const derived = await deriveKeyFromPassword(pw, null);
           const payload = JSON.stringify({ username: formUsername, password: formPassword });
-          const enc = await encryptWithKey(derived.key, payload);
-          config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv, salt: derived.salt };
+          config.sync.enc = await setSecret(payload, "sync:credentials", { requireVault: true });
           config.sync.username = "";
           config.sync.password = "";
-          window._speeddial_masterKey = derived.key;
+          delete config.sync.localKey;
         } catch (e) {
-          console.error("Failed to encrypt with master password", e);
+          console.error("Failed to encrypt with vault", e);
           if (syncStatus) syncStatus.textContent = "❌ Encryption failed";
           return;
         }
@@ -576,7 +570,18 @@ export function initSyncSettings({ persistSettings }) {
       await saveConfig(config);
       settingsState.credentialsTouched = false;
       updateCredentialsSaveButton();
-      if (syncStatus) syncStatus.textContent = "✅ " + t("credentialsSaved");
+      if (syncStatus) {
+        const warnings = [];
+        if (encryptMode !== "vault") {
+          warnings.push(t("syncPlaintextVaultWarning") || "Consider enabling Vault encryption in Security tab.");
+        }
+        if (isInsecureHttpUrl(config.sync.serverUrl)) {
+          warnings.push(t("insecureHttpAuthWarning") || "HTTP URL sends credentials unencrypted.");
+        }
+        syncStatus.textContent = warnings.length > 0
+          ? `✅ ${t("credentialsSaved")} (⚠️ ${warnings.join(" ")})`
+          : `✅ ${t("credentialsSaved")}`;
+      }
     });
   }
 

@@ -1,12 +1,13 @@
 import { state, saveState, generateId, loadState } from "./state.js";
 import { loadTheme, applySideSpaces } from "./theme.js";
 import { updateCustomTimeZoneWidgets, pollAllRestStatusWidgets, startRestStatusPolling, startNotesReminderPolling } from "./custom-widgets.js";
-import { render, updateFooter } from "./render.js";
+import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
-import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems } from "./sync.js";
+import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems, clearLastSyncErrorReason } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { runBackupInitCheck } from "./backup.js";
+import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypto.js";
 import "./browser-bookmarks-sync.js";
 
 // Make t global for modules that don't import it
@@ -136,18 +137,16 @@ function startIconRefreshLoop() {
 }
 
 (async function init() {
-  // 1) Initialize language
-  await initLanguage();
+  // 1-3) Load language, bookmark state, and config in parallel
+  let [, , config] = await Promise.all([
+    initLanguage(),
+    loadState(),
+    loadConfig()
+  ]);
 
-  // 2) Load saved state (groups, bookmarks, deleted items)
-  await loadState();
-
-  // 3) Load and apply theme
-  await loadTheme();
-
-  const config = await loadConfig();
+  // 4) Load and apply theme using already-loaded config
+  await loadTheme(config);
   updateDateTimeEnabledFromConfig(config);
-  await applySideSpaces(config);
 
   const showDeletedToggle = document.getElementById("show-deleted-toggle");
   if (showDeletedToggle) {
@@ -164,8 +163,14 @@ function startIconRefreshLoop() {
   // 9) Render UI immediately with local data — does not wait for network
   render();
 
-  // 10) Start the clock display
-  setInterval(updateClock, 1000);
+  // 10) Start the clock display (pause ticks when tab is hidden)
+  setInterval(() => {
+    if (document.visibilityState === "hidden") return;
+    updateClock();
+  }, 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") updateClock();
+  });
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
   setTimeout(() => {
@@ -174,16 +179,44 @@ function startIconRefreshLoop() {
     startNotesReminderPolling();
   }, 150);
 
+  // Vault idle auto-lock monitoring (when vaultAutoLockMinutes > 0)
+  let lastVaultActivityCheckMs = 0;
+  const onVaultActivity = async () => {
+    if (!isVaultUnlocked()) return;
+    const now = Date.now();
+    if (now - lastVaultActivityCheckMs < 15000) return;
+    lastVaultActivityCheckMs = now;
+    const latestCfg = await loadConfig();
+    if (latestCfg?.vaultAutoLockMinutes > 0) {
+      void touchVaultActivity(latestCfg.vaultAutoLockMinutes);
+    }
+  };
+  document.addEventListener("pointerdown", () => { void onVaultActivity(); }, { passive: true });
+  document.addEventListener("keydown", () => { void onVaultActivity(); }, { passive: true });
+  setInterval(async () => {
+    if (!isVaultUnlocked()) return;
+    const latestCfg = await loadConfig();
+    if (await checkVaultAutoLock(latestCfg?.vaultAutoLockMinutes || 0)) {
+      void updateFooter(latestCfg);
+      void pollAllRestStatusWidgets({ force: true });
+    }
+  }, 30000);
+
   // 4) Sync (in background, with re-render after data changes)
   if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
     initialSyncInProgress = true;
     setTimeout(() => {
       (async () => {
         const result = await syncNow();
+        void updateFooter();
 
         if (!result.ok) {
-          console.warn("Sync server is unavailable, using local data");
-          showSyncUnavailableNotification();
+          console.warn("Sync failed:", result.reason || "unknown", result);
+          const latestCfg = await loadConfig();
+          if (result.reason === "credentials-locked" && latestCfg?.vaultMuteSyncLockedWarning) {
+            return;
+          }
+          showSyncUnavailableNotification(result);
           return;
         }
 
@@ -212,6 +245,7 @@ function startIconRefreshLoop() {
     const retentionDays = config.housekeeper?.retentionDays || 30;
     cleanupDeletedItems(retentionDays).catch(err => console.error("Housekeeping cleanup failed", err));
   }
+  config = null; // Release startup config reference from long-lived interval closures
 
   // 11) Refresh bookmark icons (in background, non-blocking)
   refreshBookmarkIconsIfNeeded({ force: false, persist: true, sync: false })
@@ -499,67 +533,22 @@ function getLeadingIconPrefix(text) {
 
 // Update settings modal text based on language
 function updateSettingsModalText() {
-  // Get all elements with data-i18n attribute
-  const elementsWithI18n = document.querySelectorAll('[data-i18n]');
-  elementsWithI18n.forEach(el => {
+  // Single pass over all [data-i18n] elements (covers p, button, label, span, etc.)
+  document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     const text = t(key);
-    
-    // Preserve emoji/icon if present
+
+    if (el.tagName === 'P' || (el.tagName === 'LABEL' && !el.querySelector('span[data-i18n]'))) {
+      el.textContent = text;
+      return;
+    }
+
     const emoji = getLeadingIconPrefix(el.textContent);
-    
     if (emoji && !text.startsWith(emoji.trim())) {
       el.textContent = emoji + text;
     } else {
       el.textContent = text;
     }
-  });
-
-  // Update specific paragraphs with data-i18n
-  const paragraphs = document.querySelectorAll('p[data-i18n]');
-  paragraphs.forEach(p => {
-    const key = p.getAttribute('data-i18n');
-    p.textContent = t(key);
-  });
-
-  // Update button text content
-  const allButtons = document.querySelectorAll('button[data-i18n]');
-  allButtons.forEach(btn => {
-    const key = btn.getAttribute('data-i18n');
-    const text = t(key);
-    
-    // Preserve emoji/icon if present
-    const emoji = getLeadingIconPrefix(btn.textContent);
-    
-    if (emoji && !text.startsWith(emoji.trim())) {
-      btn.textContent = emoji + text;
-    } else {
-      btn.textContent = text;
-    }
-  });
-
-  // Update labels with spans inside them (checkboxes and radio buttons)
-  const labelsWithSpans = document.querySelectorAll('label[class*="row"] span[data-i18n]');
-  labelsWithSpans.forEach(span => {
-    const key = span.getAttribute('data-i18n');
-    const text = t(key);
-    
-    // Preserve emoji/icon if present
-    const emoji = getLeadingIconPrefix(span.textContent);
-    
-    if (emoji && !text.startsWith(emoji.trim())) {
-      span.textContent = emoji + text;
-    } else {
-      span.textContent = text;
-    }
-  });
-
-  // Update labels without child spans
-  const allLabels = document.querySelectorAll('label[data-i18n]');
-  allLabels.forEach(label => {
-    const key = label.getAttribute('data-i18n');
-    const text = t(key);
-    label.textContent = text;
   });
 
   // Update inputs with data-i18n-placeholder
@@ -600,8 +589,11 @@ function updateSettingsModalText() {
   }
 }
 
-// Show notification when sync server is unavailable
-function showSyncUnavailableNotification() {
+// Show notification when sync fails or credentials are locked
+function showSyncUnavailableNotification(result = null) {
+  const reason = result?.reason || null;
+  const message = getSyncErrorLabel(reason);
+
   const notification = document.createElement("div");
   notification.className = "notification notification-warning";
   notification.style.position = "fixed";
@@ -615,7 +607,23 @@ function showSyncUnavailableNotification() {
   notification.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
   notification.style.fontFamily = "system-ui, -apple-system, sans-serif";
   notification.style.fontSize = "14px";
-  notification.textContent = t("syncServerUnavailable") || "Sync server is unavailable. Using local data.";
+
+  if (reason === "credentials-locked") {
+    notification.textContent = `🔐 ${message} (${t("vaultLockedClickToUnlock") || "Vault locked — click badge to unlock"})`;
+    notification.style.cursor = "pointer";
+    notification.addEventListener("click", async () => {
+      notification.remove();
+      if (typeof window.promptUnlockVault === "function" && await window.promptUnlockVault()) {
+        clearLastSyncErrorReason();
+        void updateFooter();
+        const r = await syncNow();
+        void updateFooter();
+        if (r?.changed) render();
+      }
+    });
+  } else {
+    notification.textContent = message;
+  }
 
   document.body.appendChild(notification);
 

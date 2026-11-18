@@ -1644,6 +1644,165 @@
     "message": "Zusätzliche Werte nur im Tooltip anzeigen"
   },
   "customRestAuthWarning": {
-    "message": "Experimentell: Header-Tokens werden unverschlüsselt im lokalen Speicher abgelegt."
+    "message": "Experimentell: Header-Tokens bleiben nur lokal (werden nie gesichert, exportiert oder synchronisiert; nach Wiederherstellung neu eingeben). Zum Verschlüsseln Tresor im Tab Sicherheit aktivieren."
+  },
+  "securityTab": {
+    "message": "Sicherheit"
+  },
+  "securityVaultTitle": {
+    "message": "Geheimnis-Tresor"
+  },
+  "securityVaultDesc": {
+    "message": "Verschlüsselt nur sensible Geheimnisse (wie Widget-API-Tokens) mit AES-GCM. Entsperrte Schlüssel bleiben nur im Sitzungsspeicher des Browsers."
+  },
+  "securityPasswordPlaceholder": {
+    "message": "Tresor-Passwort"
+  },
+  "securityConfirmPasswordPlaceholder": {
+    "message": "Passwort bestätigen"
+  },
+  "securityEnableVaultBtn": {
+    "message": "Tresor aktivieren & Tokens verschlüsseln"
+  },
+  "securityUnlockBtn": {
+    "message": "Tresor entsperren"
+  },
+  "securityLockBtn": {
+    "message": "Tresor sperren"
+  },
+  "securityEncryptExistingBtn": {
+    "message": "Unverschlüsselte Tokens verschlüsseln"
+  },
+  "securityChangePasswordTitle": {
+    "message": "Tresor-Passwort ändern"
+  },
+  "securityOldPasswordPlaceholder": {
+    "message": "Aktuelles Passwort"
+  },
+  "securityNewPasswordPlaceholder": {
+    "message": "Neues Passwort"
+  },
+  "securityChangePwBtn": {
+    "message": "Passwort ändern"
+  },
+  "securityStatusNotSet": {
+    "message": "Tresor nicht eingerichtet"
+  },
+  "securityStatusUnlocked": {
+    "message": "Tresor entsperrt"
+  },
+  "securityStatusLocked": {
+    "message": "Tresor gesperrt"
+  },
+  "securityPlaintextTokensCount": {
+    "message": "unverschlüsselte(r) Widget-Token(s)"
+  },
+  "securityEnterPasswordPrompt": {
+    "message": "Tresor-Passwort eingeben, um Geheimnisse zu entsperren:"
+  },
+  "securityWrongPassword": {
+    "message": "Falsches Tresor-Passwort."
+  },
+  "securityPasswordRequired": {
+    "message": "Bitte Tresor-Passwort eingeben."
+  },
+  "securityPasswordMismatch": {
+    "message": "Passwörter stimmen nicht überein."
+  },
+  "securityVaultEnabled": {
+    "message": "Tresor aktiviert und vorhandene Tokens verschlüsselt."
+  },
+  "securityTokensEncrypted": {
+    "message": "Alle Widget-Tokens verschlüsselt."
+  },
+  "securityPasswordChanged": {
+    "message": "Tresor-Passwort aktualisiert."
+  },
+  "vaultLockedClickToUnlock": {
+    "message": "Tresor gesperrt — zum Entsperren klicken"
+  },
+  "vaultDecryptFailed": {
+    "message": "Token-Entschlüsselung fehlgeschlagen"
+  },
+  "customRestAuthLockedWarning": {
+    "message": "Token ist verschlüsselt, aber Tresor ist gesperrt. Im Tab Sicherheit entsperren."
+  },
+  "customRestAuthEncryptedInfo": {
+    "message": "Tresor entsperrt: Token wird lokal verschlüsselt (wird nie gesichert, exportiert oder synchronisiert; nach Wiederherstellung neu eingeben)."
+  },
+  "backupConfigRestoredSecretsWarning": {
+    "message": "Konfiguration wiederhergestellt. Widget-Geheimnisse sind nicht in Backups gespeichert — bitte API-Tokens erneut eingeben."
+  },
+  "securityDestroyVaultBtn": {
+    "message": "Tresor zerstören & Geheimnisse löschen"
+  },
+  "securityConfirmDestroyVault": {
+    "message": "Tresor zerstören und alle gespeicherten Widget-Geheimnisse löschen? Sie müssen einen neuen Tresor erstellen und Ihre API-Tokens erneut eingeben."
+  },
+  "securityVaultDestroyed": {
+    "message": "Tresor zerstört und alle Geheimnisse gelöscht. Sie können jetzt ein neues Passwort festlegen."
+  },
+  "syncEncryptVault": {
+    "message": "Mit Tresor verschlüsseln"
+  },
+  "syncVaultNotSetupError": {
+    "message": "Aktivieren Sie zuerst den Tresor im Tab Sicherheit."
+  },
+  "securityPasswordExpired": {
+    "message": "Passwort älter als {0} Tage — bitte ändern"
+  },
+  "securityDaysRemaining": {
+    "message": "läuft in {0} Tag(en) ab"
+  },
+  "securityPasswordPolicyError": {
+    "message": "Das Passwort muss enthalten:"
+  },
+  "securityForceChangeTitle": {
+    "message": "Passwort abgelaufen"
+  },
+  "securityForceChangeDesc": {
+    "message": "Ihr Tresor-Passwort ist abgelaufen. Legen Sie ein neues Passwort fest, um fortzufahren."
+  },
+  "securityKdfLabel": {
+    "message": "Schlüsselableitung (KDF)"
+  },
+  "securityKdfSha512": {
+    "message": "PBKDF2-SHA512 (210k) — Empfohlen für 64-Bit"
+  },
+  "securityKdfSha256": {
+    "message": "PBKDF2-SHA256 (600k) — Besser für 32-Bit"
+  },
+  "securityKdfHint": {
+    "message": "PBKDF2-SHA512 (210k) ist auf 64-Bit-Systemen schneller (empfohlener Standard). Verwenden Sie PBKDF2-SHA256 (600k) auf einem 32-Bit-System."
+  },
+  "securityKdfChangeHint": {
+    "message": "PBKDF2-SHA512 (210k) ist auf 64-Bit-Systemen schneller (empfohlener Standard); PBKDF2-SHA256 (600k) ist für 32-Bit. Um den KDF zu wechseln, wählen Sie oben den neuen Algorithmus und klicken Sie auf Passwort ändern (bei einer KDF-Migration können Sie dasselbe Passwort beibehalten)."
+  },
+  "securityPasswordSameError": {
+    "message": "Das neue Passwort muss sich vom aktuellen Passwort unterscheiden."
+  },
+  "customRestAuthScopeTooltip": {
+    "message": "Sicherheitsempfehlung: Verwenden Sie einen dedizierten schreibgeschützten API-Schlüssel mit minimalen, eng begrenzten Berechtigungen (niemals ein Admin- oder Schreib-Token), um den Schaden bei Missbrauch zu begrenzen."
+  },
+  "securityAutoLockLabel": {
+    "message": "Automatisch sperren bei Inaktivität (Minuten)"
+  },
+  "securityAutoLockHint": {
+    "message": "Optional: 0 = deaktiviert, max. 1440 Min. (24 Stunden)."
+  },
+  "securityAutoLockSaved": {
+    "message": "Auto-Sperre gespeichert."
+  },
+  "syncPlaintextVaultWarning": {
+    "message": "Erwägen Sie die Aktivierung der Tresor-Verschlüsselung im Tab Sicherheit."
+  },
+  "insecureHttpAuthWarning": {
+    "message": "HTTP-URL sendet Zugangsdaten unverschlüsselt."
+  },
+  "appearanceCustomCssTrustConfirm": {
+    "message": "Laden Sie benutzerdefiniertes CSS nur von vertrauenswürdigen URLs. Nicht vertrauenswürdiges CSS kann UI-Elemente verändern oder vortäuschen. Fortfahren?"
+  },
+  "securityMuteSyncLockedWarning": {
+    "message": "Popup-Warnung oben rechts für gesperrten Sync-Tresor stummschalten (Statusleiste zeigt weiterhin gesperrten Status)"
   }
 }

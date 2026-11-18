@@ -71,6 +71,19 @@ async function buildBackupSnapshot(resolvedType) {
       backgroundImage: _omitBackgroundImage,
       ...appearanceToBackup
     } = config.appearance || {};
+    if (Array.isArray(appearanceToBackup.customWidgets)) {
+      appearanceToBackup.customWidgets = appearanceToBackup.customWidgets.map(w => {
+        if (!w || typeof w !== "object") return w;
+        const hasSecret = Boolean(
+          (typeof w.authHeaderValue === "string" && w.authHeaderValue !== "") ||
+          (typeof w.authHeaderName === "string" && w.authHeaderName.trim() !== "")
+        );
+        if (!("authHeaderValue" in w) && !hasSecret) return w;
+        const copy = { ...w, authHeaderValue: "" };
+        if (hasSecret) copy.hadSecret = true;
+        return copy;
+      });
+    }
     payload = { appearance: appearanceToBackup };
     metadata = {
       theme: appearanceToBackup.theme || "default",
@@ -180,6 +193,18 @@ export async function restoreBackup(file, type = "bookmarks") {
       backgroundImage: _ignoredBackgroundImage,
       ...restoredAppearance
     } = parsedData.appearance;
+    let secretsRemoved = false;
+    if (Array.isArray(restoredAppearance.customWidgets)) {
+      restoredAppearance.customWidgets = restoredAppearance.customWidgets.map(w => {
+        if (!w || typeof w !== "object") return w;
+        if (w.hadSecret || w.authHeaderValue || (typeof w.authHeaderName === "string" && w.authHeaderName.trim() !== "")) {
+          secretsRemoved = true;
+        }
+        const { hadSecret: _hs, ...cleanWidget } = w;
+        if ("authHeaderValue" in cleanWidget) cleanWidget.authHeaderValue = "";
+        return cleanWidget;
+      });
+    }
     config.appearance = {
       ...restoredAppearance,
       backgroundImage: existingBackgroundImage
@@ -190,7 +215,8 @@ export async function restoreBackup(file, type = "bookmarks") {
       ok: true,
       type: "config",
       filename: target.filename,
-      config
+      config,
+      secretsRemoved
     };
   }
 

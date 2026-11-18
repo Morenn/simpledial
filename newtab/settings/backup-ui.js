@@ -713,7 +713,14 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
             updateDateTimeVisibility(result.config.appearance?.dateTimeSpace !== "disabled");
             await render();
             calculateGridLayout();
-            if (backupStatus) {
+            if (result.secretsRemoved) {
+              const warningMsg = t("backupConfigRestoredSecretsWarning")
+                || "Configuration restored. Widget secrets are not stored in backups — please re-enter your API tokens.";
+              if (backupStatus) {
+                backupStatus.textContent = "⚠️ " + warningMsg;
+              }
+              alert(warningMsg);
+            } else if (backupStatus) {
               backupStatus.textContent = "✅ " + t("backupConfigRestored");
             }
           } else {

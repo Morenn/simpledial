@@ -572,6 +572,17 @@ test("REST / JSON status badge helpers extract paths, evaluate rules, and export
   );
   assert.equal(withSecretsExport.widgets[0].authHeaderValue, "Bearer super-secret-token");
 
+  // Encrypted hashes (enc:v1:...) must never leave the addon on export or import
+  const encExport = serializeCustomWidgetsExport(
+    [{ id: "r-enc", type: "rest-status", name: "EncAPI", endpointUrl: "https://api.internal/health", authHeaderValue: "enc:v1:iv:ct" }],
+    { includeSecrets: true }
+  );
+  assert.equal(encExport.widgets[0].authHeaderValue, "");
+  const encImport = parseImportedCustomWidgets([
+    { id: "r-enc", type: "rest-status", name: "EncAPI", endpointUrl: "https://api.internal/health", authHeaderValue: "enc:v1:iv:ct" }
+  ]);
+  assert.equal(encImport.widgets[0].authHeaderValue, "");
+
   const badImport = parseImportedCustomWidgets([
     { type: "rest-status", name: "Bad", endpointUrl: "javascript:alert(1)" }
   ]);

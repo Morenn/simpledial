@@ -1644,6 +1644,165 @@
     "message": "Zobrazit další hodnoty pouze v tooltipu"
   },
   "customRestAuthWarning": {
-    "message": "Experimentální funkce: tokeny hlavičky jsou uloženy nešifrovaně v lokálním úložišti."
+    "message": "Experimentální: tokeny zůstávají pouze lokálně (nezálohují se, neexportují ani nesynchronizují; po obnovení je zadejte znovu). Pro šifrování zapněte Trezor v kartě Zabezpečení."
+  },
+  "securityTab": {
+    "message": "Zabezpečení"
+  },
+  "securityVaultTitle": {
+    "message": "Trezor tajemství"
+  },
+  "securityVaultDesc": {
+    "message": "Šifruje pouze citlivá data (např. API tokeny widgetů) pomocí AES-GCM. Odemčený klíč zůstává jen v paměti relace prohlížeče."
+  },
+  "securityPasswordPlaceholder": {
+    "message": "Heslo trezoru"
+  },
+  "securityConfirmPasswordPlaceholder": {
+    "message": "Potvrdit heslo"
+  },
+  "securityEnableVaultBtn": {
+    "message": "Zapnout trezor a zašifrovat tokeny"
+  },
+  "securityUnlockBtn": {
+    "message": "Odemknout trezor"
+  },
+  "securityLockBtn": {
+    "message": "Zamknout trezor"
+  },
+  "securityEncryptExistingBtn": {
+    "message": "Zašifrovat nešifrované tokeny"
+  },
+  "securityChangePasswordTitle": {
+    "message": "Změnit heslo trezoru"
+  },
+  "securityOldPasswordPlaceholder": {
+    "message": "Současné heslo"
+  },
+  "securityNewPasswordPlaceholder": {
+    "message": "Nové heslo"
+  },
+  "securityChangePwBtn": {
+    "message": "Změnit heslo"
+  },
+  "securityStatusNotSet": {
+    "message": "Trezor není nastaven"
+  },
+  "securityStatusUnlocked": {
+    "message": "Trezor odemčen"
+  },
+  "securityStatusLocked": {
+    "message": "Trezor zamčen"
+  },
+  "securityPlaintextTokensCount": {
+    "message": "nešifrovaný(ch) token(ů)"
+  },
+  "securityEnterPasswordPrompt": {
+    "message": "Zadejte heslo trezoru pro odemknutí tajemství:"
+  },
+  "securityWrongPassword": {
+    "message": "Nesprávné heslo trezoru."
+  },
+  "securityPasswordRequired": {
+    "message": "Zadejte heslo trezoru."
+  },
+  "securityPasswordMismatch": {
+    "message": "Hesla se neshodují."
+  },
+  "securityVaultEnabled": {
+    "message": "Trezor zapnut a existující tokeny zašifrovány."
+  },
+  "securityTokensEncrypted": {
+    "message": "Všechny tokeny widgetů zašifrovány."
+  },
+  "securityPasswordChanged": {
+    "message": "Heslo trezoru aktualizováno."
+  },
+  "vaultLockedClickToUnlock": {
+    "message": "Trezor zamčen — klikněte pro odemknutí"
+  },
+  "vaultDecryptFailed": {
+    "message": "Dešifrování tokenu selhalo"
+  },
+  "customRestAuthLockedWarning": {
+    "message": "Token je zašifrovaný, ale trezor je zamčený. Odemkněte jej v kartě Zabezpečení."
+  },
+  "customRestAuthEncryptedInfo": {
+    "message": "Trezor odemčen: token je šifrován lokálně (nezálohuje se, neexportuje ani nesynchronizuje; po obnovení jej zadejte znovu)."
+  },
+  "backupConfigRestoredSecretsWarning": {
+    "message": "Konfigurace obnovena. Tajné tokeny widgetů se nezálohují — zadejte prosím své API tokeny znovu."
+  },
+  "securityDestroyVaultBtn": {
+    "message": "Zničit trezor a vymazat tajemství"
+  },
+  "securityConfirmDestroyVault": {
+    "message": "Zničit trezor a vymazat všechny uložené tokeny widgetů? Budete muset vytvořit nový trezor a zadat API tokeny znovu."
+  },
+  "securityVaultDestroyed": {
+    "message": "Trezor zničen a všechna tajemství vymazána. Nyní můžete nastavit nové heslo."
+  },
+  "syncEncryptVault": {
+    "message": "Šifrovat pomocí trezoru"
+  },
+  "syncVaultNotSetupError": {
+    "message": "Nejprve zapněte Trezor v kartě Zabezpečení."
+  },
+  "securityPasswordExpired": {
+    "message": "Heslo je starší než {0} dní — prosím změňte jej"
+  },
+  "securityDaysRemaining": {
+    "message": "vyprší za {0} dní"
+  },
+  "securityPasswordPolicyError": {
+    "message": "Heslo musí obsahovat:"
+  },
+  "securityForceChangeTitle": {
+    "message": "Heslo vypršelo"
+  },
+  "securityForceChangeDesc": {
+    "message": "Platnosť hesla k trezoru vypršela. Pro pokračování nastavte nové heslo."
+  },
+  "securityKdfLabel": {
+    "message": "Odvození klíče (KDF)"
+  },
+  "securityKdfSha512": {
+    "message": "PBKDF2-SHA512 (210k) — Doporučeno pro 64bit"
+  },
+  "securityKdfSha256": {
+    "message": "PBKDF2-SHA256 (600k) — Vhodné pro 32bit"
+  },
+  "securityKdfHint": {
+    "message": "PBKDF2-SHA512 (210k) je rychlejší na 64bitových systémech (doporučená výchozí volba). Na 32bitovém systému použijte PBKDF2-SHA256 (600k)."
+  },
+  "securityKdfChangeHint": {
+    "message": "PBKDF2-SHA512 (210k) je rychlejší na 64bitových systémech (doporučená výchozí volba); PBKDF2-SHA256 (600k) je pro 32bit. Pro přepnutí KDF vyberte výše nový algoritmus a klikněte na Změnit heslo (při migraci KDF můžete ponechat stejné heslo)."
+  },
+  "securityPasswordSameError": {
+    "message": "Nové heslo se musí lišit od aktuálního hesla."
+  },
+  "customRestAuthScopeTooltip": {
+    "message": "Bezpečnostní doporučení: použite vyhrazený API klíč pouze pro čtení s minimálními oprávneními (nikdy administrátorský nebo zapisovací token), abyste omezili dopad při jeho zneužití."
+  },
+  "securityAutoLockLabel": {
+    "message": "Automaticky uzamknout při nečinnosti (minuty)"
+  },
+  "securityAutoLockHint": {
+    "message": "Volitelné: 0 = vypnuto, max 1440 min (24 hodin)."
+  },
+  "securityAutoLockSaved": {
+    "message": "Nastavení automatického zámku uloženo."
+  },
+  "syncPlaintextVaultWarning": {
+    "message": "Zvažte zapnutí šifrování Trezorem v kartě Zabezpečení."
+  },
+  "insecureHttpAuthWarning": {
+    "message": "HTTP URL odesílá přihlašovací údaje nešifrovaně."
+  },
+  "appearanceCustomCssTrustConfirm": {
+    "message": "Načítejte vlastní CSS pouze z důvěryhodných URL. Nedůvěryhodné CSS může upravit nebo napodobit prvky rozhraní. Pokračovat?"
+  },
+  "securityMuteSyncLockedWarning": {
+    "message": "Ztlumit vyskakovací upozornění na zamčený trezor synchronizace vpravo nahoře (stavový řádek synchronizace nadále zobrazí zamčený stav)"
   }
 }

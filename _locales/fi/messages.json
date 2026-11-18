@@ -1644,6 +1644,165 @@
     "message": "Näytä lisäarvot vain työkaluvihjeessä"
   },
   "customRestAuthWarning": {
-    "message": "Kokeellinen: otsikkotunnisteet tallennetaan salaamattomina paikalliseen tallennustilaan."
+    "message": "Kokeellinen: tunnisteet pysyvät vain paikallisina (ei varmuuskopioida, viedä tai synkronoida; syötä uudelleen palautuksen jälkeen). Salaa ottamalla Holvi käyttöön Turvallisuus-välilehdellä."
+  },
+  "securityTab": {
+    "message": "Turvallisuus"
+  },
+  "securityVaultTitle": {
+    "message": "Salaisuusholvi"
+  },
+  "securityVaultDesc": {
+    "message": "Salaa vain arkaluonteiset salaisuudet (kuten widgetien API-tunnukset) AES-GCM:llä. Avatut avaimet pysyvät vain selaimen istuntomuistissa."
+  },
+  "securityPasswordPlaceholder": {
+    "message": "Holvin salasana"
+  },
+  "securityConfirmPasswordPlaceholder": {
+    "message": "Vahvista salasana"
+  },
+  "securityEnableVaultBtn": {
+    "message": "Ota holvi käyttöön & salaa salaisuudet"
+  },
+  "securityUnlockBtn": {
+    "message": "Avaa holvi"
+  },
+  "securityLockBtn": {
+    "message": "Lukitse holvi"
+  },
+  "securityEncryptExistingBtn": {
+    "message": "Salaa salaamattomat salaisuudet"
+  },
+  "securityChangePasswordTitle": {
+    "message": "Vaihda holvin salasana"
+  },
+  "securityOldPasswordPlaceholder": {
+    "message": "Nykyinen salasana"
+  },
+  "securityNewPasswordPlaceholder": {
+    "message": "Uusi salasana"
+  },
+  "securityChangePwBtn": {
+    "message": "Vaihda salasana"
+  },
+  "securityStatusNotSet": {
+    "message": "Holvia ei ole määritetty"
+  },
+  "securityStatusUnlocked": {
+    "message": "Holvi avattu"
+  },
+  "securityStatusLocked": {
+    "message": "Holvi lukittu"
+  },
+  "securityPlaintextTokensCount": {
+    "message": "salaamatonta widget-tunnusta"
+  },
+  "securityEnterPasswordPrompt": {
+    "message": "Syötä holvin salasana avataksesi salaisuudet:"
+  },
+  "securityWrongPassword": {
+    "message": "Väärä holvin salasana."
+  },
+  "securityPasswordRequired": {
+    "message": "Syötä holvin salasana."
+  },
+  "securityPasswordMismatch": {
+    "message": "Salasanat eivät täsmää."
+  },
+  "securityVaultEnabled": {
+    "message": "Holvi otettu käyttöön ja tunnukset salattu."
+  },
+  "securityTokensEncrypted": {
+    "message": "Kaikki widget-tunnukset salattu."
+  },
+  "securityPasswordChanged": {
+    "message": "Holvin salasana päivitetty."
+  },
+  "vaultLockedClickToUnlock": {
+    "message": "Holvi lukittu — napsauta avataksesi"
+  },
+  "vaultDecryptFailed": {
+    "message": "Tunnuksen purku epäonnistui"
+  },
+  "customRestAuthLockedWarning": {
+    "message": "Tunnus on salattu, mutta holvi on lukittu. Avaa Turvallisuus-välilehdellä."
+  },
+  "customRestAuthEncryptedInfo": {
+    "message": "Holvi avattu: tunnus salataan paikallisesti (ei varmuuskopioida, viedä tai synkronoida; syötä uudelleen palautuksen jälkeen)."
+  },
+  "backupConfigRestoredSecretsWarning": {
+    "message": "Asetukset palautettu. Widgetien salaisuuksia ei tallenneta varmuuskopioihin — syötä API-tunnukset uudelleen."
+  },
+  "securityDestroyVaultBtn": {
+    "message": "Tuhoa holvi & tyhjennä salaisuudet"
+  },
+  "securityConfirmDestroyVault": {
+    "message": "Tuhotaanko holvi ja tyhjennetäänkö kaikki tallennetut widget-salaisuudet? Sinun on luotava uusi holvi ja syötettävä API-tunnukset uudelleen."
+  },
+  "securityVaultDestroyed": {
+    "message": "Holvi tuhottu ja kaikki salaisuudet tyhjennetty. Voit nyt asettaa uuden salasanan."
+  },
+  "syncEncryptVault": {
+    "message": "Salaa holvilla"
+  },
+  "syncVaultNotSetupError": {
+    "message": "Ota Holvi ensin käyttöön Turvallisuus-välilehdellä."
+  },
+  "securityPasswordExpired": {
+    "message": "Salasana on yli {0} päivää vanha — vaihda se"
+  },
+  "securityDaysRemaining": {
+    "message": "vanhenee {0} päivän kuluttua"
+  },
+  "securityPasswordPolicyError": {
+    "message": "Salasanan on sisällettävä:"
+  },
+  "securityForceChangeTitle": {
+    "message": "Salasana vanhentunut"
+  },
+  "securityForceChangeDesc": {
+    "message": "Holvisi salasana on vanhentunut. Aseta uusi salasana jatkaaksesi."
+  },
+  "securityKdfLabel": {
+    "message": "Avaimen johtaminen (KDF)"
+  },
+  "securityKdfSha512": {
+    "message": "PBKDF2-SHA512 (210k) — Suositeltu 64-bittisille"
+  },
+  "securityKdfSha256": {
+    "message": "PBKDF2-SHA256 (600k) — Paras 32-bittisille"
+  },
+  "securityKdfHint": {
+    "message": "PBKDF2-SHA512 (210k) on nopeampi 64-bittisissä järjestelmissä (suositeltu oletus). Käytä PBKDF2-SHA256 (600k) 32-bittisessä järjestelmässä."
+  },
+  "securityKdfChangeHint": {
+    "message": "PBKDF2-SHA512 (210k) on nopeampi 64-bittisissä järjestelmissä (suositeltu oletus); PBKDF2-SHA256 (600k) on 32-bittisille. Vaihda KDF valitsemalla uusi algoritmi yllä ja napsauttamalla Vaihda salasana (voit pitää saman salasanan KDF-siirron yhteydessä)."
+  },
+  "securityPasswordSameError": {
+    "message": "Uuden salasanan on oltava eri kuin nykyinen salasana."
+  },
+  "customRestAuthScopeTooltip": {
+    "message": "Tietoturvasuositus: käytä erillistä vain luku -API-avainta mahdollisimman kapeilla käyttöoikeuksilla (älä koskaan ylläpitäjä- tai kirjoitustunnusta) rajoittaaksesi väärinkäytön vaikutuksia."
+  },
+  "securityAutoLockLabel": {
+    "message": "Automaattinen lukitus käyttämättömyyden jälkeen (minuuttia)"
+  },
+  "securityAutoLockHint": {
+    "message": "Valinnainen: 0 = pois käytöstä, enintään 1440 min (24 tuntia)."
+  },
+  "securityAutoLockSaved": {
+    "message": "Automaattisen lukituksen asetus tallennettu."
+  },
+  "syncPlaintextVaultWarning": {
+    "message": "Harkitse Holvi-salauksen käyttöönottoa Turvallisuus-välilehdellä."
+  },
+  "insecureHttpAuthWarning": {
+    "message": "HTTP-osoite lähettää tunnukset salaamattomina."
+  },
+  "appearanceCustomCssTrustConfirm": {
+    "message": "Lataa mukautettua CSS:ää vain luotetuista osoitteista. Epäluotettava CSS voi muokata tai väärentää käyttöliittymää. Jatketaanko?"
+  },
+  "securityMuteSyncLockedWarning": {
+    "message": "Mykistä oikean yläkulman lukitun synkronointiholvin ponnahdusvaroitus (tilapalkki näyttää silti lukitun tilan)"
   }
 }

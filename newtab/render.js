@@ -3,7 +3,8 @@ import { renderGroups } from "./groups.js";
 import { createBookmarkTile, createStackTile, openBookmarkModal, refreshOpenStackPopover, closeStackPopover } from "./bookmarks.js";
 import { setupBookmarkDrag } from "./dragdrop.js";
 import { loadConfig } from "./config.js";
-import { syncWrite } from "./sync.js";
+import { syncWrite, syncNow, getLastSyncErrorReason, clearLastSyncErrorReason } from "./sync.js";
+import { isVaultUnlocked, tryAutoUnlockVault } from "./crypto.js";
 import { t } from "./i18n.js";
 import { restorePendingKeyboardFocus } from "./keyboard-nav.js";
 
@@ -115,7 +116,29 @@ function formatFooterLastSync(lastSyncMs) {
   return t("footerLastSyncedDays").replace("{0}", String(Math.floor(diffMins / 1440)));
 }
 
+export function getSyncErrorLabel(reason) {
+  switch (reason) {
+    case "credentials-locked":
+      return t("syncCredentialsLocked") || "Sync credentials are locked.";
+    case "credentials-decrypt-failed":
+      return t("syncCredentialsDecryptFailed") || "Failed to decrypt sync credentials.";
+    case "credentials-missing":
+      return t("syncCredentialsMissing") || "Sync credentials are missing.";
+    case "auth":
+      return t("wrongCredentials") || "Wrong credentials";
+    case "timeout":
+      return t("connectionTimeout") || "Connection timeout";
+    case "invalid-url":
+      return t("invalidUrl") || "Invalid URL";
+    case "browser-sync-error":
+      return t("browserSyncUnavailable") || "Browser sync unavailable";
+    default:
+      return t("syncServerUnavailable") || "Sync server is unavailable. Using local data.";
+  }
+}
+
 export async function updateFooter(providedConfig = null) {
+  const footerSyncStatus = document.getElementById("footer-sync-status");
   const footerSyncDot = document.getElementById("footer-sync-dot");
   const footerSyncText = document.getElementById("footer-sync-text");
   const footerBookmarksTotal = document.getElementById("footer-bookmarks-total");
@@ -125,19 +148,60 @@ export async function updateFooter(providedConfig = null) {
   const config = providedConfig || await loadConfig();
   const syncEnabled = !!config?.sync?.enabled;
 
+  const usingBasic = syncEnabled && config?.sync?.type !== "browser" && config?.sync?.authMode === "basic";
+  if (usingBasic && config?.sync?.encryptionMode === "vault" && config?.sync?.enc && !isVaultUnlocked()) {
+    await tryAutoUnlockVault(config.vaultHeader);
+  }
+  const isVaultCredsLocked = usingBasic && config?.sync?.encryptionMode === "vault" && !!config?.sync?.enc && !isVaultUnlocked();
+  const errorReason = syncEnabled ? getLastSyncErrorReason() : null;
+  const isLocked = isVaultCredsLocked || errorReason === "credentials-locked";
+
   if (footerSyncDot) {
-    footerSyncDot.classList.toggle("active", syncEnabled);
-    footerSyncDot.classList.toggle("disabled", !syncEnabled);
+    if (isLocked) {
+      footerSyncDot.className = "footer-status-dot locked";
+      footerSyncDot.textContent = "🔐";
+    } else if (errorReason) {
+      footerSyncDot.className = "footer-status-dot error";
+      footerSyncDot.textContent = "";
+    } else {
+      footerSyncDot.className = `footer-status-dot ${syncEnabled ? "active" : "disabled"}`;
+      footerSyncDot.textContent = "";
+    }
   }
 
   if (footerSyncText) {
     const statusPart = syncEnabled ? t("footerSyncActive") : t("footerSyncDisabled");
     const lastSyncStr = formatFooterLastSync(config?.sync?.lastSync);
 
-    if (syncEnabled) {
+    if (isLocked) {
+      const lockedText = t("syncCredentialsLocked") || "Sync credentials are locked.";
+      footerSyncText.textContent = `${lockedText} • ${lastSyncStr || t("footerNeverSynced")}`;
+    } else if (errorReason) {
+      footerSyncText.textContent = `⚠️ ${getSyncErrorLabel(errorReason)} • ${lastSyncStr || t("footerNeverSynced")}`;
+    } else if (syncEnabled) {
       footerSyncText.textContent = `${statusPart} • ${lastSyncStr || t("footerNeverSynced")}`;
     } else {
       footerSyncText.textContent = lastSyncStr ? `${statusPart} • ${lastSyncStr}` : statusPart;
+    }
+  }
+
+  if (footerSyncStatus) {
+    if (isVaultCredsLocked && typeof window !== "undefined" && typeof window.promptUnlockVault === "function") {
+      footerSyncStatus.style.cursor = "pointer";
+      footerSyncStatus.title = t("vaultLockedClickToUnlock") || "Vault locked — click badge to unlock";
+      footerSyncStatus.onclick = async () => {
+        if (await window.promptUnlockVault()) {
+          clearLastSyncErrorReason();
+          await updateFooter();
+          const r = await syncNow();
+          await updateFooter();
+          if (r?.changed) await render();
+        }
+      };
+    } else {
+      footerSyncStatus.style.cursor = "";
+      footerSyncStatus.title = "";
+      footerSyncStatus.onclick = null;
     }
   }
 

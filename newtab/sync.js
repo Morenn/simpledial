@@ -1,6 +1,6 @@
 import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded, SYSTEM_TAG_DEAD_LINK_ID, getBookmarkSystemTagIds, setBookmarkSystemTag, saveSystemTags } from "./state.js";
 import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
-import { importRawKey, decryptWithKey } from './crypto.js';
+import { importRawKey, decryptWithKey, getSecret } from './crypto.js';
 import { deadLinkDebugLog, syncDebugLog } from "./debug.js";
 
 function ensureNoTrailingSlash(url) {
@@ -369,6 +369,7 @@ export async function loadSyncConfig() {
     encryptionMode: config.sync.encryptionMode || 'none',
     enc: config.sync.enc || null,
     localKey: config.sync.localKey || null,
+    vaultHeader: config.vaultHeader || null,
     lastSync: config.sync.lastSync || 0
   };
 }
@@ -666,7 +667,7 @@ async function resolveSyncCredentials(cfg, operation) {
   try {
     const hasEncryptedCreds =
       (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) ||
-      (cfg.encryptionMode === 'master' && cfg.enc);
+      (cfg.encryptionMode === 'vault' && cfg.enc);
     const hasPlainCreds = !!(cfg.username || cfg.password);
     const effectiveAuthMode = (cfg.authMode === 'basic' || hasEncryptedCreds || hasPlainCreds) ? 'basic' : 'none';
 
@@ -687,26 +688,19 @@ async function resolveSyncCredentials(cfg, operation) {
       };
     }
 
-    if (cfg.encryptionMode === 'master' && cfg.enc) {
-      if (!window._speeddial_masterKey) {
-        console.warn(`${operation}: master-encrypted credentials are locked`);
-        return { ok: false, reason: 'credentials-locked' };
+    if (cfg.encryptionMode === 'vault' && typeof cfg.enc === 'string') {
+      const res = await getSecret(cfg.enc, 'sync:credentials', { vaultHeader: cfg.vaultHeader || null });
+      if (!res.ok) {
+        return { ok: false, reason: res.error === 'DECRYPT_FAILED' ? 'credentials-decrypt-failed' : 'credentials-locked' };
       }
-
-      try {
-        const plain = await decryptWithKey(window._speeddial_masterKey, cfg.enc.ciphertext, cfg.enc.iv);
-        const obj = JSON.parse(plain);
-        username = obj.username || '';
-        password = obj.password || '';
-        return {
-          ok: true,
-          username: username.trim(),
-          password: password.replace(/[\r\n]/g, '')
-        };
-      } catch (e) {
-        console.warn(`${operation}: failed to decrypt master-encrypted credentials`, e);
-        return { ok: false, reason: 'credentials-locked' };
-      }
+      const obj = JSON.parse(res.value);
+      username = obj.username || '';
+      password = obj.password || '';
+      return {
+        ok: true,
+        username: username.trim(),
+        password: password.replace(/[\r\n]/g, '')
+      };
     }
 
     if (!username || !password) {
@@ -1636,7 +1630,9 @@ function buildConfigExtraPayload(config) {
 function buildWidgetsExtraPayload(config) {
   const a = config.appearance || {};
   return {
-    customWidgets: Array.isArray(a.customWidgets) ? a.customWidgets : [],
+    customWidgets: Array.isArray(a.customWidgets)
+      ? a.customWidgets.map(w => (w && typeof w === "object" && "authHeaderValue" in w ? { ...w, authHeaderValue: "" } : w))
+      : [],
     customSearchAutoRouteDefaults: a.customSearchAutoRouteDefaults || {},
     customSearchAutoRouteIcons: a.customSearchAutoRouteIcons || {},
     widgetOrder: Array.isArray(a.widgetOrder) ? a.widgetOrder : [],
@@ -1795,7 +1791,18 @@ export async function syncWebdavFolderExtras(config = null, options = {}) {
       lastExtrasSync,
       applyRemote: (remoteData) => {
         if (remoteData && typeof remoteData === "object") {
-          currentConfig.appearance = { ...currentConfig.appearance, ...remoteData };
+          const localById = new Map(
+            (currentConfig.appearance?.customWidgets || [])
+              .filter(w => w?.id && w?.authHeaderValue)
+              .map(w => [w.id, w.authHeaderValue])
+          );
+          const nextRemote = { ...remoteData };
+          if (Array.isArray(nextRemote.customWidgets)) {
+            nextRemote.customWidgets = nextRemote.customWidgets.map(w =>
+              w?.id && localById.has(w.id) ? { ...w, authHeaderValue: localById.get(w.id) } : { ...w, authHeaderValue: "" }
+            );
+          }
+          currentConfig.appearance = { ...currentConfig.appearance, ...nextRemote };
         }
       }
     });
@@ -1949,12 +1956,23 @@ export async function syncWebdavFolderExtras(config = null, options = {}) {
   return { ok: true, configChanged };
 }
 
+let lastSyncErrorReason = null;
+
+export function getLastSyncErrorReason() {
+  return lastSyncErrorReason;
+}
+
+export function clearLastSyncErrorReason() {
+  lastSyncErrorReason = null;
+}
+
 export async function syncNow(options = {}) {
   const config = await loadConfig();
   const includeManual = !!options?.includeManualExtras;
 
   if (!config.sync.enabled || (!config.sync.serverUrl && config.sync.type !== 'browser')) {
     console.warn("Sync not configured or disabled");
+    lastSyncErrorReason = null;
     return { ok: false, reason: 'not-configured' };
   }
 
@@ -1968,6 +1986,7 @@ export async function syncNow(options = {}) {
     || (config.sync.remoteChangeHeaderType === 'etag'
       && !(config.sync.lastSeenRemoteMarker || '').startsWith('W/'));
   if (!hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip) {
+    lastSyncErrorReason = null;
     if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
       await syncWebdavFolderExtras(config, { includeManual });
     }
@@ -1977,10 +1996,12 @@ export async function syncNow(options = {}) {
   const readResult = await syncReadDetailed();
   if (!readResult.ok) {
     console.warn("Failed to read from sync server");
+    lastSyncErrorReason = readResult.reason || 'sync-failed';
     return readResult;
   }
 
   const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
+  lastSyncErrorReason = mergeResult.ok ? null : (mergeResult.reason || 'sync-failed');
   if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
     await syncWebdavFolderExtras(config, { includeManual });
   }

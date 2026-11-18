@@ -37,6 +37,7 @@ import {
   applyHousekeeperToConfig
 } from "./settings/housekeeper-ui.js";
 import { initCustomWidgetsSettings } from "./settings/custom-widgets-ui.js";
+import { initSecuritySettings, populateSecuritySettings } from "./settings/security-ui.js";
 
 // ======================================================
 // SETTINGS MODAL ORCHESTRATOR
@@ -228,6 +229,7 @@ if (settingsBtn) {
       applyAdvancedSettingsToControls(config.advanced || {});
       populateBackupSettings(config);
       await refreshBackupsTable();
+      await populateSecuritySettings(config);
 
       clearSyncStatuses();
       settingsModal?.classList.remove("hidden");
@@ -359,6 +361,7 @@ initBackupSettings({
 initAppearanceSettings();
 initHousekeeperSettings({ ensureAppearanceDraft });
 initCustomWidgetsSettings();
+initSecuritySettings();
 
 initializeSettingsDirtyTracking();
 updateChoiceOptionStates();

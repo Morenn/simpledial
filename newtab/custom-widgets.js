@@ -161,7 +161,9 @@ export function serializeCustomWidgetsExport(widgets = [], { includeSecrets = fa
           groupName: typeof w.groupName === "string" ? w.groupName.trim() : "",
           hideGroupName: !!w.hideGroupName,
           authHeaderName: typeof w.authHeaderName === "string" ? w.authHeaderName.trim() : "",
-          authHeaderValue: includeSecrets && typeof w.authHeaderValue === "string" ? w.authHeaderValue : ""
+          authHeaderValue: includeSecrets && typeof w.authHeaderValue === "string" && !w.authHeaderValue.startsWith("enc:v1:")
+            ? w.authHeaderValue
+            : ""
         };
       }
       return {
@@ -279,7 +281,9 @@ export function parseImportedCustomWidgets(parsed) {
         groupName: typeof raw.groupName === "string" ? raw.groupName.trim() : "",
         hideGroupName: !!raw.hideGroupName,
         authHeaderName: typeof raw.authHeaderName === "string" ? raw.authHeaderName.trim() : "",
-        authHeaderValue: typeof raw.authHeaderValue === "string" ? raw.authHeaderValue : "",
+        authHeaderValue: typeof raw.authHeaderValue === "string" && !raw.authHeaderValue.startsWith("enc:v1:")
+          ? raw.authHeaderValue
+          : "",
         space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "right",
         align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
         newRow: !!raw.newRow,

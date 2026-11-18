@@ -1644,6 +1644,165 @@
     "message": "Afficher les statistiques supplémentaires uniquement dans l'infobulle"
   },
   "customRestAuthWarning": {
-    "message": "Expérimental : les jetons d'en-tête sont stockés en clair dans le stockage local."
+    "message": "Expérimental : les jetons restent locaux (jamais sauvegardés, exportés ou synchronisés ; à ressaisir après restauration). Activez le coffre dans Sécurité pour chiffrer."
+  },
+  "securityTab": {
+    "message": "Sécurité"
+  },
+  "securityVaultTitle": {
+    "message": "Coffre de secrets"
+  },
+  "securityVaultDesc": {
+    "message": "Chiffre uniquement les secrets sensibles (comme les jetons API des widgets) via AES-GCM. Les clés déverrouillées restent uniquement en mémoire de session."
+  },
+  "securityPasswordPlaceholder": {
+    "message": "Mot de passe du coffre"
+  },
+  "securityConfirmPasswordPlaceholder": {
+    "message": "Confirmer le mot de passe"
+  },
+  "securityEnableVaultBtn": {
+    "message": "Activer le coffre et chiffrer les secrets"
+  },
+  "securityUnlockBtn": {
+    "message": "Déverrouiller le coffre"
+  },
+  "securityLockBtn": {
+    "message": "Verrouiller le coffre"
+  },
+  "securityEncryptExistingBtn": {
+    "message": "Chiffrer les secrets en clair"
+  },
+  "securityChangePasswordTitle": {
+    "message": "Changer le mot de passe du coffre"
+  },
+  "securityOldPasswordPlaceholder": {
+    "message": "Mot de passe actuel"
+  },
+  "securityNewPasswordPlaceholder": {
+    "message": "Nouveau mot de passe"
+  },
+  "securityChangePwBtn": {
+    "message": "Changer le mot de passe"
+  },
+  "securityStatusNotSet": {
+    "message": "Coffre non configuré"
+  },
+  "securityStatusUnlocked": {
+    "message": "Coffre déverrouillé"
+  },
+  "securityStatusLocked": {
+    "message": "Coffre verrouillé"
+  },
+  "securityPlaintextTokensCount": {
+    "message": "jeton(s) non chiffré(s)"
+  },
+  "securityEnterPasswordPrompt": {
+    "message": "Entrez le mot de passe du coffre pour déverrouiller :"
+  },
+  "securityWrongPassword": {
+    "message": "Mot de passe du coffre incorrect."
+  },
+  "securityPasswordRequired": {
+    "message": "Entrez un mot de passe."
+  },
+  "securityPasswordMismatch": {
+    "message": "Les mots de passe ne correspondent pas."
+  },
+  "securityVaultEnabled": {
+    "message": "Coffre activé et jetons existants chiffrés."
+  },
+  "securityTokensEncrypted": {
+    "message": "Tous les jetons de widgets sont chiffrés."
+  },
+  "securityPasswordChanged": {
+    "message": "Mot de passe du coffre mis à jour."
+  },
+  "vaultLockedClickToUnlock": {
+    "message": "Coffre verrouillé — cliquer pour déverrouiller"
+  },
+  "vaultDecryptFailed": {
+    "message": "Échec du déchiffrement du jeton"
+  },
+  "customRestAuthLockedWarning": {
+    "message": "Le jeton est chiffré mais le coffre est verrouillé. Déverrouillez-le dans Sécurité."
+  },
+  "customRestAuthEncryptedInfo": {
+    "message": "Coffre déverrouillé : le jeton est chiffré localement (jamais sauvegardé, exporté ou synchronisé ; à ressaisir après restauration)."
+  },
+  "backupConfigRestoredSecretsWarning": {
+    "message": "Configuration restaurée. Les secrets des widgets ne sont pas inclus dans les sauvegardes — veuillez ressaisir vos jetons API."
+  },
+  "securityDestroyVaultBtn": {
+    "message": "Détruire le coffre et effacer les secrets"
+  },
+  "securityConfirmDestroyVault": {
+    "message": "Détruire le coffre et effacer tous les secrets de widgets enregistrés ? Vous devrez créer un nouveau coffre et ressaisir vos jetons API."
+  },
+  "securityVaultDestroyed": {
+    "message": "Coffre détruit et tous les secrets effacés. Vous pouvez maintenant définir un nouveau mot de passe."
+  },
+  "syncEncryptVault": {
+    "message": "Chiffrer avec le coffre"
+  },
+  "syncVaultNotSetupError": {
+    "message": "Activez d'abord le coffre dans l'onglet Sécurité."
+  },
+  "securityPasswordExpired": {
+    "message": "Mot de passe datant de plus de {0} jours — veuillez le modifier"
+  },
+  "securityDaysRemaining": {
+    "message": "expire dans {0} jour(s)"
+  },
+  "securityPasswordPolicyError": {
+    "message": "Le mot de passe doit contenir :"
+  },
+  "securityForceChangeTitle": {
+    "message": "Mot de passe expiré"
+  },
+  "securityForceChangeDesc": {
+    "message": "Le mot de passe de votre coffre a expiré. Définissez un nouveau mot de passe pour continuer."
+  },
+  "securityKdfLabel": {
+    "message": "Dérivation de clé (KDF)"
+  },
+  "securityKdfSha512": {
+    "message": "PBKDF2-SHA512 (210k) — Recommandé pour 64 bits"
+  },
+  "securityKdfSha256": {
+    "message": "PBKDF2-SHA256 (600k) — Adapté au 32 bits"
+  },
+  "securityKdfHint": {
+    "message": "PBKDF2-SHA512 (210k) est plus rapide sur les systèmes 64 bits (valeur par défaut recommandée). Utilisez PBKDF2-SHA256 (600k) sur un système 32 bits."
+  },
+  "securityKdfChangeHint": {
+    "message": "PBKDF2-SHA512 (210k) est plus rapide sur les systèmes 64 bits (par défaut) ; PBKDF2-SHA256 (600k) est pour le 32 bits. Pour changer de KDF, sélectionnez le nouvel algorithme ci-dessus et cliquez sur Changer le mot de passe (vous pouvez garder le même mot de passe lors d'une migration KDF)."
+  },
+  "securityPasswordSameError": {
+    "message": "Le nouveau mot de passe doit être différent de votre mot de passe actuel."
+  },
+  "customRestAuthScopeTooltip": {
+    "message": "Bonne pratique de sécurité : utilisez une clé API dédiée en lecture seule avec des permissions minimales et ciblées (jamais un jeton admin ou d'écriture) afin de limiter l'impact en cas de compromission."
+  },
+  "securityAutoLockLabel": {
+    "message": "Verrouillage automatique après inactivité (minutes)"
+  },
+  "securityAutoLockHint": {
+    "message": "Optionnel : 0 = désactivé, max 1440 min (24 heures)."
+  },
+  "securityAutoLockSaved": {
+    "message": "Paramètre de verrouillage automatique enregistré."
+  },
+  "syncPlaintextVaultWarning": {
+    "message": "Envisagez d'activer le chiffrement par coffre dans l'onglet Sécurité."
+  },
+  "insecureHttpAuthWarning": {
+    "message": "L'URL HTTP envoie les identifiants en clair."
+  },
+  "appearanceCustomCssTrustConfirm": {
+    "message": "Ne chargez du CSS personnalisé que depuis des URL de confiance. Un CSS non fiable peut modifier ou usurper l'interface. Continuer ?"
+  },
+  "securityMuteSyncLockedWarning": {
+    "message": "Désactiver la notification en haut à droite lorsque le coffre de synchronisation est verrouillé (la barre d'état reste affichée)"
   }
 }

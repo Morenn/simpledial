@@ -27,6 +27,8 @@ import {
   groupRestStatusWidgets
 } from "../custom-widgets.js";
 import { normalizeCustomIconValue, applyCachedIconImageSrc } from "../color-utils.js";
+import { loadConfig } from "../config.js";
+import { getSecret, setSecret, isEncryptedSecret, isVaultUnlocked, isInsecureHttpUrl } from "../crypto.js";
 import { settingsState, markSettingsDirty } from "./context.js";
 import { ensureAppearanceDraft, updateDateTimeVisibility } from "./appearance-ui.js";
 
@@ -607,6 +609,7 @@ export function initCustomWidgetsSettings() {
         delete cloned.sourceUrl;
         delete cloned.sourceUpdatedAt;
         delete cloned.previousVersion;
+        if ("authHeaderValue" in cloned) cloned.authHeaderValue = "";
         draft.customWidgets = [...(draft.customWidgets || []), cloned];
         draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), cloned.id], draft.customWidgets);
         renderWidgetOrderList(draft);
@@ -900,7 +903,31 @@ export function initCustomWidgetsSettings() {
   window.renderWidgetOrderList = renderWidgetOrderList;
 
   let editingCustomWidgetId = null;
+  let lockedEncryptedRestToken = "";
   let customWidgetVarsDraft = [{ key: "query", label: "Search", type: "text", optionsText: "" }];
+
+  const updateRestAuthWarningBadge = (hasLockedToken = false) => {
+    const warnEl = document.querySelector(".custom-widget-rest-auth-warning");
+    if (!warnEl) return;
+    const hasToken = hasLockedToken || !!(customWidgetRestHeaderValue?.value || "").trim() || !!lockedEncryptedRestToken;
+    const httpWarn = hasToken && isInsecureHttpUrl(customWidgetRestUrl?.value)
+      ? ` ⚠️ ${t("insecureHttpAuthWarning") || "HTTP URL sends credentials unencrypted."}`
+      : "";
+    if (hasLockedToken) {
+      warnEl.classList.remove("is-encrypted");
+      warnEl.textContent = "🔒 " + (t("customRestAuthLockedWarning") || "Token is encrypted, but vault is locked. Unlock in Security tab to view or change it.") + httpWarn;
+      return;
+    }
+    if (isVaultUnlocked()) {
+      warnEl.classList.add("is-encrypted");
+      warnEl.textContent = "🔒 " + (t("customRestAuthEncryptedInfo") || "Vault unlocked: token is encrypted locally (never backed up, exported, or synced; re-enter after restore).") + httpWarn;
+    } else {
+      warnEl.classList.remove("is-encrypted");
+      warnEl.textContent = "⚠️ " + (t("customRestAuthWarning") || "Experimental: header tokens stay local only (never backed up, exported, or synced; re-enter after restore). Enable Vault in Security tab to encrypt.") + httpWarn;
+    }
+  };
+  customWidgetRestUrl?.addEventListener("input", () => updateRestAuthWarningBadge(!!lockedEncryptedRestToken));
+  customWidgetRestHeaderValue?.addEventListener("input", () => updateRestAuthWarningBadge(!!lockedEncryptedRestToken));
   let customWidgetTzDraft = [
     { label: "UTC", timeZone: "UTC" },
     { label: "New York", timeZone: "America/New_York" }
@@ -1226,6 +1253,8 @@ export function initCustomWidgetsSettings() {
 
   const resetCustomWidgetForm = () => {
     editingCustomWidgetId = null;
+    lockedEncryptedRestToken = "";
+    updateRestAuthWarningBadge(false);
     if (customWidgetIconInput) customWidgetIconInput.value = "🔎";
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = "";
     if (customWidgetModeSelect) customWidgetModeSelect.value = "simple";
@@ -1309,7 +1338,28 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestValueMap) customWidgetRestValueMap.value = widget.valueMap || "";
     if (customWidgetRestLink) customWidgetRestLink.value = widget.linkUrl || "";
     if (customWidgetRestHeaderName) customWidgetRestHeaderName.value = widget.authHeaderName || "";
-    if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = widget.authHeaderValue || "";
+    lockedEncryptedRestToken = "";
+    if (customWidgetRestHeaderValue) {
+      if (isEncryptedSecret(widget.authHeaderValue)) {
+        customWidgetRestHeaderValue.value = "";
+        lockedEncryptedRestToken = widget.authHeaderValue;
+        updateRestAuthWarningBadge(true);
+        void (async () => {
+          const cfg = await loadConfig();
+          const res = await getSecret(widget.authHeaderValue, `widget:${widget.id}:authHeaderValue`, {
+            vaultHeader: cfg?.vaultHeader || null
+          });
+          if (res.ok && editingCustomWidgetId === widget.id) {
+            customWidgetRestHeaderValue.value = res.value;
+            lockedEncryptedRestToken = "";
+            updateRestAuthWarningBadge(false);
+          }
+        })();
+      } else {
+        customWidgetRestHeaderValue.value = widget.authHeaderValue || "";
+        updateRestAuthWarningBadge(false);
+      }
+    }
     if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = !!widget.hideGroupName;
     if (customWidgetRestHideValue) customWidgetRestHideValue.checked = !!widget.hideValue;
     if (customWidgetRestMetrics) customWidgetRestMetrics.value = formatRestMetricsText(widget.metrics);
@@ -1507,6 +1557,7 @@ export function initCustomWidgetsSettings() {
         customWidgetRestTestResult.textContent = "⏳ " + (t("testing") || "Testing...");
       }
       const testWidget = {
+        id: editingCustomWidgetId || "test",
         name: (customWidgetNameInput?.value || "Test").trim() || "Test",
         endpointUrl,
         method: customWidgetRestMethod?.value === "HEAD" ? "HEAD" : "GET",
@@ -1517,7 +1568,7 @@ export function initCustomWidgetsSettings() {
         warnMatch: (customWidgetRestWarn?.value || "").trim(),
         metrics: parseRestMetricsText(customWidgetRestMetrics?.value || ""),
         authHeaderName: (customWidgetRestHeaderName?.value || "").trim(),
-        authHeaderValue: customWidgetRestHeaderValue?.value || ""
+        authHeaderValue: (customWidgetRestHeaderValue?.value || "") || lockedEncryptedRestToken
       };
       const result = await fetchAndEvaluateRestWidget(testWidget);
       const badge = result.state === "ok" ? "🟢" : (result.state === "warn" ? "🟡" : "🔴");
@@ -1651,6 +1702,14 @@ export function initCustomWidgetsSettings() {
         }
         await requestRestEndpointPermission(endpointUrl);
 
+        const targetWidgetId = editingCustomWidgetId || `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        let authHeaderValue = customWidgetRestHeaderValue?.value || "";
+        if (!authHeaderValue && lockedEncryptedRestToken) {
+          authHeaderValue = lockedEncryptedRestToken;
+        } else if (authHeaderValue) {
+          authHeaderValue = await setSecret(authHeaderValue, `widget:${targetWidgetId}:authHeaderValue`);
+        }
+
         const restFields = {
           type: "rest-status",
           name,
@@ -1671,7 +1730,7 @@ export function initCustomWidgetsSettings() {
           warnMatch: (customWidgetRestWarn?.value || "").trim(),
           linkUrl: rawLinkUrl,
           authHeaderName: (customWidgetRestHeaderName?.value || "").trim(),
-          authHeaderValue: customWidgetRestHeaderValue?.value || ""
+          authHeaderValue
         };
 
         if (customWidgetStatus) customWidgetStatus.textContent = "";
@@ -1683,7 +1742,7 @@ export function initCustomWidgetsSettings() {
           );
         } else {
           const newWidget = {
-            id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            id: targetWidgetId,
             ...restFields,
             space: "right",
             align: "auto",

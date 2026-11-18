@@ -1644,6 +1644,165 @@
     "message": "Показувати додаткові значення лише у підказці"
   },
   "customRestAuthWarning": {
-    "message": "Експериментальна функція: токени заголовка зберігаються без шифрування в локальному сховищі."
+    "message": "Експериментально: токени залишаються лише локально (не резервуються, не експортуються й не синхронізуються; введіть знову після відновлення). Увімкніть Сховище у вкладці Безпека для шифрування."
+  },
+  "securityTab": {
+    "message": "Безпека"
+  },
+  "securityVaultTitle": {
+    "message": "Сховище секретів"
+  },
+  "securityVaultDesc": {
+    "message": "Шифрує лише чутливі секрети (наприклад, API-токени віджетів) за допомогою AES-GCM. Розблоковані ключі зберігаються лише в пам'яті сесії браузера."
+  },
+  "securityPasswordPlaceholder": {
+    "message": "Пароль сховища"
+  },
+  "securityConfirmPasswordPlaceholder": {
+    "message": "Підтвердіть пароль"
+  },
+  "securityEnableVaultBtn": {
+    "message": "Увімкнути сховище та зашифрувати секрети"
+  },
+  "securityUnlockBtn": {
+    "message": "Розблокувати сховище"
+  },
+  "securityLockBtn": {
+    "message": "Заблокувати сховище"
+  },
+  "securityEncryptExistingBtn": {
+    "message": "Зашифрувати незашифровані секрети"
+  },
+  "securityChangePasswordTitle": {
+    "message": "Змінити пароль сховища"
+  },
+  "securityOldPasswordPlaceholder": {
+    "message": "Поточний пароль"
+  },
+  "securityNewPasswordPlaceholder": {
+    "message": "Новий пароль"
+  },
+  "securityChangePwBtn": {
+    "message": "Змінити пароль"
+  },
+  "securityStatusNotSet": {
+    "message": "Сховище не налаштовано"
+  },
+  "securityStatusUnlocked": {
+    "message": "Сховище розблоковано"
+  },
+  "securityStatusLocked": {
+    "message": "Сховище заблоковано"
+  },
+  "securityPlaintextTokensCount": {
+    "message": "незашифрований(их) токен(ів)"
+  },
+  "securityEnterPasswordPrompt": {
+    "message": "Введіть пароль сховища для розблокування секретів:"
+  },
+  "securityWrongPassword": {
+    "message": "Невірний пароль сховища."
+  },
+  "securityPasswordRequired": {
+    "message": "Введіть пароль сховища."
+  },
+  "securityPasswordMismatch": {
+    "message": "Паролі не збігаються."
+  },
+  "securityVaultEnabled": {
+    "message": "Сховище увімкнено, існуючі токени зашифровано."
+  },
+  "securityTokensEncrypted": {
+    "message": "Усі токени віджетів зашифровано."
+  },
+  "securityPasswordChanged": {
+    "message": "Пароль сховища оновлено."
+  },
+  "vaultLockedClickToUnlock": {
+    "message": "Сховище заблоковано — натисніть для розблокування"
+  },
+  "vaultDecryptFailed": {
+    "message": "Не вдалося розшифрувати токен"
+  },
+  "customRestAuthLockedWarning": {
+    "message": "Токен зашифровано, але сховище заблоковано. Розблокуйте у вкладці Безпека."
+  },
+  "customRestAuthEncryptedInfo": {
+    "message": "Сховище розблоковано: токен шифрується локально (не резервується, не експортується й не синхронізується; введіть знову після відновлення)."
+  },
+  "backupConfigRestoredSecretsWarning": {
+    "message": "Конфігурацію відновлено. Секрети віджетів не зберігаються у резервних копіях — будь ласка, введіть ваші API-токени знову."
+  },
+  "securityDestroyVaultBtn": {
+    "message": "Знищити сховище та очистити секрети"
+  },
+  "securityConfirmDestroyVault": {
+    "message": "Знищити сховище та стерти всі збережені секрети віджетів? Вам доведеться створити нове сховище та знову ввести API-токени."
+  },
+  "securityVaultDestroyed": {
+    "message": "Сховище знищено та всі секрети очищено. Тепер ви можете встановити новий пароль."
+  },
+  "syncEncryptVault": {
+    "message": "Шифрувати за допомогою сховища"
+  },
+  "syncVaultNotSetupError": {
+    "message": "Спочатку увімкніть Сховище у вкладці Безпека."
+  },
+  "securityPasswordExpired": {
+    "message": "Пароль старіший за {0} днів — будь ласка, змініть його"
+  },
+  "securityDaysRemaining": {
+    "message": "діє ще {0} дн."
+  },
+  "securityPasswordPolicyError": {
+    "message": "Пароль повинен містити:"
+  },
+  "securityForceChangeTitle": {
+    "message": "Термін дії пароля минув"
+  },
+  "securityForceChangeDesc": {
+    "message": "Термін дії пароля сховища минув. Встановіть новий пароль, щоб продовжити."
+  },
+  "securityKdfLabel": {
+    "message": "Формування ключа (KDF)"
+  },
+  "securityKdfSha512": {
+    "message": "PBKDF2-SHA512 (210k) — Рекомендовано для 64-біт"
+  },
+  "securityKdfSha256": {
+    "message": "PBKDF2-SHA256 (600k) — Краще для 32-біт"
+  },
+  "securityKdfHint": {
+    "message": "PBKDF2-SHA512 (210k) швидший на 64-бітних системах (рекомендовано за замовчуванням). Використовуйте PBKDF2-SHA256 (600k) на 32-бітних системах."
+  },
+  "securityKdfChangeHint": {
+    "message": "PBKDF2-SHA512 (210k) швидший на 64-бітних системах (за замовчуванням); PBKDF2-SHA256 (600k) — для 32-біт. Щоб змінити KDF, виберіть новий алгоритм вище та натисніть «Змінити пароль» (під час міграції KDF можна залишити той самий пароль)."
+  },
+  "securityPasswordSameError": {
+    "message": "Новий пароль має відрізнятися від поточного."
+  },
+  "customRestAuthScopeTooltip": {
+    "message": "Рекомендація з безпеки: використовуйте окремий API-ключ лише для читання з мінімально необхідними правами (ніколи не використовуйте токен адміністратора чи запису), щоб обмежити наслідки у разі компрометації."
+  },
+  "securityAutoLockLabel": {
+    "message": "Автоблокування при неактивності (хвилини)"
+  },
+  "securityAutoLockHint": {
+    "message": "Необов'язково: 0 = вимкнено, макс. 1440 хв (24 години)."
+  },
+  "securityAutoLockSaved": {
+    "message": "Налаштування автоблокування збережено."
+  },
+  "syncPlaintextVaultWarning": {
+    "message": "Рекомендуємо увімкнути шифрування Сховищем у вкладці Безпека."
+  },
+  "insecureHttpAuthWarning": {
+    "message": "HTTP-адреса передає облікові дані без шифрування."
+  },
+  "appearanceCustomCssTrustConfirm": {
+    "message": "Завантажуйте власний CSS лише з надійних URL-адрес. Ненадійний CSS може змінювати або підробляти елементи інтерфейсу. Продовжити?"
+  },
+  "securityMuteSyncLockedWarning": {
+    "message": "Вимкнути спливаюче попередження у правому верхньому куті про заблоковане сховище синхронізації (рядок стану й надалі показуватиме блокування)"
   }
 }

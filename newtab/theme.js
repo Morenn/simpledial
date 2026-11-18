@@ -14,6 +14,10 @@ import {
 export { isAllowedThemeUrl };
 
 const BACKGROUND_IMAGE_CACHE_KEY = "myspeeddial-background-image-cache";
+export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
+const MAX_BACKGROUND_IMAGE_FETCH_BYTES = 25 * 1024 * 1024; // 25 MB raw fetch safety cap before downscale
+const MAX_BACKGROUND_WIDTH = 1920;
+const MAX_BACKGROUND_HEIGHT = 1080;
 const CUSTOM_THEME_CSS_CACHE_KEY = "myspeeddial-custom-theme-css-cache";
 const CUSTOM_THEME_URL_CACHE_KEY = "myspeeddial-custom-theme-url-cache";
 const THEME_OVERRIDE_LINK_ID = "theme-override-stylesheet";
@@ -146,6 +150,102 @@ export async function fetchAndCacheThemeUrl(rawUrl, { saveCache = true } = {}) {
   return { url: parsed.href, css: cssText };
 }
 
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read image data"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function estimateDataUrlBytes(dataUrl) {
+  if (typeof dataUrl !== "string") return 0;
+  const commaIdx = dataUrl.indexOf(",");
+  const b64Len = commaIdx >= 0 ? dataUrl.length - commaIdx - 1 : dataUrl.length;
+  return Math.floor((b64Len * 3) / 4);
+}
+
+/**
+ * Downscales and re-encodes a background image Blob if it exceeds dimensions
+ * (1920x1080) or `maxBytes` (`MAX_BACKGROUND_IMAGE_BYTES`).
+ */
+export async function downscaleBackgroundImage(blob, maxBytes = MAX_BACKGROUND_IMAGE_BYTES) {
+  if (!blob || blob.size === 0) {
+    throw new Error("Image file is empty");
+  }
+
+  const maxMbLabel = Math.max(1, Math.round(maxBytes / (1024 * 1024)));
+
+  if (typeof createImageBitmap !== "function" || typeof document === "undefined") {
+    if (blob.size > maxBytes) {
+      throw new Error(`Image file is too large (max ${maxMbLabel}MB)`);
+    }
+    return blobToDataUrl(blob);
+  }
+
+  let srcBitmap = null;
+  try {
+    srcBitmap = await createImageBitmap(blob);
+  } catch {
+    // Fallback for formats createImageBitmap may reject (e.g. SVG)
+    if (blob.size > maxBytes) {
+      throw new Error(`Image file is too large (max ${maxMbLabel}MB)`);
+    }
+    return blobToDataUrl(blob);
+  }
+
+  try {
+    const { width, height } = srcBitmap;
+    const scale = Math.min(1, MAX_BACKGROUND_WIDTH / width, MAX_BACKGROUND_HEIGHT / height);
+
+    if (scale >= 1 && blob.size <= maxBytes) {
+      return blobToDataUrl(blob);
+    }
+
+    const targetW = Math.max(1, Math.round(width * scale));
+    const targetH = Math.max(1, Math.round(height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      if (blob.size > maxBytes) {
+        throw new Error(`Image file is too large (max ${maxMbLabel}MB)`);
+      }
+      return blobToDataUrl(blob);
+    }
+
+    let resizedBitmap = null;
+    try {
+      resizedBitmap = scale < 1
+        ? await createImageBitmap(blob, { resizeWidth: targetW, resizeHeight: targetH, resizeQuality: "high" })
+        : srcBitmap;
+      ctx.drawImage(resizedBitmap, 0, 0, targetW, targetH);
+    } catch {
+      ctx.drawImage(srcBitmap, 0, 0, targetW, targetH);
+    } finally {
+      if (resizedBitmap && resizedBitmap !== srcBitmap) {
+        resizedBitmap.close?.();
+      }
+    }
+
+    const qualities = [0.85, 0.72, 0.58];
+    for (const mime of ["image/webp", "image/jpeg"]) {
+      for (const q of qualities) {
+        const candidate = canvas.toDataURL(mime, q);
+        if (candidate.startsWith(`data:${mime}`) && estimateDataUrlBytes(candidate) <= maxBytes) {
+          return candidate;
+        }
+      }
+    }
+
+    throw new Error(`Image file is too large (max ${maxMbLabel}MB)`);
+  } finally {
+    srcBitmap?.close?.();
+  }
+}
+
 export async function fetchBackgroundImageFromUrl(rawUrl) {
   const trimmed = String(rawUrl || "").trim();
   if (!isAllowedThemeUrl(trimmed)) {
@@ -178,17 +278,11 @@ export async function fetchBackgroundImageFromUrl(rawUrl) {
   if (!blob || blob.size === 0) {
     throw new Error("Image file is empty");
   }
-  if (blob.size > 5 * 1024 * 1024) {
-    throw new Error("Image file is too large (max 5MB)");
+  if (blob.size > MAX_BACKGROUND_IMAGE_FETCH_BYTES) {
+    throw new Error("Image file is too large to process");
   }
 
-  const dataUrl = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Failed to read image data"));
-    reader.readAsDataURL(blob);
-  });
-
+  const dataUrl = await downscaleBackgroundImage(blob, MAX_BACKGROUND_IMAGE_BYTES);
   return { url: parsed.href, dataUrl };
 }
 
@@ -320,16 +414,18 @@ export async function applyThemeStyle(config = null, options = {}) {
 }
 
 // ---------- Load theme ----------
-export async function loadTheme() {
-  const res = await chrome.storage.local.get(THEME_KEY);
+export async function loadTheme(preloadedConfig = null) {
+  const [res, config, cachedBackground] = await Promise.all([
+    chrome.storage.local.get(THEME_KEY),
+    preloadedConfig ? Promise.resolve(preloadedConfig) : loadConfig(),
+    getBackgroundImageFromCache()
+  ]);
   const saved = res && res[THEME_KEY];
 
   const modeClass = saved === "theme-light" ? "theme-light" : "theme-dark";
   document.body.classList.remove("theme-light", "theme-dark");
   document.body.classList.add(modeClass);
 
-  const config = await loadConfig();
-  const cachedBackground = await getBackgroundImageFromCache();
   if (cachedBackground && !config.appearance?.backgroundImage) {
     config.appearance = { ...(config.appearance || {}), backgroundImage: cachedBackground };
   }
@@ -337,39 +433,32 @@ export async function loadTheme() {
   // Apply selected theme override CSS (default, summer, autumn, winter, custom file/URL)
   await applyThemeStyle(config);
 
-  // Load background image
-  await applyBackground(config);
+  // Load background image (avoid redundant storage write when cache already matches)
+  await applyBackground(config, { cachedBackground });
 
-  // Load background dim overlay
+  // Load background dim overlay, opacities, sizes, and side spaces
   await applyBgDim(config);
-
-  // Load tile opacity
   await applyTileOpacity(config);
-
-  // Load header & footer opacity
   await applyBarOpacity(config);
-
-  // Load tile size
   await applyTileSize(config);
-
-  // Load group tile size
   await applyGroupTileSize(config);
-
-  // Load left/right widget side spaces visibility
   await applySideSpaces(config);
 }
 
 // ---------- Apply background ----------
-export async function applyBackground(config = null) {
+export async function applyBackground(config = null, options = {}) {
   if (!config) {
     config = await loadConfig();
   }
 
   const body = document.body;
+  const hasKnownCache = Object.prototype.hasOwnProperty.call(options || {}, "cachedBackground");
   const hasExplicitBackgroundField = Boolean(
     config?.appearance && Object.prototype.hasOwnProperty.call(config.appearance, "backgroundImage")
   );
-  const cachedBackground = hasExplicitBackgroundField ? null : await getBackgroundImageFromCache();
+  const cachedBackground = hasKnownCache
+    ? options.cachedBackground
+    : (hasExplicitBackgroundField ? null : await getBackgroundImageFromCache());
   const bgImage = config.appearance?.backgroundImage ?? cachedBackground;
   const bgSize = config.appearance?.backgroundSize || "stretched";
 
@@ -378,7 +467,9 @@ export async function applyBackground(config = null) {
   }
 
   if (!bgImage) {
-    await saveBackgroundImageToCache(null);
+    if (!hasKnownCache || cachedBackground) {
+      await saveBackgroundImageToCache(null);
+    }
     // Remove background
     body.style.backgroundImage = "";
     body.style.backgroundSize = "";
@@ -399,7 +490,9 @@ export async function applyBackground(config = null) {
     return;
   }
 
-  await saveBackgroundImageToCache(bgImage);
+  if (!hasKnownCache || bgImage !== cachedBackground) {
+    await saveBackgroundImageToCache(bgImage);
+  }
   // Set base background image
   body.style.backgroundImage = `url('${bgImage}')`;
   body.style.backgroundAttachment = "fixed";

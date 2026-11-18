@@ -316,9 +316,18 @@ export function startNotesReminderPolling() {
     return checkDueNoteReminders();
   });
   notesReminderIntervalId = setInterval(() => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
     for (const w of activeNotesWidgets) refreshNotesWidgetDom(w.id);
     void checkDueNoteReminders();
   }, 10000);
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        for (const w of activeNotesWidgets) refreshNotesWidgetDom(w.id);
+        void checkDueNoteReminders();
+      }
+    });
+  }
 }
 
 function getEntryDisplayTitle(entry) {

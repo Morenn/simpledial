@@ -136,7 +136,10 @@ test("config backup stores appearance (including customWidgets, excluding backgr
   cfg.appearance.theme = "spring";
   cfg.appearance.tileSize = 1.25;
   cfg.appearance.backgroundImage = "data:image/png;base64,OLD_IMAGE_DATA";
-  cfg.appearance.customWidgets = [{ id: "cw-old", type: "custom-search", name: "Old" }];
+  cfg.appearance.customWidgets = [
+    { id: "cw-old", type: "custom-search", name: "Old" },
+    { id: "cw-rest", type: "rest-status", name: "PVE", endpointUrl: "https://pve.local/api", authHeaderName: "Authorization", authHeaderValue: "enc:v1:iv123:ct456" }
+  ];
   cfg.sync.enabled = true;
   cfg.sync.type = "webdav";
   cfg.sync.serverUrl = "https://sync.example/dav/bookmarks.json";
@@ -153,7 +156,11 @@ test("config backup stores appearance (including customWidgets, excluding backgr
   assert.equal(parsedPayload.appearance.theme, "spring");
   assert.equal(parsedPayload.appearance.tileSize, 1.25);
   assert.equal(parsedPayload.appearance.backgroundImage, undefined);
-  assert.deepEqual(parsedPayload.appearance.customWidgets, [{ id: "cw-old", type: "custom-search", name: "Old" }]);
+  assert.deepEqual(parsedPayload.appearance.customWidgets, [
+    { id: "cw-old", type: "custom-search", name: "Old" },
+    { id: "cw-rest", type: "rest-status", name: "PVE", endpointUrl: "https://pve.local/api", authHeaderName: "Authorization", authHeaderValue: "", hadSecret: true }
+  ]);
+  assert.equal(parsedPayload.vaultHeader, undefined);
   assert.equal(parsedPayload.sync, undefined);
   assert.equal(parsedPayload.backups, undefined);
 
@@ -169,11 +176,15 @@ test("config backup stores appearance (including customWidgets, excluding backgr
   const result = await restoreBackup(entry.filename, "config");
   assert.equal(result.ok, true);
   assert.equal(result.type, "config");
+  assert.equal(result.secretsRemoved, true);
 
   const restored = await loadConfig();
   assert.equal(restored.appearance.theme, "spring");
   assert.equal(restored.appearance.tileSize, 1.25);
-  assert.deepEqual(restored.appearance.customWidgets, [{ id: "cw-old", type: "custom-search", name: "Old" }]);
+  assert.deepEqual(restored.appearance.customWidgets, [
+    { id: "cw-old", type: "custom-search", name: "Old" },
+    { id: "cw-rest", type: "rest-status", name: "PVE", endpointUrl: "https://pve.local/api", authHeaderName: "Authorization", authHeaderValue: "" }
+  ]);
   // Current backgroundImage and sync settings must remain untouched
   assert.equal(restored.appearance.backgroundImage, "data:image/png;base64,CURRENT_IMAGE_DATA");
   assert.equal(restored.sync.enabled, true);

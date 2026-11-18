@@ -192,6 +192,7 @@
         <button class="settings-tab-btn" data-tab="appearance" data-i18n="appearance">🎨 Appearance</button>
         <button class="settings-tab-btn" data-tab="widgets" data-i18n="customWidgetsTab">🧩 Custom Widgets</button>
         <button class="settings-tab-btn" data-tab="housekeeper" data-i18n="housekeeper">🏠 HouseKeeper</button>
+        <button class="settings-tab-btn" data-tab="security" data-i18n="securityTab">🔐 Security</button>
         <button class="settings-tab-btn" data-tab="advanced" data-i18n="advancedFeatures">🧪 Advanced</button>
         <button class="settings-tab-btn" data-tab="info" data-i18n="info">ℹ️ Info</button>
         <button id="settings-maximize-btn" class="icon-btn" title="maximize">⛶</button>
@@ -291,12 +292,12 @@
 
             <div id="sync-username-row" class="appearance-slider-row">
               <label for="sync-username" id="sync-username-label" data-i18n="syncUsername">Username</label>
-              <input type="text" id="sync-username" class="sync-compact-input" placeholder="">
+              <input type="text" id="sync-username" class="sync-compact-input" maxlength="256" placeholder="">
             </div>
 
             <div id="sync-password-row" class="appearance-slider-row">
               <label for="sync-password" id="sync-password-label" data-i18n="syncPassword">Password</label>
-              <input type="password" id="sync-password" class="sync-compact-input" placeholder="">
+              <input type="password" id="sync-password" class="sync-compact-input" maxlength="512" placeholder="">
             </div>
 
             <div id="sync-encrypt-section" class="appearance-card-spaced">
@@ -307,12 +308,12 @@
                   <span class="choice-option-title" data-i18n="syncEncryptNone">Do not encrypt</span>
                 </label>
                 <label class="choice-option choice-option-inline">
-                  <input type="radio" name="sync-encrypt-choice" value="master">
-                  <span class="choice-option-title" data-i18n="syncEncryptMaster">Encrypt with master password</span>
-                </label>
-                <label class="choice-option choice-option-inline">
                   <input type="radio" name="sync-encrypt-choice" value="local">
                   <span class="choice-option-title" data-i18n="syncEncryptLocal">Encrypt with local key</span>
+                </label>
+                <label class="choice-option choice-option-inline">
+                  <input type="radio" name="sync-encrypt-choice" value="vault">
+                  <span class="choice-option-title" data-i18n="syncEncryptVault">Encrypt with vault</span>
                 </label>
               </div>
             </div>
@@ -869,6 +870,86 @@
         </div>
       </div>
 
+      <!-- Security Tab -->
+      <div id="security-tab" class="settings-tab-content">
+        <div class="appearance-grid">
+          <div class="sync-section-card appearance-card">
+            <h3 data-i18n="securityVaultTitle">Secrets Vault</h3>
+            <p class="appearance-card-desc" data-i18n="securityVaultDesc">Encrypts only sensitive secrets (such as widget API tokens) using AES-GCM. Unlocked keys stay in browser session memory only.</p>
+            <div class="security-vault-status-row">
+              <span id="security-vault-status" class="status"></span>
+              <span id="security-plaintext-count" class="status"></span>
+            </div>
+
+            <div id="security-setup-panel" class="security-panel hidden">
+              <div class="custom-widget-add-row">
+                <input type="password" id="security-setup-password" class="sync-compact-input" maxlength="512" autocomplete="new-password" data-i18n-placeholder="securityPasswordPlaceholder" placeholder="Vault password" aria-label="Vault password">
+                <input type="password" id="security-setup-confirm" class="sync-compact-input" maxlength="512" autocomplete="new-password" data-i18n-placeholder="securityConfirmPasswordPlaceholder" placeholder="Confirm password" aria-label="Confirm vault password">
+              </div>
+              <div class="custom-widget-add-row">
+                <label for="security-setup-kdf" class="custom-widget-sub-label" data-i18n="securityKdfLabel">Key derivation (KDF)</label>
+                <select id="security-setup-kdf" class="appearance-select">
+                  <option value="PBKDF2-SHA512" selected data-i18n="securityKdfSha512">PBKDF2-SHA512 (210k) — Recommended for 64-bit</option>
+                  <option value="PBKDF2-SHA256" data-i18n="securityKdfSha256">PBKDF2-SHA256 (600k) — Best for 32-bit</option>
+                </select>
+              </div>
+              <p class="appearance-card-desc" data-i18n="securityKdfHint">PBKDF2-SHA512 (210k) is faster on 64-bit systems (recommended default). Use PBKDF2-SHA256 (600k) if you are on a 32-bit system.</p>
+              <div class="custom-widget-add-row">
+                <button type="button" id="security-setup-btn" class="icon-btn primary" data-i18n="securityEnableVaultBtn">🔐 Enable Vault &amp; Encrypt Secrets</button>
+              </div>
+            </div>
+
+            <div id="security-locked-panel" class="security-panel hidden">
+              <div class="custom-widget-add-row">
+                <input type="password" id="security-unlock-password" class="sync-compact-input" maxlength="512" autocomplete="current-password" data-i18n-placeholder="securityPasswordPlaceholder" placeholder="Vault password" aria-label="Vault password">
+                <button type="button" id="security-unlock-btn" class="icon-btn primary" data-i18n="securityUnlockBtn">🔓 Unlock Vault</button>
+              </div>
+            </div>
+
+            <div id="security-unlocked-panel" class="security-panel hidden">
+              <div class="custom-widget-add-row">
+                <button type="button" id="security-lock-btn" class="icon-btn" data-i18n="securityLockBtn">🔒 Lock Vault</button>
+                <button type="button" id="security-encrypt-existing-btn" class="icon-btn primary hidden" data-i18n="securityEncryptExistingBtn">🔐 Encrypt Unencrypted Secrets</button>
+              </div>
+              <div class="custom-widget-add-row">
+                <label for="security-autolock-minutes" class="custom-widget-sub-label" data-i18n="securityAutoLockLabel">Auto-lock after inactivity (minutes)</label>
+                <input type="number" id="security-autolock-minutes" class="sync-compact-input" min="0" max="1440" step="1" value="0" aria-label="Auto-lock timeout in minutes">
+              </div>
+              <p class="appearance-card-desc" data-i18n="securityAutoLockHint">Optional: 0 = disabled, max 1440 min (24 hours).</p>
+              <hr class="security-divider">
+              <div class="custom-widget-sub-label" data-i18n="securityChangePasswordTitle">Change Vault Password</div>
+              <div class="custom-widget-add-row">
+                <input type="password" id="security-old-password" class="sync-compact-input" maxlength="512" autocomplete="current-password" data-i18n-placeholder="securityOldPasswordPlaceholder" placeholder="Current password" aria-label="Current vault password">
+                <input type="password" id="security-new-password" class="sync-compact-input" maxlength="512" autocomplete="new-password" data-i18n-placeholder="securityNewPasswordPlaceholder" placeholder="New password" aria-label="New vault password">
+                <input type="password" id="security-new-confirm" class="sync-compact-input" maxlength="512" autocomplete="new-password" data-i18n-placeholder="securityConfirmPasswordPlaceholder" placeholder="Confirm password" aria-label="Confirm new vault password">
+                <button type="button" id="security-change-pw-btn" class="icon-btn" data-i18n="securityChangePwBtn">Change Password</button>
+              </div>
+              <div class="custom-widget-add-row">
+                <label for="security-change-kdf" class="custom-widget-sub-label" data-i18n="securityKdfLabel">Key derivation (KDF)</label>
+                <select id="security-change-kdf" class="appearance-select">
+                  <option value="PBKDF2-SHA512" data-i18n="securityKdfSha512">PBKDF2-SHA512 (210k) — Recommended for 64-bit</option>
+                  <option value="PBKDF2-SHA256" data-i18n="securityKdfSha256">PBKDF2-SHA256 (600k) — Best for 32-bit</option>
+                </select>
+              </div>
+              <p class="appearance-card-desc" data-i18n="securityKdfChangeHint">PBKDF2-SHA512 (210k) is faster on 64-bit systems (recommended default); PBKDF2-SHA256 (600k) is for 32-bit. To switch KDF, select the new algorithm above and click Change Password (you may keep the same password when migrating KDF).</p>
+            </div>
+
+            <div id="security-destroy-panel" class="security-panel hidden">
+              <hr class="security-divider">
+              <label class="checkbox-row">
+                <input type="checkbox" id="security-mute-sync-locked-warning">
+                <span data-i18n="securityMuteSyncLockedWarning">Mute top-right Sync locked-vault warning popup (sync status bar still shows locked state)</span>
+              </label>
+              <div class="custom-widget-add-row">
+                <button type="button" id="security-destroy-btn" class="icon-btn danger" data-i18n="securityDestroyVaultBtn">🗑️ Destroy Vault &amp; Clear Secrets</button>
+              </div>
+            </div>
+
+            <div id="security-action-status" class="status"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Advanced tab -->
       <div id="advanced-tab" class="settings-tab-content">
         <div class="appearance-grid">
@@ -1259,11 +1340,13 @@
           <div class="custom-widget-add-row">
             <input type="url" id="custom-widget-rest-link" class="sync-compact-input" data-i18n-placeholder="customRestLinkPlaceholder" placeholder="Click URL (optional dashboard link)" aria-label="Optional dashboard link URL">
           </div>
-          <div class="custom-widget-add-row">
-            <input type="text" id="custom-widget-rest-header-name" class="sync-compact-input" autocomplete="off" data-i18n-placeholder="customRestHeaderNamePlaceholder" placeholder="Auth header name (e.g. Authorization, X-API-Key)" aria-label="Optional header name">
-            <input type="password" id="custom-widget-rest-header-value" class="sync-compact-input" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-i18n-placeholder="customRestHeaderValuePlaceholder" placeholder="Header value / token (optional)" aria-label="Optional header value">
+          <div class="custom-widget-add-row formatted-tooltip-anchor">
+            <input type="text" id="custom-widget-rest-header-name" class="sync-compact-input" maxlength="128" autocomplete="off" data-i18n-placeholder="customRestHeaderNamePlaceholder" placeholder="Auth header name (e.g. Authorization, X-API-Key)" aria-label="Optional header name">
+            <input type="password" id="custom-widget-rest-header-value" class="sync-compact-input" maxlength="2048" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-i18n-placeholder="customRestHeaderValuePlaceholder" placeholder="Header value / token (optional)" aria-label="Optional header value">
+            <span class="formatted-tooltip-badge" tabindex="0" role="note" aria-label="API key security advice">🛡️</span>
+            <div class="formatted-tooltip-box" role="tooltip" data-i18n="customRestAuthScopeTooltip">Security best practice: use a dedicated read-only API key with minimal, narrow permissions (never an admin or write token) to limit impact if compromised.</div>
           </div>
-          <div class="custom-widget-rest-auth-warning" data-i18n="customRestAuthWarning">⚠️ Experimental: header tokens are stored unencrypted in local storage.</div>
+          <div class="custom-widget-rest-auth-warning" data-i18n="customRestAuthWarning">⚠️ Experimental: header tokens stay local only (never backed up, exported, or synced; re-enter after restore). Enable Vault in Security tab to encrypt.</div>
           <div class="custom-widget-rest-test-row">
             <label class="checkbox-row">
               <input type="checkbox" id="custom-widget-rest-hide-group">
@@ -1360,8 +1443,38 @@
     </div>
   </div>
 
+  <!-- Vault Unlock Modal -->
+  <div id="vault-unlock-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="vault-unlock-modal-title">
+    <div class="modal-content vault-unlock-modal-content">
+      <h2 id="vault-unlock-modal-title" data-i18n="securityUnlockBtn">🔓 Unlock Vault</h2>
+      <p class="appearance-card-desc" data-i18n="securityEnterPasswordPrompt">Enter vault password to unlock secrets:</p>
+      <input type="password" id="vault-unlock-modal-input" class="sync-compact-input" maxlength="512" autocomplete="current-password" data-i18n-placeholder="securityPasswordPlaceholder" placeholder="Vault password" aria-label="Vault password">
+      <div id="vault-unlock-modal-error" class="status"></div>
+      <div class="modal-buttons">
+        <button type="button" id="vault-unlock-modal-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
+        <button type="button" id="vault-unlock-modal-submit" class="icon-btn primary" data-i18n="securityUnlockBtn">🔓 Unlock Vault</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forced Vault Password Change Modal (when password expired) -->
+  <div id="vault-force-change-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="vault-force-change-title">
+    <div class="modal-content vault-unlock-modal-content">
+      <h2 id="vault-force-change-title" data-i18n="securityForceChangeTitle">🔐 Password Expired</h2>
+      <p class="appearance-card-desc" data-i18n="securityForceChangeDesc">Your vault password has expired. Set a new password to continue.</p>
+      <div class="security-panel">
+        <input type="password" id="vault-force-new-password" class="sync-compact-input" maxlength="512" autocomplete="new-password" data-i18n-placeholder="securityNewPasswordPlaceholder" placeholder="New password" aria-label="New vault password">
+        <input type="password" id="vault-force-confirm-password" class="sync-compact-input" maxlength="512" autocomplete="new-password" data-i18n-placeholder="securityConfirmPasswordPlaceholder" placeholder="Confirm password" aria-label="Confirm new vault password">
+      </div>
+      <div id="vault-force-change-error" class="status"></div>
+      <div class="modal-buttons">
+        <button type="button" id="vault-force-change-submit" class="icon-btn primary" data-i18n="securityChangePwBtn">Change Password</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="newtab/config.js"></script>
-  <script type="module" src="newtab/settings-ui.js"></script>
   <script type="module" src="newtab/main.js"></script>
+  <script type="module" src="newtab/settings-ui.js"></script>
 </body>
 </html>

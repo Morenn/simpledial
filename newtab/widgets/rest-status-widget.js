@@ -1,6 +1,8 @@
 import { t } from "../i18n.js";
 import { isAllowedThemeUrl } from "../color-utils.js";
 import { createCustomWidgetIconElement } from "./shared.js";
+import { loadConfig } from "../config.js";
+import { getSecret, isEncryptedSecret, isVaultUnlocked } from "../crypto.js";
 
 export function isValidRestEndpointUrl(rawUrl) {
   if (typeof rawUrl !== "string") return false;
@@ -318,7 +320,26 @@ export async function fetchAndEvaluateRestWidget(widget) {
   const method = widget.method === "HEAD" ? "HEAD" : "GET";
   const headers = {};
   if (widget.authHeaderName && widget.authHeaderValue) {
-    headers[widget.authHeaderName] = widget.authHeaderValue;
+    let vaultHeader = null;
+    if (isEncryptedSecret(widget.authHeaderValue)) {
+      try {
+        vaultHeader = (await loadConfig())?.vaultHeader || null;
+      } catch {
+        // ignore
+      }
+    }
+    const secret = await getSecret(widget.authHeaderValue, `widget:${widget.id}:authHeaderValue`, { vaultHeader });
+    if (!secret.ok) {
+      return {
+        state: secret.error === "DECRYPT_FAILED" ? "err" : "warn",
+        text: "🔐",
+        detail: secret.error === "DECRYPT_FAILED"
+          ? (t("vaultDecryptFailed") || "Failed to decrypt token")
+          : (t("vaultLockedClickToUnlock") || "Vault locked — click badge to unlock"),
+        vaultLocked: true
+      };
+    }
+    headers[widget.authHeaderName] = secret.value;
   }
   const start = Date.now();
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -363,10 +384,17 @@ function applyRestStatusToElement(el, widget, result) {
   const dot = el.querySelector(".rest-status-dot");
   const valueEl = el.querySelector(".rest-status-value");
   if (dot) {
-    dot.className = `rest-status-dot ${result.state || "loading"}`;
+    if (result.vaultLocked) {
+      dot.className = "rest-status-dot locked";
+      dot.textContent = "🔐";
+    } else {
+      dot.className = `rest-status-dot ${result.state || "loading"}`;
+      dot.textContent = "";
+    }
   }
   if (valueEl) {
     valueEl.textContent = result.text || "...";
+    valueEl.classList.toggle("hidden", !!widget.hideValue || !!result.vaultLocked);
   }
   el.querySelector(".rest-status-metrics")?.remove();
   if (!widget.collapseMetrics && Array.isArray(result.metrics) && result.metrics.length > 0 && valueEl) {
@@ -388,7 +416,7 @@ export async function pollRestStatusWidget(widget, { force = false } = {}) {
   const el = customRestStatusElementCache.get(widget.id);
   const cached = customRestStatusResultCache.get(widget.id);
   const refreshMs = normalizeRestRefreshSeconds(widget.refreshSeconds) * 1000;
-  if (!force && cached && (Date.now() - cached.timestamp) < refreshMs) {
+  if (!force && cached && !(cached.result?.vaultLocked && isVaultUnlocked()) && (Date.now() - cached.timestamp) < refreshMs) {
     if (el) applyRestStatusToElement(el, widget, cached.result);
     return cached.result;
   }
@@ -473,6 +501,14 @@ function createRestStatusItemElement(w, { isGroupedItem = false } = {}) {
 
   itemEl.onclick = async (e) => {
     if (isGroupedItem) e.stopPropagation();
+    const cachedResult = customRestStatusResultCache.get(w.id)?.result;
+    if (cachedResult?.vaultLocked && typeof window !== "undefined" && typeof window.promptUnlockVault === "function") {
+      const unlocked = await window.promptUnlockVault();
+      if (unlocked) {
+        await pollAllRestStatusWidgets({ force: true });
+      }
+      return;
+    }
     const permitted = await hasHostPermissionForUrl(w.endpointUrl);
     if (!permitted) {
       const granted = await requestRestEndpointPermission(w.endpointUrl);

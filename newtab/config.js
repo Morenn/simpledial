@@ -8,6 +8,9 @@ const CONFIG_STORAGE_KEY = "myspeeddial-config";
 
 export const defaultConfig = {
   browserBookmarksAutoSync: false,
+  vaultHeader: null,
+  vaultAutoLockMinutes: 0,
+  vaultMuteSyncLockedWarning: false,
   sync: {
     enabled: false,
     serverUrl: "",
@@ -25,7 +28,7 @@ export const defaultConfig = {
     authMode: "none", // "none" or "basic"
     username: "",
     password: "",
-    encryptionMode: "none", // "none","master","local"
+    encryptionMode: "none", // "none", "local", "vault"
     localKey: "",
     enc: null,
     interval: DEFAULT_SYNC_INTERVAL, // milliseconds
@@ -146,15 +149,39 @@ if (typeof chrome !== "undefined" && chrome?.storage?.onChanged?.addListener) {
   });
 }
 
+function cloneConfig(cfg) {
+  if (!cfg || typeof cfg !== "object") return cfg;
+  const bgImage = cfg.appearance?.backgroundImage;
+  const customCss = cfg.appearance?.customThemeCss;
+  if (cfg.appearance) {
+    cfg.appearance.backgroundImage = null;
+    cfg.appearance.customThemeCss = "";
+  }
+  let cloned;
+  try {
+    cloned = structuredClone(cfg);
+  } finally {
+    if (cfg.appearance) {
+      cfg.appearance.backgroundImage = bgImage;
+      cfg.appearance.customThemeCss = customCss;
+    }
+  }
+  if (cloned.appearance) {
+    cloned.appearance.backgroundImage = bgImage;
+    cloned.appearance.customThemeCss = customCss;
+  }
+  return cloned;
+}
+
 // Load configuration from storage
 export async function loadConfig() {
   const canUseLongLivedCache = typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function";
   if (canUseLongLivedCache && cachedConfig) {
-    return structuredClone(cachedConfig);
+    return cloneConfig(cachedConfig);
   }
   if (inFlightConfigLoad) {
     const resolved = await inFlightConfigLoad;
-    return structuredClone(resolved);
+    return cloneConfig(resolved);
   }
 
   inFlightConfigLoad = (async () => {
@@ -168,7 +195,7 @@ export async function loadConfig() {
 
   try {
     const resolved = await inFlightConfigLoad;
-    return structuredClone(resolved);
+    return cloneConfig(resolved);
   } finally {
     inFlightConfigLoad = null;
   }
@@ -178,7 +205,7 @@ export async function loadConfig() {
 export async function saveConfig(config) {
   const normalized = mergeConfigWithDefaults(config);
   if (typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function") {
-    cachedConfig = structuredClone(normalized);
+    cachedConfig = cloneConfig(normalized);
   }
   await chrome.storage.local.set({ [CONFIG_STORAGE_KEY]: config });
 }
