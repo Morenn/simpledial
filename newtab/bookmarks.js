@@ -127,11 +127,13 @@ async function hasHostPermission() {
 
 export async function ensureHostPermission() {
   try {
-    if (await chrome.permissions.contains({ origins: ["*://*/*"] })) return true;
+    // Call request() directly without awaiting contains() first so user-gesture
+    // activation is preserved (especially in Firefox). If already granted, this
+    // resolves true immediately without prompting.
     return await chrome.permissions.request({ origins: ["*://*/*"] });
   } catch (err) {
     console.warn("[favicon] permissions.request failed", err);
-    return false;
+    return await hasHostPermission();
   }
 }
 

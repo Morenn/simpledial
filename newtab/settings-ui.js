@@ -1,6 +1,7 @@
 ﻿import { loadConfig, saveConfig, updateDebugLoggingFlags } from "./config.js";
 import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLanguageOverride } from "./i18n.js";
 import { render } from "./render.js";
+import { ensureHostPermission } from "./bookmarks.js";
 import { cleanupOldBackups } from "./backup.js";
 import { updateUIText, updateClock } from "./main.js";
 import {
@@ -116,6 +117,17 @@ function initializeSettingsDirtyTracking() {
         settingsState.appearanceDraft.showGroupBookmarkCount = groupCountToggle.checked;
       }
       void render();
+    });
+  }
+
+  for (const checkbox of [advExperimentalFaviconFetchLink, advExperimentalFaviconFetchManifest]) {
+    if (!checkbox) continue;
+    checkbox.addEventListener("change", async () => {
+      if (!checkbox.checked) return;
+      const granted = await ensureHostPermission();
+      if (!granted) {
+        checkbox.checked = false;
+      }
     });
   }
 }
