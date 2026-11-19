@@ -1,5 +1,5 @@
-import { state, saveState, generateId, loadState, STORAGE_KEY, applyStateFromStorageChange } from "./state.js";
-import { loadTheme, applySideSpaces } from "./theme.js";
+import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, applyStateFromStorageChange } from "./state.js";
+import { loadTheme } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig, updateDebugLoggingFlags } from "./config.js";
@@ -392,14 +392,21 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     render();
     void updateFooter();
   }
+
+  const themeChange = changes[THEME_KEY];
   const configChange = changes["myspeeddial-config"];
-  if (!configChange || !configChange.newValue) return;
+  if (!configChange?.newValue) {
+    if (themeChange) {
+      void loadTheme();
+    }
+    return;
+  }
 
   updateDebugLoggingFlags(configChange.newValue.advanced);
   updateDateTimeEnabledFromConfig(configChange.newValue);
-  void applySideSpaces(configChange.newValue).then(() => {
+  void loadTheme(configChange.newValue).then(() => {
     startActiveCustomWidgets(configChange.newValue);
-    render();
+    render(configChange.newValue);
   });
   updateClock();
   void updateFooter(configChange.newValue);
