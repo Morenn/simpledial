@@ -519,6 +519,7 @@ export function syncCustomSearchWidgetElements(customWidgets = [], autoRouteDefa
         primaryInput = document.createElement("input");
         primaryInput.type = "search";
         primaryInput.name = primaryVar.key || "query";
+        primaryInput.autocomplete = "off";
         primaryInput.className = "custom-search-input";
         primaryInput.value = prevPrimaryValue;
         const autoRouteLabel = t("customSearchAutoRouteOption") || "Auto-route";
@@ -674,6 +675,7 @@ export function syncCustomSearchWidgetElements(customWidgets = [], autoRouteDefa
             txtInput.type = "text";
             txtInput.id = fieldId;
             txtInput.name = v.key;
+            txtInput.autocomplete = "off";
             labelEl.htmlFor = fieldId;
             txtInput.className = "sync-compact-input custom-search-filter-input";
             txtInput.placeholder = v.type === "list" ? "A, B" : v.label;
