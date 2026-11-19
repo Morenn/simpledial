@@ -41,6 +41,10 @@ export function syncDebugLog(...args) {
   }
 }
 
+export function startupTimingDebugLog(metrics) {
+  console.info('%c[startup-timing]', 'color: #ff9800; font-weight: bold', metrics);
+}
+
 function stableSerializeForDebug(value) {
   if (Array.isArray(value)) {
     return `[${value.map(stableSerializeForDebug).join(",")}]`;

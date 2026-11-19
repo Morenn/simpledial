@@ -1822,5 +1822,8 @@
   },
   "moreActions": {
     "message": "Meer acties"
+  },
+  "startupTimingDebugLogging": {
+    "message": "Foutopsporingslogboek voor opstarttijd inschakelen"
   }
 }

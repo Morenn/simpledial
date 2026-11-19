@@ -1822,5 +1822,8 @@
   },
   "moreActions": {
     "message": "Більше дій"
+  },
+  "startupTimingDebugLogging": {
+    "message": "Увімкнути журнал налагодження часу запуску"
   }
 }

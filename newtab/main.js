@@ -2,7 +2,7 @@ import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, applyS
 import { loadTheme } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
-import { loadConfig, updateDebugLoggingFlags } from "./config.js";
+import { loadConfig, updateDebugLoggingFlags, logDebug } from "./config.js";
 import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems, clearLastSyncErrorReason } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypto.js";
@@ -226,16 +226,27 @@ export function updateShowDeletedButtonAppearance() {
 }
 
 (async function init() {
+  const perfNow = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const tInitStart = perfNow();
+  const timeStep = async (fn) => {
+    const start = perfNow();
+    const res = await fn();
+    return { res, ms: Math.round(perfNow() - start) };
+  };
+
   // 1-3) Load language, bookmark state, and config in parallel
-  let [, , config] = await Promise.all([
-    initLanguage(),
-    loadState(),
-    loadConfig()
+  const [langRes, stateRes, configRes] = await Promise.all([
+    timeStep(() => initLanguage()),
+    timeStep(() => loadState()),
+    timeStep(() => loadConfig())
   ]);
+  let config = configRes.res;
+  const tAfterData = perfNow();
 
   // 4) Load and apply theme using already-loaded config
   updateDebugLoggingFlags(config.advanced);
   await loadTheme(config);
+  const tAfterTheme = perfNow();
   updateDateTimeEnabledFromConfig(config);
 
   const showDeletedBtn = document.getElementById("show-deleted-btn");
@@ -267,6 +278,17 @@ export function updateShowDeletedButtonAppearance() {
 
   // 9) Render UI immediately with local data — does not wait for network
   await render(config);
+  const tAfterRender = perfNow();
+  logDebug("startupTiming", {
+    moduleLoadMs: Math.round(tInitStart),
+    initLanguageMs: langRes.ms,
+    loadStateMs: stateRes.ms,
+    loadConfigMs: configRes.ms,
+    dataParallelMs: Math.round(tAfterData - tInitStart),
+    loadThemeMs: Math.round(tAfterTheme - tAfterData),
+    renderMs: Math.round(tAfterRender - tAfterTheme),
+    totalToRenderMs: Math.round(tAfterRender)
+  });
 
   // 10) Start the clock display (pause ticks when tab is hidden)
   setInterval(() => {

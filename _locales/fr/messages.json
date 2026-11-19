@@ -1822,5 +1822,8 @@
   },
   "moreActions": {
     "message": "Plus d'actions"
+  },
+  "startupTimingDebugLogging": {
+    "message": "Activer la journalisation de débogage du temps de démarrage"
   }
 }

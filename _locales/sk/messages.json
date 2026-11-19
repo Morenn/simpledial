@@ -1822,5 +1822,8 @@
   },
   "moreActions": {
     "message": "Ďalšie akcie"
+  },
+  "startupTimingDebugLogging": {
+    "message": "Povoliť ladiace protokolovanie času spustenia"
   }
 }

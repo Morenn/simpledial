@@ -1849,5 +1849,8 @@
   },
   "moreActions": {
     "message": "More actions"
+  },
+  "startupTimingDebugLogging": {
+    "message": "Enable startup timing debug logging"
   }
 }

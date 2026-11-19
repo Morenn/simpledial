@@ -1822,5 +1822,8 @@
   },
   "moreActions": {
     "message": "Weitere Aktionen"
+  },
+  "startupTimingDebugLogging": {
+    "message": "Debug-Protokollierung der Startzeit aktivieren"
   }
 }

@@ -55,6 +55,7 @@ const groupCountToggle = document.getElementById("group-count-toggle");
 const advFaviconDebugLogging = document.getElementById("enable-favicon-debug-logging");
 const advDeadLinkDebugLogging = document.getElementById("enable-dead-link-debug-logging");
 const advSyncDebugLogging = document.getElementById("enable-sync-debug-logging");
+const advStartupTimingDebugLogging = document.getElementById("enable-startup-timing-debug-logging");
 const advI18nHotReload = document.getElementById("enable-i18n-hot-reload");
 const advExperimentalFaviconFetchLink = document.getElementById("enable-experimental-favicon-fetch-link");
 const advExperimentalFaviconFetchManifest = document.getElementById("enable-experimental-favicon-fetch-manifest");
@@ -72,6 +73,9 @@ function applyAdvancedSettingsToControls(advancedConfig = {}) {
   }
   if (advSyncDebugLogging) {
     advSyncDebugLogging.checked = advancedConfig.syncDebugLogging ?? false;
+  }
+  if (advStartupTimingDebugLogging) {
+    advStartupTimingDebugLogging.checked = advancedConfig.startupTimingDebugLogging ?? false;
   }
   updateDebugLoggingFlags(advancedConfig);
   if (advI18nHotReload) {
@@ -134,6 +138,7 @@ async function persistSettings(closeAfterSave = false) {
   config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;
   config.advanced.deadLinkDebugLogging = !!advDeadLinkDebugLogging?.checked;
   config.advanced.syncDebugLogging = !!advSyncDebugLogging?.checked;
+  config.advanced.startupTimingDebugLogging = !!advStartupTimingDebugLogging?.checked;
   updateDebugLoggingFlags(config.advanced);
   config.advanced.i18nHotReload = !!advI18nHotReload?.checked;
   config.advanced.faviconFetchLink = !!advExperimentalFaviconFetchLink?.checked;

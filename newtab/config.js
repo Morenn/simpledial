@@ -98,6 +98,7 @@ export const defaultConfig = {
     faviconDebugLogging: false,
     deadLinkDebugLogging: false,
     syncDebugLogging: false,
+    startupTimingDebugLogging: false,
     i18nHotReload: false,
     faviconFetchLink: false,
     faviconFetchManifest: false
@@ -110,7 +111,8 @@ let inFlightConfigLoad = null;
 const debugFlags = {
   favicon: false,
   deadLink: false,
-  sync: false
+  sync: false,
+  startupTiming: false
 };
 let debugModulePromise = null;
 
@@ -125,7 +127,8 @@ export function updateDebugLoggingFlags(advanced = {}) {
   debugFlags.favicon = Boolean(advanced?.faviconDebugLogging ?? advanced?.enableDebugLogging);
   debugFlags.deadLink = Boolean(advanced?.deadLinkDebugLogging ?? advanced?.enableDeadLinkDebugLogging);
   debugFlags.sync = Boolean(advanced?.syncDebugLogging);
-  if (debugFlags.favicon || debugFlags.deadLink || debugFlags.sync) {
+  debugFlags.startupTiming = Boolean(advanced?.startupTimingDebugLogging);
+  if (debugFlags.favicon || debugFlags.deadLink || debugFlags.sync || debugFlags.startupTiming) {
     void getDebugModule().then(mod => mod?.setSyncDebugLoggingEnabled?.(debugFlags.sync));
   } else if (debugModulePromise) {
     void debugModulePromise.then(mod => mod?.setSyncDebugLoggingEnabled?.(false));
@@ -138,7 +141,9 @@ export function logDebug(channel, ...args) {
     ? "enable-favicon-debug-logging"
     : flagKey === "deadLink"
       ? "enable-dead-link-debug-logging"
-      : "enable-sync-debug-logging";
+      : flagKey === "startupTiming"
+        ? "enable-startup-timing-debug-logging"
+        : "enable-sync-debug-logging";
   const checkboxChecked = typeof document !== "undefined" && !!document.getElementById(checkboxId)?.checked;
   if (!debugFlags[flagKey] && !checkboxChecked) return;
   void getDebugModule().then(mod => {
@@ -146,6 +151,8 @@ export function logDebug(channel, ...args) {
       mod.faviconDebugLog(...args);
     } else if (channel === "deadLink") {
       mod.deadLinkDebugLog(...args);
+    } else if (channel === "startupTiming") {
+      mod.startupTimingDebugLog?.(...args);
     } else if (channel === "syncMergeDiff") {
       mod.setSyncDebugLoggingEnabled?.(true);
       mod.syncMergeDiffDebugLog(...args);

@@ -1822,5 +1822,8 @@
   },
   "moreActions": {
     "message": "Lisää toimintoja"
+  },
+  "startupTimingDebugLogging": {
+    "message": "Ota käynnistysajan virheenkorjausloki käyttöön"
   }
 }
