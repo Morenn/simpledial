@@ -42,6 +42,7 @@ const {
   formatReminderCountdown,
   findDueNoteReminders,
   resolveDateForTimeInZone,
+  isValidTimeInputValue,
   getTimeZoneDayShift,
   normalizeCustomTimeZones,
   formatTimeForTimeZone,
@@ -353,6 +354,29 @@ test("timeZone helpers validate IANA zones and format time without date", () => 
   assert.equal(getTimeZoneDayShift(resolved, "Europe/Paris", "America/New_York"), "+1d");
   assert.equal(getTimeZoneDayShift(resolved, "America/New_York", "Europe/Paris"), "-1d");
   assert.equal(resolveDateForTimeInZone("99:99", "UTC", refDate), null);
+
+  const resolvedPm = resolveDateForTimeInZone("2:30 PM", "UTC", refDate);
+  assert.equal(formatTimeForTimeZone(resolvedPm, "UTC", { use24Hour: true }), "14:30");
+  const resolvedMidnight = resolveDateForTimeInZone("12:15 AM", "UTC", refDate);
+  assert.equal(formatTimeForTimeZone(resolvedMidnight, "UTC", { use24Hour: true }), "00:15");
+  assert.equal(resolveDateForTimeInZone("13:00 PM", "UTC", refDate), null);
+
+  // Colonless shorthand inputs
+  const resolvedCompact = resolveDateForTimeInZone("1528", "UTC", refDate);
+  assert.equal(formatTimeForTimeZone(resolvedCompact, "UTC", { use24Hour: true }), "15:28");
+  const resolvedCompact3 = resolveDateForTimeInZone("930", "UTC", refDate);
+  assert.equal(formatTimeForTimeZone(resolvedCompact3, "UTC", { use24Hour: true }), "09:30");
+  const resolvedCompactSec = resolveDateForTimeInZone("152809", "UTC", refDate);
+  assert.equal(formatTimeForTimeZone(resolvedCompactSec, "UTC", { showSeconds: true, use24Hour: true }), "15:28:09");
+
+  // Input validation rejects >23h and >59m
+  assert.equal(isValidTimeInputValue("15:28", true, false), true);
+  assert.equal(isValidTimeInputValue("23:59", true, false), true);
+  assert.equal(isValidTimeInputValue("15:87", true, false), false);
+  assert.equal(isValidTimeInputValue("1587", true, false), false);
+  assert.equal(isValidTimeInputValue("24:00", true, false), false);
+  assert.equal(isValidTimeInputValue("2500", true, false), false);
+  assert.equal(isValidTimeInputValue("13:00", false, false), false);
 });
 
 test("export/import preserves timezone custom widgets and skips invalid ones", () => {

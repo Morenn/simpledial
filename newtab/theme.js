@@ -435,12 +435,11 @@ export async function applyThemeStyle(config = null, options = {}) {
 }
 
 // ---------- Load theme ----------
-export async function loadTheme(preloadedConfig = null, options = {}) {
-  const skipBackground = !!options?.skipBackground;
+export async function loadTheme(preloadedConfig = null) {
   const [res, config, cachedBackground] = await Promise.all([
     chrome.storage.local.get(THEME_KEY),
     preloadedConfig ? Promise.resolve(preloadedConfig) : loadConfig(),
-    skipBackground ? Promise.resolve(null) : getBackgroundImageFromCache()
+    getBackgroundImageFromCache()
   ]);
   const saved = res && res[THEME_KEY];
 
@@ -448,7 +447,7 @@ export async function loadTheme(preloadedConfig = null, options = {}) {
   document.body.classList.remove("theme-light", "theme-dark");
   document.body.classList.add(modeClass);
 
-  if (!skipBackground && cachedBackground && !config.appearance?.backgroundImage) {
+  if (cachedBackground && !config.appearance?.backgroundImage) {
     config.appearance = { ...(config.appearance || {}), backgroundImage: cachedBackground };
   }
 
@@ -456,9 +455,7 @@ export async function loadTheme(preloadedConfig = null, options = {}) {
   await applyThemeStyle(config);
 
   // Load background image (avoid redundant storage write when cache already matches)
-  if (!skipBackground) {
-    await applyBackground(config, { cachedBackground });
-  }
+  await applyBackground(config, { cachedBackground });
 
   // Load background dim overlay, opacities, sizes, and side spaces
   await applyBgDim(config);

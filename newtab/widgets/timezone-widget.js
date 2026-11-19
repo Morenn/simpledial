@@ -80,17 +80,55 @@ function getZoneParts(date, timeZone) {
 }
 
 /**
- * Resolves a "HH:MM" or "HH:MM:SS" wall-clock time today in `timeZone` to a UTC Date.
+ * Resolves a "HH:MM", "HH:MM:SS", colonless ("HHMM"/"HMM"/"HHMMSS"), or 12-hour "H:MM AM/PM" wall-clock time today in `timeZone` to a UTC Date.
  */
 export function resolveDateForTimeInZone(timeString, timeZone, referenceDate = new Date()) {
   if (typeof timeString !== "string" || !isValidTimeZone(timeZone)) return null;
-  const match = timeString.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-  if (!match) return null;
+  const trimmed = timeString.trim();
 
-  const targetH = Number(match[1]);
-  const targetM = Number(match[2]);
-  const targetS = match[3] !== undefined ? Number(match[3]) : 0;
-  if (targetH < 0 || targetH > 23 || targetM < 0 || targetM > 59 || targetS < 0 || targetS > 59) {
+  let hStr;
+  let mStr;
+  let sStr;
+  let meridiem = "";
+
+  const colonMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?$/i);
+  if (colonMatch) {
+    [, hStr, mStr, sStr] = colonMatch;
+    meridiem = colonMatch[4] ? colonMatch[4].toUpperCase() : "";
+  } else {
+    const compactMatch = trimmed.match(/^(\d{3,4}|\d{6})(?:\s*(AM|PM))?$/i);
+    if (!compactMatch) return null;
+    const digits = compactMatch[1];
+    meridiem = compactMatch[2] ? compactMatch[2].toUpperCase() : "";
+    if (digits.length === 3) {
+      hStr = digits.slice(0, 1);
+      mStr = digits.slice(1, 3);
+    } else if (digits.length === 4) {
+      hStr = digits.slice(0, 2);
+      mStr = digits.slice(2, 4);
+    } else {
+      hStr = digits.slice(0, 2);
+      mStr = digits.slice(2, 4);
+      sStr = digits.slice(4, 6);
+    }
+  }
+
+  let targetH = Number(hStr);
+  const targetM = Number(mStr);
+  const targetS = sStr !== undefined ? Number(sStr) : 0;
+
+  if (meridiem) {
+    if (targetH < 1 || targetH > 12) return null;
+    if (meridiem === "AM") {
+      if (targetH === 12) targetH = 0;
+    } else if (targetH !== 12) {
+      targetH += 12;
+    }
+  } else if (targetH < 0 || targetH > 23) {
+    return null;
+  }
+
+  if (targetM < 0 || targetM > 59 || targetS < 0 || targetS > 59) {
     return null;
   }
 
@@ -127,12 +165,79 @@ export function getTimeZoneDayShift(date, targetZone, baseZone) {
 }
 
 
-function formatTimeInput24h(date, timeZone, showSeconds = false) {
+/**
+ * Validates whether `raw` is a valid partial or complete time string for the given format.
+ */
+export function isValidTimeInputValue(raw, use24Hour = true, showSeconds = false) {
+  if (typeof raw !== "string") return false;
+  const trimmed = raw.trim();
+  if (!trimmed) return true;
+
+  const maxHour = use24Hour ? 23 : 12;
+  let core = trimmed;
+  if (!use24Hour) {
+    const meridiemMatch = trimmed.match(/^(.*?)(?:\s+(A|P|AM|PM))?$/i);
+    if (!meridiemMatch) return false;
+    core = meridiemMatch[1].trim();
+  }
+
+  const parts = core.split(":");
+  const maxParts = showSeconds ? 3 : 2;
+  if (parts.length > maxParts) return false;
+
+  if (parts.length === 1) {
+    const digits = parts[0];
+    if (!/^\d*$/.test(digits)) return false;
+    const maxDigits = showSeconds ? 6 : 4;
+    if (digits.length > maxDigits) return false;
+    if (digits.length <= 1) return use24Hour || digits === "" || Number(digits) >= 0;
+    const h2 = Number(digits.slice(0, 2));
+    const h2Valid = use24Hour ? h2 <= maxHour : (h2 >= 1 && h2 <= maxHour);
+    if (digits.length === 2) {
+      return h2Valid || Number(digits[1]) <= 5;
+    }
+    if (digits.length === 3) {
+      const h1 = Number(digits[0]);
+      const h1Valid = use24Hour ? h1 <= maxHour : h1 >= 1;
+      return (h2Valid && Number(digits[2]) <= 5) || (h1Valid && Number(digits.slice(1, 3)) <= 59);
+    }
+    if (!h2Valid || Number(digits.slice(2, 4)) > 59) return false;
+    if (digits.length === 5) return Number(digits[4]) <= 5;
+    if (digits.length === 6) return Number(digits.slice(4, 6)) <= 59;
+    return true;
+  }
+
+  const [hStr, mStr, sStr] = parts;
+  if (!/^\d{0,2}$/.test(hStr)) return false;
+  if (hStr.length > 0) {
+    const h = Number(hStr);
+    if (h > maxHour) return false;
+    if (!use24Hour && hStr.length === 2 && h < 1) return false;
+  }
+  if (!/^\d{0,2}$/.test(mStr)) return false;
+  if (mStr.length === 1 && Number(mStr) > 5) return false;
+  if (mStr.length === 2 && Number(mStr) > 59) return false;
+  if (sStr !== undefined) {
+    if (!/^\d{0,2}$/.test(sStr)) return false;
+    if (sStr.length === 1 && Number(sStr) > 5) return false;
+    if (sStr.length === 2 && Number(sStr) > 59) return false;
+  }
+  return true;
+}
+
+function formatTimeInput(date, timeZone, showSeconds = false, use24Hour = true) {
   const parts = getZoneParts(date, timeZone);
   const pad = n => String(n).padStart(2, "0");
+  if (use24Hour) {
+    return showSeconds
+      ? `${pad(parts.hour)}:${pad(parts.minute)}:${pad(parts.second)}`
+      : `${pad(parts.hour)}:${pad(parts.minute)}`;
+  }
+  const suffix = parts.hour >= 12 ? "PM" : "AM";
+  const h12 = (parts.hour % 12) || 12;
   return showSeconds
-    ? `${pad(parts.hour)}:${pad(parts.minute)}:${pad(parts.second)}`
-    : `${pad(parts.hour)}:${pad(parts.minute)}`;
+    ? `${h12}:${pad(parts.minute)}:${pad(parts.second)} ${suffix}`
+    : `${h12}:${pad(parts.minute)} ${suffix}`;
 }
 
 export function updateCustomTimeZoneWidgets(now = new Date()) {
@@ -142,23 +247,39 @@ export function updateCustomTimeZoneWidgets(now = new Date()) {
     const isPinned = Number.isFinite(pinnedMs);
     const effectiveNow = isPinned ? new Date(pinnedMs) : now;
     const baseTz = isPinned ? (container.dataset.pinnedBaseTz || "") : "";
+    const defaultUse24Hour = container.dataset.defaultUse24h !== "false";
+    const effectiveUse24Hour = container.dataset.tempUse24h !== undefined
+      ? container.dataset.tempUse24h !== "false"
+      : defaultUse24Hour;
+    const hasTempFormatOverride = container.dataset.tempUse24h !== undefined
+      && (container.dataset.tempUse24h !== "false") !== defaultUse24Hour;
 
     container.classList.toggle("is-calculator", isPinned);
     const headerEl = container.querySelector(".custom-timezone-header");
     if (headerEl) {
-      headerEl.classList.toggle("hidden", !isPinned && headerEl.dataset.hasTitleOrIcon !== "true");
+      headerEl.classList.toggle("hidden", !isPinned && !hasTempFormatOverride && headerEl.dataset.hasTitleOrIcon !== "true");
+    }
+    const formatBtn = container.querySelector(".custom-timezone-format-btn");
+    if (formatBtn) {
+      formatBtn.textContent = effectiveUse24Hour ? "12H" : "24H";
+      formatBtn.classList.toggle("is-active", hasTempFormatOverride);
+      formatBtn.setAttribute("aria-pressed", String(hasTempFormatOverride));
+      const label = effectiveUse24Hour
+        ? (t("customTzSwitchTo12h") || "Temporarily switch to 12-hour format")
+        : (t("customTzSwitchTo24h") || "Switch to 24-hour format");
+      formatBtn.title = label;
+      formatBtn.setAttribute("aria-label", label);
     }
     const resetBtn = container.querySelector(".custom-timezone-reset-btn");
     if (resetBtn) {
-      resetBtn.classList.toggle("hidden", !isPinned);
+      resetBtn.classList.toggle("hidden", !isPinned && !hasTempFormatOverride);
     }
 
     container.querySelectorAll(".custom-timezone-time[data-tz]").forEach(el => {
       if (el.dataset.editing === "true") return;
       const tz = el.dataset.tz;
       const showSeconds = el.dataset.showSeconds === "true";
-      const use24Hour = el.dataset.use24h !== "false";
-      const formatted = formatTimeForTimeZone(effectiveNow, tz, { showSeconds, use24Hour });
+      const formatted = formatTimeForTimeZone(effectiveNow, tz, { showSeconds, use24Hour: effectiveUse24Hour });
       const dayShift = isPinned && baseTz ? getTimeZoneDayShift(effectiveNow, tz, baseTz) : "";
 
       if (el.dataset.lastFormatted === formatted && (el.dataset.lastDayShift || "") === dayShift) {
@@ -217,8 +338,10 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
 
     if (container.dataset.configSig !== configSig) {
       container.dataset.configSig = configSig;
+      container.dataset.defaultUse24h = String(use24Hour);
       delete container.dataset.pinnedTimeMs;
       delete container.dataset.pinnedBaseTz;
+      delete container.dataset.tempUse24h;
       container.classList.remove("is-calculator");
       container.innerHTML = "";
 
@@ -239,6 +362,27 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
         }
       }
 
+      const headerActions = document.createElement("div");
+      headerActions.className = "custom-timezone-header-actions";
+
+      const formatBtn = document.createElement("button");
+      formatBtn.type = "button";
+      formatBtn.className = "custom-timezone-format-btn";
+      formatBtn.textContent = use24Hour ? "12H" : "24H";
+      formatBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const currentUse24h = container.dataset.tempUse24h !== undefined
+          ? container.dataset.tempUse24h !== "false"
+          : use24Hour;
+        const nextUse24h = !currentUse24h;
+        if (nextUse24h === use24Hour) {
+          delete container.dataset.tempUse24h;
+        } else {
+          container.dataset.tempUse24h = String(nextUse24h);
+        }
+        updateCustomTimeZoneWidgets();
+      });
+
       const resetBtn = document.createElement("button");
       resetBtn.type = "button";
       resetBtn.className = "custom-timezone-reset-btn hidden";
@@ -249,10 +393,13 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
         e.stopPropagation();
         delete container.dataset.pinnedTimeMs;
         delete container.dataset.pinnedBaseTz;
+        delete container.dataset.tempUse24h;
         container.querySelectorAll(".custom-timezone-item.is-pinned").forEach(row => row.classList.remove("is-pinned"));
         updateCustomTimeZoneWidgets();
       });
-      header.appendChild(resetBtn);
+      headerActions.appendChild(formatBtn);
+      headerActions.appendChild(resetBtn);
+      header.appendChild(headerActions);
       container.appendChild(header);
 
       const listEl = document.createElement("div");
@@ -281,16 +428,28 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
 
           const currentPinnedMs = container.dataset.pinnedTimeMs ? Number(container.dataset.pinnedTimeMs) : NaN;
           const baseDate = Number.isFinite(currentPinnedMs) ? new Date(currentPinnedMs) : new Date();
+          const activeUse24Hour = container.dataset.tempUse24h !== undefined
+            ? container.dataset.tempUse24h !== "false"
+            : use24Hour;
 
           const input = document.createElement("input");
-          input.type = "time";
+          input.type = "text";
           input.name = "tz-calc-time";
+          input.autocomplete = "off";
+          input.spellcheck = false;
+          input.inputMode = "numeric";
           input.className = "custom-timezone-time-input";
-          input.step = showSeconds ? "1" : "60";
-          input.value = formatTimeInput24h(baseDate, z.timeZone, showSeconds);
+          input.size = showSeconds ? (activeUse24Hour ? 8 : 11) : (activeUse24Hour ? 5 : 8);
+          input.placeholder = activeUse24Hour
+            ? (showSeconds ? "HH:MM:SS" : "HH:MM")
+            : (showSeconds ? "H:MM:SS AM" : "H:MM AM");
+          input.value = formatTimeInput(baseDate, z.timeZone, showSeconds, activeUse24Hour);
+          let lastValidInputValue = input.value;
 
-          const applyCalculatedTime = () => {
-            const resolved = resolveDateForTimeInZone(input.value, z.timeZone, baseDate);
+          const applyCalculatedTime = (allowCompact3Digit = false) => {
+            const val = input.value.trim();
+            if (!allowCompact3Digit && /^\d{1,3}$/.test(val)) return;
+            const resolved = resolveDateForTimeInZone(val, z.timeZone, baseDate);
             if (!resolved) return;
             container.dataset.pinnedTimeMs = String(resolved.getTime());
             container.dataset.pinnedBaseTz = z.timeZone;
@@ -301,6 +460,7 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
 
           const closeTimeEditor = () => {
             if (timeEl.dataset.editing !== "true") return;
+            applyCalculatedTime(true);
             delete timeEl.dataset.editing;
             delete timeEl.dataset.lastFormatted;
             delete timeEl.dataset.lastDayShift;
@@ -309,13 +469,39 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
             timeEl.blur();
           };
 
-          input.addEventListener("input", applyCalculatedTime);
-          input.addEventListener("change", applyCalculatedTime);
+          const formatCompactTimeInput = (ev) => {
+            if (ev?.inputType && ev.inputType.startsWith("delete")) return;
+            const raw = input.value;
+            const compactMatch = raw.match(/^(\d{4})(\s*(?:AM|PM))?$/i);
+            if (compactMatch) {
+              input.value = `${compactMatch[1].slice(0, 2)}:${compactMatch[1].slice(2, 4)}${compactMatch[2] || ""}`;
+              return;
+            }
+            if (showSeconds) {
+              const secMatch = raw.match(/^(\d{2}:\d{2})(\d{2})(\s*(?:AM|PM))?$/i);
+              if (secMatch) {
+                input.value = `${secMatch[1]}:${secMatch[2]}${secMatch[3] || ""}`;
+              }
+            }
+          };
+
+          input.addEventListener("input", (ev) => {
+            formatCompactTimeInput(ev);
+            if (!isValidTimeInputValue(input.value, activeUse24Hour, showSeconds)) {
+              input.value = lastValidInputValue;
+              input.setAttribute("aria-invalid", "true");
+              return;
+            }
+            input.removeAttribute("aria-invalid");
+            lastValidInputValue = input.value;
+            applyCalculatedTime(false);
+          });
+          input.addEventListener("change", () => applyCalculatedTime(true));
           input.addEventListener("keydown", (ev) => {
             if (ev.key === "Enter") {
               ev.preventDefault();
               ev.stopPropagation();
-              applyCalculatedTime();
+              applyCalculatedTime(true);
               closeTimeEditor();
             } else if (ev.key === "Escape") {
               ev.preventDefault();
@@ -328,6 +514,7 @@ export function syncCustomTimeZoneWidgetElements(customWidgets = []) {
           timeEl.textContent = "";
           timeEl.appendChild(input);
           input.focus();
+          input.select();
         };
 
         timeEl.addEventListener("click", (e) => {

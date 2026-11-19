@@ -97,7 +97,8 @@ body::before {
 }
 
 #top-bar,
-#main-spaces,
+#workspace-main,
+#date-time-display,
 #page-footer {
   position: relative;
   z-index: 1;
@@ -3714,21 +3715,34 @@ body.highlight-side-spaces .workspace-side-space {
   border-color: var(--accent);
 }
 
-.custom-timezone-reset-btn {
+.custom-timezone-header-actions {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.custom-timezone-format-btn,
+.custom-timezone-reset-btn {
   border: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
+  font-weight: 600;
   line-height: 1;
-  padding: 1px 4px;
+  padding: 2px 4px;
   border-radius: 4px;
 }
 
+.custom-timezone-format-btn:hover,
 .custom-timezone-reset-btn:hover {
   color: var(--text);
   background: var(--bg-hover, rgba(255, 255, 255, 0.1));
+}
+
+.custom-timezone-format-btn.is-active {
+  color: var(--accent);
 }
 
 .custom-timezone-item.is-pinned .custom-timezone-label,

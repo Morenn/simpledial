@@ -25,6 +25,7 @@ import {
   normalizeCustomTimeZones,
   formatTimeForTimeZone,
   resolveDateForTimeInZone,
+  isValidTimeInputValue,
   getTimeZoneDayShift,
   updateCustomTimeZoneWidgets,
   syncCustomTimeZoneWidgetElements
@@ -79,6 +80,7 @@ export {
   normalizeCustomTimeZones,
   formatTimeForTimeZone,
   resolveDateForTimeInZone,
+  isValidTimeInputValue,
   getTimeZoneDayShift,
   updateCustomTimeZoneWidgets,
   syncCustomTimeZoneWidgetElements,
