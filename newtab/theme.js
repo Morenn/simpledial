@@ -15,15 +15,19 @@ async function getWidgetModuleIfActive(type, customWidgets) {
     return null;
   }
   if (!widgetModuleCache.has(type)) {
-    const pathMap = {
-      "custom-search": "./widgets/search-widget.js",
-      "timezone": "./widgets/timezone-widget.js",
-      "rest-status": "./widgets/rest-status-widget.js",
-      "notes": "./widgets/notes-widget.js"
-    };
-    const modPath = pathMap[type];
-    if (!modPath) return null;
-    widgetModuleCache.set(type, await import(modPath));
+    let loadedMod = null;
+    if (type === "custom-search") {
+      loadedMod = await import("./widgets/search-widget.js");
+    } else if (type === "timezone") {
+      loadedMod = await import("./widgets/timezone-widget.js");
+    } else if (type === "rest-status") {
+      loadedMod = await import("./widgets/rest-status-widget.js");
+    } else if (type === "notes") {
+      loadedMod = await import("./widgets/notes-widget.js");
+    } else {
+      return null;
+    }
+    widgetModuleCache.set(type, loadedMod);
   }
   return widgetModuleCache.get(type);
 }
