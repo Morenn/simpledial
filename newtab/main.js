@@ -1,5 +1,5 @@
 import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, applyStateFromStorageChange } from "./state.js";
-import { loadTheme } from "./theme.js";
+import { loadTheme, applyBackground } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig, updateDebugLoggingFlags } from "./config.js";
@@ -233,9 +233,9 @@ export function updateShowDeletedButtonAppearance() {
     loadConfig()
   ]);
 
-  // 4) Load and apply theme using already-loaded config
+  // 4) Load and apply theme using already-loaded config (defer background image until after first paint)
   updateDebugLoggingFlags(config.advanced);
-  await loadTheme(config);
+  await loadTheme(config, { skipBackground: true });
   updateDateTimeEnabledFromConfig(config);
 
   const showDeletedBtn = document.getElementById("show-deleted-btn");
@@ -279,6 +279,14 @@ export function updateShowDeletedButtonAppearance() {
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
   const initialWidgetsSnapshot = { appearance: { customWidgets: config.appearance?.customWidgets } };
+  const initialBackgroundSnapshot = {
+    appearance: {
+      ...(config.appearance && "backgroundImage" in config.appearance
+        ? { backgroundImage: config.appearance.backgroundImage }
+        : {}),
+      backgroundSize: config.appearance?.backgroundSize
+    }
+  };
   const startupSyncEnabled = !!(config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser'));
   const startupHousekeeperCleanup = config.housekeeper?.autoCleanupEnabled
     ? (config.housekeeper?.retentionDays || 30)
@@ -318,6 +326,8 @@ export function updateShowDeletedButtonAppearance() {
 
   // Defer background startup work until after the first paint completes.
   scheduleAfterFirstPaint(() => {
+    void applyBackground(initialBackgroundSnapshot);
+
     setTimeout(() => {
       const hasBookmarks = Array.isArray(state.groups) && state.groups.some(
         g => !g?.deleted && Array.isArray(g.items) && g.items.some(i => !i?.deleted)
