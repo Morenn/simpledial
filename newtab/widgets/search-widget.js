@@ -139,7 +139,7 @@ export function buildCustomSearchPreview(widget, valuesMap = {}) {
     const parsed = JSON.parse(rawJson);
     const resolved = resolveJsonTemplateValue(parsed, valuesMap);
     const payload = resolved === JSON_OMIT_VALUE ? {} : resolved;
-    const jsonString = JSON.stringify(payload, null, 2);
+    const jsonString = JSON.stringify(payload);
     const encodedJson = encodeURIComponent(JSON.stringify(payload));
     const url = /\{json\}/.test(urlTemplate)
       ? urlTemplate.replace(/\{json\}/g, encodedJson)

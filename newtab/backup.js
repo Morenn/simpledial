@@ -119,7 +119,7 @@ async function buildBackupSnapshot(resolvedType) {
     metadata = { ...(addonVersion ? { addonVersion } : {}), groupCount, bookmarkCount };
   }
 
-  const json = JSON.stringify(payload, null, 2);
+  const json = JSON.stringify(payload);
   const sizeBytes = new Blob([json], { type: "application/json" }).size;
   return { payload, json, sizeBytes, metadata };
 }

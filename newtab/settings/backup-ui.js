@@ -399,7 +399,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
         }))
       };
 
-      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataStr = JSON.stringify(exportData);
       const dataBlob = new Blob([dataStr], { type: "application/json" });
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement("a");
