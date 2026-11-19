@@ -1044,38 +1044,83 @@ function persistPendingPurgedIdsInConfig(config, purgedIds = []) {
   return true;
 }
 
+const SYNC_LOCK_NAME = "simple-dial-sync";
+let inTabSyncQueue = Promise.resolve();
+let inTabSyncActive = false;
+
+/**
+ * Serializes sync operations within the tab and across extension tabs via Web Locks.
+ */
+async function withSyncLock(task, { ifAvailable = false } = {}) {
+  if (ifAvailable && inTabSyncActive) {
+    return { skipped: true };
+  }
+
+  const runInTab = () => {
+    const execute = async () => {
+      inTabSyncActive = true;
+      try {
+        return await task();
+      } finally {
+        inTabSyncActive = false;
+      }
+    };
+    const next = inTabSyncQueue.then(execute, execute);
+    inTabSyncQueue = next.catch(() => {});
+    return next;
+  };
+
+  const locks = typeof navigator !== "undefined" ? navigator.locks : null;
+  if (locks && typeof locks.request === "function") {
+    return locks.request(
+      SYNC_LOCK_NAME,
+      ifAvailable ? { mode: "exclusive", ifAvailable: true } : { mode: "exclusive" },
+      async lock => {
+        if (!lock) {
+          return { skipped: true };
+        }
+        return await runInTab();
+      }
+    );
+  }
+
+  return await runInTab();
+}
+
 export async function syncWrite(sourceState = state, options = {}) {
-  // do no sync if sync is disabled in config
-  const config = await loadConfig();
-  const extraPurgedIds = Array.isArray(options?.purgedIds) ? options.purgedIds.filter(Boolean) : [];
-  if (persistPendingPurgedIdsInConfig(config, extraPurgedIds)) {
-    await saveConfig(config);
-  }
+  return await withSyncLock(async () => {
+    // do no sync if sync is disabled in config
+    const config = await loadConfig();
+    const extraPurgedIds = Array.isArray(options?.purgedIds) ? options.purgedIds.filter(Boolean) : [];
+    if (persistPendingPurgedIdsInConfig(config, extraPurgedIds)) {
+      await saveConfig(config);
+    }
 
-  if (!config.sync.enabled) {
-    return true; // sync disabled — nothing to do, not an error
-  }
+    if (!config.sync.enabled) {
+      return true; // sync disabled — nothing to do, not an error
+    }
 
-  const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
-  const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
-  const previousGroups = state.groups;
-  const previousTags = state.tags;
-  state.groups = groups;
-  state.tags = tags;
+    const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
+    const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
+    const previousGroups = state.groups;
+    const previousTags = state.tags;
+    state.groups = groups;
+    state.tags = tags;
 
-  const readResult = await syncReadDetailed();
-  if (!readResult.ok) {
-    state.groups = previousGroups;
-    state.tags = previousTags;
-    return false;
-  }
+    const readResult = await syncReadDetailed();
+    if (!readResult.ok) {
+      state.groups = previousGroups;
+      state.tags = previousTags;
+      return false;
+    }
 
-  const result = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, extraPurgedIds);
-  if (!result.ok) {
-    state.groups = previousGroups;
-    state.tags = previousTags;
-  }
-  return result.ok;
+    const result = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, extraPurgedIds);
+    if (!result.ok) {
+      state.groups = previousGroups;
+      state.tags = previousTags;
+    }
+    return result.ok;
+  });
 }
 
 export async function syncReadTest() {
@@ -1570,6 +1615,7 @@ export function startSyncLoop(options = {}) {
   let isSyncing = false;
 
   const runSyncLoop = async () => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
     if (shouldSkip && shouldSkip()) return;
     if (isSyncing) return;
     isSyncing = true;
@@ -1579,7 +1625,10 @@ export function startSyncLoop(options = {}) {
       if (!config.sync.enabled) return;
       if (!shouldSync(config)) return;
 
-      const result = await syncNow();
+      const result = await syncNow({ ifAvailable: true });
+      if (result.ok && result.reason === 'sync-locked') {
+        return;
+      }
       if (result.ok && result.reason === 'remote-marker-unchanged') {
         console.info('sync loop skipped: remote change marker unchanged');
         return;
@@ -2054,65 +2103,72 @@ export function clearLastSyncErrorReason() {
 }
 
 export async function syncNow(options = {}) {
-  const config = await loadConfig();
-  const includeManual = !!options?.includeManualExtras;
+  const lockResult = await withSyncLock(async () => {
+    const config = await loadConfig();
+    const includeManual = !!options?.includeManualExtras;
 
-  if (!config.sync.enabled || (!config.sync.serverUrl && config.sync.type !== 'browser')) {
-    console.warn("Sync not configured or disabled");
-    lastSyncErrorReason = null;
-    return { ok: false, reason: 'not-configured' };
-  }
+    if (!config.sync.enabled || (!config.sync.serverUrl && config.sync.type !== 'browser')) {
+      console.warn("Sync not configured or disabled");
+      lastSyncErrorReason = null;
+      return { ok: false, reason: 'not-configured' };
+    }
 
-  const localHash = await getGroupsHash(state.groups, state.tags);
-  const lastSyncedLocalHash = config.sync.lastSyncedLocalHash || "";
-  const hasPendingPurges = Array.isArray(config.sync.pendingPurgedIds) && config.sync.pendingPurgedIds.length > 0;
-  const hasPendingLocalChanges = !lastSyncedLocalHash
-    || lastSyncedLocalHash !== localHash
-    || hasPendingPurges;
-  const previousRemoteMarker = config.sync.lastSeenRemoteMarker || "";
-  const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config);
-  const currentRemoteMarker = config.sync.lastSeenRemoteMarker || "";
-  const markerIsReliableForSkip = config.sync.remoteChangeHeaderType === 'sha256'
-    || (config.sync.remoteChangeHeaderType === 'etag'
-      && !currentRemoteMarker.startsWith('W/'));
-  const willSkipGet = !hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip;
+    const localHash = await getGroupsHash(state.groups, state.tags);
+    const lastSyncedLocalHash = config.sync.lastSyncedLocalHash || "";
+    const hasPendingPurges = Array.isArray(config.sync.pendingPurgedIds) && config.sync.pendingPurgedIds.length > 0;
+    const hasPendingLocalChanges = !lastSyncedLocalHash
+      || lastSyncedLocalHash !== localHash
+      || hasPendingPurges;
+    const previousRemoteMarker = config.sync.lastSeenRemoteMarker || "";
+    const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config);
+    const currentRemoteMarker = config.sync.lastSeenRemoteMarker || "";
+    const markerIsReliableForSkip = config.sync.remoteChangeHeaderType === 'sha256'
+      || (config.sync.remoteChangeHeaderType === 'etag'
+        && !currentRemoteMarker.startsWith('W/'));
+    const willSkipGet = !hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip;
 
-  syncDebugLog('syncNow pre-check', {
-    localHash,
-    lastSyncedLocalHash,
-    localHashMatches: !!lastSyncedLocalHash && lastSyncedLocalHash === localHash,
-    hasPendingPurges,
-    hasPendingLocalChanges,
-    previousRemoteMarker,
-    currentRemoteMarker,
-    remoteChangeHeaderType: config.sync.remoteChangeHeaderType,
-    remoteMarkerUnchanged,
-    markerIsReliableForSkip,
-    willSkipGet
-  });
+    syncDebugLog('syncNow pre-check', {
+      localHash,
+      lastSyncedLocalHash,
+      localHashMatches: !!lastSyncedLocalHash && lastSyncedLocalHash === localHash,
+      hasPendingPurges,
+      hasPendingLocalChanges,
+      previousRemoteMarker,
+      currentRemoteMarker,
+      remoteChangeHeaderType: config.sync.remoteChangeHeaderType,
+      remoteMarkerUnchanged,
+      markerIsReliableForSkip,
+      willSkipGet
+    });
 
-  if (willSkipGet) {
-    lastSyncErrorReason = null;
-    if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
+    if (willSkipGet) {
+      lastSyncErrorReason = null;
+      if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
+        await syncWebdavFolderExtras(config, { includeManual });
+      }
+      return { ok: true, reason: 'remote-marker-unchanged', changed: false };
+    }
+
+    const readResult = await syncReadDetailed();
+    if (!readResult.ok) {
+      console.warn("Failed to read from sync server");
+      lastSyncErrorReason = readResult.reason || 'sync-failed';
+      return readResult;
+    }
+
+    applyRemoteMarkerToConfig(config, readResult.remoteMarker);
+    const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
+    lastSyncErrorReason = mergeResult.ok ? null : (mergeResult.reason || 'sync-failed');
+    if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
       await syncWebdavFolderExtras(config, { includeManual });
     }
-    return { ok: true, reason: 'remote-marker-unchanged', changed: false };
-  }
+    return mergeResult;
+  }, { ifAvailable: !!options?.ifAvailable });
 
-  const readResult = await syncReadDetailed();
-  if (!readResult.ok) {
-    console.warn("Failed to read from sync server");
-    lastSyncErrorReason = readResult.reason || 'sync-failed';
-    return readResult;
+  if (lockResult?.skipped) {
+    return { ok: true, reason: 'sync-locked', changed: false };
   }
-
-  applyRemoteMarkerToConfig(config, readResult.remoteMarker);
-  const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
-  lastSyncErrorReason = mergeResult.ok ? null : (mergeResult.reason || 'sync-failed');
-  if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
-    await syncWebdavFolderExtras(config, { includeManual });
-  }
-  return mergeResult;
+  return lockResult;
 }
 
 // ─────────────────────────────────────────────────────────────

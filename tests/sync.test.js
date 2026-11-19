@@ -1194,3 +1194,52 @@ test("post-PUT sync persists updated lastSeenRemoteMarker so next sync skips GET
   assert.equal(nextResult.reason, "remote-marker-unchanged");
   assert.deepEqual(httpRequests.map(r => r.method), ["HEAD"]);
 });
+
+test("syncWrite and syncNow share mutex and ifAvailable syncNow skips while write is in flight", async () => {
+  const initialGroups = [group([item("b1", "Initial", 100)], "g1")];
+  const updatedGroups = [group([item("b1", "Updated", 200)], "g1")];
+
+  installHttpServer({
+    groups: initialGroups,
+    markerType: "etag",
+    markerValue: '"v1"'
+  });
+
+  let releaseFirstGet;
+  const firstGetGate = new Promise(resolve => { releaseFirstGet = resolve; });
+  const baseFetch = fetchRemote;
+  let gated = false;
+  fetchRemote = async (input, init = {}) => {
+    if (!gated && (init.method || "GET") === "GET") {
+      gated = true;
+      await firstGetGate;
+    }
+    return baseFetch(input, init);
+  };
+
+  setClient(updatedGroups, httpConfig("direct", {
+    remoteChangeHeaderType: "etag",
+    lastSeenRemoteMarker: '"v1"',
+    lastSyncedLocalHash: await hashGroups(initialGroups),
+    lastMarkerCheckUrl: "direct::https://sync.example/bookmarks.json",
+    lastSync: 100
+  }));
+
+  const writePromise = syncWrite();
+  // Wait a microtask so syncWrite enters the lock and blocks on GET.
+  await Promise.resolve();
+
+  const skippedPoll = await syncNow({ ifAvailable: true });
+  assert.equal(skippedPoll.ok, true);
+  assert.equal(skippedPoll.reason, "sync-locked");
+  assert.equal(skippedPoll.changed, false);
+
+  const queuedSyncNow = syncNow();
+  releaseFirstGet();
+
+  const [writeOk, syncNowResult] = await Promise.all([writePromise, queuedSyncNow]);
+  assert.equal(writeOk, true);
+  assert.equal(syncNowResult.ok, true);
+  assert.equal(syncNowResult.reason, "remote-marker-unchanged");
+  assert.deepEqual(httpRequests.map(r => r.method), ["GET", "PUT", "HEAD", "HEAD"]);
+});
