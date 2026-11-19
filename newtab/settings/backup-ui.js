@@ -400,7 +400,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
       };
 
       const dataStr = JSON.stringify(exportData);
-      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const dataBlob = new Blob([dataStr], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement("a");
       link.href = url;
@@ -454,7 +454,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
         }
       };
 
-      reader.readAsText(file);
+      reader.readAsText(file, "UTF-8");
     });
   }
 
@@ -496,7 +496,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
       }
     };
 
-    reader.readAsText(file);
+    reader.readAsText(file, "UTF-8");
   });
 
   exportNetscapeBtn?.addEventListener("click", async () => {
@@ -785,7 +785,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
       if (downloadFile) {
         try {
           const entry = await getBackup(downloadFile, currentBackupTabType);
-          const blob = new Blob([entry.data], { type: "application/json" });
+          const blob = new Blob([entry.data], { type: "application/json;charset=utf-8" });
           const url = URL.createObjectURL(blob);
 
           const a = document.createElement("a");

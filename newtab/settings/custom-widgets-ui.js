@@ -2257,7 +2257,7 @@ export function initCustomWidgetsSettings() {
     }
     const payload = serializeCustomWidgetsExport(list);
     const dataStr = JSON.stringify(payload);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const dataBlob = new Blob([dataStr], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
     link.href = url;
