@@ -1825,5 +1825,14 @@
   },
   "startupTimingDebugLogging": {
     "message": "Debug-Protokollierung der Startzeit aktivieren"
+  },
+  "failedIconCategoryBookmark": {
+    "message": "Lesezeichen"
+  },
+  "failedIconCategoryWidget": {
+    "message": "Widget"
+  },
+  "failedIconCategoryGroup": {
+    "message": "Gruppe"
   }
 }

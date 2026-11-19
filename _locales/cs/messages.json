@@ -1825,5 +1825,14 @@
   },
   "startupTimingDebugLogging": {
     "message": "Povolit ladicí protokolování času spuštění"
+  },
+  "failedIconCategoryBookmark": {
+    "message": "Záložka"
+  },
+  "failedIconCategoryWidget": {
+    "message": "Widget"
+  },
+  "failedIconCategoryGroup": {
+    "message": "Skupina"
   }
 }

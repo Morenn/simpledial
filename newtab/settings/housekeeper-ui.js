@@ -22,7 +22,7 @@ import { cleanupDeletedItems, checkDeadLinks, syncWrite } from "../sync.js";
 import { t } from "../i18n.js";
 import { render, searchByBookmarkTag } from "../render.js";
 import {
-  getFailedIconRefreshBookmarks,
+  getFailedIconRefreshItems,
   setBookmarkIconExcludedById,
   clearFailedIconRefresh,
   clearAllFailedIconRefreshes,
@@ -32,7 +32,16 @@ import {
   isValidFallbackBookmarkIcon,
   setCustomFallbackBookmarkIcon
 } from "../bookmarks.js";
-import { getLocalExcludedIconDomainsText, setLocalExcludedIconDomainsText, isValidHexColor } from "../color-utils.js";
+import {
+  getLocalExcludedIconDomainsText,
+  setLocalExcludedIconDomainsText,
+  isValidHexColor,
+  isIconUrlExcluded,
+  isUrlHostExcludedFromIconRefresh,
+  setIconUrlExcluded,
+  clearFailedIconUrl,
+  clearAllFailedIconUrls
+} from "../color-utils.js";
 import { settingsState, markSettingsDirty, updateChoiceOptionStates } from "./context.js";
 
 const hkRetentionDays = document.getElementById("hk-retention-days");
@@ -659,22 +668,37 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
   }
 
   let failedIconsChanged = false;
-  let failedIconsModalVisibleIds = new Set();
+  let failedIconsModalVisibleEntries = new Map();
 
-  function getFilteredFailedIcons() {
+  function getCategoryLabel(category) {
+    if (category === "widget") return t("failedIconCategoryWidget") || "Widget";
+    if (category === "group") return t("failedIconCategoryGroup") || "Group";
+    return t("failedIconCategoryBookmark") || "Bookmark";
+  }
+
+  async function getFilteredFailedIcons() {
     const query = (failedIconsFilterInput?.value || "").trim().toLowerCase();
-    const liveEntries = getFailedIconRefreshBookmarks();
+    const config = await loadConfig();
+    const liveEntries = getFailedIconRefreshItems(config);
     const byId = new Map(liveEntries.map(e => [e.id, e]));
-    for (const id of failedIconsModalVisibleIds) {
+    for (const [id, prev] of failedIconsModalVisibleEntries.entries()) {
       if (!byId.has(id)) {
-        const loc = typeof findBookmarkLocation === "function" ? findBookmarkLocation(id) : null;
-        const item = loc?.item;
-        if (item && !item.deleted) {
+        if (prev.category === "bookmark") {
+          const loc = typeof findBookmarkLocation === "function" ? findBookmarkLocation(id) : null;
+          const item = loc?.item;
+          if (item && !item.deleted) {
+            byId.set(id, {
+              id: item.id,
+              category: "bookmark",
+              title: item.title || item.url || item.id,
+              url: item.url || "",
+              excluded: false
+            });
+          }
+        } else {
           byId.set(id, {
-            id: item.id,
-            title: item.title || item.url || item.id,
-            url: item.url || "",
-            excluded: false
+            ...prev,
+            excluded: isIconUrlExcluded(prev.url) || isUrlHostExcludedFromIconRefresh(prev.url)
           });
         }
       }
@@ -682,13 +706,16 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
     const entries = [...byId.values()];
     if (!query) return entries;
     return entries.filter(entry =>
-      entry.title.toLowerCase().includes(query) || entry.url.toLowerCase().includes(query)
+      entry.title.toLowerCase().includes(query)
+      || entry.url.toLowerCase().includes(query)
+      || (entry.category || "").toLowerCase().includes(query)
+      || getCategoryLabel(entry.category).toLowerCase().includes(query)
     );
   }
 
-  function renderFailedIconsTable() {
+  async function renderFailedIconsTable() {
     if (!failedIconsTableBody) return;
-    const entries = getFilteredFailedIcons();
+    const entries = await getFilteredFailedIcons();
     failedIconsTableBody.innerHTML = "";
 
     if (entries.length === 0) {
@@ -706,7 +733,11 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
       const row = document.createElement("tr");
 
       const titleCell = document.createElement("td");
-      titleCell.textContent = entry.title;
+      const badge = document.createElement("span");
+      const cat = entry.category || "bookmark";
+      badge.className = `failed-icon-category-badge failed-icon-category-${cat}`;
+      badge.textContent = getCategoryLabel(cat);
+      titleCell.append(badge, document.createTextNode(entry.title));
 
       const urlCell = document.createElement("td");
       urlCell.className = "failed-icons-url-cell";
@@ -722,9 +753,13 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
         ? `✅ ${t("failedIconExcludedBtn")}`
         : `🚫 ${t("failedIconExcludeBtn")}`;
       toggleBtn.addEventListener("click", () => {
-        setBookmarkIconExcludedById(entry.id, !entry.excluded);
+        if (cat === "bookmark") {
+          setBookmarkIconExcludedById(entry.id, !entry.excluded);
+        } else {
+          setIconUrlExcluded(entry.url, !entry.excluded);
+        }
         failedIconsChanged = true;
-        renderFailedIconsTable();
+        void renderFailedIconsTable();
       });
 
       const dismissBtn = document.createElement("button");
@@ -733,9 +768,13 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
       dismissBtn.textContent = "✖️";
       dismissBtn.title = t("delete") || "Remove";
       dismissBtn.addEventListener("click", () => {
-        failedIconsModalVisibleIds.delete(entry.id);
-        clearFailedIconRefresh(entry.id);
-        renderFailedIconsTable();
+        failedIconsModalVisibleEntries.delete(entry.id);
+        if (cat === "bookmark") {
+          clearFailedIconRefresh(entry.id);
+        } else {
+          clearFailedIconUrl(entry.url);
+        }
+        void renderFailedIconsTable();
       });
 
       actionsCell.append(toggleBtn, dismissBtn);
@@ -747,7 +786,7 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
   const closeFailedIconsModal = () => {
     if (!failedIconsModal) return;
     failedIconsModal.classList.add("hidden");
-    failedIconsModalVisibleIds.clear();
+    failedIconsModalVisibleEntries.clear();
     if (failedIconsChanged) {
       failedIconsChanged = false;
       try { render(); } catch {}
@@ -755,14 +794,15 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
   };
 
   if (failedIconsFilterInput) {
-    failedIconsFilterInput.addEventListener("input", renderFailedIconsTable);
+    failedIconsFilterInput.addEventListener("input", () => { void renderFailedIconsTable(); });
   }
   if (hkShowFailedIcons && failedIconsModal) {
-    hkShowFailedIcons.addEventListener("click", () => {
+    hkShowFailedIcons.addEventListener("click", async () => {
       failedIconsChanged = false;
-      failedIconsModalVisibleIds = new Set(getFailedIconRefreshBookmarks().map(e => e.id));
+      const config = await loadConfig();
+      failedIconsModalVisibleEntries = new Map(getFailedIconRefreshItems(config).map(e => [e.id, e]));
       if (failedIconsFilterInput) failedIconsFilterInput.value = "";
-      renderFailedIconsTable();
+      await renderFailedIconsTable();
       failedIconsModal.classList.remove("hidden");
     });
   }
@@ -777,19 +817,25 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
     });
   }
   if (failedIconsExcludeAll) {
-    failedIconsExcludeAll.addEventListener("click", () => {
-      for (const entry of getFilteredFailedIcons()) {
-        setBookmarkIconExcludedById(entry.id, true);
+    failedIconsExcludeAll.addEventListener("click", async () => {
+      for (const entry of await getFilteredFailedIcons()) {
+        if ((entry.category || "bookmark") === "bookmark") {
+          setBookmarkIconExcludedById(entry.id, true);
+        } else {
+          setIconUrlExcluded(entry.url, true);
+        }
       }
       failedIconsChanged = true;
-      renderFailedIconsTable();
+      await renderFailedIconsTable();
     });
   }
   if (failedIconsClear) {
-    failedIconsClear.addEventListener("click", () => {
+    failedIconsClear.addEventListener("click", async () => {
       clearAllFailedIconRefreshes();
-      failedIconsModalVisibleIds = new Set(getFailedIconRefreshBookmarks().map(e => e.id));
-      renderFailedIconsTable();
+      clearAllFailedIconUrls();
+      const config = await loadConfig();
+      failedIconsModalVisibleEntries = new Map(getFailedIconRefreshItems(config).map(e => [e.id, e]));
+      await renderFailedIconsTable();
     });
   }
 

@@ -1825,5 +1825,14 @@
   },
   "startupTimingDebugLogging": {
     "message": "Activer la journalisation de débogage du temps de démarrage"
+  },
+  "failedIconCategoryBookmark": {
+    "message": "Favori"
+  },
+  "failedIconCategoryWidget": {
+    "message": "Widget"
+  },
+  "failedIconCategoryGroup": {
+    "message": "Groupe"
   }
 }

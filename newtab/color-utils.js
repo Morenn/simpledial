@@ -334,35 +334,157 @@ export function isUrlHostExcludedFromIconRefresh(url) {
   });
 }
 
+const ICON_URL_FAIL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const ICON_URL_FETCH_TIMEOUT_MS = 5000;
+const EXCLUDED_ICON_URLS_KEY = "myspeeddial-excluded-icon-urls";
+
 function isHttpIconUrl(url) {
   return typeof url === "string" && /^https?:\/\//i.test(url.trim());
 }
 
-export function getCachedIconUrlDataUrl(url) {
-  if (!isHttpIconUrl(url)) return null;
-  const key = url.trim();
-  const mem = iconUrlMemoryCache.get(key);
-  if (mem) {
-    if (Date.now() - mem.updatedAt < ICON_URL_CACHE_TTL_MS) {
-      return mem.dataUrl;
-    }
-    iconUrlMemoryCache.delete(key);
+function getExcludedIconUrlSet() {
+  try {
+    if (typeof localStorage === "undefined") return new Set();
+    const raw = localStorage.getItem(EXCLUDED_ICON_URLS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed.filter(u => typeof u === "string")) : new Set();
+  } catch {
+    return new Set();
   }
+}
+
+export function isIconUrlExcluded(url) {
+  if (!isHttpIconUrl(url)) return false;
+  return getExcludedIconUrlSet().has(url.trim());
+}
+
+export function setIconUrlExcluded(url, excluded) {
+  if (!isHttpIconUrl(url)) return;
+  const key = url.trim();
+  const set = getExcludedIconUrlSet();
+  if (excluded) {
+    set.add(key);
+  } else {
+    set.delete(key);
+  }
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(EXCLUDED_ICON_URLS_KEY, JSON.stringify([...set]));
+    }
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function readIconUrlCacheEntry(key) {
+  const mem = iconUrlMemoryCache.get(key);
+  if (mem) return mem;
   try {
     if (typeof localStorage === "undefined") return null;
     const raw = localStorage.getItem(ICON_URL_CACHE_PREFIX + key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed?.dataUrl || typeof parsed.dataUrl !== "string") return null;
-    if (Date.now() - Number(parsed.updatedAt || 0) >= ICON_URL_CACHE_TTL_MS) {
-      localStorage.removeItem(ICON_URL_CACHE_PREFIX + key);
-      return null;
-    }
-    iconUrlMemoryCache.set(key, { dataUrl: parsed.dataUrl, updatedAt: Number(parsed.updatedAt) });
-    return parsed.dataUrl;
+    if (!parsed || typeof parsed !== "object") return null;
+    iconUrlMemoryCache.set(key, parsed);
+    return parsed;
   } catch {
     return null;
   }
+}
+
+function writeIconUrlCacheEntry(key, entry) {
+  iconUrlMemoryCache.set(key, entry);
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(ICON_URL_CACHE_PREFIX + key, JSON.stringify(entry));
+    }
+  } catch {
+    // Ignore storage quota errors for icon URL cache.
+  }
+}
+
+function isIconUrlInCooldown(key) {
+  const entry = readIconUrlCacheEntry(key);
+  if (!entry?.failedAt) return false;
+  if (Date.now() - Number(entry.failedAt) < ICON_URL_FAIL_COOLDOWN_MS) {
+    return true;
+  }
+  iconUrlMemoryCache.delete(key);
+  try {
+    localStorage?.removeItem?.(ICON_URL_CACHE_PREFIX + key);
+  } catch {
+    // Ignore storage errors.
+  }
+  return false;
+}
+
+export function isIconUrlFailed(url) {
+  if (!isHttpIconUrl(url)) return false;
+  return isIconUrlInCooldown(url.trim());
+}
+
+export function clearFailedIconUrl(url) {
+  if (!isHttpIconUrl(url)) return;
+  const key = url.trim();
+  iconUrlMemoryCache.delete(key);
+  try {
+    localStorage?.removeItem?.(ICON_URL_CACHE_PREFIX + key);
+  } catch {
+    // Ignore storage errors.
+  }
+  setIconUrlExcluded(key, false);
+}
+
+export function clearAllFailedIconUrls() {
+  for (const [key, entry] of iconUrlMemoryCache.entries()) {
+    if (entry?.failedAt) iconUrlMemoryCache.delete(key);
+  }
+  try {
+    if (typeof localStorage !== "undefined") {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(ICON_URL_CACHE_PREFIX)) continue;
+        try {
+          const parsed = JSON.parse(localStorage.getItem(k) || "");
+          if (parsed?.failedAt && !parsed?.dataUrl) keysToRemove.push(k);
+        } catch {}
+      }
+      for (const k of keysToRemove) localStorage.removeItem(k);
+    }
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+async function hasOriginPermissionForIconUrl(url) {
+  if (typeof chrome === "undefined" || !chrome.permissions?.contains) {
+    return true;
+  }
+  try {
+    const parsed = new URL(url);
+    return await chrome.permissions.contains({ origins: [`${parsed.protocol}//${parsed.host}/*`] });
+  } catch {
+    return false;
+  }
+}
+
+export function getCachedIconUrlDataUrl(url) {
+  if (!isHttpIconUrl(url)) return null;
+  const key = url.trim();
+  const entry = readIconUrlCacheEntry(key);
+  if (!entry?.dataUrl || typeof entry.dataUrl !== "string") return null;
+  if (Date.now() - Number(entry.updatedAt || 0) >= ICON_URL_CACHE_TTL_MS) {
+    iconUrlMemoryCache.delete(key);
+    try {
+      localStorage?.removeItem?.(ICON_URL_CACHE_PREFIX + key);
+    } catch {
+      // Ignore storage errors.
+    }
+    return null;
+  }
+  return entry.dataUrl;
 }
 
 export function blobToDataUrl(blob) {
@@ -378,13 +500,21 @@ export function blobToDataUrl(blob) {
   });
 }
 
-export async function fetchIconAsDataUrl(iconUrl, force = false, { requireImageType = false } = {}) {
+export async function fetchIconAsDataUrl(iconUrl, force = false, { requireImageType = false, timeoutMs = 0 } = {}) {
   if (typeof fetch !== "function" || typeof FileReader === "undefined") {
     throw new Error("icon-fetch-unsupported");
   }
-  const response = await fetch(iconUrl, {
-    cache: force ? "reload" : "default"
-  });
+  const controller = timeoutMs > 0 && typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timerId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  let response;
+  try {
+    response = await fetch(iconUrl, {
+      cache: force ? "reload" : "default",
+      ...(controller ? { signal: controller.signal } : {})
+    });
+  } finally {
+    if (timerId !== null) clearTimeout(timerId);
+  }
   if (!response.ok) {
     throw new Error(`icon-fetch-failed:${response.status}`);
   }
@@ -401,6 +531,9 @@ export async function fetchIconAsDataUrl(iconUrl, force = false, { requireImageT
 export async function cacheIconUrlIfNeeded(url) {
   if (!isHttpIconUrl(url) || typeof fetch !== "function") return null;
   const key = url.trim();
+  if (isUrlHostExcludedFromIconRefresh(key) || isIconUrlInCooldown(key)) {
+    return null;
+  }
   const existing = getCachedIconUrlDataUrl(key);
   if (existing) return existing;
   if (inFlightIconUrlFetches.has(key)) {
@@ -409,20 +542,23 @@ export async function cacheIconUrlIfNeeded(url) {
 
   const task = (async () => {
     try {
-      const dataUrl = await fetchIconAsDataUrl(key, false, { requireImageType: true });
+      if (!(await hasOriginPermissionForIconUrl(key))) {
+        return null;
+      }
+      const dataUrl = await fetchIconAsDataUrl(key, false, {
+        requireImageType: true,
+        timeoutMs: ICON_URL_FETCH_TIMEOUT_MS
+      });
       if (!dataUrl) return null;
 
-      const entry = { dataUrl, updatedAt: Date.now() };
-      iconUrlMemoryCache.set(key, entry);
-      try {
-        if (typeof localStorage !== "undefined" && dataUrl.length <= 64000) {
-          localStorage.setItem(ICON_URL_CACHE_PREFIX + key, JSON.stringify(entry));
-        }
-      } catch {
-        // Ignore storage quota errors for icon URL cache.
+      if (dataUrl.length <= 64000) {
+        writeIconUrlCacheEntry(key, { dataUrl, updatedAt: Date.now() });
+      } else {
+        iconUrlMemoryCache.set(key, { dataUrl, updatedAt: Date.now() });
       }
       return dataUrl;
     } catch {
+      writeIconUrlCacheEntry(key, { failedAt: Date.now() });
       return null;
     } finally {
       inFlightIconUrlFetches.delete(key);
@@ -449,7 +585,7 @@ export function applyCachedIconImageSrc(imgEl, iconUrl) {
     imgEl.src = cached;
     return;
   }
-  if (isHttpIconUrl(iconUrl) && isUrlHostExcludedFromIconRefresh(iconUrl)) {
+  if (isHttpIconUrl(iconUrl) && (isUrlHostExcludedFromIconRefresh(iconUrl) || isIconUrlExcluded(iconUrl))) {
     delete imgEl.dataset.pendingRemoteIcon;
     queueMicrotask(() => {
       if (imgEl.isConnected) {
@@ -463,6 +599,9 @@ export function applyCachedIconImageSrc(imgEl, iconUrl) {
     scheduleRemoteIconLoadAfterPaint(() => {
       if (!imgEl.isConnected || imgEl.dataset.pendingRemoteIcon !== iconUrl) return;
       delete imgEl.dataset.pendingRemoteIcon;
+      imgEl.addEventListener("error", () => {
+        writeIconUrlCacheEntry(iconUrl.trim(), { failedAt: Date.now() });
+      }, { once: true });
       imgEl.src = iconUrl;
       void cacheIconUrlIfNeeded(iconUrl);
     });

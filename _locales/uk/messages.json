@@ -1825,5 +1825,14 @@
   },
   "startupTimingDebugLogging": {
     "message": "Увімкнути журнал налагодження часу запуску"
+  },
+  "failedIconCategoryBookmark": {
+    "message": "Закладка"
+  },
+  "failedIconCategoryWidget": {
+    "message": "Віджет"
+  },
+  "failedIconCategoryGroup": {
+    "message": "Група"
   }
 }

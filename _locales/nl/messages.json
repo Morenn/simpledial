@@ -1825,5 +1825,14 @@
   },
   "startupTimingDebugLogging": {
     "message": "Foutopsporingslogboek voor opstarttijd inschakelen"
+  },
+  "failedIconCategoryBookmark": {
+    "message": "Bladwijzer"
+  },
+  "failedIconCategoryWidget": {
+    "message": "Widget"
+  },
+  "failedIconCategoryGroup": {
+    "message": "Groep"
   }
 }

@@ -1852,5 +1852,14 @@
   },
   "startupTimingDebugLogging": {
     "message": "Enable startup timing debug logging"
+  },
+  "failedIconCategoryBookmark": {
+    "message": "Bookmark"
+  },
+  "failedIconCategoryWidget": {
+    "message": "Widget"
+  },
+  "failedIconCategoryGroup": {
+    "message": "Group"
   }
 }

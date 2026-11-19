@@ -33,6 +33,8 @@ import {
   blobToDataUrl,
   fetchIconAsDataUrl,
   isUrlHostExcludedFromIconRefresh,
+  isIconUrlExcluded,
+  isIconUrlFailed,
   isUrlLikeIcon
 } from "./color-utils.js";
 
@@ -316,11 +318,78 @@ export function getFailedIconRefreshBookmarks() {
     if (!item || item.deleted || loc?.group?.deleted || loc?.parentStack?.deleted) continue;
     results.push({
       id: item.id,
+      category: "bookmark",
       title: item.title || item.url || item.id,
       url: item.url || "",
       excluded: isBookmarkIconExcludedById(item.id)
     });
   }
+  return results;
+}
+
+function isRemoteCustomIconFailedOrExcluded(iconUrl, selector = null) {
+  if (typeof iconUrl !== "string" || !/^https?:\/\//i.test(iconUrl.trim())) return false;
+  const trimmed = iconUrl.trim();
+  if (isIconUrlExcluded(trimmed) || isUrlHostExcludedFromIconRefresh(trimmed) || isIconUrlFailed(trimmed)) {
+    return true;
+  }
+  if (selector && typeof document !== "undefined") {
+    const img = document.querySelector(selector);
+    if (img && img.complete && img.naturalWidth === 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function getFailedIconRefreshItems(config = null) {
+  const results = [...getFailedIconRefreshBookmarks()];
+
+  for (const group of (state.groups || [])) {
+    if (!group || group.deleted || !group.customIcon) continue;
+    const selector = typeof CSS !== "undefined" && group.id
+      ? `.group-tab[data-group-id="${CSS.escape(group.id)}"] img`
+      : null;
+    if (!isRemoteCustomIconFailedOrExcluded(group.customIcon, selector)) continue;
+    const iconUrl = group.customIcon.trim();
+    results.push({
+      id: `group:${group.id}`,
+      category: "group",
+      title: group.name || group.id,
+      url: iconUrl,
+      excluded: isIconUrlExcluded(iconUrl) || isUrlHostExcludedFromIconRefresh(iconUrl)
+    });
+  }
+
+  const widgets = Array.isArray(config?.appearance?.customWidgets) ? config.appearance.customWidgets : [];
+  for (const w of widgets) {
+    if (!w || !w.id || !w.customIcon) continue;
+    if (!isRemoteCustomIconFailedOrExcluded(w.customIcon)) continue;
+    const iconUrl = w.customIcon.trim();
+    results.push({
+      id: `widget:${w.id}`,
+      category: "widget",
+      title: w.name || w.type || w.id,
+      url: iconUrl,
+      excluded: isIconUrlExcluded(iconUrl) || isUrlHostExcludedFromIconRefresh(iconUrl)
+    });
+  }
+
+  const autoRouteIcons = config?.appearance?.customSearchAutoRouteIcons;
+  if (autoRouteIcons && typeof autoRouteIcons === "object") {
+    for (const [groupName, iconUrl] of Object.entries(autoRouteIcons)) {
+      if (!isRemoteCustomIconFailedOrExcluded(iconUrl)) continue;
+      const trimmed = iconUrl.trim();
+      results.push({
+        id: `widget-route:${groupName}`,
+        category: "widget",
+        title: groupName,
+        url: trimmed,
+        excluded: isIconUrlExcluded(trimmed) || isUrlHostExcludedFromIconRefresh(trimmed)
+      });
+    }
+  }
+
   return results;
 }
 

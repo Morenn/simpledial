@@ -1825,5 +1825,14 @@
   },
   "startupTimingDebugLogging": {
     "message": "Ota käynnistysajan virheenkorjausloki käyttöön"
+  },
+  "failedIconCategoryBookmark": {
+    "message": "Kirjanmerkki"
+  },
+  "failedIconCategoryWidget": {
+    "message": "Widget"
+  },
+  "failedIconCategoryGroup": {
+    "message": "Ryhmä"
   }
 }

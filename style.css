@@ -3561,6 +3561,30 @@ body.highlight-side-spaces .workspace-side-space {
   white-space: nowrap;
 }
 
+.failed-icon-category-badge {
+  display: inline-block;
+  margin-right: 0.45rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  vertical-align: middle;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.failed-icon-category-widget {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.failed-icon-category-group {
+  color: #109868;
+  border-color: color-mix(in srgb, #109868 45%, var(--border));
+}
+
 .failed-icons-actions-cell {
   display: flex;
   align-items: center;
