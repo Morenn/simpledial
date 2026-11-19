@@ -81,7 +81,7 @@ globalThis.chrome = {
   }
 };
 
-const [{ state }, { syncNow, syncWrite, syncWebdavFolderExtras }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
+const [{ state, getTagUsageCounts, updateTagInState, deleteTagFromState, removeUnusedTagsFromState }, { syncNow, syncWrite, syncWebdavFolderExtras }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
   import("../newtab/state.js"),
   import("../newtab/sync.js"),
   import("../newtab/config.js")
@@ -1006,4 +1006,76 @@ test("WebDAV folder sync skips manual parts during automatic syncNow() and uploa
   assert.equal(manualRes.ok, true);
   assert.ok(files.has("https://cloud.example/dav/SimpleDial/widgets.json"));
   assert.ok(files.has("https://cloud.example/dav/SimpleDial/background.json"));
+});
+
+test("tag management helpers update, merge, count, delete, and remove unused tags cleanly", () => {
+  state.tags = [
+    { id: "t1", name: "Work", color: "#10b981", updatedAt: 100, deleted: false, deletedAt: null },
+    { id: "t2", name: "Office", color: "#4a6bff", updatedAt: 100, deleted: false, deletedAt: null },
+    { id: "t3", name: "Unused", color: "#f59e0b", updatedAt: 100, deleted: false, deletedAt: null }
+  ];
+  state.groups = [
+    {
+      ...group([
+        { ...item("b1", "One", 100), tags: ["t1", "t1"] },
+        {
+          id: "st_tag",
+          type: "stack",
+          title: "Stack",
+          sectionId: null,
+          children: [
+            { ...item("b2", "Two", 100), tags: ["t1", "t2"] },
+            { ...item("b_del", "Deleted Bm", 100), tags: ["t3"], deleted: true, deletedAt: 100 }
+          ],
+          updatedAt: 100,
+          deleted: false,
+          deletedAt: null
+        }
+      ]),
+      id: "g_active"
+    },
+    {
+      ...group([{ ...item("b3", "In Deleted Group", 100), tags: ["t3"] }], "g_deleted"),
+      deleted: true,
+      deletedAt: 100
+    }
+  ];
+
+  const counts = getTagUsageCounts();
+  assert.equal(counts.get("t1"), 2);
+  assert.equal(counts.get("t2"), 1);
+  assert.equal(counts.get("t3") || 0, 0);
+
+  // Reserved system names and blank names are rejected
+  assert.equal(updateTagInState("t1", { name: "   ", color: "#000000" }), null);
+  assert.equal(updateTagInState("t1", { name: "⚠️ HTTP", color: "#000000" }), null);
+
+  // Rename + recolor without collision
+  const renameRes = updateTagInState("t1", { name: "Work Updated", color: "#ef4444" });
+  assert.equal(renameRes?.mergedIntoId, null);
+  assert.equal(state.tags.find(t => t.id === "t1").name, "Work Updated");
+  assert.equal(state.tags.find(t => t.id === "t1").color, "#ef4444");
+
+  // Rename to match existing tag merges and deduplicates bookmark tag IDs
+  const mergeRes = updateTagInState("t2", { name: "work updated", color: "#8b5cf6" });
+  assert.equal(mergeRes?.mergedIntoId, "t1");
+  assert.equal(state.tags.find(t => t.id === "t2").deleted, true);
+  assert.equal(state.tags.find(t => t.id === "t1").color, "#8b5cf6");
+  const stackChild = state.groups[0].items[1].children[0];
+  assert.deepEqual(stackChild.tags, ["t1"]);
+
+  // Remove unused tags soft-deletes t3 and strips it even from deleted bookmarks / deleted groups
+  const removedUnused = removeUnusedTagsFromState();
+  assert.equal(removedUnused, 1);
+  assert.equal(state.tags.find(t => t.id === "t3").deleted, true);
+  assert.deepEqual(state.groups[0].items[1].children[1].tags, []);
+  assert.deepEqual(state.groups[1].items[0].tags, []);
+  assert.equal(state.tags.find(t => t.id === "t1").deleted, false);
+
+  // Explicit delete removes remaining tag from all bookmarks
+  assert.equal(deleteTagFromState("missing"), false);
+  assert.equal(deleteTagFromState("t1"), true);
+  assert.equal(state.tags.find(t => t.id === "t1").deleted, true);
+  assert.deepEqual(state.groups[0].items[0].tags, []);
+  assert.deepEqual(stackChild.tags, []);
 });

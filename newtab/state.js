@@ -19,6 +19,7 @@ const SYSTEM_TAG_ID_SET = new Set(SYSTEM_TAGS.map(tag => tag.id));
 let systemBookmarkTags = {};
 
 import { t } from "./i18n.js";
+import { isValidHexColor } from "./color-utils.js";
 
 export let state = {
   groups: [],
@@ -156,10 +157,127 @@ export async function loadActiveGroupId() {
   }
 }
 
+export const DEFAULT_TAG_PALETTE = ["#10b981", "#4a6bff", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444"];
+
 export function isReservedSystemTagName(name) {
   if (typeof name !== "string") return false;
   const normalized = name.trim().toLowerCase();
   return SYSTEM_TAGS.some(tag => tag.name.toLowerCase() === normalized);
+}
+
+export function getNextDefaultTagColor() {
+  const activeCount = (state.tags || []).filter(tag => tag && !tag.deleted).length;
+  return DEFAULT_TAG_PALETTE[activeCount % DEFAULT_TAG_PALETTE.length];
+}
+
+export function getTagUsageCounts({ includeDeleted = false } = {}) {
+  const counts = new Map();
+  for (const group of (state.groups || [])) {
+    if (!group || (!includeDeleted && group.deleted)) continue;
+    for (const item of getAllGroupBookmarks(group, { includeDeleted })) {
+      if (!Array.isArray(item.tags)) continue;
+      for (const tagId of new Set(item.tags)) {
+        if (typeof tagId !== "string" || !tagId) continue;
+        counts.set(tagId, (counts.get(tagId) || 0) + 1);
+      }
+    }
+  }
+  return counts;
+}
+
+function stripTagIdsFromAllBookmarks(removedIds, now = Date.now()) {
+  if (!(removedIds instanceof Set) || removedIds.size === 0) return;
+  for (const group of (state.groups || [])) {
+    if (!group) continue;
+    for (const item of getAllGroupBookmarks(group, { includeDeleted: true })) {
+      if (!Array.isArray(item.tags) || item.tags.length === 0) continue;
+      const nextTags = item.tags.filter(id => !removedIds.has(id));
+      if (nextTags.length !== item.tags.length) {
+        item.tags = nextTags;
+        item.updatedAt = now;
+      }
+    }
+  }
+}
+
+export function deleteTagFromState(tagId) {
+  if (!tagId || !Array.isArray(state.tags)) return false;
+  const tag = state.tags.find(entry => entry && !entry.deleted && entry.id === tagId);
+  if (!tag) return false;
+  const now = Date.now();
+  tag.deleted = true;
+  tag.deletedAt = now;
+  tag.updatedAt = now;
+  stripTagIdsFromAllBookmarks(new Set([tagId]), now);
+  return true;
+}
+
+export function removeUnusedTagsFromState() {
+  if (!Array.isArray(state.tags) || state.tags.length === 0) return 0;
+  const counts = getTagUsageCounts({ includeDeleted: false });
+  const now = Date.now();
+  const removedIds = new Set();
+  for (const tag of state.tags) {
+    if (!tag || tag.deleted) continue;
+    if ((counts.get(tag.id) || 0) === 0) {
+      tag.deleted = true;
+      tag.deletedAt = now;
+      tag.updatedAt = now;
+      if (tag.id) removedIds.add(tag.id);
+    }
+  }
+  stripTagIdsFromAllBookmarks(removedIds, now);
+  return removedIds.size;
+}
+
+export function updateTagInState(tagId, { name, color } = {}) {
+  if (!tagId || !Array.isArray(state.tags)) return null;
+  const tag = state.tags.find(entry => entry && !entry.deleted && entry.id === tagId);
+  if (!tag) return null;
+
+  const hasName = name !== undefined;
+  const trimmed = hasName ? String(name).trim() : "";
+  if (hasName && (!trimmed || isReservedSystemTagName(trimmed))) {
+    return null;
+  }
+
+  const validColor = isValidHexColor(color) ? color.trim() : null;
+  const now = Date.now();
+  const otherTag = hasName
+    ? state.tags.find(
+        entry => entry && !entry.deleted && entry.id !== tag.id && entry.name.toLowerCase() === trimmed.toLowerCase()
+      )
+    : null;
+
+  if (otherTag) {
+    if (validColor) {
+      otherTag.color = validColor;
+    }
+    otherTag.updatedAt = now;
+    tag.deleted = true;
+    tag.deletedAt = now;
+    tag.updatedAt = now;
+
+    for (const group of (state.groups || [])) {
+      if (!group) continue;
+      for (const item of getAllGroupBookmarks(group, { includeDeleted: true })) {
+        if (!Array.isArray(item.tags) || !item.tags.includes(tag.id)) continue;
+        item.tags = [...new Set(item.tags.map(id => (id === tag.id ? otherTag.id : id)))];
+        item.updatedAt = now;
+      }
+    }
+
+    return { tag: otherTag, mergedIntoId: otherTag.id };
+  }
+
+  if (hasName && trimmed) {
+    tag.name = trimmed;
+  }
+  if (validColor) {
+    tag.color = validColor;
+  }
+  tag.updatedAt = now;
+  return { tag, mergedIntoId: null };
 }
 
 export function getBookmarkSystemTagIds(bookmarkId) {

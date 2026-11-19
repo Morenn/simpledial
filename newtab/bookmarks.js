@@ -11,7 +11,10 @@ import {
   getBookmarkSystemTagIds,
   setBookmarkSystemTag,
   saveSystemTags,
-  isReservedSystemTagName
+  isReservedSystemTagName,
+  getNextDefaultTagColor,
+  deleteTagFromState,
+  updateTagInState
 } from "./state.js";
 import { render } from "./render.js";
 import { syncWrite, validateSingleLink } from "./sync.js";
@@ -1325,13 +1328,34 @@ const bmTagsList = document.getElementById("bm-tags-list");
 const bmNewTagName = document.getElementById("bm-new-tag-name");
 const bmNewTagColor = document.getElementById("bm-new-tag-color");
 const bmAddTagBtn = document.getElementById("bm-add-tag-btn");
+const bmCancelEditTagBtn = document.getElementById("bm-cancel-edit-tag-btn");
 const bmSave = document.getElementById("bm-save");
 const bmCancel = document.getElementById("bm-cancel");
 
-const DEFAULT_TAG_PALETTE = ["#10b981", "#4a6bff", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444"];
 let editingBookmark = null;
+let editingTagId = null;
 let selectedTagIds = new Set();
 let pendingSectionIdForNewBookmark = null;
+
+function resetModalTagEditState() {
+  editingTagId = null;
+  if (bmNewTagName) bmNewTagName.value = "";
+  if (bmAddTagBtn) bmAddTagBtn.textContent = t("addTag") || "+ Tag";
+  if (bmCancelEditTagBtn) bmCancelEditTagBtn.classList.add("hidden");
+  if (bmNewTagColor) bmNewTagColor.value = getNextDefaultTagColor();
+}
+
+function startEditingModalTag(tag) {
+  if (!tag) return;
+  editingTagId = tag.id;
+  if (bmNewTagName) bmNewTagName.value = tag.name || "";
+  if (bmNewTagColor) bmNewTagColor.value = isValidHexColor(tag.color) ? tag.color : "#10b981";
+  if (bmAddTagBtn) bmAddTagBtn.textContent = t("save") || "Save";
+  if (bmCancelEditTagBtn) bmCancelEditTagBtn.classList.remove("hidden");
+  renderModalTagsList();
+  bmNewTagName?.focus();
+  bmNewTagName?.select();
+}
 
 function renderModalTagsList() {
   if (!bmTagsList) return;
@@ -1341,12 +1365,32 @@ function renderModalTagsList() {
   activeTags.forEach(tag => {
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = "bm-tag-chip" + (selectedTagIds.has(tag.id) ? " active" : "");
+    chip.className = "bm-tag-chip"
+      + (selectedTagIds.has(tag.id) ? " active" : "")
+      + (editingTagId === tag.id ? " editing" : "");
     chip.style.setProperty("--tag-color", isValidHexColor(tag.color) ? tag.color : "#4a6bff");
+
+    const dotSpan = document.createElement("span");
+    dotSpan.className = "bm-tag-chip-dot";
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "bm-tag-chip-name";
     nameSpan.textContent = tag.name;
+
+    const editSpan = document.createElement("span");
+    editSpan.className = "bm-tag-edit";
+    editSpan.textContent = "✎";
+    editSpan.title = t("edit") || "Edit";
+
+    editSpan.addEventListener("click", e => {
+      e.stopPropagation();
+      if (editingTagId === tag.id) {
+        resetModalTagEditState();
+        renderModalTagsList();
+      } else {
+        startEditingModalTag(tag);
+      }
+    });
 
     const deleteSpan = document.createElement("span");
     deleteSpan.className = "bm-tag-delete";
@@ -1355,19 +1399,10 @@ function renderModalTagsList() {
 
     deleteSpan.addEventListener("click", async e => {
       e.stopPropagation();
-      const now = Date.now();
-      tag.deleted = true;
-      tag.deletedAt = now;
-      tag.updatedAt = now;
+      if (!deleteTagFromState(tag.id)) return;
       selectedTagIds.delete(tag.id);
-
-      for (const group of (state.groups || [])) {
-        for (const item of getAllGroupBookmarks(group, { includeDeleted: true })) {
-          if (Array.isArray(item.tags) && item.tags.includes(tag.id)) {
-            item.tags = item.tags.filter(id => id !== tag.id);
-            item.updatedAt = now;
-          }
-        }
+      if (editingTagId === tag.id) {
+        resetModalTagEditState();
       }
 
       renderModalTagsList();
@@ -1385,15 +1420,44 @@ function renderModalTagsList() {
       renderModalTagsList();
     });
 
-    chip.appendChild(nameSpan);
-    chip.appendChild(deleteSpan);
+    chip.append(dotSpan, nameSpan, editSpan, deleteSpan);
     bmTagsList.appendChild(chip);
   });
 }
 
-function createOrSelectTagFromInput() {
+function createOrSelectTagFromInput({ persist = true } = {}) {
   if (!bmNewTagName) return;
   const rawName = bmNewTagName.value.trim();
+  const color = isValidHexColor(bmNewTagColor?.value) ? bmNewTagColor.value : "#10b981";
+
+  if (editingTagId) {
+    if (!rawName || isReservedSystemTagName(rawName)) {
+      const currentTag = (state.tags || []).find(tag => tag && !tag.deleted && tag.id === editingTagId);
+      bmNewTagName.value = currentTag?.name || "";
+      bmNewTagName.focus();
+      bmNewTagName.select();
+      return;
+    }
+
+    const prevEditingId = editingTagId;
+    const result = updateTagInState(prevEditingId, { name: rawName, color });
+    if (result) {
+      if (result.mergedIntoId && selectedTagIds.has(prevEditingId)) {
+        selectedTagIds.delete(prevEditingId);
+        selectedTagIds.add(result.mergedIntoId);
+      }
+      resetModalTagEditState();
+      renderModalTagsList();
+      if (persist) {
+        void saveState().then(() => {
+          void syncWrite();
+          render();
+        });
+      }
+    }
+    return;
+  }
+
   if (!rawName || isReservedSystemTagName(rawName)) {
     bmNewTagName.value = "";
     return;
@@ -1410,7 +1474,6 @@ function createOrSelectTagFromInput() {
   if (existing) {
     selectedTagIds.add(existing.id);
   } else {
-    const color = isValidHexColor(bmNewTagColor?.value) ? bmNewTagColor.value : "#10b981";
     const newTag = {
       id: generateId("t"),
       name: rawName,
@@ -1423,8 +1486,7 @@ function createOrSelectTagFromInput() {
     selectedTagIds.add(newTag.id);
 
     if (bmNewTagColor) {
-      const nextColor = DEFAULT_TAG_PALETTE[state.tags.filter(t => !t.deleted).length % DEFAULT_TAG_PALETTE.length];
-      bmNewTagColor.value = nextColor;
+      bmNewTagColor.value = getNextDefaultTagColor();
     }
   }
 
@@ -1433,7 +1495,13 @@ function createOrSelectTagFromInput() {
 }
 
 if (bmAddTagBtn) {
-  bmAddTagBtn.addEventListener("click", createOrSelectTagFromInput);
+  bmAddTagBtn.addEventListener("click", () => createOrSelectTagFromInput());
+}
+if (bmCancelEditTagBtn) {
+  bmCancelEditTagBtn.addEventListener("click", () => {
+    resetModalTagEditState();
+    renderModalTagsList();
+  });
 }
 if (bmNewTagName) {
   bmNewTagName.addEventListener("keydown", e => {
@@ -1441,6 +1509,11 @@ if (bmNewTagName) {
       e.preventDefault();
       e.stopPropagation();
       createOrSelectTagFromInput();
+    } else if (e.key === "Escape" && editingTagId !== null) {
+      e.preventDefault();
+      e.stopPropagation();
+      resetModalTagEditState();
+      renderModalTagsList();
     }
   });
 }
@@ -1499,7 +1572,7 @@ export function openBookmarkModal(data = null, options = {}) {
     if (bmColorCustom) bmColorCustom.checked = false;
   }
 
-  if (bmNewTagName) bmNewTagName.value = "";
+  resetModalTagEditState();
   renderModalTagsList();
   updateNotesCounter();
 
@@ -1512,6 +1585,7 @@ function closeBookmarkModal() {
   editingBookmark = null;
   pendingSectionIdForNewBookmark = null;
   selectedTagIds = new Set();
+  resetModalTagEditState();
 }
 
 bmCancel.addEventListener("click", closeBookmarkModal);
@@ -1560,9 +1634,9 @@ bmSave.addEventListener("click", async () => {
   let iconChanged = false;
   let isNewBookmark = false;
 
-  // Commit any typed tag name if the user clicked Save without pressing "+ Tag"
-  if (bmNewTagName && bmNewTagName.value.trim()) {
-    createOrSelectTagFromInput();
+  // Commit any pending tag edit or typed tag name if the user clicked Save
+  if (editingTagId || (bmNewTagName && bmNewTagName.value.trim())) {
+    createOrSelectTagFromInput({ persist: false });
   }
 
   // EDIT

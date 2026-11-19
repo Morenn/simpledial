@@ -118,6 +118,7 @@
           <input type="text" id="bm-new-tag-name" maxlength="24" placeholder="New tag..." data-i18n-placeholder="newTagPlaceholder">
           <input type="color" id="bm-new-tag-color" value="#10b981" title="Tag color">
           <button type="button" id="bm-add-tag-btn" class="secondary-btn" data-i18n="addTag">+ Tag</button>
+          <button type="button" id="bm-cancel-edit-tag-btn" class="secondary-btn hidden" data-i18n-title="cancel" title="Cancel" aria-label="Cancel">×</button>
         </div>
       </div>
 
@@ -873,6 +874,19 @@
               </div>
               <div id="hk-duplicates-status" class="status"></div>
             </div>
+          </div>
+
+          <div class="sync-section-card appearance-card appearance-card-wide">
+            <h3 data-i18n="hkBookmarkTagsTitle">Bookmark Tags</h3>
+            <p class="appearance-card-desc" data-i18n="hkBookmarkTagsDesc">Create, rename, recolor, or remove bookmark tags across all groups.</p>
+            <div class="hk-tags-create-row">
+              <input type="text" id="hk-new-tag-name" class="sync-compact-input" maxlength="24" data-no-dirty="true" placeholder="New tag..." data-i18n-placeholder="newTagPlaceholder">
+              <input type="color" id="hk-new-tag-color" value="#10b981" data-no-dirty="true" title="Tag color">
+              <button type="button" id="hk-add-tag-btn" class="icon-btn primary" data-i18n="addTag">+ Tag</button>
+              <button type="button" id="hk-remove-unused-tags-btn" class="icon-btn" data-i18n="hkRemoveUnusedTags">🧹 Remove unused tags</button>
+            </div>
+            <div id="hk-tags-list" class="hk-tags-list"></div>
+            <div id="hk-tags-status" class="status"></div>
           </div>
 
         </div>

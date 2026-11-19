@@ -1,8 +1,26 @@
-import { state, getAllGroupBookmarks, findBookmarkLocation, SYSTEM_TAG_HTTP_ID, SYSTEM_TAG_DEAD_LINK_ID, SYSTEM_TAG_DUPLICATE_ID, setBookmarkSystemTag, clearSystemTagFromAllBookmarks, saveSystemTags } from "../state.js";
+import {
+  state,
+  saveState,
+  generateId,
+  getAllGroupBookmarks,
+  findBookmarkLocation,
+  SYSTEM_TAG_HTTP_ID,
+  SYSTEM_TAG_DEAD_LINK_ID,
+  SYSTEM_TAG_DUPLICATE_ID,
+  setBookmarkSystemTag,
+  clearSystemTagFromAllBookmarks,
+  saveSystemTags,
+  isReservedSystemTagName,
+  getNextDefaultTagColor,
+  getTagUsageCounts,
+  deleteTagFromState,
+  removeUnusedTagsFromState,
+  updateTagInState
+} from "../state.js";
 import { loadConfig, saveConfig } from "../config.js";
-import { cleanupDeletedItems, checkDeadLinks } from "../sync.js";
+import { cleanupDeletedItems, checkDeadLinks, syncWrite } from "../sync.js";
 import { t } from "../i18n.js";
-import { render } from "../render.js";
+import { render, searchByBookmarkTag } from "../render.js";
 import {
   getFailedIconRefreshBookmarks,
   setBookmarkIconExcludedById,
@@ -14,7 +32,7 @@ import {
   isValidFallbackBookmarkIcon,
   setCustomFallbackBookmarkIcon
 } from "../bookmarks.js";
-import { getLocalExcludedIconDomainsText, setLocalExcludedIconDomainsText } from "../color-utils.js";
+import { getLocalExcludedIconDomainsText, setLocalExcludedIconDomainsText, isValidHexColor } from "../color-utils.js";
 import { settingsState, markSettingsDirty, updateChoiceOptionStates } from "./context.js";
 
 const hkRetentionDays = document.getElementById("hk-retention-days");
@@ -51,6 +69,159 @@ const failedIconsFilterInput = document.getElementById("failed-icons-filter");
 const failedIconsExcludeAll = document.getElementById("failed-icons-exclude-all");
 const failedIconsClear = document.getElementById("failed-icons-clear");
 const failedIconsClose = document.getElementById("failed-icons-close");
+const hkNewTagName = document.getElementById("hk-new-tag-name");
+const hkNewTagColor = document.getElementById("hk-new-tag-color");
+const hkAddTagBtn = document.getElementById("hk-add-tag-btn");
+const hkRemoveUnusedTagsBtn = document.getElementById("hk-remove-unused-tags-btn");
+const hkTagsList = document.getElementById("hk-tags-list");
+const hkTagsStatus = document.getElementById("hk-tags-status");
+
+let isSavingHkTags = false;
+
+function setHkTagsStatus(message, color = "#4caf50") {
+  if (!hkTagsStatus) return;
+  hkTagsStatus.textContent = message;
+  hkTagsStatus.style.color = color;
+}
+
+async function persistAndSyncTagChanges() {
+  isSavingHkTags = true;
+  try {
+    await saveState();
+  } finally {
+    isSavingHkTags = false;
+  }
+  void syncWrite();
+  try { render(); } catch {}
+}
+
+function renderHousekeeperTagsList() {
+  if (!hkTagsList) return;
+  const counts = getTagUsageCounts();
+  const activeTags = (state.tags || []).filter(tag => tag && !tag.deleted);
+
+  if (hkRemoveUnusedTagsBtn) {
+    hkRemoveUnusedTagsBtn.disabled = !activeTags.some(tag => (counts.get(tag.id) || 0) === 0);
+  }
+
+  hkTagsList.innerHTML = "";
+  if (activeTags.length === 0) {
+    const emptyEl = document.createElement("div");
+    emptyEl.className = "hk-tags-empty";
+    emptyEl.textContent = t("hkBookmarkTagsEmpty") || "No bookmark tags created yet.";
+    hkTagsList.appendChild(emptyEl);
+    return;
+  }
+
+  for (const tag of activeTags) {
+    const row = document.createElement("div");
+    row.className = "hk-tag-row";
+    const tagColor = isValidHexColor(tag.color) ? tag.color : "#4a6bff";
+    row.style.setProperty("--tag-color", tagColor);
+
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.className = "hk-tag-color-input";
+    colorInput.value = tagColor;
+    colorInput.dataset.noDirty = "true";
+    colorInput.title = t("edit") || "Edit";
+    colorInput.setAttribute("aria-label", `${tag.name} color`);
+    colorInput.addEventListener("change", async () => {
+      const result = updateTagInState(tag.id, { name: tag.name, color: colorInput.value });
+      if (!result) return;
+      row.style.setProperty("--tag-color", result.tag.color);
+      await persistAndSyncTagChanges();
+      setHkTagsStatus(`✅ ${t("hkTagUpdated") || "Tag updated."}`);
+    });
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "sync-compact-input hk-tag-name-input";
+    nameInput.maxLength = 24;
+    nameInput.value = tag.name;
+    nameInput.dataset.noDirty = "true";
+    nameInput.setAttribute("aria-label", tag.name);
+
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "icon-btn hk-tag-save-btn";
+    saveBtn.textContent = t("save") || "Save";
+    saveBtn.disabled = true;
+
+    const syncSaveState = () => {
+      const nextName = nameInput.value.trim();
+      saveBtn.disabled = !nextName || nextName === tag.name || isReservedSystemTagName(nextName);
+    };
+    nameInput.addEventListener("input", syncSaveState);
+
+    const commitRename = async () => {
+      const nextName = nameInput.value.trim();
+      if (!nextName || nextName === tag.name || isReservedSystemTagName(nextName)) {
+        nameInput.value = tag.name;
+        syncSaveState();
+        return;
+      }
+      const result = updateTagInState(tag.id, { name: nextName, color: colorInput.value });
+      if (!result) {
+        nameInput.value = tag.name;
+        syncSaveState();
+        return;
+      }
+      await persistAndSyncTagChanges();
+      renderHousekeeperTagsList();
+      setHkTagsStatus(`✅ ${t("hkTagUpdated") || "Tag updated."}`);
+    };
+
+    saveBtn.addEventListener("click", () => {
+      void commitRename();
+    });
+
+    nameInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void commitRename();
+      } else if (e.key === "Escape" && nameInput.value.trim() !== tag.name) {
+        e.preventDefault();
+        e.stopPropagation();
+        nameInput.value = tag.name;
+        syncSaveState();
+        nameInput.blur();
+      }
+    });
+
+    const useCount = counts.get(tag.id) || 0;
+    const usageBadge = document.createElement("button");
+    usageBadge.type = "button";
+    usageBadge.className = "hk-tag-usage-badge" + (useCount === 0 ? " is-unused" : "");
+    usageBadge.textContent = (t("hkTagUsageCount") || "{0} bookmark(s)").replace("{0}", String(useCount));
+    usageBadge.title = tag.name;
+    usageBadge.addEventListener("click", () => {
+      const settingsCancel = document.getElementById("settings-cancel");
+      if (settingsCancel) {
+        settingsCancel.click();
+      } else {
+        document.getElementById("settings-modal")?.classList.add("hidden");
+      }
+      searchByBookmarkTag(tag.name);
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "icon-btn danger hk-tag-delete-btn";
+    deleteBtn.textContent = "🗑️";
+    deleteBtn.title = t("delete") || "Delete";
+    deleteBtn.setAttribute("aria-label", `${t("delete") || "Delete"} ${tag.name}`);
+    deleteBtn.addEventListener("click", async () => {
+      if (!deleteTagFromState(tag.id)) return;
+      await persistAndSyncTagChanges();
+      renderHousekeeperTagsList();
+      setHkTagsStatus(`✅ ${t("hkTagDeleted") || "Tag deleted."}`);
+    });
+
+    row.append(colorInput, nameInput, saveBtn, usageBadge, deleteBtn);
+    hkTagsList.appendChild(row);
+  }
+}
 
 export function getHousekeeperIconRefreshMode() {
   if (hkIconRefreshNone?.checked) return "none";
@@ -139,6 +310,11 @@ export function updateHouseKeeperInfo(config) {
   } else if (hkLastCleanup) {
     hkLastCleanup.textContent = "Last cleanup: Never";
   }
+
+  if (hkNewTagName) hkNewTagName.value = "";
+  if (hkNewTagColor) hkNewTagColor.value = getNextDefaultTagColor();
+  if (hkTagsStatus) hkTagsStatus.textContent = "";
+  renderHousekeeperTagsList();
 }
 
 export function applyHousekeeperToConfig(config) {
@@ -693,5 +869,82 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
       updateHousekeeperIconRefreshFrequencyEnabled();
       updateChoiceOptionStates();
     });
+  });
+
+  const addTagFromHousekeeper = async () => {
+    if (!hkNewTagName) return;
+    const rawName = hkNewTagName.value.trim();
+    if (!rawName || isReservedSystemTagName(rawName)) {
+      hkNewTagName.value = "";
+      return;
+    }
+
+    if (!Array.isArray(state.tags)) {
+      state.tags = [];
+    }
+
+    const color = isValidHexColor(hkNewTagColor?.value) ? hkNewTagColor.value : "#10b981";
+    const existing = state.tags.find(
+      tag => tag && !tag.deleted && tag.name.toLowerCase() === rawName.toLowerCase()
+    );
+
+    if (existing) {
+      updateTagInState(existing.id, { name: existing.name, color });
+    } else {
+      state.tags.push({
+        id: generateId("t"),
+        name: rawName,
+        color,
+        updatedAt: Date.now(),
+        deleted: false,
+        deletedAt: null
+      });
+      if (hkNewTagColor) {
+        hkNewTagColor.value = getNextDefaultTagColor();
+      }
+    }
+
+    hkNewTagName.value = "";
+    await persistAndSyncTagChanges();
+    renderHousekeeperTagsList();
+    setHkTagsStatus(`✅ ${t("hkTagUpdated") || "Tag updated."}`);
+  };
+
+  if (hkAddTagBtn) {
+    hkAddTagBtn.addEventListener("click", () => {
+      void addTagFromHousekeeper();
+    });
+  }
+
+  if (hkNewTagName) {
+    hkNewTagName.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void addTagFromHousekeeper();
+      }
+    });
+  }
+
+  if (hkRemoveUnusedTagsBtn) {
+    hkRemoveUnusedTagsBtn.addEventListener("click", async () => {
+      const removed = removeUnusedTagsFromState();
+      if (removed > 0) {
+        await persistAndSyncTagChanges();
+      }
+      renderHousekeeperTagsList();
+      setHkTagsStatus(
+        `✅ ${(t("hkUnusedTagsRemoved") || "Removed {0} unused tag(s).").replace("{0}", String(removed))}`
+      );
+    });
+  }
+
+  window.addEventListener("speeddial:data-changed", () => {
+    renderHousekeeperTagsList();
+  });
+
+  window.addEventListener("speeddial:state-saved", () => {
+    if (!isSavingHkTags) {
+      renderHousekeeperTagsList();
+    }
   });
 }

@@ -98,7 +98,7 @@ function initializeSettingsDirtyTracking() {
     "#sync-tab input, #sync-tab select, #appearance-tab input, #appearance-tab select, #housekeeper-tab input, #backups-tab input, #advanced-tab input, #export-tab input"
   );
   trackedElements.forEach(el => {
-    if (el.type === "hidden") return;
+    if (el.type === "hidden" || el.dataset.noDirty === "true") return;
     el.addEventListener("input", markSettingsDirty);
     el.addEventListener("change", markSettingsDirty);
   });

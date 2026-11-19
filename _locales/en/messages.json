@@ -1822,5 +1822,29 @@
   },
   "backupFileTooLarge": {
     "message": "Backup file is too large (max 3 MB)."
+  },
+  "hkBookmarkTagsTitle": {
+    "message": "Bookmark Tags"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Create, rename, recolor, or remove bookmark tags across all groups."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Remove unused tags"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "No bookmark tags created yet."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} bookmark(s)"
+  },
+  "hkTagUpdated": {
+    "message": "Tag updated."
+  },
+  "hkTagDeleted": {
+    "message": "Tag deleted."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Removed {0} unused tag(s)."
   }
 }
