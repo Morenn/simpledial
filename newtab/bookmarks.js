@@ -471,7 +471,6 @@ async function syncBookmarkColorFromIcon(item, tile, iconSrc) {
   if (isGoogleFaviconUrl(iconSrc) && !(await hasHostPermission())) return null;
   const extracted = await extractDominantColorFromImageSource(iconSrc);
   if (!extracted) return null;
-  item.tileColor = extracted;
   setFaviconCacheEntry(item, { iconColor: extracted });
   if (tile) applyTileColorStyle(tile, extracted);
   return extracted;

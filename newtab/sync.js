@@ -169,6 +169,28 @@ function isValidRemoteMarker(type, value) {
   return false;
 }
 
+function extractRemoteMarkerFromHeaders(headers, preferredType = null) {
+  if (!headers || typeof headers.get !== 'function') return null;
+  const typesToTry = preferredType
+    ? [preferredType, ...REMOTE_MARKER_TYPES.filter(t => t !== preferredType)]
+    : REMOTE_MARKER_TYPES;
+  for (const type of typesToTry) {
+    const raw = headers.get(REMOTE_MARKER_HEADERS[type]);
+    if (isValidRemoteMarker(type, raw)) {
+      return { type, value: raw.trim() };
+    }
+  }
+  return null;
+}
+
+function applyRemoteMarkerToConfig(config, marker) {
+  if (!config?.sync || !marker?.type || !marker?.value) return false;
+  config.sync.remoteChangeHeaderType = marker.type;
+  config.sync.lastSeenRemoteMarker = marker.value;
+  config.sync.lastRemoteMarkerCheck = Date.now();
+  return true;
+}
+
 // Marker capability is scoped to a specific backend; a new/changed URL
 // must be re-probed rather than inheriting a stale supported/unsupported verdict.
 function resetRemoteMarkerStateIfUrlChanged(config) {
@@ -255,12 +277,10 @@ async function getRemoteChangeMarker(cfg, options = {}) {
         continue;
       }
 
-      for (const type of typesToTry) {
-        const raw = res.headers.get(REMOTE_MARKER_HEADERS[type]);
-        if (isValidRemoteMarker(type, raw)) {
-          syncDebugLog(`marker probe ${attempt.method} succeeded`, { type, value: raw.trim() });
-          return { type, value: raw.trim() };
-        }
+      const marker = extractRemoteMarkerFromHeaders(res.headers, preferredType);
+      if (marker) {
+        syncDebugLog(`marker probe ${attempt.method} succeeded`, marker);
+        return marker;
       }
 
       // No usable marker header is most often a CORS exposure issue: the
@@ -821,6 +841,7 @@ async function syncReadDetailed(cfg = null) {
       return {
         ok: true,
         reason: 'ok',
+        remoteMarker: extractRemoteMarkerFromHeaders(res.headers, resolvedCfg?.remoteChangeHeaderType || null),
         data: {
           groups: parsed.groups ?? [],
           tags: Array.isArray(parsed?.tags) ? parsed.tags : []
@@ -929,7 +950,11 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
       }
 
       if (res.ok) {
-        return { ok: true, reason: 'ok' };
+        return {
+          ok: true,
+          reason: 'ok',
+          remoteMarker: extractRemoteMarkerFromHeaders(res.headers, resolvedCfg?.remoteChangeHeaderType || null)
+        };
       }
 
       if (res.status === 423 && attempt < lockRetryDelays.length) {
@@ -1078,13 +1103,52 @@ function pickNewerRecord(localRecord, cloudRecord) {
 }
 
 function stableSerialize(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value) ?? "null";
+  }
   if (Array.isArray(value)) {
     return `[${value.map(stableSerialize).join(",")}]`;
   }
-  if (value && typeof value === "object") {
-    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(",")}}`;
+  const keys = Object.keys(value).filter(key => value[key] !== undefined).sort();
+  return `{${keys.map(key => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(",")}}`;
+}
+
+/**
+ * Compares two JSON-compatible values ignoring object key order and undefined properties.
+ */
+function jsonValuesEqual(a, b) {
+  if (Object.is(a, b)) return true;
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
+    return false;
   }
-  return JSON.stringify(value) ?? "null";
+  const aIsArray = Array.isArray(a);
+  if (aIsArray !== Array.isArray(b)) return false;
+
+  if (aIsArray) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!jsonValuesEqual(a[i] === undefined ? null : a[i], b[i] === undefined ? null : b[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  let aDefinedCount = 0;
+  for (const key of Object.keys(a)) {
+    const val = a[key];
+    if (val === undefined) continue;
+    aDefinedCount++;
+    if (b[key] === undefined || !jsonValuesEqual(val, b[key])) {
+      return false;
+    }
+  }
+
+  let bDefinedCount = 0;
+  for (const key of Object.keys(b)) {
+    if (b[key] !== undefined) bDefinedCount++;
+  }
+  return aDefinedCount === bDefinedCount;
 }
 
 function isBootstrapPlaceholderState(groups) {
@@ -1318,7 +1382,7 @@ function getGroupsFreshness(groups) {
 
 async function getGroupsHash(groups, tags = []) {
   const payload = Array.isArray(tags) && tags.length > 0 ? { groups: groups || [], tags } : (groups || []);
-  const data = new TextEncoder().encode(JSON.stringify(payload));
+  const data = new TextEncoder().encode(stableSerialize(payload));
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -1412,12 +1476,12 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
   const mergedGroups = mergeGroups(previousGroups, effectiveCloudGroups, { preferCloudOnBootstrap: isInitialUnseededSync });
   const mergedTags = mergeTags(previousTags, effectiveCloudTags);
 
-  const groupsChanged = JSON.stringify(previousGroups) !== JSON.stringify(mergedGroups);
-  const tagsChanged = JSON.stringify(previousTags) !== JSON.stringify(mergedTags);
+  const groupsChanged = !jsonValuesEqual(previousGroups, mergedGroups);
+  const tagsChanged = !jsonValuesEqual(previousTags, mergedTags);
   const changed = groupsChanged || tagsChanged;
 
-  const remoteGroupsNeedUpdate = JSON.stringify(cloudGroups || []) !== JSON.stringify(mergedGroups);
-  const remoteTagsNeedUpdate = JSON.stringify(resolvedCloudTags) !== JSON.stringify(mergedTags);
+  const remoteGroupsNeedUpdate = !jsonValuesEqual(cloudGroups || [], mergedGroups);
+  const remoteTagsNeedUpdate = !jsonValuesEqual(resolvedCloudTags, mergedTags);
   const remoteNeedsUpdate = remoteGroupsNeedUpdate || remoteTagsNeedUpdate;
 
   if (changed || remoteNeedsUpdate) {
@@ -1445,7 +1509,8 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
 
   let writeResult = null;
   if (remoteNeedsUpdate) {
-    writeResult = await syncWriteDetailed({ ...(await loadSyncConfig()), lastSync: Date.now() });
+    const syncCfg = await loadSyncConfig();
+    writeResult = await syncWriteDetailed({ ...syncCfg, lastSync: Date.now() });
 
     if (!writeResult.ok) {
       // Never keep a merged local state that failed to persist remotely.
@@ -1457,6 +1522,7 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
         if (!latestRemote.ok) {
           return latestRemote;
         }
+        applyRemoteMarkerToConfig(config, latestRemote.remoteMarker);
         return await mergeAndWriteAtomically(
           config,
           latestRemote.data.groups,
@@ -1471,6 +1537,18 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
       }
 
       return writeResult;
+    }
+
+    if (writeResult.remoteMarker) {
+      applyRemoteMarkerToConfig(config, writeResult.remoteMarker);
+    } else if (config.sync?.type && config.sync.type !== 'browser' && config.sync.remoteChangeHeaderType) {
+      const postWriteMarker = await getRemoteChangeMarker(syncCfg, {
+        allowFallback: false,
+        preferredType: config.sync.remoteChangeHeaderType
+      });
+      if (!applyRemoteMarkerToConfig(config, postWriteMarker)) {
+        config.sync.lastSeenRemoteMarker = '';
+      }
     }
   }
 
@@ -1563,9 +1641,7 @@ export async function checkRemoteMarkerUnchanged(config) {
   }
 
   syncDebugLog('marker check result', { type: marker.type, value: marker.value, skipped: false, previous: config.sync.lastSeenRemoteMarker });
-  config.sync.remoteChangeHeaderType = marker.type;
-  config.sync.lastSeenRemoteMarker = marker.value;
-  config.sync.lastRemoteMarkerCheck = Date.now();
+  applyRemoteMarkerToConfig(config, marker);
   return false;
 }
 
@@ -2030,6 +2106,7 @@ export async function syncNow(options = {}) {
     return readResult;
   }
 
+  applyRemoteMarkerToConfig(config, readResult.remoteMarker);
   const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
   lastSyncErrorReason = mergeResult.ok ? null : (mergeResult.reason || 'sync-failed');
   if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {

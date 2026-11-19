@@ -187,7 +187,7 @@ function installHttpServer({ groups = [], tags = undefined, markerType = null, m
         httpServer.tags = parsed.tags;
       }
       if (httpServer.markerType === "etag") {
-        httpServer.markerValue = `"v${Number.parseInt(httpServer.markerValue.match(/\\d+/)?.[0] || "0", 10) + 1}"`;
+        httpServer.markerValue = `"v${Number.parseInt(httpServer.markerValue.match(/\d+/)?.[0] || "0", 10) + 1}"`;
       } else if (httpServer.markerType === "sha256") {
         httpServer.markerValue = String(Number.parseInt(httpServer.markerValue || "0", 16) + 1).padStart(64, "0");
       }
@@ -198,8 +198,19 @@ function installHttpServer({ groups = [], tags = undefined, markerType = null, m
   };
 }
 
+function stableSerializeForTest(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value) ?? "null";
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerializeForTest).join(",")}]`;
+  }
+  const keys = Object.keys(value).filter(key => value[key] !== undefined).sort();
+  return `{${keys.map(key => `${JSON.stringify(key)}:${stableSerializeForTest(value[key])}`).join(",")}}`;
+}
+
 async function hashGroups(groups) {
-  const bytes = new TextEncoder().encode(JSON.stringify(groups));
+  const bytes = new TextEncoder().encode(stableSerializeForTest(groups));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -1078,4 +1089,108 @@ test("tag management helpers update, merge, count, delete, and remove unused tag
   assert.equal(state.tags.find(t => t.id === "t1").deleted, true);
   assert.deepEqual(state.groups[0].items[0].tags, []);
   assert.deepEqual(stackChild.tags, []);
+});
+
+test("reordered object keys and undefined properties do not trigger false sync or remote PUT", async () => {
+  const originalGroups = [
+    {
+      id: "g1",
+      name: "Main",
+      createdAt: 100,
+      updatedAt: 100,
+      deleted: false,
+      deletedAt: null,
+      items: [
+        {
+          id: "b1",
+          title: "Example",
+          url: "https://example.com/",
+          createdAt: 100,
+          updatedAt: 100,
+          deleted: false,
+          deletedAt: null,
+          extraUndefined: undefined
+        }
+      ]
+    }
+  ];
+  const reorderedGroups = [
+    {
+      deleted: false,
+      deletedAt: null,
+      id: "g1",
+      items: [
+        {
+          createdAt: 100,
+          deleted: false,
+          deletedAt: null,
+          id: "b1",
+          title: "Example",
+          updatedAt: 100,
+          url: "https://example.com/"
+        }
+      ],
+      name: "Main",
+      createdAt: 100,
+      updatedAt: 100
+    }
+  ];
+
+  installHttpServer({
+    groups: reorderedGroups,
+    markerType: "sha256",
+    markerValue: "a".repeat(64)
+  });
+
+  setClient(originalGroups, httpConfig("direct", {
+    remoteChangeHeaderType: "sha256",
+    lastSyncedLocalHash: await hashGroups(reorderedGroups),
+    lastSeenRemoteMarker: "a".repeat(64),
+    lastMarkerCheckUrl: "direct::https://sync.example/bookmarks.json",
+    lastSync: 100
+  }));
+
+  const skipResult = await syncNow();
+  assert.equal(skipResult.ok, true);
+  assert.equal(skipResult.reason, "remote-marker-unchanged");
+  assert.deepEqual(httpRequests.map(r => r.method), ["HEAD"]);
+
+  // Even when a GET runs (e.g., marker changed), key-order differences must not cause a PUT.
+  httpRequests = [];
+  httpServer.markerValue = "b".repeat(64);
+  const noChangeResult = await syncNow();
+  assert.equal(noChangeResult.ok, true);
+  assert.equal(noChangeResult.reason, "no-changes");
+  assert.equal(noChangeResult.changed, false);
+  assert.deepEqual(httpRequests.map(r => r.method), ["HEAD", "GET"]);
+});
+
+test("post-PUT sync persists updated lastSeenRemoteMarker so next sync skips GET", async () => {
+  const initialGroups = [group([item("b1", "Initial", 100)], "g1")];
+  const updatedGroups = [group([item("b1", "Updated", 200)], "g1")];
+
+  installHttpServer({
+    groups: initialGroups,
+    markerType: "etag",
+    markerValue: '"v1"'
+  });
+
+  setClient(updatedGroups, httpConfig("direct", {
+    remoteChangeHeaderType: "etag",
+    lastSeenRemoteMarker: '"v1"',
+    lastSyncedLocalHash: await hashGroups(initialGroups),
+    lastMarkerCheckUrl: "direct::https://sync.example/bookmarks.json",
+    lastSync: 100
+  }));
+
+  const pushResult = await syncNow();
+  assert.equal(pushResult.ok, true);
+  assert.deepEqual(httpRequests.map(r => r.method), ["HEAD", "GET", "PUT", "HEAD"]);
+  assert.equal(readStoredConfig().sync.lastSeenRemoteMarker, '"v2"');
+
+  httpRequests = [];
+  const nextResult = await syncNow();
+  assert.equal(nextResult.ok, true);
+  assert.equal(nextResult.reason, "remote-marker-unchanged");
+  assert.deepEqual(httpRequests.map(r => r.method), ["HEAD"]);
 });
