@@ -1819,5 +1819,8 @@
   },
   "backupFileTooLarge": {
     "message": "Le fichier de sauvegarde est trop volumineux (max 3 Mo)."
+  },
+  "moreActions": {
+    "message": "Plus d'actions"
   }
 }

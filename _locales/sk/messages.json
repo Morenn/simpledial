@@ -1819,5 +1819,8 @@
   },
   "backupFileTooLarge": {
     "message": "Záložný súbor je príliš veľký (max 3 MB)."
+  },
+  "moreActions": {
+    "message": "Ďalšie akcie"
   }
 }

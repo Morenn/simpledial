@@ -1819,5 +1819,8 @@
   },
   "backupFileTooLarge": {
     "message": "Back-upbestand is te groot (max 3 MB)."
+  },
+  "moreActions": {
+    "message": "Meer acties"
   }
 }

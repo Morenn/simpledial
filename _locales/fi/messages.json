@@ -1819,5 +1819,8 @@
   },
   "backupFileTooLarge": {
     "message": "Varmuuskopiotiedosto on liian suuri (enintään 3 Mt)."
+  },
+  "moreActions": {
+    "message": "Lisää toimintoja"
   }
 }

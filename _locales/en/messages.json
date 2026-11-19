@@ -1846,5 +1846,8 @@
   },
   "hkUnusedTagsRemoved": {
     "message": "Removed {0} unused tag(s)."
+  },
+  "moreActions": {
+    "message": "More actions"
   }
 }

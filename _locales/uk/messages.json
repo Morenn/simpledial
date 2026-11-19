@@ -1819,5 +1819,8 @@
   },
   "backupFileTooLarge": {
     "message": "Файл резервної копії занадто великий (макс. 3 МБ)."
+  },
+  "moreActions": {
+    "message": "Більше дій"
   }
 }

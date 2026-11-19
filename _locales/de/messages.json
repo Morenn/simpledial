@@ -1819,5 +1819,8 @@
   },
   "backupFileTooLarge": {
     "message": "Sicherungsdatei ist zu groß (max. 3 MB)."
+  },
+  "moreActions": {
+    "message": "Weitere Aktionen"
   }
 }
