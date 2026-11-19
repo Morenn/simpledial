@@ -433,21 +433,43 @@ export async function cacheIconUrlIfNeeded(url) {
   return task;
 }
 
+function scheduleRemoteIconLoadAfterPaint(task) {
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setTimeout(task, 0));
+  } else {
+    setTimeout(task, 0);
+  }
+}
+
 export function applyCachedIconImageSrc(imgEl, iconUrl) {
   if (!imgEl || !iconUrl) return;
   const cached = getCachedIconUrlDataUrl(iconUrl);
   if (cached) {
+    delete imgEl.dataset.pendingRemoteIcon;
     imgEl.src = cached;
     return;
   }
   if (isHttpIconUrl(iconUrl) && isUrlHostExcludedFromIconRefresh(iconUrl)) {
-    imgEl.dispatchEvent(new Event("error"));
+    delete imgEl.dataset.pendingRemoteIcon;
+    queueMicrotask(() => {
+      if (imgEl.isConnected) {
+        imgEl.dispatchEvent(new Event("error"));
+      }
+    });
     return;
   }
-  imgEl.src = iconUrl;
   if (isHttpIconUrl(iconUrl)) {
-    void cacheIconUrlIfNeeded(iconUrl);
+    imgEl.dataset.pendingRemoteIcon = iconUrl;
+    scheduleRemoteIconLoadAfterPaint(() => {
+      if (!imgEl.isConnected || imgEl.dataset.pendingRemoteIcon !== iconUrl) return;
+      delete imgEl.dataset.pendingRemoteIcon;
+      imgEl.src = iconUrl;
+      void cacheIconUrlIfNeeded(iconUrl);
+    });
+    return;
   }
+  delete imgEl.dataset.pendingRemoteIcon;
+  imgEl.src = iconUrl;
 }
 
 export function isAllowedThemeUrl(rawUrl) {

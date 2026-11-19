@@ -1,6 +1,14 @@
 import { state, saveState, saveActiveGroupId, isStackItem, getAllGroupBookmarks, SYSTEM_TAGS, getBookmarkSystemTagIds } from "./state.js";
 import { renderGroups } from "./groups.js";
-import { createBookmarkTile, createStackTile, openBookmarkModal, refreshOpenStackPopover, closeStackPopover } from "./bookmarks.js";
+import {
+  createBookmarkTile,
+  createStackTile,
+  openBookmarkModal,
+  refreshOpenStackPopover,
+  closeStackPopover,
+  resetIconHydrationQueue,
+  startIconHydrationAfterPaint
+} from "./bookmarks.js";
 import { loadConfig } from "./config.js";
 import { syncWrite, syncNow, getLastSyncErrorReason, clearLastSyncErrorReason } from "./sync.js";
 import { isVaultUnlocked, tryAutoUnlockVault } from "./crypto.js";
@@ -216,8 +224,9 @@ export async function updateFooter(providedConfig = null) {
 // MAIN RENDER FUNCTION
 // ======================================================
 
-export async function render() {
-  const config = await loadConfig();
+export async function render(providedConfig = null) {
+  const config = providedConfig || await loadConfig();
+  resetIconHydrationQueue();
   renderGroups(true, config);
   await renderBookmarks(config);
 
@@ -226,6 +235,7 @@ export async function render() {
   if (typeof window !== "undefined") {
     window._restorePendingKeyboardFocus?.();
   }
+  startIconHydrationAfterPaint();
 }
 
 // ======================================================
@@ -348,7 +358,7 @@ function buildSectionCard(group, section, sectionItems, config) {
 // ======================================================
 async function renderBookmarks(providedConfig = null) {
   const config = providedConfig || await loadConfig();
-  await updateFooter(config);
+  void updateFooter(config);
   const grid = document.getElementById("bookmarks-grid");
   const sectionsContainer = document.getElementById("sections-container");
   const workspaceToolbar = document.getElementById("workspace-toolbar");

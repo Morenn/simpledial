@@ -86,6 +86,31 @@ export function getFallbackBookmarkIconUrl(config = null) {
 const ICON_HYDRATION_CONCURRENCY = 4;
 const iconHydrationQueue = [];
 let activeIconHydrations = 0;
+let iconHydrationStarted = false;
+let iconHydrationScheduled = false;
+
+export function resetIconHydrationQueue() {
+  iconHydrationQueue.length = 0;
+}
+
+export function startIconHydrationAfterPaint() {
+  if (iconHydrationStarted) {
+    processIconHydrationQueue();
+    return;
+  }
+  if (iconHydrationScheduled) return;
+  iconHydrationScheduled = true;
+  const run = () => {
+    iconHydrationScheduled = false;
+    iconHydrationStarted = true;
+    processIconHydrationQueue();
+  };
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setTimeout(run, 0));
+  } else {
+    setTimeout(run, 0);
+  }
+}
 
 // ---------- Host permission helpers ----------
 // "*://*/*" is an optional host permission (see manifest.json). contains()
@@ -865,23 +890,27 @@ function isGoogleFaviconUrl(url) {
   }
 }
 
+function isLocalIconUrl(src) {
+  return typeof src === "string" && !/^(?:https?:)?\/\//i.test(src.trim());
+}
+
 function getImmediateIconSrc(item, config = null) {
-  // Keep first paint local and immediate.
+  // Keep first paint strictly local and immediate.
   const isLocallyBlocked = isBookmarkIconLocallyExcluded(item) || (item?.id && getFailedBookmarkIdSet().has(item.id));
   const fallbackIconUrl = getFallbackBookmarkIconUrl(config);
   const cached = getCachedFaviconDataUrl(item);
   if (cached) {
-    if (isLocallyBlocked && !/^data:/i.test(cached)) {
-      return fallbackIconUrl;
+    if (isLocalIconUrl(cached)) {
+      return cached;
     }
-    return cached;
+    return isLocallyBlocked ? fallbackIconUrl : PLACEHOLDER_ICON_URL;
   }
 
   if (item.customIcon) {
-    if (isLocallyBlocked && !/^data:/i.test(item.customIcon)) {
-      return fallbackIconUrl;
+    if (isLocalIconUrl(item.customIcon)) {
+      return item.customIcon;
     }
-    return item.customIcon;
+    return isLocallyBlocked ? fallbackIconUrl : PLACEHOLDER_ICON_URL;
   }
 
   return isLocallyBlocked ? fallbackIconUrl : PLACEHOLDER_ICON_URL;
@@ -891,9 +920,13 @@ function getDeferredIconSrc(item) {
   if (isBookmarkIconLocallyExcluded(item) || (item?.id && getFailedBookmarkIdSet().has(item.id))) return null;
 
   const cached = getCachedFaviconDataUrl(item);
-  if (cached) return null;
+  if (cached) {
+    return isLocalIconUrl(cached) ? null : cached;
+  }
 
-  if (item.customIcon) return null;
+  if (item.customIcon) {
+    return isLocalIconUrl(item.customIcon) ? null : item.customIcon;
+  }
 
   try {
     const u = new URL(item.url);
@@ -903,7 +936,26 @@ function getDeferredIconSrc(item) {
   }
 }
 
+function waitForIconLoadOrTimeout(imgEl, timeoutMs = 4000) {
+  if (!imgEl) return Promise.resolve();
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timerId);
+      imgEl.removeEventListener("load", finish);
+      imgEl.removeEventListener("error", finish);
+      resolve();
+    };
+    const timerId = setTimeout(finish, timeoutMs);
+    imgEl.addEventListener("load", finish, { once: true });
+    imgEl.addEventListener("error", finish, { once: true });
+  });
+}
+
 function processIconHydrationQueue() {
+  if (!iconHydrationStarted) return;
   while (activeIconHydrations < ICON_HYDRATION_CONCURRENCY && iconHydrationQueue.length > 0) {
     const task = iconHydrationQueue.shift();
     activeIconHydrations++;
@@ -923,9 +975,10 @@ function scheduleDeferredIconHydration(iconElement, item) {
   if (!deferredSrc || deferredSrc === iconElement.src) return;
 
   iconHydrationQueue.push(async () => {
-    await new Promise(resolve => setTimeout(resolve, 25));
     if (!iconElement.isConnected) return;
+    const loadPromise = waitForIconLoadOrTimeout(iconElement);
     iconElement.src = deferredSrc;
+    await loadPromise;
   });
 
   processIconHydrationQueue();
@@ -1107,9 +1160,21 @@ async function refreshBookmarkIcon(item, options = {}) {
     if (faviconUrl) {
       let resolvedIconSrc = faviconUrl;
       if (isGoogleFaviconUrl(faviconUrl)) {
-        // Known to always be CORS-blocked unless host permission was granted —
-        // skip fetch() here and use the URL directly as <img src>.
-        setCachedFaviconDataUrl(item, faviconUrl);
+        // Cache Google S2 bytes as a data URL when host permission is granted
+        // so subsequent startups load locally without hitting the network.
+        if (await hasHostPermission()) {
+          try {
+            const dataUrl = await fetchIconAsDataUrl(faviconUrl, true);
+            resolvedIconSrc = dataUrl;
+            setCachedFaviconDataUrl(item, dataUrl);
+            clearFailedIconRefresh(item.id);
+          } catch (fetchErr) {
+            faviconDebugLog("could not download Google S2 icon bytes, using direct URL", faviconUrl, fetchErr);
+            setCachedFaviconDataUrl(item, faviconUrl);
+          }
+        } else {
+          setCachedFaviconDataUrl(item, faviconUrl);
+        }
       } else {
         try {
           // Cache the actual bytes as a data URL when we can.

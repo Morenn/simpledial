@@ -256,7 +256,6 @@ export function updateShowDeletedButtonAppearance() {
       });
     }
     showDeletedToggle.checked = !!config.appearance?.showDeleted;
-    showDeletedToggle.dispatchEvent(new Event("change"));
     updateShowDeletedButtonAppearance();
   }
 
@@ -267,7 +266,7 @@ export function updateShowDeletedButtonAppearance() {
   updateUIText();
 
   // 9) Render UI immediately with local data — does not wait for network
-  render();
+  await render(config);
 
   // 10) Start the clock display (pause ticks when tab is hidden)
   setInterval(() => {
@@ -280,16 +279,19 @@ export function updateShowDeletedButtonAppearance() {
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
   const initialWidgetsSnapshot = { appearance: { customWidgets: config.appearance?.customWidgets } };
+  const startupSyncEnabled = !!(config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser'));
+  const startupHousekeeperCleanup = config.housekeeper?.autoCleanupEnabled
+    ? (config.housekeeper?.retentionDays || 30)
+    : 0;
+  config = null; // Release startup config reference from long-lived interval closures
 
-  setTimeout(() => {
-    const hasBookmarks = Array.isArray(state.groups) && state.groups.some(
-      g => !g?.deleted && Array.isArray(g.items) && g.items.some(i => !i?.deleted)
-    );
-    if (hasBookmarks) {
-      void ensureKeyboardNavLoaded();
+  const scheduleAfterFirstPaint = callback => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => setTimeout(callback, 0));
+    } else {
+      setTimeout(callback, 0);
     }
-    startActiveCustomWidgets(initialWidgetsSnapshot);
-  }, 150);
+  };
 
   // Vault idle auto-lock monitoring (when vaultAutoLockMinutes > 0)
   let lastVaultActivityCheckMs = 0;
@@ -314,62 +316,73 @@ export function updateShowDeletedButtonAppearance() {
     }
   }, 30000);
 
-  // 4) Sync (in background, with re-render after data changes)
-  if (config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser')) {
-    initialSyncInProgress = true;
+  // Defer background startup work until after the first paint completes.
+  scheduleAfterFirstPaint(() => {
     setTimeout(() => {
-      (async () => {
-        const result = await syncNow();
-        void updateFooter();
+      const hasBookmarks = Array.isArray(state.groups) && state.groups.some(
+        g => !g?.deleted && Array.isArray(g.items) && g.items.some(i => !i?.deleted)
+      );
+      if (hasBookmarks) {
+        void ensureKeyboardNavLoaded();
+      }
+      startActiveCustomWidgets(initialWidgetsSnapshot);
+    }, 150);
 
-        if (!result.ok) {
-          console.warn("Sync failed:", result.reason || "unknown", result);
-          const latestCfg = await loadConfig();
-          if (result.reason === "credentials-locked" && latestCfg?.vaultMuteSyncLockedWarning) {
+    // 4) Sync (in background, with re-render after data changes)
+    if (startupSyncEnabled) {
+      initialSyncInProgress = true;
+      setTimeout(() => {
+        (async () => {
+          const result = await syncNow();
+          void updateFooter();
+
+          if (!result.ok) {
+            console.warn("Sync failed:", result.reason || "unknown", result);
+            const latestCfg = await loadConfig();
+            if (result.reason === "credentials-locked" && latestCfg?.vaultMuteSyncLockedWarning) {
+              return;
+            }
+            showSyncUnavailableNotification(result);
             return;
           }
-          showSyncUnavailableNotification(result);
-          return;
-        }
 
-        if (result.changed) {
-          render(); // re-render UI after merging cloud data
-        }
-      })()
-        .catch(err => console.warn("initial sync failed", err))
-        .finally(() => {
-          initialSyncInProgress = false;
-        });
-    }, STARTUP_SYNC_DELAY_MS);
-  }
+          if (result.changed) {
+            render(); // re-render UI after merging cloud data
+          }
+        })()
+          .catch(err => console.warn("initial sync failed", err))
+          .finally(() => {
+            initialSyncInProgress = false;
+          });
+      }, STARTUP_SYNC_DELAY_MS);
+    }
 
-  // 5) Start sync loop
-  startSyncLoop({
-    initialDelayMs: 6000,
-    shouldSkip: () => initialSyncInProgress
+    // 5) Start sync loop
+    startSyncLoop({
+      initialDelayMs: 6000,
+      shouldSkip: () => initialSyncInProgress
+    });
+
+    // 5b) Backup check & browser bookmarks sync (deferred in background, non-blocking)
+    setTimeout(() => {
+      void import("./backup.js")
+        .then(m => m.runBackupInitCheck())
+        .catch(err => console.error("Backup init check failed", err));
+      void import("./browser-bookmarks-sync.js")
+        .catch(err => console.warn("Browser bookmarks sync init failed", err));
+    }, 800);
+
+    // 6) Housekeeping cleanup (in background, non-blocking)
+    if (startupHousekeeperCleanup > 0) {
+      cleanupDeletedItems(startupHousekeeperCleanup).catch(err => console.error("Housekeeping cleanup failed", err));
+    }
+
+    // 11) Refresh bookmark icons (in background, non-blocking)
+    refreshBookmarkIconsIfNeeded({ force: false, persist: true, sync: false })
+      .then(changed => { if (changed) render(); })
+      .catch(err => console.warn("icon refresh failed", err));
+    startIconRefreshLoop();
   });
-
-  // 5b) Backup check & browser bookmarks sync (deferred in background, non-blocking)
-  setTimeout(() => {
-    void import("./backup.js")
-      .then(m => m.runBackupInitCheck())
-      .catch(err => console.error("Backup init check failed", err));
-    void import("./browser-bookmarks-sync.js")
-      .catch(err => console.warn("Browser bookmarks sync init failed", err));
-  }, 800);
-
-  // 6) Housekeeping cleanup (in  background, non-blocking)
-  if (config.housekeeper?.autoCleanupEnabled) {
-    const retentionDays = config.housekeeper?.retentionDays || 30;
-    cleanupDeletedItems(retentionDays).catch(err => console.error("Housekeeping cleanup failed", err));
-  }
-  config = null; // Release startup config reference from long-lived interval closures
-
-  // 11) Refresh bookmark icons (in background, non-blocking)
-  refreshBookmarkIconsIfNeeded({ force: false, persist: true, sync: false })
-    .then(changed => { if (changed) render(); })
-    .catch(err => console.warn("icon refresh failed", err));
-  startIconRefreshLoop();
 })();
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
