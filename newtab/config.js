@@ -107,6 +107,55 @@ export const defaultConfig = {
 let cachedConfig = null;
 let inFlightConfigLoad = null;
 
+const debugFlags = {
+  favicon: false,
+  deadLink: false,
+  sync: false
+};
+let debugModulePromise = null;
+
+function getDebugModule() {
+  if (!debugModulePromise) {
+    debugModulePromise = import("./debug.js");
+  }
+  return debugModulePromise;
+}
+
+export function updateDebugLoggingFlags(advanced = {}) {
+  debugFlags.favicon = Boolean(advanced?.faviconDebugLogging ?? advanced?.enableDebugLogging);
+  debugFlags.deadLink = Boolean(advanced?.deadLinkDebugLogging ?? advanced?.enableDeadLinkDebugLogging);
+  debugFlags.sync = Boolean(advanced?.syncDebugLogging);
+  if (debugFlags.favicon || debugFlags.deadLink || debugFlags.sync) {
+    void getDebugModule().then(mod => mod?.setSyncDebugLoggingEnabled?.(debugFlags.sync));
+  } else if (debugModulePromise) {
+    void debugModulePromise.then(mod => mod?.setSyncDebugLoggingEnabled?.(false));
+  }
+}
+
+export function logDebug(channel, ...args) {
+  const flagKey = channel === "syncMergeDiff" ? "sync" : channel;
+  const checkboxId = flagKey === "favicon"
+    ? "enable-favicon-debug-logging"
+    : flagKey === "deadLink"
+      ? "enable-dead-link-debug-logging"
+      : "enable-sync-debug-logging";
+  const checkboxChecked = typeof document !== "undefined" && !!document.getElementById(checkboxId)?.checked;
+  if (!debugFlags[flagKey] && !checkboxChecked) return;
+  void getDebugModule().then(mod => {
+    if (channel === "favicon") {
+      mod.faviconDebugLog(...args);
+    } else if (channel === "deadLink") {
+      mod.deadLinkDebugLog(...args);
+    } else if (channel === "syncMergeDiff") {
+      mod.setSyncDebugLoggingEnabled?.(true);
+      mod.syncMergeDiffDebugLog(...args);
+    } else {
+      mod.setSyncDebugLoggingEnabled?.(true);
+      mod.syncDebugLog(...args);
+    }
+  });
+}
+
 function mergeConfigWithDefaults(stored) {
   if (!stored || typeof stored !== "object") {
     return structuredClone(defaultConfig);
@@ -187,6 +236,7 @@ export async function loadConfig() {
   inFlightConfigLoad = (async () => {
     const res = await chrome.storage.local.get(CONFIG_STORAGE_KEY);
     const merged = mergeConfigWithDefaults(res?.[CONFIG_STORAGE_KEY]);
+    updateDebugLoggingFlags(merged.advanced);
     if (canUseLongLivedCache) {
       cachedConfig = merged;
     }
@@ -204,6 +254,7 @@ export async function loadConfig() {
 // Save configuration to storage
 export async function saveConfig(config) {
   const normalized = mergeConfigWithDefaults(config);
+  updateDebugLoggingFlags(normalized.advanced);
   if (typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function") {
     cachedConfig = cloneConfig(normalized);
   }

@@ -1,7 +1,9 @@
 import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded, SYSTEM_TAG_DEAD_LINK_ID, getBookmarkSystemTagIds, setBookmarkSystemTag, saveSystemTags } from "./state.js";
-import { loadConfig, saveConfig, shouldSync, updateLastSyncTime } from "./config.js";
+import { loadConfig, saveConfig, shouldSync, updateLastSyncTime, logDebug } from "./config.js";
 import { importRawKey, decryptWithKey, getSecret } from './crypto.js';
-import { deadLinkDebugLog, syncDebugLog } from "./debug.js";
+
+const deadLinkDebugLog = (...args) => logDebug("deadLink", ...args);
+const syncDebugLog = (...args) => logDebug("sync", ...args);
 
 function ensureNoTrailingSlash(url) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -1418,6 +1420,15 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
   const remoteTagsNeedUpdate = JSON.stringify(resolvedCloudTags) !== JSON.stringify(mergedTags);
   const remoteNeedsUpdate = remoteGroupsNeedUpdate || remoteTagsNeedUpdate;
 
+  if (changed || remoteNeedsUpdate) {
+    logDebug("syncMergeDiff", previousGroups, mergedGroups, previousTags, mergedTags, {
+      changed,
+      groupsChanged,
+      tagsChanged,
+      remoteNeedsUpdate
+    });
+  }
+
   if (!changed && !remoteNeedsUpdate) {
     if (config.sync) config.sync.pendingPurgedIds = [];
     config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
@@ -1977,15 +1988,34 @@ export async function syncNow(options = {}) {
   }
 
   const localHash = await getGroupsHash(state.groups, state.tags);
+  const lastSyncedLocalHash = config.sync.lastSyncedLocalHash || "";
   const hasPendingPurges = Array.isArray(config.sync.pendingPurgedIds) && config.sync.pendingPurgedIds.length > 0;
-  const hasPendingLocalChanges = !config.sync.lastSyncedLocalHash
-    || config.sync.lastSyncedLocalHash !== localHash
+  const hasPendingLocalChanges = !lastSyncedLocalHash
+    || lastSyncedLocalHash !== localHash
     || hasPendingPurges;
+  const previousRemoteMarker = config.sync.lastSeenRemoteMarker || "";
   const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config);
+  const currentRemoteMarker = config.sync.lastSeenRemoteMarker || "";
   const markerIsReliableForSkip = config.sync.remoteChangeHeaderType === 'sha256'
     || (config.sync.remoteChangeHeaderType === 'etag'
-      && !(config.sync.lastSeenRemoteMarker || '').startsWith('W/'));
-  if (!hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip) {
+      && !currentRemoteMarker.startsWith('W/'));
+  const willSkipGet = !hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip;
+
+  syncDebugLog('syncNow pre-check', {
+    localHash,
+    lastSyncedLocalHash,
+    localHashMatches: !!lastSyncedLocalHash && lastSyncedLocalHash === localHash,
+    hasPendingPurges,
+    hasPendingLocalChanges,
+    previousRemoteMarker,
+    currentRemoteMarker,
+    remoteChangeHeaderType: config.sync.remoteChangeHeaderType,
+    remoteMarkerUnchanged,
+    markerIsReliableForSkip,
+    willSkipGet
+  });
+
+  if (willSkipGet) {
     lastSyncErrorReason = null;
     if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
       await syncWebdavFolderExtras(config, { includeManual });

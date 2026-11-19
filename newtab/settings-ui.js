@@ -1,4 +1,4 @@
-﻿import { loadConfig, saveConfig } from "./config.js";
+﻿import { loadConfig, saveConfig, updateDebugLoggingFlags } from "./config.js";
 import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLanguageOverride } from "./i18n.js";
 import { render } from "./render.js";
 import { cleanupOldBackups } from "./backup.js";
@@ -73,6 +73,7 @@ function applyAdvancedSettingsToControls(advancedConfig = {}) {
   if (advSyncDebugLogging) {
     advSyncDebugLogging.checked = advancedConfig.syncDebugLogging ?? false;
   }
+  updateDebugLoggingFlags(advancedConfig);
   if (advI18nHotReload) {
     advI18nHotReload.checked = advancedConfig.i18nHotReload ?? advancedConfig.enableI18nHotReload ?? false;
   }
@@ -133,6 +134,7 @@ async function persistSettings(closeAfterSave = false) {
   config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;
   config.advanced.deadLinkDebugLogging = !!advDeadLinkDebugLogging?.checked;
   config.advanced.syncDebugLogging = !!advSyncDebugLogging?.checked;
+  updateDebugLoggingFlags(config.advanced);
   config.advanced.i18nHotReload = !!advI18nHotReload?.checked;
   config.advanced.faviconFetchLink = !!advExperimentalFaviconFetchLink?.checked;
   config.advanced.faviconFetchManifest = !!advExperimentalFaviconFetchManifest?.checked;

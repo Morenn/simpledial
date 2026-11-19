@@ -19,10 +19,11 @@ import {
 import { render } from "./render.js";
 import { syncWrite, validateSingleLink } from "./sync.js";
 import { t } from "./i18n.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, logDebug } from "./config.js";
 import { normalizeBookmarkUrl } from "./bookmarks-api.js";
 import { syncRovingTabIndex } from "./keyboard-nav.js";
-import { faviconDebugLog } from "./debug.js";
+
+const faviconDebugLog = (...args) => logDebug("favicon", ...args);
 import {
   extractDominantColorFromImageSource,
   extractDominantColorFromEmoji,

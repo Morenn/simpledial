@@ -2,7 +2,7 @@ import { state, saveState, generateId, loadState, STORAGE_KEY, applyStateFromSto
 import { loadTheme, applySideSpaces } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, updateDebugLoggingFlags } from "./config.js";
 import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems, clearLastSyncErrorReason } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypto.js";
@@ -234,6 +234,7 @@ export function updateShowDeletedButtonAppearance() {
   ]);
 
   // 4) Load and apply theme using already-loaded config
+  updateDebugLoggingFlags(config.advanced);
   await loadTheme(config);
   updateDateTimeEnabledFromConfig(config);
 
@@ -381,6 +382,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   const configChange = changes["myspeeddial-config"];
   if (!configChange || !configChange.newValue) return;
 
+  updateDebugLoggingFlags(configChange.newValue.advanced);
   updateDateTimeEnabledFromConfig(configChange.newValue);
   void applySideSpaces(configChange.newValue).then(() => {
     startActiveCustomWidgets(configChange.newValue);
