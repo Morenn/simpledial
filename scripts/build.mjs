@@ -1,10 +1,28 @@
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateRawSync } from "node:zlib";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const distDir = path.join(root, "dist");
+const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(scriptsDir, "..");
+const configPath = path.join(scriptsDir, "build.config.json");
+
+async function resolveDistDir() {
+  try {
+    const raw = await readFile(configPath, "utf8");
+    const cfg = JSON.parse(raw);
+    if (typeof cfg?.distDir === "string" && cfg.distDir.trim()) {
+      return path.resolve(root, cfg.distDir.trim());
+    }
+  } catch (err) {
+    if (err?.code !== "ENOENT") {
+      throw new Error(`Invalid build config at ${configPath}: ${err.message}`);
+    }
+  }
+  return path.join(root, "dist");
+}
+
+const distDir = await resolveDistDir();
 
 const TARGETS = {
   gecko: "manifest.json.gecko",
@@ -162,7 +180,16 @@ async function buildTarget(target, now) {
   const zipName = `simple-dial-${version}-${target}.zip`;
   const zipPath = path.join(distDir, zipName);
   await writeFile(zipPath, createZipBuffer(entries, now));
-  console.log(`Built ${path.relative(root, zipPath)} (${entries.length} files)`);
+
+  const unpackedDir = path.join(distDir, target);
+  await rm(unpackedDir, { recursive: true, force: true });
+  for (const entry of entries) {
+    const destPath = path.join(unpackedDir, entry.name);
+    await mkdir(path.dirname(destPath), { recursive: true });
+    await writeFile(destPath, entry.data);
+  }
+
+  console.log(`Built ${path.relative(root, zipPath)} & ${path.relative(root, unpackedDir)} (${entries.length} files)`);
   return zipPath;
 }
 
