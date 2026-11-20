@@ -1,5 +1,5 @@
 import { t } from "./i18n.js";
-import { isAllowedThemeUrl } from "./color-utils.js";
+import { isAllowedThemeUrl, normalizeCustomIconValue } from "./color-utils.js";
 import {
   VALID_WIDGET_SPACES,
   VALID_WIDGET_ALIGNS,
@@ -110,11 +110,52 @@ export {
   syncCustomNotesWidgetElements
 };
 
-export function serializeCustomWidgetsExport(widgets = [], { includeSecrets = false } = {}) {
+function getWidgetGroupKeySet(widgets = []) {
+  const keys = new Set();
+  for (const w of widgets) {
+    const g = typeof w?.groupName === "string" ? w.groupName.trim().toLowerCase() : "";
+    if (g) keys.add(g);
+  }
+  return keys;
+}
+
+function normalizeAutoRouteIconsMap(rawMap, allowedGroupKeys = null) {
+  if (!rawMap || typeof rawMap !== "object" || Array.isArray(rawMap)) return {};
+  const out = {};
+  for (const [rawKey, rawVal] of Object.entries(rawMap)) {
+    const key = String(rawKey || "").trim().toLowerCase();
+    if (!key || (allowedGroupKeys && !allowedGroupKeys.has(key))) continue;
+    const normalized = normalizeCustomIconValue(rawVal, { allowEmoji: true });
+    if (normalized) out[key] = normalized;
+  }
+  return out;
+}
+
+function normalizeAutoRouteDefaultsMap(rawMap, allowedGroupKeys = null) {
+  if (!rawMap || typeof rawMap !== "object" || Array.isArray(rawMap)) return {};
+  const out = {};
+  for (const [rawKey, rawVal] of Object.entries(rawMap)) {
+    const key = String(rawKey || "").trim().toLowerCase();
+    if (!key || (allowedGroupKeys && !allowedGroupKeys.has(key))) continue;
+    if (typeof rawVal === "boolean") out[key] = rawVal;
+  }
+  return out;
+}
+
+export function serializeCustomWidgetsExport(widgets = [], {
+  includeSecrets = false,
+  autoRouteIcons = null,
+  autoRouteDefaults = null
+} = {}) {
   const list = Array.isArray(widgets) ? widgets : [];
+  const groupKeys = getWidgetGroupKeySet(list);
+  const exportedAutoRouteIcons = normalizeAutoRouteIconsMap(autoRouteIcons, groupKeys);
+  const exportedAutoRouteDefaults = normalizeAutoRouteDefaultsMap(autoRouteDefaults, groupKeys);
   return {
     format: "simple-dial-custom-widgets",
     version: 1,
+    ...(Object.keys(exportedAutoRouteIcons).length > 0 ? { customSearchAutoRouteIcons: exportedAutoRouteIcons } : {}),
+    ...(Object.keys(exportedAutoRouteDefaults).length > 0 ? { customSearchAutoRouteDefaults: exportedAutoRouteDefaults } : {}),
     widgets: list.map(w => {
       const { emoji, customIcon } = resolveCustomWidgetIcon(w);
       const base = {
@@ -358,7 +399,11 @@ export function parseImportedCustomWidgets(parsed) {
     });
   }
 
-  return { widgets, skipped, validFormat: true };
+  const groupKeys = getWidgetGroupKeySet(widgets);
+  const autoRouteIcons = normalizeAutoRouteIconsMap(parsed?.customSearchAutoRouteIcons, groupKeys);
+  const autoRouteDefaults = normalizeAutoRouteDefaultsMap(parsed?.customSearchAutoRouteDefaults, groupKeys);
+
+  return { widgets, skipped, validFormat: true, autoRouteIcons, autoRouteDefaults };
 }
 
 export function createCustomWidgetSnapshot(widget) {
@@ -488,9 +533,9 @@ export async function fetchCustomWidgetsFromUrl(rawUrl) {
   const rawText = new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/, "");
   const text = repairUtf8Mojibake(rawText);
   const parsed = JSON.parse(text);
-  const { widgets, validFormat } = parseImportedCustomWidgets(parsed);
+  const { widgets, validFormat, autoRouteIcons, autoRouteDefaults } = parseImportedCustomWidgets(parsed);
   if (!validFormat || widgets.length === 0) {
     throw new Error("INVALID_WIDGET_PAYLOAD");
   }
-  return { url: trimmed, widgets };
+  return { url: trimmed, widgets, autoRouteIcons, autoRouteDefaults };
 }

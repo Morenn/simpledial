@@ -2249,7 +2249,12 @@ export function initCustomWidgetsSettings() {
     });
   }
 
-  function exportCustomWidgetsLibrary(widgets, filenamePrefix = "speeddial-widgets", statusEl = customWidgetStatus) {
+  function exportCustomWidgetsLibrary(
+    widgets,
+    filenamePrefix = "speeddial-widgets",
+    statusEl = customWidgetStatus,
+    { autoRouteIcons = null, autoRouteDefaults = null } = {}
+  ) {
     const list = Array.isArray(widgets) ? widgets : [];
     if (list.length === 0) {
       if (statusEl) {
@@ -2257,7 +2262,7 @@ export function initCustomWidgetsSettings() {
       }
       return;
     }
-    const payload = serializeCustomWidgetsExport(list);
+    const payload = serializeCustomWidgetsExport(list, { autoRouteIcons, autoRouteDefaults });
     const dataStr = stringifyAsciiJson(payload);
     const dataBlob = new Blob([dataStr], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(dataBlob);
@@ -2277,7 +2282,10 @@ export function initCustomWidgetsSettings() {
 
   const triggerCustomWidgetExport = async (statusEl) => {
     const draft = await ensureAppearanceDraft();
-    exportCustomWidgetsLibrary(draft.customWidgets || [], "speeddial-widgets", statusEl);
+    exportCustomWidgetsLibrary(draft.customWidgets || [], "speeddial-widgets", statusEl, {
+      autoRouteIcons: draft.customSearchAutoRouteIcons,
+      autoRouteDefaults: draft.customSearchAutoRouteDefaults
+    });
   };
 
   const customWidgetTrustModal = document.getElementById("custom-widget-trust-modal");
@@ -2351,7 +2359,22 @@ export function initCustomWidgetsSettings() {
   if (importWidgetsBtn) {
     importWidgetsBtn.addEventListener("click", () => triggerCustomWidgetImport(widgetsExportStatus));
   }
-  const mergeImportedCustomWidgets = async (importedWidgets, { sourceUrl = null } = {}) => {
+  const applyImportedAutoRouteSettings = (draft, { autoRouteIcons = null, autoRouteDefaults = null } = {}) => {
+    if (autoRouteIcons && Object.keys(autoRouteIcons).length > 0) {
+      draft.customSearchAutoRouteIcons = {
+        ...(draft.customSearchAutoRouteIcons || {}),
+        ...autoRouteIcons
+      };
+    }
+    if (autoRouteDefaults && Object.keys(autoRouteDefaults).length > 0) {
+      draft.customSearchAutoRouteDefaults = {
+        ...(draft.customSearchAutoRouteDefaults || {}),
+        ...autoRouteDefaults
+      };
+    }
+  };
+
+  const mergeImportedCustomWidgets = async (importedWidgets, { sourceUrl = null, autoRouteIcons = null, autoRouteDefaults = null } = {}) => {
     markSettingsDirty();
     const draft = await ensureAppearanceDraft();
     const existing = Array.isArray(draft.customWidgets) ? [...draft.customWidgets] : [];
@@ -2377,6 +2400,7 @@ export function initCustomWidgetsSettings() {
     }
 
     draft.customWidgets = existing;
+    applyImportedAutoRouteSettings(draft, { autoRouteIcons, autoRouteDefaults });
     draft.widgetOrder = normalizeWidgetOrder(
       [...(draft.widgetOrder || []), ...existing.map(w => w.id)],
       draft.customWidgets
@@ -2400,7 +2424,7 @@ export function initCustomWidgetsSettings() {
       customWidgetsLibraryStatus.textContent = "⏳ " + (t("customSearchUpdatingStatus") || "Updating from URL...");
     }
     try {
-      const { url, widgets } = await fetchCustomWidgetsFromUrl(target.sourceUrl);
+      const { url, widgets, autoRouteIcons, autoRouteDefaults } = await fetchCustomWidgetsFromUrl(target.sourceUrl);
       const match =
         widgets.find(w => w.id === target.id) ||
         widgets.find(w => w.name && target.name && w.name.toLowerCase() === target.name.toLowerCase()) ||
@@ -2415,6 +2439,13 @@ export function initCustomWidgetsSettings() {
       draft.customWidgets = (draft.customWidgets || []).map(w =>
         w.id === target.id ? applyCustomWidgetUpdate(w, match, url) : w
       );
+      const groupKey = typeof match.groupName === "string" ? match.groupName.trim().toLowerCase() : "";
+      if (groupKey) {
+        applyImportedAutoRouteSettings(draft, {
+          autoRouteIcons: autoRouteIcons?.[groupKey] ? { [groupKey]: autoRouteIcons[groupKey] } : null,
+          autoRouteDefaults: typeof autoRouteDefaults?.[groupKey] === "boolean" ? { [groupKey]: autoRouteDefaults[groupKey] } : null
+        });
+      }
       if (editingCustomWidgetId === target.id) {
         const updated = draft.customWidgets.find(w => w.id === target.id);
         if (updated) loadCustomWidgetIntoForm(updated);
@@ -2449,7 +2480,7 @@ export function initCustomWidgetsSettings() {
       try {
         const text = await file.text();
         const parsed = JSON.parse(text);
-        const { widgets: importedWidgets, validFormat } = parseImportedCustomWidgets(parsed);
+        const { widgets: importedWidgets, validFormat, autoRouteIcons, autoRouteDefaults } = parseImportedCustomWidgets(parsed);
         if (!validFormat || importedWidgets.length === 0) {
           if (statusEl) {
             statusEl.textContent = "❌ " + (t("customSearchImportInvalid") || "No valid custom widgets found in file.");
@@ -2457,7 +2488,7 @@ export function initCustomWidgetsSettings() {
           return;
         }
 
-        const { total } = await mergeImportedCustomWidgets(importedWidgets);
+        const { total } = await mergeImportedCustomWidgets(importedWidgets, { autoRouteIcons, autoRouteDefaults });
         if (statusEl) {
           statusEl.textContent = "✅ " + (t("customSearchImportSuccess") || "Imported") + ` (${total})`;
         }
@@ -2496,8 +2527,8 @@ export function initCustomWidgetsSettings() {
         customWidgetStatus.textContent = "⏳ " + (t("customSearchLoadingUrlStatus") || "Loading widgets from URL...");
       }
       try {
-        const { url, widgets } = await fetchCustomWidgetsFromUrl(rawUrl);
-        const { total } = await mergeImportedCustomWidgets(widgets, { sourceUrl: url });
+        const { url, widgets, autoRouteIcons, autoRouteDefaults } = await fetchCustomWidgetsFromUrl(rawUrl);
+        const { total } = await mergeImportedCustomWidgets(widgets, { sourceUrl: url, autoRouteIcons, autoRouteDefaults });
         customWidgetSourceUrlInput.value = "";
         customWidgetUrlImportBox?.classList.add("hidden");
         if (customWidgetStatus) {
@@ -2544,13 +2575,20 @@ export function initCustomWidgetsSettings() {
         markSettingsDirty();
         draft.customWidgets = (draft.customWidgets || []).map(w => {
           if (!w?.sourceUrl || !fetchedByUrl.has(w.sourceUrl)) return w;
-          const { url, widgets } = fetchedByUrl.get(w.sourceUrl);
+          const { url, widgets, autoRouteIcons, autoRouteDefaults } = fetchedByUrl.get(w.sourceUrl);
           const match =
             widgets.find(item => item.id === w.id) ||
             widgets.find(item => item.name && w.name && item.name.toLowerCase() === w.name.toLowerCase()) ||
             (widgets.length === 1 ? widgets[0] : null);
           if (!match) return w;
           updatedCount++;
+          const groupKey = typeof match.groupName === "string" ? match.groupName.trim().toLowerCase() : "";
+          if (groupKey) {
+            applyImportedAutoRouteSettings(draft, {
+              autoRouteIcons: autoRouteIcons?.[groupKey] ? { [groupKey]: autoRouteIcons[groupKey] } : null,
+              autoRouteDefaults: typeof autoRouteDefaults?.[groupKey] === "boolean" ? { [groupKey]: autoRouteDefaults[groupKey] } : null
+            });
+          }
           return applyCustomWidgetUpdate(w, match, url);
         });
         renderWidgetOrderList(draft);

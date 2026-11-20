@@ -893,3 +893,45 @@ test("repairUtf8Mojibake and fetchCustomWidgetsFromUrl decode UTF-8 and fix Wind
     globalThis.fetch = originalFetch;
   }
 });
+
+test("serializeCustomWidgetsExport and parseImportedCustomWidgets preserve auto-route custom icons and defaults", () => {
+  const exported = serializeCustomWidgetsExport(
+    [
+      {
+        id: "cw-snow-1",
+        type: "custom-search",
+        mode: "simple",
+        name: "SNOW Incidents",
+        groupName: "Automatické smerovanie",
+        urlTemplate: "https://example.com/snow?q={query}",
+        routePrefixes: ["INC"]
+      }
+    ],
+    {
+      autoRouteIcons: {
+        "automatické smerovanie": "data:image/png;base64,iVBORw0KGgo=",
+        "unused group": "https://example.com/ignored.png",
+        "bad-proto": "javascript:alert(1)"
+      },
+      autoRouteDefaults: {
+        "automatické smerovanie": true,
+        "unused group": false
+      }
+    }
+  );
+  assert.deepEqual(exported.customSearchAutoRouteIcons, {
+    "automatické smerovanie": "data:image/png;base64,iVBORw0KGgo="
+  });
+  assert.deepEqual(exported.customSearchAutoRouteDefaults, {
+    "automatické smerovanie": true
+  });
+
+  const imported = parseImportedCustomWidgets(exported);
+  assert.equal(imported.validFormat, true);
+  assert.deepEqual(imported.autoRouteIcons, {
+    "automatické smerovanie": "data:image/png;base64,iVBORw0KGgo="
+  });
+  assert.deepEqual(imported.autoRouteDefaults, {
+    "automatické smerovanie": true
+  });
+});
