@@ -44,9 +44,14 @@ export function calculateGridLayout() {
     ? sectionsContainer.offsetHeight
     : 0;
   const bottomWidgetsHeight = centerBottomWidgets ? centerBottomWidgets.offsetHeight : 0;
-  const availableWidth = grid.clientWidth || main.clientWidth - 48; // Account for padding
-  const availableHeight = Math.max(220, main.clientHeight - sectionsHeight - bottomWidgetsHeight - 80); // Subtract padding & sections height
   const scale = getEffectiveTileScale();
+  const centerSpace = document.getElementById("center-space") || grid.parentElement;
+  const centerWidth = centerSpace?.clientWidth || (main.clientWidth - 48);
+  const availableWidth = Math.min(
+    Math.floor(centerWidth * 0.92),
+    Math.round(1200 * Math.max(1, scale))
+  ) || grid.clientWidth || (main.clientWidth - 48);
+  const availableHeight = Math.max(220, main.clientHeight - sectionsHeight - bottomWidgetsHeight - 80); // Subtract padding & sections height
   const baseTileHeight = document.body?.classList?.contains("tall-bookmark-tiles") ? 60 : 40;
   const tileHeight = Math.round(baseTileHeight * scale) + 3;
   const columnWidth = Math.round(COLUMN_WIDTH * scale);
@@ -224,11 +229,16 @@ export async function updateFooter(providedConfig = null) {
 // MAIN RENDER FUNCTION
 // ======================================================
 
+let activeRenderSeq = 0;
+
 export async function render(providedConfig = null) {
+  const seq = ++activeRenderSeq;
   const config = providedConfig || await loadConfig();
+  if (seq !== activeRenderSeq) return;
   resetIconHydrationQueue();
   renderGroups(true, config);
   await renderBookmarks(config);
+  if (seq !== activeRenderSeq) return;
 
   // Apply grid layout after rendering
   calculateGridLayout();

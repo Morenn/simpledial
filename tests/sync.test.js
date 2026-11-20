@@ -81,7 +81,19 @@ globalThis.chrome = {
   }
 };
 
-const [{ state, getTagUsageCounts, updateTagInState, deleteTagFromState, removeUnusedTagsFromState }, { syncNow, syncWrite, syncWebdavFolderExtras }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
+const [{
+  state,
+  SYSTEM_TAG_HTTP_ID,
+  SYSTEM_TAG_DEAD_LINK_ID,
+  getBookmarkSystemTagIds,
+  setBookmarkSystemTag,
+  clearSystemTagFromAllBookmarks,
+  isReservedSystemTagName,
+  getTagUsageCounts,
+  updateTagInState,
+  deleteTagFromState,
+  removeUnusedTagsFromState
+}, { syncNow, syncWrite, syncWebdavFolderExtras }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
   import("../newtab/state.js"),
   import("../newtab/sync.js"),
   import("../newtab/config.js")
@@ -1089,6 +1101,37 @@ test("tag management helpers update, merge, count, delete, and remove unused tag
   assert.equal(state.tags.find(t => t.id === "t1").deleted, true);
   assert.deepEqual(state.groups[0].items[0].tags, []);
   assert.deepEqual(stackChild.tags, []);
+});
+
+test("system tags are counted in usage counts, reserve names, and stay local-only", () => {
+  state.tags = [];
+  state.groups = [
+    {
+      ...group([
+        item("b_sys_1", "HTTP Site", 100),
+        item("b_sys_2", "Dead Site", 100)
+      ]),
+      id: "g_sys"
+    }
+  ];
+
+  assert.equal(isReservedSystemTagName("⚠️ HTTP"), true);
+  assert.equal(isReservedSystemTagName("  ⛔dead link "), true);
+  assert.equal(isReservedSystemTagName("My Custom Tag"), false);
+
+  assert.equal(setBookmarkSystemTag("b_sys_1", SYSTEM_TAG_HTTP_ID, true), true);
+  assert.equal(setBookmarkSystemTag("b_sys_2", SYSTEM_TAG_DEAD_LINK_ID, true), true);
+  assert.deepEqual(getBookmarkSystemTagIds("b_sys_1"), [SYSTEM_TAG_HTTP_ID]);
+
+  const counts = getTagUsageCounts();
+  assert.equal(counts.get(SYSTEM_TAG_HTTP_ID), 1);
+  assert.equal(counts.get(SYSTEM_TAG_DEAD_LINK_ID), 1);
+
+  assert.equal(clearSystemTagFromAllBookmarks(SYSTEM_TAG_HTTP_ID), 1);
+  assert.deepEqual(getBookmarkSystemTagIds("b_sys_1"), []);
+  assert.equal(getTagUsageCounts().get(SYSTEM_TAG_HTTP_ID) || 0, 0);
+
+  assert.equal(clearSystemTagFromAllBookmarks(SYSTEM_TAG_DEAD_LINK_ID), 1);
 });
 
 test("reordered object keys and undefined properties do not trigger false sync or remote PUT", async () => {

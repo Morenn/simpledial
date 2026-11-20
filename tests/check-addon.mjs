@@ -35,7 +35,7 @@ for (const file of javascriptFiles) {
   }
 }
 
-const manifests = ["manifest.json", "manifest.json.chromium", "manifest.json.gecko"];
+const manifests = ["manifest.json.chromium", "manifest.json.gecko"];
 for (const file of manifests) {
   const manifest = JSON.parse(await readFile(path.join(root, file), "utf8"));
   const newTabPage = manifest.chrome_url_overrides?.newtab;

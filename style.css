@@ -524,6 +524,7 @@ main,
   gap: 0.95rem;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   padding: 0.25rem 0.35rem 1rem;
 }
 

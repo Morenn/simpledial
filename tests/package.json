@@ -5,6 +5,6 @@
   "scripts": {
     "check": "node check-addon.mjs",
     "test:sync": "node --test sync.test.js",
-    "test": "node check-addon.mjs && node --test backup.test.js sync.test.js custom-widgets.test.js"
+    "test": "node check-addon.mjs && node --test backup.test.js browser-import.test.js config.test.js custom-widgets.test.js keyboard-nav.test.js sync.test.js vault.test.js"
   }
 }
