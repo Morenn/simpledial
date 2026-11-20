@@ -1876,5 +1876,38 @@
   },
   "hkSystemTagNameReserved": {
     "message": "This tag name is reserved for a system tag."
+  },
+  "customWidgetModeRssFeed": {
+    "message": "RSS / Atom Feed"
+  },
+  "customRssAddTitle": {
+    "message": "Add RSS / Atom Feed Widget"
+  },
+  "customRssNamePlaceholder": {
+    "message": "Name (e.g. Hacker News)"
+  },
+  "customRssFeedUrlLabel": {
+    "message": "Feed URL (RSS / Atom / JSON Feed)"
+  },
+  "customRssRefreshLabel": {
+    "message": "Refresh (minutes)"
+  },
+  "customRssMaxItemsLabel": {
+    "message": "Max headlines"
+  },
+  "customRssInvalidError": {
+    "message": "Enter a widget name and valid http(s) feed URL."
+  },
+  "rssLoading": {
+    "message": "Loading feed..."
+  },
+  "rssEmpty": {
+    "message": "No articles available."
+  },
+  "rssMarkAllRead": {
+    "message": "Mark all read"
+  },
+  "rssJustNow": {
+    "message": "just now"
   }
 }

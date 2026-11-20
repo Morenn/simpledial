@@ -26,7 +26,13 @@ import {
   fetchAndEvaluateRestWidget,
   requestRestEndpointPermission,
   pollAllRestStatusWidgets,
-  groupRestStatusWidgets
+  groupRestStatusWidgets,
+  groupRssFeedWidgets,
+  isValidRssFeedUrl,
+  normalizeRssRefreshMinutes,
+  normalizeRssMaxItems,
+  requestRssFeedPermission,
+  pollAllRssFeedWidgets
 } from "../custom-widgets.js";
 import { normalizeCustomIconValue, applyCachedIconImageSrc } from "../color-utils.js";
 import { loadConfig } from "../config.js";
@@ -97,6 +103,10 @@ const customWidgetRestTestBtn = document.getElementById("custom-widget-rest-test
 const customWidgetRestTestResult = document.getElementById("custom-widget-rest-test-result");
 const customWidgetNotesSection = document.getElementById("custom-widget-notes-section");
 const customWidgetNotesCompact = document.getElementById("custom-widget-notes-compact");
+const customWidgetRssSection = document.getElementById("custom-widget-rss-section");
+const customWidgetRssUrl = document.getElementById("custom-widget-rss-url");
+const customWidgetRssRefresh = document.getElementById("custom-widget-rss-refresh");
+const customWidgetRssMaxItems = document.getElementById("custom-widget-rss-max-items");
 const customWidgetNewTabLabel = customWidgetNewTabInput?.closest(".custom-widget-newtab-label");
 const customWidgetDefaultLabel = customWidgetDefaultInput?.closest(".custom-widget-default-label");
 const customWidgetAddBtn = document.getElementById("custom-widget-add-btn");
@@ -175,7 +185,8 @@ export function initCustomWidgetsSettings() {
     const customWidgetMap = new Map(customWidgets.filter(w => w?.id).map(w => [w.id, w]));
     const customGroups = [
       ...groupCustomSearchWidgets(customWidgets),
-      ...groupRestStatusWidgets(customWidgets)
+      ...groupRestStatusWidgets(customWidgets),
+      ...groupRssFeedWidgets(customWidgets)
     ];
     const customGroupByRepId = new Map(customGroups.map(g => [g.representative.id, g]));
     const secondaryCustomIds = new Set();
@@ -330,8 +341,9 @@ export function initCustomWidgetsSettings() {
           markSettingsDirty();
           const draft = await ensureAppearanceDraft();
           if (isCustom) {
+            const memberIds = customGroup ? new Set(customGroup.members.map(m => m.id)) : new Set([key]);
             draft.customWidgets = (draft.customWidgets || []).map(w => {
-              if (w.id !== key) return w;
+              if (!memberIds.has(w.id)) return w;
               const prevActive = (w.space && w.space !== "disabled") ? w.space : (w.lastActiveSpace || "right");
               return {
                 ...w,
@@ -674,17 +686,20 @@ export function initCustomWidgetsSettings() {
       const isTimezone = customDef.type === "timezone";
       const isRestStatus = customDef.type === "rest-status";
       const isNotes = customDef.type === "notes";
-      const isNonSearch = isTimezone || isRestStatus || isNotes;
+      const isRssFeed = customDef.type === "rss-feed";
+      const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed;
       const tzList = isTimezone ? normalizeCustomTimeZones(customDef.timeZones) : [];
       const badge = document.createElement("span");
       badge.className = "custom-widget-mode-badge";
-      badge.textContent = isNotes
-        ? "📝"
-        : (isRestStatus
-          ? "REST"
-          : (isTimezone
-            ? `🕒 ${tzList.length}`
-            : (customDef.mode === "json" ? "JSON" : "Simple")));
+      badge.textContent = isRssFeed
+        ? "RSS"
+        : (isNotes
+          ? "📝"
+          : (isRestStatus
+            ? "REST"
+            : (isTimezone
+              ? `🕒 ${tzList.length}`
+              : (customDef.mode === "json" ? "JSON" : "Simple"))));
       titleEl.appendChild(badge);
       const groupName = !isNonSearch && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
       if (groupName && !insideGroup) {
@@ -711,13 +726,15 @@ export function initCustomWidgetsSettings() {
 
       const urlEl = document.createElement("div");
       urlEl.className = "custom-widget-library-url";
-      const rawSubtitle = isNotes
-        ? (customDef.compactMode ? (t("customNotesCompactMode") || "Compact button only") : (t("customWidgetModeNotes") || "Notes / Scratchpad"))
-        : (isRestStatus
-          ? (customDef.endpointUrl || "")
-          : (isTimezone
-            ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
-            : (customDef.urlTemplate || "")));
+      const rawSubtitle = isRssFeed
+        ? (customDef.feedUrl || "")
+        : (isNotes
+          ? (customDef.compactMode ? (t("customNotesCompactMode") || "Compact button only") : (t("customWidgetModeNotes") || "Notes / Scratchpad"))
+          : (isRestStatus
+            ? (customDef.endpointUrl || "")
+            : (isTimezone
+              ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
+              : (customDef.urlTemplate || ""))));
       urlEl.textContent = (isNotes || isTimezone) ? rawSubtitle : formatCompactWidgetSubtitle(rawSubtitle);
       if (rawSubtitle) {
         urlEl.title = rawSubtitle;
@@ -1406,23 +1423,28 @@ export function initCustomWidgetsSettings() {
     const isTimezone = mode === "timezone";
     const isRestStatus = mode === "rest-status";
     const isNotes = mode === "notes";
-    const isNonSearch = isTimezone || isRestStatus || isNotes;
+    const isRssFeed = mode === "rss-feed";
+    const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed;
 
     if (customWidgetAddTitle) {
       if (editingCustomWidgetId) {
         customWidgetAddTitle.setAttribute("data-i18n", "customWidgetEditTitle");
         customWidgetAddTitle.textContent = t("customWidgetEditTitle") || "Edit Custom Widget";
       } else {
-        const titleKey = isNotes
-          ? "customNotesAddTitle"
-          : (isRestStatus
-            ? "customRestAddTitle"
-            : (isTimezone ? "customTzAddTitle" : "customSearchAddTitle"));
-        const titleFallback = isNotes
-          ? "Add Notes / Scratchpad Widget"
-          : (isRestStatus
-            ? "Add REST / JSON Status Widget"
-            : (isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget"));
+        const titleKey = isRssFeed
+          ? "customRssAddTitle"
+          : (isNotes
+            ? "customNotesAddTitle"
+            : (isRestStatus
+              ? "customRestAddTitle"
+              : (isTimezone ? "customTzAddTitle" : "customSearchAddTitle")));
+        const titleFallback = isRssFeed
+          ? "Add RSS / Atom Feed Widget"
+          : (isNotes
+            ? "Add Notes / Scratchpad Widget"
+            : (isRestStatus
+              ? "Add REST / JSON Status Widget"
+              : (isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget")));
         customWidgetAddTitle.setAttribute("data-i18n", titleKey);
         customWidgetAddTitle.textContent = t(titleKey) || titleFallback;
       }
@@ -1439,6 +1461,9 @@ export function initCustomWidgetsSettings() {
     }
     if (customWidgetNotesSection) {
       customWidgetNotesSection.classList.toggle("hidden", !isNotes);
+    }
+    if (customWidgetRssSection) {
+      customWidgetRssSection.classList.toggle("hidden", !isRssFeed);
     }
     if (customWidgetVarsSection) {
       customWidgetVarsSection.classList.toggle("hidden", isNonSearch);
@@ -1468,19 +1493,21 @@ export function initCustomWidgetsSettings() {
       customWidgetPreviewBox.classList.add("hidden");
     }
     if (customWidgetNameInput) {
-      customWidgetNameInput.placeholder = isNotes
-        ? (t("notesDefaultName") || "Notes")
-        : (isRestStatus
-          ? (t("customRestNamePlaceholder") || "Name (e.g. Pi-hole, Proxmox)")
-          : (isTimezone
-            ? (t("customTzDefaultName") || "Time Zones")
-            : (t("customSearchNamePlaceholder") || "Name (e.g. Google)")));
+      customWidgetNameInput.placeholder = isRssFeed
+        ? (t("customRssNamePlaceholder") || "Name (e.g. Hacker News)")
+        : (isNotes
+          ? (t("notesDefaultName") || "Notes")
+          : (isRestStatus
+            ? (t("customRestNamePlaceholder") || "Name (e.g. Pi-hole, Proxmox)")
+            : (isTimezone
+              ? (t("customTzDefaultName") || "Time Zones")
+              : (t("customSearchNamePlaceholder") || "Name (e.g. Google)"))));
     }
     if (customWidgetIconInput && !editingCustomWidgetId) {
       const val = customWidgetIconInput.value;
-      const defaultIcons = new Set(["🔎", "🕒", "📡", "📝"]);
+      const defaultIcons = new Set(["🔎", "🕒", "📡", "📝", "📰"]);
       if (defaultIcons.has(val)) {
-        customWidgetIconInput.value = isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"));
+        customWidgetIconInput.value = isRssFeed ? "📰" : (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎")));
       }
     }
   };
@@ -1679,6 +1706,9 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestMetrics) customWidgetRestMetrics.value = "";
     if (customWidgetRestCollapseMetrics) customWidgetRestCollapseMetrics.checked = false;
     if (customWidgetNotesCompact) customWidgetNotesCompact.checked = false;
+    if (customWidgetRssUrl) customWidgetRssUrl.value = "";
+    if (customWidgetRssRefresh) customWidgetRssRefresh.value = "30";
+    if (customWidgetRssMaxItems) customWidgetRssMaxItems.value = "15";
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     if (customWidgetAdvancedDetails) customWidgetAdvancedDetails.open = false;
     syncCustomWidgetModeUI();
@@ -1692,18 +1722,21 @@ export function initCustomWidgetsSettings() {
     const isTimezone = widget.type === "timezone";
     const isRestStatus = widget.type === "rest-status";
     const isNotes = widget.type === "notes";
-    const isNonSearch = isTimezone || isRestStatus || isNotes;
+    const isRssFeed = widget.type === "rss-feed";
+    const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed;
     editingCustomWidgetId = widget.id;
     if (customWidgetIconInput) {
-      customWidgetIconInput.value = widget.icon || (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎")));
+      customWidgetIconInput.value = widget.icon || (isRssFeed ? "📰" : (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"))));
     }
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = widget.customIcon || "";
     if (customWidgetModeSelect) {
-      customWidgetModeSelect.value = isNotes
-        ? "notes"
-        : (isRestStatus
-          ? "rest-status"
-          : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple")));
+      customWidgetModeSelect.value = isRssFeed
+        ? "rss-feed"
+        : (isNotes
+          ? "notes"
+          : (isRestStatus
+            ? "rest-status"
+            : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple"))));
     }
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
     const initialGroupName = isTimezone || isNotes ? "" : (widget.groupName || "");
@@ -1756,6 +1789,9 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestMetrics) customWidgetRestMetrics.value = formatRestMetricsText(widget.metrics);
     if (customWidgetRestCollapseMetrics) customWidgetRestCollapseMetrics.checked = !!widget.collapseMetrics;
     if (customWidgetNotesCompact) customWidgetNotesCompact.checked = !!widget.compactMode;
+    if (customWidgetRssUrl) customWidgetRssUrl.value = widget.feedUrl || "";
+    if (customWidgetRssRefresh) customWidgetRssRefresh.value = String(normalizeRssRefreshMinutes(widget.refreshMinutes));
+    if (customWidgetRssMaxItems) customWidgetRssMaxItems.value = String(normalizeRssMaxItems(widget.maxItems));
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
     if (customWidgetStatus) customWidgetStatus.textContent = "";
@@ -1995,13 +2031,14 @@ export function initCustomWidgetsSettings() {
       const isTimezone = selectedMode === "timezone";
       const isRestStatus = selectedMode === "rest-status";
       const isNotes = selectedMode === "notes";
+      const isRssFeed = selectedMode === "rss-feed";
       const mode = selectedMode === "json" ? "json" : "simple";
       const name = (customWidgetNameInput?.value || "").trim();
       const rawGroupName = (customWidgetGroupSelect?.value || "").trim();
       const groupName = rawGroupName === "__create__" ? "" : rawGroupName;
       const urlTemplate = (customWidgetUrlInput?.value || "").trim();
       const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
-      const defaultIcon = isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"));
+      const defaultIcon = isRssFeed ? "📰" : (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎")));
       const icon = (customWidgetIconInput?.value || defaultIcon).trim() || defaultIcon;
       const rawCustomIcon = (customWidgetCustomIconInput?.value || "").trim();
       let customIcon = null;
@@ -2059,6 +2096,52 @@ export function initCustomWidgetsSettings() {
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();
+        return;
+      }
+
+      if (isRssFeed) {
+        const feedUrl = (customWidgetRssUrl?.value || "").trim();
+        if (!name || !isValidRssFeedUrl(feedUrl)) {
+          if (customWidgetEditorStatus) {
+            customWidgetEditorStatus.textContent = "❌ " + (t("customRssInvalidError") || "Enter a widget name and valid http(s) feed URL.");
+          }
+          return;
+        }
+        await requestRssFeedPermission(feedUrl);
+        const rssFields = {
+          type: "rss-feed",
+          name,
+          groupName,
+          icon,
+          customIcon,
+          feedUrl,
+          refreshMinutes: normalizeRssRefreshMinutes(customWidgetRssRefresh?.value),
+          maxItems: normalizeRssMaxItems(customWidgetRssMaxItems?.value)
+        };
+        if (customWidgetStatus) customWidgetStatus.textContent = "";
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        if (editingCustomWidgetId) {
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w.id === editingCustomWidgetId ? { ...w, ...rssFields } : w
+          );
+        } else {
+          const newWidget = {
+            id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            ...rssFields,
+            space: "header",
+            align: "auto",
+            newRow: false
+          };
+          draft.customWidgets = [...(draft.customWidgets || []), newWidget];
+          draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
+        }
+        closeCustomWidgetEditorModal();
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+        void pollAllRssFeedWidgets({ force: true });
         return;
       }
 

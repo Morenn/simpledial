@@ -1849,5 +1849,38 @@
   },
   "hkSystemTagNameReserved": {
     "message": "Tämä tunnisteen nimi on varattu järjestelmätunnisteelle."
+  },
+  "customWidgetModeRssFeed": {
+    "message": "RSS / Atom-syöte"
+  },
+  "customRssAddTitle": {
+    "message": "Lisää RSS / Atom-widget"
+  },
+  "customRssNamePlaceholder": {
+    "message": "Nimi (esim. Hacker News)"
+  },
+  "customRssFeedUrlLabel": {
+    "message": "Syötteen URL (RSS / Atom / JSON Feed)"
+  },
+  "customRssRefreshLabel": {
+    "message": "Päivitys (minuuttia)"
+  },
+  "customRssMaxItemsLabel": {
+    "message": "Enint. otsikoita"
+  },
+  "customRssInvalidError": {
+    "message": "Anna nimi ja kelvollinen http(s)-syöte-URL."
+  },
+  "rssLoading": {
+    "message": "Ladataan syötettä..."
+  },
+  "rssEmpty": {
+    "message": "Ei artikkeleita."
+  },
+  "rssMarkAllRead": {
+    "message": "Merkitse kaikki luetuiksi"
+  },
+  "rssJustNow": {
+    "message": "juuri nyt"
   }
 }

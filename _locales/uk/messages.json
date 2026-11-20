@@ -1849,5 +1849,38 @@
   },
   "hkSystemTagNameReserved": {
     "message": "Ця назва тегу зарезервована для системного тегу."
+  },
+  "customWidgetModeRssFeed": {
+    "message": "RSS / Atom стрічка"
+  },
+  "customRssAddTitle": {
+    "message": "Додати RSS / Atom віджет"
+  },
+  "customRssNamePlaceholder": {
+    "message": "Назва (напр. Hacker News)"
+  },
+  "customRssFeedUrlLabel": {
+    "message": "URL стрічки (RSS / Atom / JSON Feed)"
+  },
+  "customRssRefreshLabel": {
+    "message": "Оновлення (хвилини)"
+  },
+  "customRssMaxItemsLabel": {
+    "message": "Макс. заголовків"
+  },
+  "customRssInvalidError": {
+    "message": "Введіть назву та дійсний http(s) URL стрічки."
+  },
+  "rssLoading": {
+    "message": "Завантаження стрічки..."
+  },
+  "rssEmpty": {
+    "message": "Немає статей."
+  },
+  "rssMarkAllRead": {
+    "message": "Позначити все як прочитане"
+  },
+  "rssJustNow": {
+    "message": "щойно"
   }
 }

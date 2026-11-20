@@ -58,6 +58,19 @@ import {
   openNotesWidgetModal,
   syncCustomNotesWidgetElements
 } from "./widgets/notes-widget.js";
+import {
+  isValidRssFeedUrl,
+  normalizeRssRefreshMinutes,
+  normalizeRssMaxItems,
+  groupRssFeedWidgets,
+  parseFeedResponse,
+  fetchRssFeedWidget,
+  requestRssFeedPermission,
+  pollAllRssFeedWidgets,
+  startRssFeedPolling,
+  openRssFeedModal,
+  syncCustomRssWidgetElements
+} from "./widgets/rss-widget.js";
 
 export {
   VALID_WIDGET_SPACES,
@@ -107,7 +120,18 @@ export {
   checkDueNoteReminders,
   startNotesReminderPolling,
   openNotesWidgetModal,
-  syncCustomNotesWidgetElements
+  syncCustomNotesWidgetElements,
+  isValidRssFeedUrl,
+  normalizeRssRefreshMinutes,
+  normalizeRssMaxItems,
+  groupRssFeedWidgets,
+  parseFeedResponse,
+  fetchRssFeedWidget,
+  requestRssFeedPermission,
+  pollAllRssFeedWidgets,
+  startRssFeedPolling,
+  openRssFeedModal,
+  syncCustomRssWidgetElements
 };
 
 function getWidgetGroupKeySet(widgets = []) {
@@ -185,6 +209,16 @@ export function serializeCustomWidgetsExport(widgets = [], {
           compactMode: !!w.compactMode
         };
       }
+      if (w?.type === "rss-feed") {
+        return {
+          ...base,
+          type: "rss-feed",
+          feedUrl: isValidRssFeedUrl(w.feedUrl) ? w.feedUrl.trim() : "",
+          refreshMinutes: normalizeRssRefreshMinutes(w.refreshMinutes),
+          maxItems: normalizeRssMaxItems(w.maxItems),
+          groupName: typeof w.groupName === "string" ? w.groupName.trim() : ""
+        };
+      }
       if (w?.type === "rest-status") {
         return {
           ...base,
@@ -253,6 +287,7 @@ export function parseImportedCustomWidgets(parsed) {
     !Array.isArray(parsed.customWidgets) &&
     typeof parsed.urlTemplate !== "string" &&
     typeof parsed.endpointUrl !== "string" &&
+    typeof parsed.feedUrl !== "string" &&
     typeof parsed.name !== "string" &&
     !Array.isArray(parsed.timeZones)
   ) {
@@ -288,6 +323,32 @@ export function parseImportedCustomWidgets(parsed) {
         customIcon,
         compactMode: !!raw.compactMode,
         space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "right",
+        align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
+        newRow: !!raw.newRow,
+        ...(sourceUrl ? { sourceUrl } : {}),
+        ...(typeof raw.sourceUpdatedAt === "string" && raw.sourceUpdatedAt ? { sourceUpdatedAt: raw.sourceUpdatedAt } : {})
+      });
+      continue;
+    }
+
+    if (raw.type === "rss-feed" || (typeof raw.feedUrl === "string" && typeof raw.urlTemplate !== "string")) {
+      const name = typeof raw.name === "string" ? raw.name.trim() : "";
+      const feedUrl = typeof raw.feedUrl === "string" ? raw.feedUrl.trim() : "";
+      if (!name || !isValidRssFeedUrl(feedUrl)) {
+        skipped++;
+        continue;
+      }
+      widgets.push({
+        id,
+        type: "rss-feed",
+        name,
+        icon: emoji.slice(0, 4),
+        customIcon,
+        feedUrl,
+        refreshMinutes: normalizeRssRefreshMinutes(raw.refreshMinutes),
+        maxItems: normalizeRssMaxItems(raw.maxItems),
+        groupName: typeof raw.groupName === "string" ? raw.groupName.trim() : "",
+        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "header",
         align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
         newRow: !!raw.newRow,
         ...(sourceUrl ? { sourceUrl } : {}),

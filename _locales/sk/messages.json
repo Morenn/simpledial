@@ -1849,5 +1849,38 @@
   },
   "hkSystemTagNameReserved": {
     "message": "Tento názov štítku je vyhradený pre systémový štítok."
+  },
+  "customWidgetModeRssFeed": {
+    "message": "RSS / Atom kanál"
+  },
+  "customRssAddTitle": {
+    "message": "Pridať RSS / Atom widget"
+  },
+  "customRssNamePlaceholder": {
+    "message": "Názov (napr. Hacker News)"
+  },
+  "customRssFeedUrlLabel": {
+    "message": "URL kanála (RSS / Atom / JSON Feed)"
+  },
+  "customRssRefreshLabel": {
+    "message": "Obnovenie (minúty)"
+  },
+  "customRssMaxItemsLabel": {
+    "message": "Max. počet titulkov"
+  },
+  "customRssInvalidError": {
+    "message": "Zadajte názov widgetu a platnú http(s) URL kanála."
+  },
+  "rssLoading": {
+    "message": "Načítavam kanál..."
+  },
+  "rssEmpty": {
+    "message": "Žiadne články."
+  },
+  "rssMarkAllRead": {
+    "message": "Označiť všetko ako prečítané"
+  },
+  "rssJustNow": {
+    "message": "práve teraz"
   }
 }

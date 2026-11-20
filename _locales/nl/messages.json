@@ -1849,5 +1849,38 @@
   },
   "hkSystemTagNameReserved": {
     "message": "Deze tagnaam is gereserveerd voor een systeemtag."
+  },
+  "customWidgetModeRssFeed": {
+    "message": "RSS / Atom-feed"
+  },
+  "customRssAddTitle": {
+    "message": "RSS / Atom-feedwidget toevoegen"
+  },
+  "customRssNamePlaceholder": {
+    "message": "Naam (bijv. Hacker News)"
+  },
+  "customRssFeedUrlLabel": {
+    "message": "Feed-URL (RSS / Atom / JSON Feed)"
+  },
+  "customRssRefreshLabel": {
+    "message": "Vernieuwen (minuten)"
+  },
+  "customRssMaxItemsLabel": {
+    "message": "Max. koppen"
+  },
+  "customRssInvalidError": {
+    "message": "Voer een naam en geldige http(s) feed-URL in."
+  },
+  "rssLoading": {
+    "message": "Feed laden..."
+  },
+  "rssEmpty": {
+    "message": "Geen artikelen beschikbaar."
+  },
+  "rssMarkAllRead": {
+    "message": "Alles als gelezen markeren"
+  },
+  "rssJustNow": {
+    "message": "zojuist"
   }
 }

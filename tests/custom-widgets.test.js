@@ -51,7 +51,8 @@ const {
   formatTimeForTimeZone,
   resolveCustomWidgetIcon,
   applyCustomWidgetUpdate,
-  revertCustomWidgetVersion
+  revertCustomWidgetVersion,
+  parseFeedResponse
 } = await import("../newtab/custom-widgets.js");
 
 test("simple mode replaces multiple placeholders and encodes values", () => {
@@ -959,4 +960,75 @@ test("parseImportedCustomWidgets resolves legacy timezone abbreviations like IST
   assert.equal(imported.widgets[0].timeZones[1].label, "India");
   assert.ok(["IST", "Asia/Kolkata"].includes(imported.widgets[0].timeZones[1].timeZone));
   assert.equal(imported.widgets[0].timeZones[2].label, "IST");
+});
+
+test("parseFeedResponse parses RSS 2.0, Atom, JSON Feed, and rejects unsafe links", () => {
+  const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0">
+      <channel>
+        <title>Tech News</title>
+        <item>
+          <title><![CDATA[Hello <b>World</b> &amp; Friends]]></title>
+          <link>https://news.example/post-1</link>
+          <guid>post-1</guid>
+          <pubDate>Fri, 20 Nov 2026 10:00:00 GMT</pubDate>
+        </item>
+        <item>
+          <title>Bad XSS</title>
+          <link>javascript:alert(1)</link>
+        </item>
+      </channel>
+    </rss>`;
+  const rssParsed = parseFeedResponse(rssXml, "https://news.example/rss.xml");
+  assert.equal(rssParsed.feedTitle, "Tech News");
+  assert.equal(rssParsed.items.length, 1);
+  assert.equal(rssParsed.items[0].title, "Hello World & Friends");
+  assert.equal(rssParsed.items[0].link, "https://news.example/post-1");
+
+  const atomXml = `<?xml version="1.0" encoding="utf-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <title>Atom Updates</title>
+      <entry>
+        <title>Release v2</title>
+        <link rel="alternate" href="/releases/v2"/>
+        <id>tag:example,2026:v2</id>
+        <updated>2026-11-20T12:00:00Z</updated>
+      </entry>
+    </feed>`;
+  const atomParsed = parseFeedResponse(atomXml, "https://atom.example/feed.atom");
+  assert.equal(atomParsed.items.length, 1);
+  assert.equal(atomParsed.items[0].link, "https://atom.example/releases/v2");
+
+  const jsonFeed = JSON.stringify({
+    version: "https://jsonfeed.org/version/1.1",
+    title: "JSON Feed",
+    items: [
+      { id: "jf-1", title: "JSON Item", url: "https://jf.example/1", date_published: "2026-11-20T09:00:00Z" }
+    ]
+  });
+  const jsonParsed = parseFeedResponse(jsonFeed, "https://jf.example/feed.json");
+  assert.equal(jsonParsed.items.length, 1);
+  assert.equal(jsonParsed.items[0].title, "JSON Item");
+
+  const exported = serializeCustomWidgetsExport([
+    {
+      id: "cw-rss-1",
+      type: "rss-feed",
+      name: "HN",
+      icon: "📰",
+      feedUrl: "https://news.ycombinator.com/rss",
+      refreshMinutes: 15,
+      maxItems: 10,
+      groupName: "News",
+      space: "header"
+    }
+  ]);
+  const imported = parseImportedCustomWidgets(exported);
+  assert.equal(imported.validFormat, true);
+  assert.equal(imported.widgets.length, 1);
+  assert.equal(imported.widgets[0].type, "rss-feed");
+  assert.equal(imported.widgets[0].feedUrl, "https://news.ycombinator.com/rss");
+  assert.equal(imported.widgets[0].refreshMinutes, 15);
+  assert.equal(imported.widgets[0].maxItems, 10);
+  assert.equal(imported.widgets[0].groupName, "News");
 });

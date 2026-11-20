@@ -9,6 +9,7 @@ import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypt
 
 let tzWidgetMod = null;
 let restWidgetMod = null;
+let rssWidgetMod = null;
 let notesReminderStarted = false;
 
 function startActiveCustomWidgets(config) {
@@ -30,6 +31,13 @@ function startActiveCustomWidgets(config) {
     notesReminderStarted = true;
     void import("./widgets/notes-widget.js").then(m => {
       m.startNotesReminderPolling();
+    });
+  }
+  if (!rssWidgetMod && customWidgets.some(w => w?.type === "rss-feed" && w?.space !== "disabled")) {
+    void import("./widgets/rss-widget.js").then(m => {
+      rssWidgetMod = m;
+      void m.pollAllRssFeedWidgets({ force: false });
+      m.startRssFeedPolling();
     });
   }
 }

@@ -1285,6 +1285,7 @@
           <option value="timezone" data-i18n="customWidgetModeTimezone">Time zones (clock only)</option>
           <option value="rest-status" data-i18n="customWidgetModeRestStatus">REST / JSON Status Badge</option>
           <option value="notes" data-i18n="customWidgetModeNotes">Notes / Scratchpad</option>
+          <option value="rss-feed" data-i18n="customWidgetModeRssFeed">RSS / Atom Feed</option>
         </select>
       </div>
       <div class="custom-widget-add-block">
@@ -1386,6 +1387,23 @@
             <input type="checkbox" id="custom-widget-notes-compact">
             <span data-i18n="customNotesCompactMode">Compact button only (edit in modal)</span>
           </label>
+        </div>
+
+        <div id="custom-widget-rss-section" class="custom-widget-rss-section hidden">
+          <div class="custom-widget-field">
+            <label for="custom-widget-rss-url" class="custom-widget-field-label" data-i18n="customRssFeedUrlLabel">Feed URL (RSS / Atom / JSON Feed)</label>
+            <input type="url" id="custom-widget-rss-url" name="custom-widget-rss-url" class="sync-compact-input" placeholder="https://example.com/feed.xml">
+          </div>
+          <div class="custom-widget-rest-row">
+            <div class="custom-widget-field">
+              <label for="custom-widget-rss-refresh" class="custom-widget-field-label" data-i18n="customRssRefreshLabel">Refresh (minutes)</label>
+              <input type="number" id="custom-widget-rss-refresh" name="custom-widget-rss-refresh" class="sync-compact-input" min="5" max="1440" value="30">
+            </div>
+            <div class="custom-widget-field">
+              <label for="custom-widget-rss-max-items" class="custom-widget-field-label" data-i18n="customRssMaxItemsLabel">Max headlines</label>
+              <input type="number" id="custom-widget-rss-max-items" name="custom-widget-rss-max-items" class="sync-compact-input" min="1" max="50" value="15">
+            </div>
+          </div>
         </div>
 
         <details id="custom-widget-advanced-details" class="custom-widget-advanced-details">

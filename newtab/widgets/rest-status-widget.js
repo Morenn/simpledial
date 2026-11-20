@@ -288,7 +288,7 @@ function getOriginPermissionPattern(rawUrl) {
   }
 }
 
-async function hasHostPermissionForUrl(rawUrl) {
+export async function hasHostPermissionForUrl(rawUrl) {
   const pattern = getOriginPermissionPattern(rawUrl);
   if (!pattern) return false;
   if (typeof chrome === "undefined" || !chrome.permissions?.contains) return true;

@@ -1849,5 +1849,38 @@
   },
   "hkSystemTagNameReserved": {
     "message": "Ce nom d'étiquette est réservé à une étiquette système."
+  },
+  "customWidgetModeRssFeed": {
+    "message": "Flux RSS / Atom"
+  },
+  "customRssAddTitle": {
+    "message": "Ajouter un widget RSS / Atom"
+  },
+  "customRssNamePlaceholder": {
+    "message": "Nom (ex. Hacker News)"
+  },
+  "customRssFeedUrlLabel": {
+    "message": "URL du flux (RSS / Atom / JSON Feed)"
+  },
+  "customRssRefreshLabel": {
+    "message": "Actualisation (minutes)"
+  },
+  "customRssMaxItemsLabel": {
+    "message": "Max. titres"
+  },
+  "customRssInvalidError": {
+    "message": "Entrez un nom et une URL de flux http(s) valide."
+  },
+  "rssLoading": {
+    "message": "Chargement du flux..."
+  },
+  "rssEmpty": {
+    "message": "Aucun article disponible."
+  },
+  "rssMarkAllRead": {
+    "message": "Tout marquer comme lu"
+  },
+  "rssJustNow": {
+    "message": "à l'instant"
   }
 }

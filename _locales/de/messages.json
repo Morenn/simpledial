@@ -1849,5 +1849,38 @@
   },
   "hkSystemTagNameReserved": {
     "message": "Dieser Tag-Name ist für einen System-Tag reserviert."
+  },
+  "customWidgetModeRssFeed": {
+    "message": "RSS / Atom-Feed"
+  },
+  "customRssAddTitle": {
+    "message": "RSS / Atom-Feed-Widget hinzufügen"
+  },
+  "customRssNamePlaceholder": {
+    "message": "Name (z. B. Hacker News)"
+  },
+  "customRssFeedUrlLabel": {
+    "message": "Feed-URL (RSS / Atom / JSON Feed)"
+  },
+  "customRssRefreshLabel": {
+    "message": "Aktualisierung (Minuten)"
+  },
+  "customRssMaxItemsLabel": {
+    "message": "Max. Schlagzeilen"
+  },
+  "customRssInvalidError": {
+    "message": "Geben Sie einen Namen und eine gültige http(s)-Feed-URL ein."
+  },
+  "rssLoading": {
+    "message": "Feed wird geladen..."
+  },
+  "rssEmpty": {
+    "message": "Keine Artikel verfügbar."
+  },
+  "rssMarkAllRead": {
+    "message": "Alle als gelesen markieren"
+  },
+  "rssJustNow": {
+    "message": "gerade eben"
   }
 }
