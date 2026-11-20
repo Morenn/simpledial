@@ -399,7 +399,9 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
         }))
       };
 
-      const dataStr = JSON.stringify(exportData);
+      const dataStr = JSON.stringify(exportData).replace(/[\u007f-\uffff]/g, (ch) =>
+        `\\u${ch.charCodeAt(0).toString(16).padStart(4, "0")}`
+      );
       const dataBlob = new Blob([dataStr], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement("a");

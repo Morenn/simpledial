@@ -479,6 +479,7 @@ function renderNotesModalContent(widgetId) {
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
+    checkbox.name = `notes-todo-done-${widgetId}-${todo.id}`;
     checkbox.checked = todo.done;
     checkbox.addEventListener("change", () => {
       void updateNotesData(widgetId, cur =>

@@ -407,6 +407,71 @@ export function revertCustomWidgetVersion(widget) {
   };
 }
 
+export function stringifyAsciiJson(value) {
+  return JSON.stringify(value).replace(/[\u007f-\uffff]/g, (ch) =>
+    `\\u${ch.charCodeAt(0).toString(16).padStart(4, "0")}`
+  );
+}
+
+function buildSingleByteReverseMap(encoding) {
+  const map = new Map();
+  try {
+    const decoder = new TextDecoder(encoding);
+    const buf = new Uint8Array(128);
+    for (let i = 0; i < 128; i++) buf[i] = 0x80 + i;
+    const chars = decoder.decode(buf);
+    for (let i = 0; i < 128 && i < chars.length; i++) {
+      const cp = chars.codePointAt(i);
+      if (cp >= 0x80) {
+        map.set(cp, 0x80 + i);
+      }
+    }
+  } catch {
+    // Ignore unsupported single-byte encodings
+  }
+  return map;
+}
+
+const WIN1252_REVERSE = buildSingleByteReverseMap("windows-1252");
+const WIN1250_REVERSE = buildSingleByteReverseMap("windows-1250");
+
+function repairWithSingleByteMap(str, reverseMap) {
+  if (typeof str !== "string" || !str || reverseMap.size === 0) return str;
+  const fatalUtf8 = new TextDecoder("utf-8", { fatal: true });
+  let out = "";
+  let i = 0;
+  while (i < str.length) {
+    const firstByte = reverseMap.get(str.codePointAt(i)) ?? -1;
+    if (firstByte === -1) {
+      const cp = str.codePointAt(i);
+      const ch = cp > 0xFFFF ? str.slice(i, i + 2) : str[i];
+      out += ch;
+      i += ch.length;
+      continue;
+    }
+    const start = i;
+    const bytes = [firstByte];
+    i++;
+    while (i < str.length) {
+      const b = reverseMap.get(str.codePointAt(i)) ?? -1;
+      if (b === -1) break;
+      bytes.push(b);
+      i++;
+    }
+    try {
+      out += fatalUtf8.decode(new Uint8Array(bytes));
+    } catch {
+      out += str.slice(start, i);
+    }
+  }
+  return out;
+}
+
+export function repairUtf8Mojibake(str) {
+  if (typeof str !== "string" || !str) return str;
+  return repairWithSingleByteMap(repairWithSingleByteMap(str, WIN1252_REVERSE), WIN1250_REVERSE);
+}
+
 export async function fetchCustomWidgetsFromUrl(rawUrl) {
   const trimmed = typeof rawUrl === "string" ? rawUrl.trim() : "";
   if (!/^https?:\/\//i.test(trimmed) || !isAllowedThemeUrl(trimmed)) {
@@ -416,10 +481,12 @@ export async function fetchCustomWidgetsFromUrl(rawUrl) {
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
-  const text = await res.text();
-  if (text.length > 512 * 1024) {
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength > 512 * 1024) {
     throw new Error("Widget JSON too large (max 512 KB)");
   }
+  const rawText = new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/, "");
+  const text = repairUtf8Mojibake(rawText);
   const parsed = JSON.parse(text);
   const { widgets, validFormat } = parseImportedCustomWidgets(parsed);
   if (!validFormat || widgets.length === 0) {

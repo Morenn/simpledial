@@ -26,6 +26,9 @@ const {
   isValidCustomSearchJsonTemplate,
   serializeCustomWidgetsExport,
   parseImportedCustomWidgets,
+  stringifyAsciiJson,
+  repairUtf8Mojibake,
+  fetchCustomWidgetsFromUrl,
   groupCustomSearchWidgets,
   groupRestStatusWidgets,
   isValidTimeZone,
@@ -844,4 +847,49 @@ test("Notes / Scratchpad widget helpers compute reminders, detect due todos, and
   assert.equal(bounded.entries[0].title.length, 120);
   assert.equal(bounded.entries[0].body.length, 2000);
   assert.equal(bounded.entries[0].todos[0].text.length, 240);
+});
+
+test("repairUtf8Mojibake and fetchCustomWidgetsFromUrl decode UTF-8 and fix Windows-1252/1250 mojibake", async () => {
+  assert.equal(repairUtf8Mojibake("ðŸ”Ž SNOW Global Search"), "🔎 SNOW Global Search");
+  assert.equal(repairUtf8Mojibake("đź”Ž SNOW Global Search"), "🔎 SNOW Global Search");
+  assert.equal(repairUtf8Mojibake("đźŽ« SNOW Incidents"), "🎫 SNOW Incidents");
+  assert.equal(repairUtf8Mojibake("đź”„ SNOW Changes"), "🔄 SNOW Changes");
+  assert.equal(repairUtf8Mojibake("đź“‹ SNOW Change Tasks"), "📋 SNOW Change Tasks");
+  assert.equal(repairUtf8Mojibake("AutomatickÃ© smerovanie"), "Automatické smerovanie");
+  assert.equal(repairUtf8Mojibake("Automatické smerovanie 🔎"), "Automatické smerovanie 🔎");
+
+  const asciiJson = stringifyAsciiJson({ name: "Automatické smerovanie", icon: "🔎" });
+  assert.equal(/[^\x00-\x7f]/.test(asciiJson), false);
+  assert.deepEqual(JSON.parse(asciiJson), { name: "Automatické smerovanie", icon: "🔎" });
+
+  const payload = JSON.stringify({
+    version: 1,
+    widgets: [
+      {
+        id: "cw-utf8-1",
+        type: "custom-search",
+        mode: "simple",
+        name: "SNOW Global Search",
+        icon: "ðŸ”Ž",
+        urlTemplate: "https://example.com/search?q={query}",
+        variables: [{ key: "query", label: "Query", type: "text" }]
+      }
+    ]
+  });
+  const bomBytes = Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from(payload, "utf8")]);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    async arrayBuffer() {
+      return bomBytes.buffer.slice(bomBytes.byteOffset, bomBytes.byteOffset + bomBytes.byteLength);
+    }
+  });
+  try {
+    const res = await fetchCustomWidgetsFromUrl("https://example.com/widgets.json");
+    assert.equal(res.widgets.length, 1);
+    assert.equal(res.widgets[0].icon, "🔎");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

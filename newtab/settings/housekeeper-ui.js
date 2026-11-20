@@ -130,6 +130,7 @@ function renderHousekeeperTagsList() {
 
     const colorInput = document.createElement("input");
     colorInput.type = "color";
+    colorInput.name = `hk-tag-color-${tag.id}`;
     colorInput.className = "hk-tag-color-input";
     colorInput.value = tagColor;
     colorInput.dataset.noDirty = "true";
@@ -145,6 +146,7 @@ function renderHousekeeperTagsList() {
 
     const nameInput = document.createElement("input");
     nameInput.type = "text";
+    nameInput.name = `hk-tag-name-${tag.id}`;
     nameInput.className = "sync-compact-input hk-tag-name-input";
     nameInput.maxLength = 24;
     nameInput.value = tag.name;

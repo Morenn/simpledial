@@ -11,6 +11,7 @@ import {
   normalizeCustomTimeZones,
   serializeCustomWidgetsExport,
   parseImportedCustomWidgets,
+  stringifyAsciiJson,
   resolveCustomWidgetIcon,
   fetchCustomWidgetsFromUrl,
   applyCustomWidgetUpdate,
@@ -2257,7 +2258,7 @@ export function initCustomWidgetsSettings() {
       return;
     }
     const payload = serializeCustomWidgetsExport(list);
-    const dataStr = JSON.stringify(payload);
+    const dataStr = stringifyAsciiJson(payload);
     const dataBlob = new Blob([dataStr], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
