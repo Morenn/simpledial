@@ -1,5 +1,5 @@
 import { state, saveState } from "../state.js";
-import { loadConfig, saveConfig } from "../config.js";
+import { loadConfig, saveConfig, logDebug } from "../config.js";
 import { testSyncConnection, requestHostPermission, syncNow, syncWrite, syncRead, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount } from "../sync.js";
 import { t } from "../i18n.js";
 import {
@@ -248,14 +248,14 @@ export function updateManualSyncButtonVisibility(config) {
   const intervalMode = config && config.sync ? (config.sync.intervalMode || "default") : "default";
   const isManualMode = isSyncEnabled && intervalMode === "manual";
 
-  console.log(`[Manual Sync] Enabled: ${isSyncEnabled}, Mode: ${intervalMode}, Show: ${isManualMode}`);
+  logDebug("sync", `[Manual Sync] Enabled: ${isSyncEnabled}, Mode: ${intervalMode}, Show: ${isManualMode}`);
 
   if (isManualMode) {
     manualSyncBtn.classList.remove("hidden");
-    console.log("[Manual Sync] Button shown");
+    logDebug("sync", "[Manual Sync] Button shown");
   } else {
     manualSyncBtn.classList.add("hidden");
-    console.log("[Manual Sync] Button hidden");
+    logDebug("sync", "[Manual Sync] Button hidden");
   }
 }
 
