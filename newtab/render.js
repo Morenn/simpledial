@@ -748,3 +748,31 @@ window.addEventListener("resize", () => {
     calculateGridLayout();
   }, 250); // Debounce to avoid excessive recalculations
 });
+
+if (typeof ResizeObserver !== "undefined") {
+  let layoutRafId = 0;
+  let lastLayoutSig = "";
+  const scheduleLayoutRecalc = () => {
+    if (layoutRafId) return;
+    layoutRafId = requestAnimationFrame(() => {
+      layoutRafId = 0;
+      const main = document.querySelector("main");
+      const centerSpace = document.getElementById("center-space");
+      const sectionsContainer = document.getElementById("sections-container");
+      const centerBottomWidgets = document.getElementById("center-space-bottom-widgets");
+      const sig = `${main?.clientHeight || 0}:${centerSpace?.clientWidth || 0}:${sectionsContainer?.offsetHeight || 0}:${centerBottomWidgets?.offsetHeight || 0}`;
+      if (sig === lastLayoutSig) return;
+      lastLayoutSig = sig;
+      calculateGridLayout();
+    });
+  };
+  const layoutObserver = new ResizeObserver(scheduleLayoutRecalc);
+  for (const el of [
+    document.querySelector("main"),
+    document.getElementById("center-space"),
+    document.getElementById("sections-container"),
+    document.getElementById("center-space-bottom-widgets")
+  ]) {
+    if (el) layoutObserver.observe(el);
+  }
+}

@@ -1134,6 +1134,33 @@ test("system tags are counted in usage counts, reserve names, and stay local-onl
   assert.equal(clearSystemTagFromAllBookmarks(SYSTEM_TAG_DEAD_LINK_ID), 1);
 });
 
+test("bookmark reordering propagates from newer remote group to older local client", async () => {
+  remoteGroups = [
+    {
+      ...group([
+        item("b3", "Third", 500),
+        item("b1", "First", 500),
+        item("b2", "Second", 100)
+      ]),
+      updatedAt: 500
+    }
+  ];
+
+  setClient([
+    {
+      ...group([
+        item("b1", "First", 100),
+        item("b2", "Second", 100),
+        item("b3", "Third", 100)
+      ]),
+      updatedAt: 100
+    }
+  ]);
+
+  await syncNow({ force: true });
+  assert.deepEqual(state.groups[0].items.map(i => i.id), ["b3", "b1", "b2"]);
+});
+
 test("reordered object keys and undefined properties do not trigger false sync or remote PUT", async () => {
   const originalGroups = [
     {

@@ -1225,10 +1225,12 @@ function hasMeaningfulGroups(groups) {
   );
 }
 
-function mergeRecordArrays(localRecords = [], cloudRecords = []) {
+function mergeRecordArrays(localRecords = [], cloudRecords = [], { preferCloudOrder = false } = {}) {
   const localMap = Object.fromEntries((localRecords || []).filter(Boolean).map(r => [r.id, r]));
   const cloudMap = Object.fromEntries((cloudRecords || []).filter(Boolean).map(r => [r.id, r]));
-  const allIds = new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
+  const allIds = preferCloudOrder
+    ? new Set([...Object.keys(cloudMap), ...Object.keys(localMap)])
+    : new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
   const merged = [];
 
   for (const id of allIds) {
@@ -1252,7 +1254,9 @@ function mergeTags(localTags = [], cloudTags = []) {
 
 function mergeStackItems(localStack, cloudStack) {
   const baseStack = pickNewerRecord(localStack, cloudStack);
-  const mergedChildren = mergeRecordArrays(localStack.children || [], cloudStack.children || []);
+  const mergedChildren = mergeRecordArrays(localStack.children || [], cloudStack.children || [], {
+    preferCloudOrder: baseStack === cloudStack
+  });
   return {
     ...baseStack,
     children: mergedChildren
@@ -1269,26 +1273,36 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
   // ---- Merge group-level metadata (name, sections, deleted, etc.) ----
   const localGroupMap = Object.fromEntries((localGroups || []).map(group => [group.id, group]));
   const cloudGroupMap = Object.fromEntries((cloudGroups || []).map(group => [group.id, group]));
-  const allGroupIds = new Set([...Object.keys(localGroupMap), ...Object.keys(cloudGroupMap)]);
+  const preferCloudGroupOrder = getGroupsFreshness(cloudGroups) > getGroupsFreshness(localGroups);
+  const allGroupIds = preferCloudGroupOrder
+    ? new Set([...Object.keys(cloudGroupMap), ...Object.keys(localGroupMap)])
+    : new Set([...Object.keys(localGroupMap), ...Object.keys(cloudGroupMap)]);
 
   const mergedGroupMeta = {};
+  const preferCloudItemOrderByGroupId = {};
   for (const id of allGroupIds) {
     const localGroup = localGroupMap[id];
     const cloudGroup = cloudGroupMap[id];
 
     if (localGroup && !cloudGroup) {
       mergedGroupMeta[id] = { ...localGroup, items: [] };
+      preferCloudItemOrderByGroupId[id] = false;
       continue;
     }
     if (!localGroup && cloudGroup) {
       mergedGroupMeta[id] = { ...cloudGroup, items: [] };
+      preferCloudItemOrderByGroupId[id] = true;
       continue;
     }
 
     const winningMeta = pickNewerRecord(localGroup, cloudGroup);
+    const preferCloud = winningMeta === cloudGroup;
+    preferCloudItemOrderByGroupId[id] = preferCloud;
     const nextGroup = { ...winningMeta, items: [] };
     if (Array.isArray(localGroup.sections) || Array.isArray(cloudGroup.sections)) {
-      nextGroup.sections = mergeRecordArrays(localGroup.sections || [], cloudGroup.sections || []);
+      nextGroup.sections = mergeRecordArrays(localGroup.sections || [], cloudGroup.sections || [], {
+        preferCloudOrder: preferCloud
+      });
     }
     mergedGroupMeta[id] = nextGroup;
   }
@@ -1382,6 +1396,23 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
           return false;
         }
         return true;
+      });
+    }
+  }
+
+  // Re-order each group's items according to the newer group snapshot's item order
+  // (appending any newly added or cross-group-moved items in their relative order).
+  for (const [groupId, mergedGroup] of Object.entries(mergedGroupMeta)) {
+    const primarySource = preferCloudItemOrderByGroupId[groupId]
+      ? cloudGroupMap[groupId]
+      : localGroupMap[groupId];
+    const primaryOrder = (primarySource?.items || []).map(i => i?.id).filter(Boolean);
+    if (primaryOrder.length > 0 && mergedGroup.items.length > 1) {
+      const rank = new Map(primaryOrder.map((id, idx) => [id, idx]));
+      mergedGroup.items.sort((a, b) => {
+        const ra = rank.has(a.id) ? rank.get(a.id) : Number.MAX_SAFE_INTEGER;
+        const rb = rank.has(b.id) ? rank.get(b.id) : Number.MAX_SAFE_INTEGER;
+        return ra - rb;
       });
     }
   }

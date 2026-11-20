@@ -742,6 +742,9 @@ export function initSyncSettings({ persistSettings }) {
 
       if (result.ok) {
         if (syncNowStatus) syncNowStatus.textContent = "✅ " + t("syncSuccessful");
+        if (result.changed) {
+          window.dispatchEvent(new CustomEvent("speeddial:data-changed"));
+        }
       } else {
         if (syncNowStatus) syncNowStatus.textContent = "❌ " + getSyncFailureMessage(result);
       }
@@ -859,6 +862,9 @@ export function initSyncSettings({ persistSettings }) {
       if (result.ok) {
         manualSyncBtn.style.opacity = "1";
         if (syncStatus) syncStatus.textContent = "✅ " + t("syncSuccessful");
+        if (result.changed) {
+          window.dispatchEvent(new CustomEvent("speeddial:data-changed"));
+        }
       } else {
         if (syncStatus) syncStatus.textContent = "❌ " + getSyncFailureMessage(result);
       }

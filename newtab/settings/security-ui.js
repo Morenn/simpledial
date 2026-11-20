@@ -320,7 +320,12 @@ export async function promptUnlockVault() {
         void updateFooter(cfg);
         void pollAllRestStatusWidgets({ force: true });
         if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault") {
-          void syncNow().then(() => updateFooter());
+          void syncNow().then((r) => {
+            updateFooter();
+            if (r?.ok && r?.changed) {
+              window.dispatchEvent(new CustomEvent("speeddial:data-changed"));
+            }
+          });
         }
         cleanup(true);
       } catch {
@@ -419,7 +424,12 @@ export function initSecuritySettings() {
       await populateSecuritySettings(cfg);
       void updateFooter(cfg);
       if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault") {
-        void syncNow().then(() => updateFooter());
+        void syncNow().then((r) => {
+          updateFooter();
+          if (r?.ok && r?.changed) {
+            window.dispatchEvent(new CustomEvent("speeddial:data-changed"));
+          }
+        });
       }
       void pollAllRestStatusWidgets({ force: true });
     } catch {
