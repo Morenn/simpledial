@@ -611,9 +611,14 @@ body.is-dragging-bookmark #bookmarks-grid {
   background: transparent;
   border: 2px dashed var(--accent);
   box-shadow: none;
-  opacity: 0.4;
+  opacity: 0.45;
   pointer-events: none;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.12s ease;
+}
+
+.bookmark-tile.drag-placeholder.is-hidden-for-stack {
+  opacity: 0;
+  border-color: transparent;
 }
 
 .bookmark-tile.drop-target {

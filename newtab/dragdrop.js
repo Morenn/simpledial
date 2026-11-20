@@ -77,12 +77,33 @@ function clearStackDropTarget() {
   if (dragSession) {
     dragSession.stackTargetTile = null;
   }
+  dragSession?.placeholder?.classList.remove("is-hidden-for-stack");
 }
 
 function clearContainerHighlights() {
   document.querySelectorAll(".section-drop-active, .grid-drop-active").forEach(el => {
     el.classList.remove("section-drop-active", "grid-drop-active");
   });
+  if (dragSession) {
+    dragSession.activeHighlightEl = null;
+  }
+}
+
+function setContainerHighlight(containerGrid) {
+  const nextEl = containerGrid?.classList?.contains("section-grid")
+    ? containerGrid.closest(".bookmark-section")
+    : (containerGrid?.id === "bookmarks-grid" ? containerGrid : null);
+  if (dragSession?.activeHighlightEl === nextEl) return;
+  clearContainerHighlights();
+  if (!nextEl) return;
+  if (nextEl.id === "bookmarks-grid") {
+    nextEl.classList.add("grid-drop-active");
+  } else {
+    nextEl.classList.add("section-drop-active");
+  }
+  if (dragSession) {
+    dragSession.activeHighlightEl = nextEl;
+  }
 }
 
 function clearHoveredGroupTab() {
@@ -266,6 +287,19 @@ function isInCenterStackZone(box, clientX, clientY) {
   return relX >= 0.28 && relX <= 0.72 && relY >= 0.22 && relY <= 0.78;
 }
 
+function isPointInElement(el, clientX, clientY) {
+  if (!el || !el.isConnected) return false;
+  const box = el.getBoundingClientRect();
+  return (
+    box.width > 0 &&
+    box.height > 0 &&
+    clientX >= box.left &&
+    clientX <= box.right &&
+    clientY >= box.top &&
+    clientY <= box.bottom
+  );
+}
+
 function handleDragOverDocument(e) {
   if (!dragSession) return;
   e.preventDefault();
@@ -320,14 +354,14 @@ function handleDragOverDocument(e) {
     clearContainerHighlights();
 
     const hoveredTile = findTileAtPoint(popoverGrid, e.clientX, e.clientY);
-    let beforeNode = null;
     if (hoveredTile) {
       const box = hoveredTile.getBoundingClientRect();
-      beforeNode = e.clientX > box.left + box.width / 2 ? hoveredTile.nextElementSibling : hoveredTile;
-    } else {
-      beforeNode = getInsertionPointForEmptySpace(popoverGrid, e.clientX, e.clientY);
+      const beforeNode = e.clientX > box.left + box.width / 2 ? hoveredTile.nextElementSibling : hoveredTile;
+      insertPlaceholderInContainer(popoverGrid, beforeNode, dragSession.placeholder);
+    } else if (!isPointInElement(dragSession.placeholder, e.clientX, e.clientY) || dragSession.placeholder.parentNode !== popoverGrid) {
+      const beforeNode = getInsertionPointForEmptySpace(popoverGrid, e.clientX, e.clientY);
+      insertPlaceholderInContainer(popoverGrid, beforeNode, dragSession.placeholder);
     }
-    insertPlaceholderInContainer(popoverGrid, beforeNode, dragSession.placeholder);
     return;
   }
 
@@ -345,9 +379,13 @@ function handleDragOverDocument(e) {
 
     if (canStack && isInCenterStackZone(box, e.clientX, e.clientY)) {
       clearContainerHighlights();
-      removeDragPlaceholder();
+      if (dragSession.placeholder) {
+        dragSession.placeholder.classList.add("is-hidden-for-stack");
+      }
       if (dragSession.stackTargetTile !== hoveredTile) {
-        clearStackDropTarget();
+        if (dragSession.stackTargetTile) {
+          dragSession.stackTargetTile.classList.remove("stack-drop-target");
+        }
         hoveredTile.classList.add("stack-drop-target");
         dragSession.stackTargetTile = hoveredTile;
       }
@@ -362,16 +400,13 @@ function handleDragOverDocument(e) {
     insertPlaceholderInContainer(containerGrid, beforeNode, dragSession.placeholder);
   } else {
     clearStackDropTarget();
-    const beforeNode = getInsertionPointForEmptySpace(containerGrid, e.clientX, e.clientY);
-    insertPlaceholderInContainer(containerGrid, beforeNode, dragSession.placeholder);
+    if (!isPointInElement(dragSession.placeholder, e.clientX, e.clientY) || dragSession.placeholder.parentNode !== containerGrid) {
+      const beforeNode = getInsertionPointForEmptySpace(containerGrid, e.clientX, e.clientY);
+      insertPlaceholderInContainer(containerGrid, beforeNode, dragSession.placeholder);
+    }
   }
 
-  clearContainerHighlights();
-  if (containerGrid.classList.contains("section-grid")) {
-    containerGrid.closest(".bookmark-section")?.classList.add("section-drop-active");
-  } else if (containerGrid.id === "bookmarks-grid") {
-    containerGrid.classList.add("grid-drop-active");
-  }
+  setContainerHighlight(containerGrid);
 }
 
 async function commitActiveDragSession() {
