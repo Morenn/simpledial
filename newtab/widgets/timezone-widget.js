@@ -5,6 +5,54 @@ import { resolveCustomWidgetIcon, createCustomSearchIconContent } from "./shared
 const validTimeZoneCache = new Map();
 const tzFormatterCache = new Map();
 
+// Legacy/abbreviation aliases accepted by Chromium ICU but rejected by Firefox SpiderMonkey.
+const TIMEZONE_ALIAS_MAP = {
+  IST: "Asia/Kolkata",
+  JST: "Asia/Tokyo",
+  PST: "America/Los_Angeles",
+  PDT: "America/Los_Angeles",
+  MST: "America/Denver",
+  MDT: "America/Denver",
+  CST: "America/Chicago",
+  CDT: "America/Chicago",
+  EST: "America/New_York",
+  EDT: "America/New_York",
+  AKST: "America/Anchorage",
+  HST: "Pacific/Honolulu",
+  AEST: "Australia/Sydney",
+  CET: "Europe/Berlin",
+  CEST: "Europe/Berlin",
+  BST: "Europe/London",
+  EET: "Europe/Athens",
+  WET: "Europe/Lisbon",
+  AEDT: "Australia/Sydney",
+  NZST: "Pacific/Auckland",
+  HKT: "Asia/Hong_Kong",
+  SGT: "Asia/Singapore",
+  KST: "Asia/Seoul",
+  "ASIA/KOLKATA": "Asia/Calcutta",
+  "ASIA/CALCUTTA": "Asia/Kolkata",
+  "EUROPE/KYIV": "Europe/Kiev",
+  "EUROPE/KIEV": "Europe/Kyiv",
+  "ASIA/HO_CHI_MINH": "Asia/Saigon",
+  "ASIA/SAIGON": "Asia/Ho_Chi_Minh",
+  "ASIA/YANGON": "Asia/Rangoon",
+  "ASIA/RANGOON": "Asia/Yangon",
+  "ASIA/KATHMANDU": "Asia/Katmandu",
+  "ASIA/KATMANDU": "Asia/Kathmandu",
+  "AMERICA/NUUK": "America/Godthab",
+  "AMERICA/GODTHAB": "America/Nuuk"
+};
+
+export function resolveTimeZoneAlias(tz) {
+  if (typeof tz !== "string") return "";
+  const trimmed = tz.trim();
+  if (!trimmed) return "";
+  if (isValidTimeZone(trimmed)) return trimmed;
+  const alias = TIMEZONE_ALIAS_MAP[trimmed.toUpperCase()];
+  return alias && isValidTimeZone(alias) ? alias : trimmed;
+}
+
 export function isValidTimeZone(tz) {
   if (typeof tz !== "string" || !tz.trim()) return false;
   const trimmed = tz.trim();
@@ -24,10 +72,13 @@ export function normalizeCustomTimeZones(rawZones) {
   const list = [];
   for (const entry of rawZones) {
     if (!entry || typeof entry !== "object") continue;
-    const timeZone = typeof entry.timeZone === "string" ? entry.timeZone.trim() : "";
+    const rawTimeZone = typeof entry.timeZone === "string" ? entry.timeZone.trim() : "";
+    const timeZone = resolveTimeZoneAlias(rawTimeZone);
     if (!isValidTimeZone(timeZone)) continue;
-    const rawLabel = typeof entry.label === "string" ? entry.label.trim() : "";
-    const fallbackLabel = timeZone.split("/").pop()?.replace(/_/g, " ") || timeZone;
+    const rawLabel = typeof entry.label === "string"
+      ? entry.label.trim()
+      : (typeof entry.title === "string" ? entry.title.trim() : "");
+    const fallbackLabel = rawTimeZone.split("/").pop()?.replace(/_/g, " ") || rawTimeZone;
     list.push({
       label: rawLabel || fallbackLabel,
       timeZone
@@ -37,10 +88,10 @@ export function normalizeCustomTimeZones(rawZones) {
 }
 
 export function formatTimeForTimeZone(date, timeZone, { showSeconds = false, use24Hour = true } = {}) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime()) || !isValidTimeZone(timeZone)) {
+  const tz = resolveTimeZoneAlias(timeZone);
+  if (!(date instanceof Date) || Number.isNaN(date.getTime()) || !isValidTimeZone(tz)) {
     return "--:--";
   }
-  const tz = timeZone.trim();
   const cacheKey = `${tz}|${showSeconds ? 1 : 0}|${use24Hour ? 1 : 0}`;
   try {
     let fmt = tzFormatterCache.get(cacheKey);

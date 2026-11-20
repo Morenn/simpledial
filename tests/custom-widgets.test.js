@@ -935,3 +935,28 @@ test("serializeCustomWidgetsExport and parseImportedCustomWidgets preserve auto-
     "automatické smerovanie": true
   });
 });
+
+test("parseImportedCustomWidgets resolves legacy timezone abbreviations like IST", () => {
+  const imported = parseImportedCustomWidgets({
+    version: 1,
+    widgets: [
+      {
+        id: "cw-tz-ist",
+        type: "timezone",
+        name: "World Clocks",
+        timeZones: [
+          { label: "UTC", timeZone: "UTC" },
+          { label: "India", timeZone: "IST" },
+          { timeZone: "IST" }
+        ]
+      }
+    ]
+  });
+  assert.equal(imported.validFormat, true);
+  assert.equal(imported.widgets.length, 1);
+  assert.equal(imported.widgets[0].timeZones.length, 3);
+  assert.equal(imported.widgets[0].timeZones[0].timeZone, "UTC");
+  assert.equal(imported.widgets[0].timeZones[1].label, "India");
+  assert.ok(["IST", "Asia/Kolkata"].includes(imported.widgets[0].timeZones[1].timeZone));
+  assert.equal(imported.widgets[0].timeZones[2].label, "IST");
+});
