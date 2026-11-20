@@ -2056,26 +2056,35 @@ export async function handleBookmarkContext(action, el) {
   }
 
   if (action === "refresh-icon" && !stackItem) {
+    const targetId = item.id;
     item.customIcon = null;
     clearFaviconCacheEntry(item);
 
-    // Only prompt for the host permission if an experimental lookup needs it.
+    // Only prompt for the host permission if an experimental lookup needs it (must stay in user gesture).
     if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked || document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked) {
       await ensureHostPermission();
     }
 
-    await refreshBookmarkIconsIfNeeded({
-      force: true,
-      bookmarkId: item.id,
-      persist: false,
-      sync: false
-    });
-    item.updatedAt = Date.now();
-    if (parentStack) parentStack.updatedAt = item.updatedAt;
-
-    await saveState();
-    await syncWrite();
-    render();
+    void (async () => {
+      try {
+        await refreshBookmarkIconsIfNeeded({
+          force: true,
+          bookmarkId: targetId,
+          persist: false,
+          sync: false
+        });
+        const liveLoc = findBookmarkLocation(targetId);
+        if (liveLoc?.item) {
+          liveLoc.item.updatedAt = Date.now();
+          if (liveLoc.parentStack) liveLoc.parentStack.updatedAt = liveLoc.item.updatedAt;
+        }
+        await saveState();
+        void syncWrite();
+        render();
+      } catch (err) {
+        console.warn("Background icon refresh failed", err);
+      }
+    })();
     return;
   }
 

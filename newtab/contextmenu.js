@@ -232,12 +232,14 @@ contextMenu.addEventListener("click", async e => {
   const action = actionEl?.dataset.action;
   if (!action || !contextTarget) return;
 
-  if (contextTarget.classList.contains("group-tab")) {
-    await handleGroupContext(action, contextTarget);
-  } else if (contextTarget.classList.contains("bookmark-tile")) {
-    await handleBookmarkContext(action, contextTarget);
-  }
-
+  const target = contextTarget;
   contextMenu.classList.add("hidden");
+  if (moveToSubmenu) moveToSubmenu.classList.remove("show");
   contextTarget = null;
+
+  if (target.classList.contains("group-tab")) {
+    await handleGroupContext(action, target);
+  } else if (target.classList.contains("bookmark-tile")) {
+    await handleBookmarkContext(action, target);
+  }
 });
