@@ -60,6 +60,7 @@
       </div>
       <button type="button" id="footer-shortcut-palette" class="footer-shortcut-palette"></button>
       <span id="footer-bookmarks-total" class="footer-bookmarks-total"></span>
+      <button type="button" id="footer-storage-usage" class="footer-storage-usage"></button>
     </div>
   </footer>
 
@@ -783,6 +784,7 @@
             <div class="appearance-card-footer">
               <div class="tile-mass-color-actions">
                 <button id="hk-manual-cleanup" class="icon-btn primary" data-i18n="manualCleanupNow">🗑️ Manual cleanup now</button>
+                <button id="hk-cleanup-orphaned" class="icon-btn" data-i18n="cleanupOrphanedObjects">🧹 Cleanup orphaned objects</button>
               </div>
               <div id="hk-cleanup-status" class="status"></div>
               <div id="hk-last-cleanup" class="appearance-card-meta"></div>
@@ -1068,6 +1070,14 @@
             </a> -->
           </div>
           <!-- <p class="info-license" data-i18n="infoLicense">Released under the MIT License</p> -->
+          <div id="info-storage-usage-card" class="info-storage-card">
+            <div class="info-storage-header">
+              <strong data-i18n="infoStorageUsageTitle">💾 Addon Storage Usage</strong>
+              <button type="button" id="info-storage-refresh-btn" class="icon-btn" title="Refresh">↻</button>
+            </div>
+            <div id="info-storage-summary" class="info-storage-summary"></div>
+            <div id="info-storage-breakdown" class="info-storage-breakdown"></div>
+          </div>
         </div>
       </div>
 

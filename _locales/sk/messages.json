@@ -1882,5 +1882,11 @@
   },
   "rssJustNow": {
     "message": "práve teraz"
+  },
+  "widgetStorageUsage": {
+    "message": "Využitie úložiska"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Využitie úložiska doplnku"
   }
 }

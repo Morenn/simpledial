@@ -52,7 +52,9 @@ const {
   resolveCustomWidgetIcon,
   applyCustomWidgetUpdate,
   revertCustomWidgetVersion,
-  parseFeedResponse
+  parseFeedResponse,
+  pruneRssStorageForWidgets,
+  pruneNotesStorageForWidgets
 } = await import("../newtab/custom-widgets.js");
 
 test("simple mode replaces multiple placeholders and encodes values", () => {
@@ -1031,4 +1033,77 @@ test("parseFeedResponse parses RSS 2.0, Atom, JSON Feed, and rejects unsafe link
   assert.equal(imported.widgets[0].refreshMinutes, 15);
   assert.equal(imported.widgets[0].maxItems, 10);
   assert.equal(imported.widgets[0].groupName, "News");
+});
+
+test("pruneRssStorageForWidgets removes stale RSS cache and read state for deleted widgets", async () => {
+  const store = new Map([
+    ["myspeeddial-rss-cache", {
+      "cw-rss-keep": { fetchedAt: 100, items: [] },
+      "cw-rss-deleted": { fetchedAt: 100, items: [{ id: "1", title: "Old" }] }
+    }],
+    ["myspeeddial-rss-read", {
+      "cw-rss-keep": ["a"],
+      "cw-rss-deleted": ["b"]
+    }]
+  ]);
+  const prevChrome = globalThis.chrome;
+  globalThis.chrome = {
+    ...prevChrome,
+    storage: {
+      local: {
+        async get(keys) {
+          const out = {};
+          for (const k of (Array.isArray(keys) ? keys : [keys])) {
+            if (store.has(k)) out[k] = structuredClone(store.get(k));
+          }
+          return out;
+        },
+        async set(obj) {
+          for (const [k, v] of Object.entries(obj)) store.set(k, structuredClone(v));
+        }
+      }
+    }
+  };
+  try {
+    const pruned = await pruneRssStorageForWidgets([{ id: "cw-rss-keep", type: "rss-feed" }]);
+    assert.equal(pruned, true);
+    assert.deepEqual(Object.keys(store.get("myspeeddial-rss-cache")), ["cw-rss-keep"]);
+    assert.deepEqual(Object.keys(store.get("myspeeddial-rss-read")), ["cw-rss-keep"]);
+  } finally {
+    globalThis.chrome = prevChrome;
+  }
+});
+
+test("pruneNotesStorageForWidgets removes stale Notes data for deleted widgets", async () => {
+  const store = new Map([
+    ["myspeeddial-widget-notes", {
+      "cw-notes-keep": { entries: [{ id: "e1", title: "Keep", body: "", todos: [] }] },
+      "cw-notes-deleted": { entries: [{ id: "e2", title: "Old", body: "", todos: [] }] }
+    }]
+  ]);
+  const prevChrome = globalThis.chrome;
+  globalThis.chrome = {
+    ...prevChrome,
+    storage: {
+      local: {
+        async get(keys) {
+          const out = {};
+          for (const k of (Array.isArray(keys) ? keys : [keys])) {
+            if (store.has(k)) out[k] = structuredClone(store.get(k));
+          }
+          return out;
+        },
+        async set(obj) {
+          for (const [k, v] of Object.entries(obj)) store.set(k, structuredClone(v));
+        }
+      }
+    }
+  };
+  try {
+    const pruned = await pruneNotesStorageForWidgets([{ id: "cw-notes-keep", type: "notes" }]);
+    assert.equal(pruned, true);
+    assert.deepEqual(Object.keys(store.get("myspeeddial-widget-notes")), ["cw-notes-keep"]);
+  } finally {
+    globalThis.chrome = prevChrome;
+  }
 });

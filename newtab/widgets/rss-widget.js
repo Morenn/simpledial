@@ -295,6 +295,32 @@ export async function markAllRssItemsRead(widgets = []) {
   }
 }
 
+export async function pruneRssStorageForWidgets(activeWidgets = []) {
+  await ensureRssCacheLoaded();
+  const activeIds = new Set(
+    (Array.isArray(activeWidgets) ? activeWidgets : [])
+      .filter(w => w?.type === "rss-feed" && typeof w.id === "string" && w.id)
+      .map(w => w.id)
+  );
+  let cacheChanged = false;
+  let readChanged = false;
+  for (const id of Object.keys(rssCacheByWidget)) {
+    if (!activeIds.has(id)) {
+      delete rssCacheByWidget[id];
+      cacheChanged = true;
+    }
+  }
+  for (const id of Object.keys(rssReadByWidget)) {
+    if (!activeIds.has(id)) {
+      delete rssReadByWidget[id];
+      readChanged = true;
+    }
+  }
+  if (cacheChanged) await persistRssCache();
+  if (readChanged) await persistRssReadState();
+  return cacheChanged || readChanged;
+}
+
 export async function requestRssFeedPermission(feedUrl) {
   return requestRestEndpointPermission(feedUrl);
 }
@@ -647,7 +673,11 @@ export function syncCustomRssWidgetElements(customWidgets = []) {
     elements[rep.id] = el;
   }
 
-  void ensureRssCacheLoaded().then(() => {
+  void ensureRssCacheLoaded().then(async () => {
+    const settingsModal = typeof document !== "undefined" ? document.getElementById("settings-modal") : null;
+    if (!settingsModal || settingsModal.classList.contains("hidden")) {
+      await pruneRssStorageForWidgets(customWidgets);
+    }
     for (const groupEntry of groups) {
       const el = elements[groupEntry.representative.id];
       if (el) updateRssBarDom(el, groupEntry);
@@ -668,6 +698,8 @@ export async function pollAllRssFeedWidgets({ force = false, customWidgets = nul
       widgets = [];
     }
   }
+
+  await pruneRssStorageForWidgets(widgets);
 
   const rssWidgets = widgets.filter(w => w?.type === "rss-feed" && isValidRssFeedUrl(w.feedUrl));
   if (rssWidgets.length === 0) return;

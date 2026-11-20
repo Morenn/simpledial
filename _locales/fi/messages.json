@@ -1882,5 +1882,11 @@
   },
   "rssJustNow": {
     "message": "juuri nyt"
+  },
+  "widgetStorageUsage": {
+    "message": "Tallennustilan käyttö"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Lisäosan tallennustila"
   }
 }

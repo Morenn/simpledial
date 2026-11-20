@@ -545,6 +545,9 @@
   "manualCleanupNow": {
     "message": "Manual cleanup now"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Cleanup orphaned objects"
+  },
   "iconAutoRefresh": {
     "message": "Icon Auto Refresh"
   },
@@ -592,6 +595,12 @@
   },
   "hkCleanupCompleted": {
     "message": "Cleanup completed - {0} records permanently deleted."
+  },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Orphaned objects cleaned up ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "No orphaned objects found."
   },
   "hkEnableLinkCheck": {
     "message": "Check for dead links"
@@ -1909,5 +1918,11 @@
   },
   "rssJustNow": {
     "message": "just now"
+  },
+  "widgetStorageUsage": {
+    "message": "Storage usage"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Addon Storage Usage"
   }
 }

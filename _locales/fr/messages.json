@@ -1882,5 +1882,11 @@
   },
   "rssJustNow": {
     "message": "à l'instant"
+  },
+  "widgetStorageUsage": {
+    "message": "Utilisation du stockage"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Stockage de l'extension"
   }
 }

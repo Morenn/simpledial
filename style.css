@@ -5785,3 +5785,87 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   text-align: center;
   opacity: 0.7;
 }
+
+/* ─── STORAGE USAGE WIDGET & INFO CARD ─── */
+
+.footer-storage-usage {
+  background: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.footer-storage-usage:hover {
+  opacity: 1;
+  border-color: var(--border);
+  background: var(--bg-hover);
+}
+
+.info-storage-card {
+  width: 100%;
+  max-width: 460px;
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  text-align: left;
+}
+
+.info-storage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.info-storage-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-storage-meter-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+
+.info-storage-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg3);
+  overflow: hidden;
+}
+
+.info-storage-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.info-storage-bar-fill.is-high {
+  background: #ef4444;
+}
+
+.info-storage-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+
+.info-storage-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}

@@ -125,6 +125,7 @@ export async function saveState() {
   localSaveDepth++;
   suppressLocalStateChange = true;
   try {
+    await pruneOrphanedSystemTags();
     await chrome.storage.local.set({ [STORAGE_KEY]: state });
     window.dispatchEvent(new Event("speeddial:state-saved"));
   } finally {
@@ -321,33 +322,94 @@ export function clearSystemTagFromAllBookmarks(systemTagId) {
   return cleared;
 }
 
+function sanitizeSystemTagsMap(raw) {
+  const sanitized = {};
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    for (const [bookmarkId, tagIds] of Object.entries(raw)) {
+      if (!bookmarkId || !Array.isArray(tagIds)) continue;
+      const validIds = [...new Set(tagIds.filter(id => SYSTEM_TAG_ID_SET.has(id)))];
+      if (validIds.length > 0) {
+        sanitized[bookmarkId] = validIds;
+      }
+    }
+  }
+  return sanitized;
+}
+
 export async function loadSystemTags() {
   try {
     const res = await chrome.storage.local.get(SYSTEM_TAGS_KEY);
-    const raw = res?.[SYSTEM_TAGS_KEY];
-    const sanitized = {};
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-      for (const [bookmarkId, tagIds] of Object.entries(raw)) {
-        if (!bookmarkId || !Array.isArray(tagIds)) continue;
-        const validIds = [...new Set(tagIds.filter(id => SYSTEM_TAG_ID_SET.has(id)))];
-        if (validIds.length > 0) {
-          sanitized[bookmarkId] = validIds;
-        }
-      }
-    }
-    systemBookmarkTags = sanitized;
+    systemBookmarkTags = sanitizeSystemTagsMap(res?.[SYSTEM_TAGS_KEY]);
   } catch (err) {
     console.warn("Failed to load system tags", err);
     systemBookmarkTags = {};
   }
 }
 
-export async function saveSystemTags() {
+let localSystemTagsSaveDepth = 0;
+let suppressLocalSystemTagsChange = false;
+
+export function applySystemTagsFromStorageChange(raw) {
+  if (suppressLocalSystemTagsChange) {
+    suppressLocalSystemTagsChange = false;
+    return false;
+  }
+  systemBookmarkTags = sanitizeSystemTagsMap(raw);
+  return true;
+}
+
+function pruneOrphanedSystemTagsInMemory(groups = state.groups) {
+  const existingKeys = Object.keys(systemBookmarkTags);
+  if (existingKeys.length === 0 || !Array.isArray(groups)) return false;
+
+  const activeIds = new Set();
+  for (const group of groups) {
+    if (!group || group.deleted) continue;
+    for (const item of getAllGroupBookmarks(group, { includeDeleted: false })) {
+      if (item?.id) activeIds.add(item.id);
+    }
+  }
+
+  let changed = false;
+  for (const bookmarkId of existingKeys) {
+    if (!activeIds.has(bookmarkId)) {
+      delete systemBookmarkTags[bookmarkId];
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+async function persistSystemTags() {
+  localSystemTagsSaveDepth++;
+  suppressLocalSystemTagsChange = true;
   try {
     await chrome.storage.local.set({ [SYSTEM_TAGS_KEY]: systemBookmarkTags });
   } catch (err) {
     console.warn("Failed to save system tags", err);
+  } finally {
+    localSystemTagsSaveDepth--;
+    if (typeof setTimeout === "function") {
+      setTimeout(() => {
+        if (localSystemTagsSaveDepth === 0) suppressLocalSystemTagsChange = false;
+      }, 0);
+    } else if (localSystemTagsSaveDepth === 0) {
+      suppressLocalSystemTagsChange = false;
+    }
   }
+}
+
+export async function saveSystemTags() {
+  pruneOrphanedSystemTagsInMemory();
+  await persistSystemTags();
+}
+
+export async function pruneOrphanedSystemTags(groups = state.groups) {
+  const changed = pruneOrphanedSystemTagsInMemory(groups);
+  if (changed) {
+    await persistSystemTags();
+  }
+  return changed;
 }
 
 function applyStoredState(stored) {

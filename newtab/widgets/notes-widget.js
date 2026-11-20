@@ -200,6 +200,26 @@ async function persistNotesStore() {
   }
 }
 
+export async function pruneNotesStorageForWidgets(activeWidgets = []) {
+  await ensureNotesStoreLoaded();
+  const activeIds = new Set(
+    (Array.isArray(activeWidgets) ? activeWidgets : [])
+      .filter(w => w?.type === "notes" && typeof w.id === "string" && w.id)
+      .map(w => w.id)
+  );
+  let changed = false;
+  for (const id of Array.from(notesDataCache.keys())) {
+    if (!activeIds.has(id)) {
+      notesDataCache.delete(id);
+      changed = true;
+    }
+  }
+  if (changed) {
+    await persistNotesStore();
+  }
+  return changed;
+}
+
 function getNotesDataSync(widgetId) {
   if (!notesDataCache.has(widgetId)) {
     notesDataCache.set(widgetId, { entries: [] });
@@ -903,7 +923,11 @@ export function syncCustomNotesWidgetElements(customWidgets = []) {
     elementMap[w.id] = container;
   }
 
-  void ensureNotesStoreLoaded().then(() => {
+  void ensureNotesStoreLoaded().then(async () => {
+    const settingsModal = typeof document !== "undefined" ? document.getElementById("settings-modal") : null;
+    if (!settingsModal || settingsModal.classList.contains("hidden")) {
+      await pruneNotesStorageForWidgets(customWidgets);
+    }
     for (const w of notesWidgets) refreshNotesWidgetDom(w.id);
   });
 

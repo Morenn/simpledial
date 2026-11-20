@@ -1882,5 +1882,11 @@
   },
   "rssJustNow": {
     "message": "gerade eben"
+  },
+  "widgetStorageUsage": {
+    "message": "Speichernutzung"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Addon-Speichernutzung"
   }
 }

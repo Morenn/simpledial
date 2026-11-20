@@ -10,7 +10,8 @@ export const DEFAULT_WIDGET_ORDER = [
   "syncStatus",
   "dateTime",
   "bookmarksCount",
-  "shortcutPalette"
+  "shortcutPalette",
+  "storageUsage"
 ];
 export const VALID_WIDGET_KEYS = new Set(DEFAULT_WIDGET_ORDER);
 

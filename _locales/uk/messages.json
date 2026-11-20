@@ -1882,5 +1882,11 @@
   },
   "rssJustNow": {
     "message": "щойно"
+  },
+  "widgetStorageUsage": {
+    "message": "Використання сховища"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Сховище розширення"
   }
 }

@@ -88,6 +88,9 @@ const [{
   getBookmarkSystemTagIds,
   setBookmarkSystemTag,
   clearSystemTagFromAllBookmarks,
+  saveSystemTags,
+  pruneOrphanedSystemTags,
+  applySystemTagsFromStorageChange,
   isReservedSystemTagName,
   getTagUsageCounts,
   updateTagInState,
@@ -1130,6 +1133,58 @@ test("system tags are counted in usage counts, reserve names, and stay local-onl
   assert.equal(clearSystemTagFromAllBookmarks(SYSTEM_TAG_HTTP_ID), 1);
   assert.deepEqual(getBookmarkSystemTagIds("b_sys_1"), []);
   assert.equal(getTagUsageCounts().get(SYSTEM_TAG_HTTP_ID) || 0, 0);
+
+  assert.equal(clearSystemTagFromAllBookmarks(SYSTEM_TAG_DEAD_LINK_ID), 1);
+});
+
+test("pruneOrphanedSystemTags strips system tags from soft-deleted and purged bookmarks", async () => {
+  state.groups = [
+    {
+      ...group([
+        item("b_keep", "Active", 100),
+        { ...item("b_soft_del", "Soft Deleted", 100), deleted: true, deletedAt: 200 }
+      ]),
+      id: "g_sys_prune"
+    }
+  ];
+
+  assert.equal(setBookmarkSystemTag("b_keep", SYSTEM_TAG_HTTP_ID, true), true);
+  assert.equal(setBookmarkSystemTag("b_soft_del", SYSTEM_TAG_DEAD_LINK_ID, true), true);
+  assert.equal(setBookmarkSystemTag("b_purged", SYSTEM_TAG_HTTP_ID, true), true);
+
+  const pruned = await pruneOrphanedSystemTags();
+  assert.equal(pruned, true);
+  assert.deepEqual(getBookmarkSystemTagIds("b_keep"), [SYSTEM_TAG_HTTP_ID]);
+  assert.deepEqual(getBookmarkSystemTagIds("b_soft_del"), []);
+  assert.deepEqual(getBookmarkSystemTagIds("b_purged"), []);
+
+  // saveSystemTags() also prunes orphaned entries before persisting
+  assert.equal(setBookmarkSystemTag("b_soft_del", SYSTEM_TAG_DEAD_LINK_ID, true), true);
+  assert.equal(setBookmarkSystemTag("b_purged", SYSTEM_TAG_HTTP_ID, true), true);
+  await saveSystemTags();
+  assert.deepEqual(getBookmarkSystemTagIds("b_keep"), [SYSTEM_TAG_HTTP_ID]);
+  assert.deepEqual(getBookmarkSystemTagIds("b_soft_del"), []);
+  assert.deepEqual(getBookmarkSystemTagIds("b_purged"), []);
+
+  assert.equal(clearSystemTagFromAllBookmarks(SYSTEM_TAG_HTTP_ID), 1);
+});
+
+test("applySystemTagsFromStorageChange updates system tags from external changes and suppresses self-writes", async () => {
+  state.groups = [{ ...group([item("b_ext", "Ext", 100)]), id: "g_ext" }];
+  assert.equal(setBookmarkSystemTag("b_ext", SYSTEM_TAG_HTTP_ID, true), true);
+  await saveSystemTags();
+
+  // Immediate self-triggered storage change is suppressed
+  assert.equal(applySystemTagsFromStorageChange({ b_ext: [SYSTEM_TAG_DEAD_LINK_ID] }), false);
+  assert.deepEqual(getBookmarkSystemTagIds("b_ext"), [SYSTEM_TAG_HTTP_ID]);
+
+  // Allow setTimeout(..., 0) to clear suppression flag, then apply external change
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(applySystemTagsFromStorageChange({
+    b_ext: [SYSTEM_TAG_DEAD_LINK_ID, "invalid_sys_id"],
+    "": [SYSTEM_TAG_HTTP_ID]
+  }), true);
+  assert.deepEqual(getBookmarkSystemTagIds("b_ext"), [SYSTEM_TAG_DEAD_LINK_ID]);
 
   assert.equal(clearSystemTagFromAllBookmarks(SYSTEM_TAG_DEAD_LINK_ID), 1);
 });

@@ -143,7 +143,8 @@ export function initCustomWidgetsSettings() {
     syncStatus: { key: "widgetSyncStatus", fallback: "Sync status", field: "syncStatusSpace", defaultSpace: "footer", allowDisabled: true },
     dateTime: { key: "widgetDateTime", fallback: "Date & Time", field: "dateTimeSpace", defaultSpace: "footer", allowDisabled: true },
     shortcutPalette: { key: "widgetShortcutPalette", fallback: "Shortcut palette", field: "shortcutPaletteSpace", defaultSpace: "footer", allowDisabled: true },
-    bookmarksCount: { key: "widgetBookmarksCount", fallback: "Bookmarks count", field: "bookmarksCountSpace", defaultSpace: "footer", allowDisabled: true }
+    bookmarksCount: { key: "widgetBookmarksCount", fallback: "Bookmarks count", field: "bookmarksCountSpace", defaultSpace: "footer", allowDisabled: true },
+    storageUsage: { key: "widgetStorageUsage", fallback: "Storage usage", field: "storageUsageSpace", defaultSpace: "disabled", allowDisabled: true }
   };
 
   const collapsedWidgetSpaceGroups = new Set();

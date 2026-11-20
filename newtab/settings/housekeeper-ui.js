@@ -11,6 +11,7 @@ import {
   setBookmarkSystemTag,
   clearSystemTagFromAllBookmarks,
   saveSystemTags,
+  pruneOrphanedSystemTags,
   isReservedSystemTagName,
   getNextDefaultTagColor,
   getTagUsageCounts,
@@ -20,6 +21,8 @@ import {
 } from "../state.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { cleanupDeletedItems, checkDeadLinks, syncWrite } from "../sync.js";
+import { pruneNotesStorageForWidgets } from "../widgets/notes-widget.js";
+import { pruneRssStorageForWidgets } from "../widgets/rss-widget.js";
 import { t } from "../i18n.js";
 import { render, searchByBookmarkTag } from "../render.js";
 import {
@@ -48,6 +51,7 @@ import { settingsState, markSettingsDirty, updateChoiceOptionStates } from "./co
 const hkRetentionDays = document.getElementById("hk-retention-days");
 const hkAutoCleanup = document.getElementById("hk-auto-cleanup");
 const hkManualCleanup = document.getElementById("hk-manual-cleanup");
+const hkCleanupOrphaned = document.getElementById("hk-cleanup-orphaned");
 const hkCleanupStatus = document.getElementById("hk-cleanup-status");
 const hkLastCleanup = document.getElementById("hk-last-cleanup");
 const hkEnableLinkCheck = document.getElementById("hk-enable-link-check");
@@ -477,6 +481,47 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
         console.error("Cleanup error:", error);
       } finally {
         hkManualCleanup.disabled = false;
+      }
+    });
+  }
+
+  if (hkCleanupOrphaned) {
+    hkCleanupOrphaned.addEventListener("click", async () => {
+      hkCleanupOrphaned.disabled = true;
+      hkCleanupStatus.textContent = "🔍 Cleaning orphaned objects...";
+      hkCleanupStatus.style.color = "#999";
+
+      try {
+        const config = await loadConfig();
+        const activeWidgets = Array.isArray(config?.appearance?.customWidgets) ? config.appearance.customWidgets : [];
+        const [systemTagsPruned, notesPruned, rssPruned] = await Promise.all([
+          pruneOrphanedSystemTags(),
+          pruneNotesStorageForWidgets(activeWidgets),
+          pruneRssStorageForWidgets(activeWidgets)
+        ]);
+
+        const cleanedParts = [];
+        if (systemTagsPruned) cleanedParts.push("system tags");
+        if (notesPruned) cleanedParts.push("notes");
+        if (rssPruned) cleanedParts.push("RSS cache");
+
+        if (cleanedParts.length > 0) {
+          const msgTemplate = t("hkOrphanedCleanupCompleted") || "Orphaned objects cleaned up ({0}).";
+          hkCleanupStatus.textContent = `✅ ${msgTemplate.replace("{0}", cleanedParts.join(", "))}`;
+          if (systemTagsPruned) {
+            render();
+          }
+        } else {
+          hkCleanupStatus.textContent = `✅ ${t("hkOrphanedCleanupNone") || "No orphaned objects found."}`;
+        }
+        hkCleanupStatus.style.color = "#4caf50";
+        updateHouseKeeperInfo(config);
+      } catch (error) {
+        hkCleanupStatus.textContent = "❌ Orphaned cleanup failed";
+        hkCleanupStatus.style.color = "#f44336";
+        console.error("Orphaned cleanup error:", error);
+      } finally {
+        hkCleanupOrphaned.disabled = false;
       }
     });
   }

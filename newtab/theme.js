@@ -689,6 +689,9 @@ export async function applySideSpaces(config = null) {
   const shortcutPaletteSpace = appearance.shortcutPaletteSpace === "disabled"
     ? "disabled"
     : normalizeWidgetSpace(appearance.shortcutPaletteSpace, "footer");
+  const storageUsageSpace = (!appearance.storageUsageSpace || appearance.storageUsageSpace === "disabled")
+    ? "disabled"
+    : normalizeWidgetSpace(appearance.storageUsageSpace, "disabled");
   const customWidgets = Array.isArray(appearance.customWidgets) ? appearance.customWidgets : [];
   const autoRouteDefaults = (appearance.customSearchAutoRouteDefaults && typeof appearance.customSearchAutoRouteDefaults === "object")
     ? appearance.customSearchAutoRouteDefaults
@@ -738,6 +741,7 @@ export async function applySideSpaces(config = null) {
   const footerSyncStatus = document.getElementById("footer-sync-status");
   const footerShortcutPalette = document.getElementById("footer-shortcut-palette");
   const footerBookmarksTotal = document.getElementById("footer-bookmarks-total");
+  const footerStorageUsage = document.getElementById("footer-storage-usage");
 
   const widgetElements = {
     groups: groupsHeader,
@@ -747,6 +751,7 @@ export async function applySideSpaces(config = null) {
     dateTime: dateTimeDisplay,
     shortcutPalette: footerShortcutPalette,
     bookmarksCount: footerBookmarksTotal,
+    storageUsage: footerStorageUsage,
     ...customElements
   };
   const widgetSpaces = {
@@ -756,7 +761,8 @@ export async function applySideSpaces(config = null) {
     syncStatus: syncStatusSpace,
     dateTime: dateTimeSpace,
     shortcutPalette: shortcutPaletteSpace,
-    bookmarksCount: bookmarksCountSpace
+    bookmarksCount: bookmarksCountSpace,
+    storageUsage: storageUsageSpace
   };
   const customAlignMap = {};
   const customNewRowMap = {};
@@ -801,7 +807,7 @@ export async function applySideSpaces(config = null) {
       el.style.display = "block";
     } else if (key === "manage" || key === "groups" || key === "syncStatus" || customElements[key]) {
       el.style.display = "flex";
-    } else if (key === "bookmarksCount" || key === "shortcutPalette") {
+    } else if (key === "bookmarksCount" || key === "shortcutPalette" || key === "storageUsage") {
       el.style.display = "inline-flex";
     }
 
@@ -858,6 +864,19 @@ export async function applySideSpaces(config = null) {
 
   syncSideSpaceContainer(leftSpace, showSideSpaces, highlightSideSpaces);
   syncSideSpaceContainer(rightSpace, showSideSpaces, highlightSideSpaces);
+
+  if (footerStorageUsage && storageUsageSpace !== "disabled") {
+    if (!footerStorageUsage.dataset.bound) {
+      footerStorageUsage.dataset.bound = "true";
+      footerStorageUsage.addEventListener("click", () => {
+        document.getElementById("settings-btn")?.click();
+        setTimeout(() => {
+          document.querySelector('.settings-tab-btn[data-tab="info"]')?.click();
+        }, 50);
+      });
+    }
+    void import("./storage-stats.js").then(m => m.updateStorageUsageWidget(footerStorageUsage));
+  }
 
   if (pageFooter) {
     const hasFooterWidget = footerWidgets && Array.from(footerWidgets.children).some(

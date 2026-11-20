@@ -1882,5 +1882,11 @@
   },
   "rssJustNow": {
     "message": "zojuist"
+  },
+  "widgetStorageUsage": {
+    "message": "Opslaggebruik"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Extensie-opslaggebruik"
   }
 }

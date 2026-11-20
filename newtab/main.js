@@ -1,4 +1,4 @@
-import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, applyStateFromStorageChange } from "./state.js";
+import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, SYSTEM_TAGS_KEY, applyStateFromStorageChange, applySystemTagsFromStorageChange } from "./state.js";
 import { loadTheme } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
@@ -417,10 +417,20 @@ export function updateShowDeletedButtonAppearance() {
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
+  let shouldRender = false;
   const dataChange = changes[STORAGE_KEY];
   if (dataChange?.newValue && applyStateFromStorageChange(dataChange.newValue)) {
-    render();
+    shouldRender = true;
     void updateFooter();
+  }
+
+  const systemTagsChange = changes[SYSTEM_TAGS_KEY];
+  if (systemTagsChange && applySystemTagsFromStorageChange(systemTagsChange.newValue ?? {})) {
+    shouldRender = true;
+  }
+
+  if (shouldRender) {
+    render();
   }
 
   const themeChange = changes[THEME_KEY];

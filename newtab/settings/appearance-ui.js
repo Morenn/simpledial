@@ -225,6 +225,7 @@ export function createAppearanceDraftFromConfig(config) {
     syncStatusSpace: appearance.syncStatusSpace || "footer",
     shortcutPaletteSpace: appearance.shortcutPaletteSpace || "footer",
     bookmarksCountSpace: appearance.bookmarksCountSpace || "footer",
+    storageUsageSpace: appearance.storageUsageSpace || "disabled",
     headerSingleRow: appearance.headerSingleRow !== false,
     searchStyle: appearance.searchStyle || "full",
     customWidgets: Array.isArray(appearance.customWidgets) ? appearance.customWidgets.map(w => ({ ...w })) : [],
@@ -542,6 +543,7 @@ export async function applyAppearanceToConfig(config, { setSyncStatusMessage }) 
     config.appearance.syncStatusSpace = draft.syncStatusSpace || "footer";
     config.appearance.shortcutPaletteSpace = draft.shortcutPaletteSpace || "footer";
     config.appearance.bookmarksCountSpace = draft.bookmarksCountSpace || "footer";
+  config.appearance.storageUsageSpace = draft.storageUsageSpace || "disabled";
     config.appearance.headerSingleRow = !!draft.headerSingleRow;
   }
   if (searchStyleSelect) {

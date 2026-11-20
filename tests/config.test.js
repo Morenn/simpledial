@@ -85,6 +85,11 @@ globalThis.chrome = {
     local: {
       async get(keys) {
         storageGetCalls++;
+        if (keys === null || keys === undefined) {
+          const all = {};
+          for (const [k, v] of storageData.entries()) all[k] = structuredClone(v);
+          return all;
+        }
         const list = Array.isArray(keys) ? keys : [keys];
         const out = {};
         for (const k of list) {
@@ -118,10 +123,12 @@ globalThis.chrome = {
 
 const [
   { defaultConfig, loadConfig, saveConfig, invalidateConfigCache, updateDebugLoggingFlags, logDebug },
-  { applyTileOpacity, applyBarOpacity, applyBgDim, applyTileSize, applyGroupTileSize, applyTilesLock, applyThemeStyle, applyBackground }
+  { applyTileOpacity, applyBarOpacity, applyBgDim, applyTileSize, applyGroupTileSize, applyTilesLock, applyThemeStyle, applyBackground },
+  { measureAddonStorageUsage, formatStorageBytes }
 ] = await Promise.all([
   import("../newtab/config.js"),
-  import("../newtab/theme.js")
+  import("../newtab/theme.js"),
+  import("../newtab/storage-stats.js")
 ]);
 
 test("loadConfig merges defaults, caches reads, and invalidates on cache reset or storage change", async () => {
@@ -270,4 +277,23 @@ test("applyThemeStyle and applyBackground apply built-in themes, custom CSS, and
 
   await applyBackground({ appearance: { backgroundImage: null } });
   assert.equal(document.body.style.backgroundImage, "");
+});
+
+test("measureAddonStorageUsage categorizes chrome.storage.local keys and formats byte sizes", async () => {
+  storageData.clear();
+  await chrome.storage.local.set({
+    "myspeeddial-bookmarks": { groups: [{ id: "g1", name: "Test", items: [] }] },
+    "myspeeddial-rss-cache": { "cw-1": { items: [{ id: "1", title: "News" }] } },
+    "myspeeddial-system-tags": { b1: ["sys_http"] }
+  });
+
+  const stats = await measureAddonStorageUsage();
+  assert.ok(stats.localBytes > 0);
+  assert.ok(stats.categories.bookmarks > 0);
+  assert.ok(stats.categories.rss > 0);
+  assert.ok(stats.categories.systemTags > 0);
+  assert.equal(formatStorageBytes(512), "512 B");
+  assert.equal(formatStorageBytes(2048), "2.0 KB");
+  assert.equal(formatStorageBytes(2 * 1024 * 1024), "2.00 MB");
+  assert.equal(defaultConfig.appearance.storageUsageSpace, "disabled");
 });

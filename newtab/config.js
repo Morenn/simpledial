@@ -84,9 +84,10 @@ export const defaultConfig = {
     syncStatusSpace: "footer", // "disabled", "header", "left", "center", "right", "footer"
     shortcutPaletteSpace: "footer", // "disabled", "header", "left", "center", "right", "footer"
     bookmarksCountSpace: "footer", // "disabled", "header", "left", "center", "right", "footer"
+    storageUsageSpace: "disabled", // "disabled", "header", "left", "center", "right", "footer"
     headerSingleRow: true, // Force header widgets to stay on a single row
     searchStyle: "full", // "full", "icon", or "hover"
-    widgetOrder: ["groups", "manage", "search", "bookmarks", "syncStatus", "dateTime", "bookmarksCount", "shortcutPalette"],
+    widgetOrder: ["groups", "manage", "search", "bookmarks", "syncStatus", "dateTime", "bookmarksCount", "shortcutPalette", "storageUsage"],
     widgetAlign: {}, // Per-widget alignment: "auto" | "top" | "bottom" | "left" | "right" | "center"
     widgetNewRow: {}, // Per-widget row break flag: { [widgetKey]: boolean }
     customWidgets: [], // User-defined declarative widgets (e.g. custom search)

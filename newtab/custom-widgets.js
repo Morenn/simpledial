@@ -55,6 +55,7 @@ import {
   findDueNoteReminders,
   checkDueNoteReminders,
   startNotesReminderPolling,
+  pruneNotesStorageForWidgets,
   openNotesWidgetModal,
   syncCustomNotesWidgetElements
 } from "./widgets/notes-widget.js";
@@ -68,6 +69,7 @@ import {
   requestRssFeedPermission,
   pollAllRssFeedWidgets,
   startRssFeedPolling,
+  pruneRssStorageForWidgets,
   openRssFeedModal,
   syncCustomRssWidgetElements
 } from "./widgets/rss-widget.js";
@@ -119,6 +121,7 @@ export {
   findDueNoteReminders,
   checkDueNoteReminders,
   startNotesReminderPolling,
+  pruneNotesStorageForWidgets,
   openNotesWidgetModal,
   syncCustomNotesWidgetElements,
   isValidRssFeedUrl,
@@ -130,6 +133,7 @@ export {
   requestRssFeedPermission,
   pollAllRssFeedWidgets,
   startRssFeedPolling,
+  pruneRssStorageForWidgets,
   openRssFeedModal,
   syncCustomRssWidgetElements
 };

@@ -1882,5 +1882,11 @@
   },
   "rssJustNow": {
     "message": "právě teď"
+  },
+  "widgetStorageUsage": {
+    "message": "Využití úložiště"
+  },
+  "infoStorageUsageTitle": {
+    "message": "💾 Využití úložiště doplňku"
   }
 }

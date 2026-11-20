@@ -1,5 +1,6 @@
 ﻿import { loadConfig, saveConfig, updateDebugLoggingFlags } from "./config.js";
 import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser, getSavedLanguageOverride } from "./i18n.js";
+import { measureAddonStorageUsage, formatStorageBytes } from "./storage-stats.js";
 import { render } from "./render.js";
 import { ensureHostPermission } from "./bookmarks.js";
 import { cleanupOldBackups } from "./backup.js";
@@ -217,7 +218,80 @@ tabButtons.forEach(btn => {
     tabContents.forEach(c => c.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(`${tabName}-tab`)?.classList.add("active");
+    if (tabName === "info") {
+      void renderInfoStorageStats();
+    }
   });
+});
+
+async function renderInfoStorageStats() {
+  const summaryEl = document.getElementById("info-storage-summary");
+  const breakdownEl = document.getElementById("info-storage-breakdown");
+  if (!summaryEl || !breakdownEl) return;
+
+  const stats = await measureAddonStorageUsage();
+  const localPct = Math.min(100, Math.round((stats.localBytes / stats.localLimitBytes) * 100));
+  const syncPct = Math.min(100, Math.round((stats.syncBytes / stats.syncLimitBytes) * 100));
+
+  summaryEl.innerHTML = "";
+  const addMeter = (label, used, limit, pct) => {
+    const row = document.createElement("div");
+    row.className = "info-storage-meter-row";
+    const top = document.createElement("div");
+    top.className = "info-storage-meter-top";
+    const lbl = document.createElement("span");
+    lbl.textContent = label;
+    const val = document.createElement("span");
+    val.textContent = `${formatStorageBytes(used)} / ${formatStorageBytes(limit)} (${pct}%)`;
+    top.append(lbl, val);
+    const bar = document.createElement("div");
+    bar.className = "info-storage-bar";
+    const fill = document.createElement("div");
+    fill.className = "info-storage-bar-fill" + (pct >= 85 ? " is-high" : "");
+    fill.style.width = `${pct}%`;
+    bar.appendChild(fill);
+    row.append(top, bar);
+    summaryEl.appendChild(row);
+  };
+
+  addMeter("Extension Storage (local)", stats.localBytes, stats.localLimitBytes, localPct);
+  addMeter(
+    "Icon Cache (localStorage)",
+    stats.localStorageBytes,
+    stats.localStorageLimitBytes,
+    Math.min(100, Math.round((stats.localStorageBytes / stats.localStorageLimitBytes) * 100))
+  );
+  if (stats.syncBytes > 0) {
+    addMeter("Browser Sync (sync)", stats.syncBytes, stats.syncLimitBytes, syncPct);
+  }
+
+  breakdownEl.innerHTML = "";
+  const catLabels = [
+    ["bookmarks", "Bookmarks & Groups"],
+    ["config", "Config & Widgets"],
+    ["backups", "Backups"],
+    ["themeCache", "Background & Theme Cache"],
+    ["notes", "Notes"],
+    ["rss", "RSS Cache & Read State"],
+    ["systemTags", "Local System Tags"],
+    ["other", "Other"]
+  ];
+  for (const [key, label] of catLabels) {
+    const bytes = stats.categories[key] || 0;
+    if (bytes === 0 && key === "other") continue;
+    const chip = document.createElement("div");
+    chip.className = "info-storage-chip";
+    const kSpan = document.createElement("span");
+    kSpan.textContent = label;
+    const vSpan = document.createElement("strong");
+    vSpan.textContent = formatStorageBytes(bytes);
+    chip.append(kSpan, vSpan);
+    breakdownEl.appendChild(chip);
+  }
+}
+
+document.getElementById("info-storage-refresh-btn")?.addEventListener("click", () => {
+  void renderInfoStorageStats();
 });
 
 // ---------- Open Settings Modal ----------
