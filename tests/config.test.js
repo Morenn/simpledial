@@ -282,7 +282,7 @@ test("applyThemeStyle and applyBackground apply built-in themes, custom CSS, and
 test("measureAddonStorageUsage categorizes chrome.storage.local keys and formats byte sizes", async () => {
   storageData.clear();
   await chrome.storage.local.set({
-    "myspeeddial-bookmarks": { groups: [{ id: "g1", name: "Test", items: [] }] },
+    "myspeeddial-data": { groups: [{ id: "g1", name: "Test", items: [] }] },
     "myspeeddial-rss-cache": { "cw-1": { items: [{ id: "1", title: "News" }] } },
     "myspeeddial-system-tags": { b1: ["sys_http"] }
   });

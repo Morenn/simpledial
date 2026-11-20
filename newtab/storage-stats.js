@@ -24,7 +24,7 @@ function measureJsonByteSize(value) {
 }
 
 function categorizeLocalStorageKey(key) {
-  if (key === "myspeeddial-bookmarks") return "bookmarks";
+  if (key === "myspeeddial-data" || key === "myspeeddial-bookmarks") return "bookmarks";
   if (key === "myspeeddial-config" || key === "myspeeddial-active-group" || key === "myspeeddial-theme") return "config";
   if (key.startsWith("myspeeddial-backups") || key.startsWith("myspeeddial-webdav-backup")) return "backups";
   if (key.includes("background-image") || key.includes("custom-theme")) return "themeCache";
