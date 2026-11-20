@@ -5,11 +5,11 @@ import { render } from "./render.js";
 const BACKUP_TYPE_META = {
   bookmarks: {
     storageKey: "myspeeddial-backups",
-    filenamePrefix: "backup-"
+    filenamePrefix: "speeddial-bookmarks-backup-"
   },
   config: {
     storageKey: "myspeeddial-backups-config",
-    filenamePrefix: "config-backup-"
+    filenamePrefix: "speeddial-config-backup-"
   }
 };
 
@@ -24,8 +24,7 @@ function pad2(value) {
   return String(value).padStart(2, "0");
 }
 
-function createBackupFilename(timestampMs, type = "bookmarks") {
-  const { filenamePrefix } = BACKUP_TYPE_META[normalizeBackupType(type)];
+export function formatBackupTimestamp(timestampMs = Date.now()) {
   const dt = new Date(timestampMs);
   const yy = pad2(dt.getFullYear() % 100);
   const mm = pad2(dt.getMonth() + 1);
@@ -33,7 +32,12 @@ function createBackupFilename(timestampMs, type = "bookmarks") {
   const hh = pad2(dt.getHours());
   const mi = pad2(dt.getMinutes());
   const ss = pad2(dt.getSeconds());
-  return `${filenamePrefix}${yy}${mm}${dd}-${hh}${mi}${ss}.json`;
+  return `${yy}${mm}${dd}-${hh}${mi}${ss}`;
+}
+
+function createBackupFilename(timestampMs, type = "bookmarks") {
+  const { filenamePrefix } = BACKUP_TYPE_META[normalizeBackupType(type)];
+  return `${filenamePrefix}${formatBackupTimestamp(timestampMs)}.json`;
 }
 
 function parseBackupInput(file) {

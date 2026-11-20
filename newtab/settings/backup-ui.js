@@ -3,7 +3,7 @@ import { loadConfig, saveConfig } from "../config.js";
 import { t } from "../i18n.js";
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from "../bookmarks-api.js";
 import { render, calculateGridLayout } from "../render.js";
-import { createBackup, listBackups, restoreBackup, restoreBackupFromJson, deleteBackup, cleanupOldBackups, getBackup } from "../backup.js";
+import { createBackup, listBackups, restoreBackup, restoreBackupFromJson, deleteBackup, cleanupOldBackups, getBackup, formatBackupTimestamp as formatFilenameTimestamp } from "../backup.js";
 import { syncBrowserBookmarks } from "../browser-bookmarks-sync.js";
 import { settingsState, setSettingsDirty } from "./context.js";
 import { initImportWizard } from "./importwizard-ui.js";
@@ -404,7 +404,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `speeddial-backup-${Date.now()}.json`;
+      link.download = `speeddial-bookmarks-${formatFilenameTimestamp()}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -505,7 +505,7 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `speeddial-bookmarks-${Date.now()}.html`;
+    link.download = `speeddial-bookmarks-${formatFilenameTimestamp()}.html`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

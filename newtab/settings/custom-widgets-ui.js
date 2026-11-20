@@ -1,6 +1,7 @@
 import { t } from "../i18n.js";
 import { render, calculateGridLayout } from "../render.js";
 import { applySideSpaces } from "../theme.js";
+import { formatBackupTimestamp } from "../backup.js";
 import {
   normalizeWidgetOrder,
   groupCustomSearchWidgets,
@@ -2247,7 +2248,7 @@ export function initCustomWidgetsSettings() {
     });
   }
 
-  function exportCustomWidgetsLibrary(widgets, filenamePrefix = "simple-dial-search-widgets", statusEl = customWidgetStatus) {
+  function exportCustomWidgetsLibrary(widgets, filenamePrefix = "speeddial-widgets", statusEl = customWidgetStatus) {
     const list = Array.isArray(widgets) ? widgets : [];
     if (list.length === 0) {
       if (statusEl) {
@@ -2261,7 +2262,7 @@ export function initCustomWidgetsSettings() {
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${filenamePrefix}-${Date.now()}.json`;
+    link.download = `${filenamePrefix}-${formatBackupTimestamp()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2275,7 +2276,7 @@ export function initCustomWidgetsSettings() {
 
   const triggerCustomWidgetExport = async (statusEl) => {
     const draft = await ensureAppearanceDraft();
-    exportCustomWidgetsLibrary(draft.customWidgets || [], "simple-dial-search-widgets", statusEl);
+    exportCustomWidgetsLibrary(draft.customWidgets || [], "speeddial-widgets", statusEl);
   };
 
   const customWidgetTrustModal = document.getElementById("custom-widget-trust-modal");

@@ -108,7 +108,7 @@ test("bookmarks backup creates snapshot and restore disables sync while restorin
   state.tags = [{ id: "t1", name: "dev", color: "#3b82f6" }];
 
   const entry = await createBackup("bookmarks");
-  assert.match(entry.filename, /^backup-\d{6}-\d{6}\.json$/);
+  assert.match(entry.filename, /^speeddial-bookmarks-backup-\d{6}-\d{6}\.json$/);
   assert.equal(entry.groupCount, 1);
   assert.equal(entry.bookmarkCount, 3);
 
@@ -148,7 +148,7 @@ test("config backup stores appearance (including customWidgets, excluding backgr
   await saveConfig(cfg);
 
   const entry = await createBackup("config");
-  assert.match(entry.filename, /^config-backup-\d{6}-\d{6}\.json$/);
+  assert.match(entry.filename, /^speeddial-config-backup-\d{6}-\d{6}\.json$/);
   assert.equal(entry.theme, "spring");
   assert.ok(entry.settingCount > 0);
 
