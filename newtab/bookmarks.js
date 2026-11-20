@@ -1471,6 +1471,7 @@ const bmCancel = document.getElementById("bm-cancel");
 let editingBookmark = null;
 let editingTagId = null;
 let selectedTagIds = new Set();
+let selectedSystemTagIds = new Set();
 let pendingSectionIdForNewBookmark = null;
 
 function resetModalTagEditState() {
@@ -1559,6 +1560,33 @@ function renderModalTagsList() {
     chip.append(dotSpan, nameSpan, editSpan, deleteSpan);
     bmTagsList.appendChild(chip);
   });
+
+  SYSTEM_TAGS.forEach(tag => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "bm-tag-chip is-system" + (selectedSystemTagIds.has(tag.id) ? " active" : "");
+    chip.style.setProperty("--tag-color", isValidHexColor(tag.color) ? tag.color : "#4a6bff");
+    chip.title = t("hkSystemTagReadOnly") || "System tag (local to this browser)";
+
+    const dotSpan = document.createElement("span");
+    dotSpan.className = "bm-tag-chip-dot";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "bm-tag-chip-name";
+    nameSpan.textContent = tag.name;
+
+    chip.addEventListener("click", () => {
+      if (selectedSystemTagIds.has(tag.id)) {
+        selectedSystemTagIds.delete(tag.id);
+      } else {
+        selectedSystemTagIds.add(tag.id);
+      }
+      renderModalTagsList();
+    });
+
+    chip.append(dotSpan, nameSpan);
+    bmTagsList.appendChild(chip);
+  });
 }
 
 function createOrSelectTagFromInput({ persist = true } = {}) {
@@ -1567,7 +1595,15 @@ function createOrSelectTagFromInput({ persist = true } = {}) {
   const color = isValidHexColor(bmNewTagColor?.value) ? bmNewTagColor.value : "#10b981";
 
   if (editingTagId) {
-    if (!rawName || isReservedSystemTagName(rawName)) {
+    if (isReservedSystemTagName(rawName)) {
+      alert(t("hkSystemTagNameReserved") || "This tag name is reserved for a system tag.");
+      const currentTag = (state.tags || []).find(tag => tag && !tag.deleted && tag.id === editingTagId);
+      bmNewTagName.value = currentTag?.name || "";
+      bmNewTagName.focus();
+      bmNewTagName.select();
+      return;
+    }
+    if (!rawName) {
       const currentTag = (state.tags || []).find(tag => tag && !tag.deleted && tag.id === editingTagId);
       bmNewTagName.value = currentTag?.name || "";
       bmNewTagName.focus();
@@ -1594,8 +1630,14 @@ function createOrSelectTagFromInput({ persist = true } = {}) {
     return;
   }
 
-  if (!rawName || isReservedSystemTagName(rawName)) {
+  if (!rawName) {
     bmNewTagName.value = "";
+    return;
+  }
+  if (isReservedSystemTagName(rawName)) {
+    alert(t("hkSystemTagNameReserved") || "This tag name is reserved for a system tag.");
+    bmNewTagName.focus();
+    bmNewTagName.select();
     return;
   }
 
@@ -1691,6 +1733,7 @@ export function openBookmarkModal(data = null, options = {}) {
     bmIcon.value = data.customIcon || "";
     bmNotes.value = data.notes || "";
     selectedTagIds = new Set(Array.isArray(data.tags) ? data.tags : []);
+    selectedSystemTagIds = new Set(getBookmarkSystemTagIds(data.id));
     if (bmColor) {
       bmColor.value = isValidHexColor(data.tileColor) ? data.tileColor : fallbackHex;
     }
@@ -1703,6 +1746,7 @@ export function openBookmarkModal(data = null, options = {}) {
     bmIcon.value = "";
     bmNotes.value = "";
     selectedTagIds = new Set();
+    selectedSystemTagIds = new Set();
     if (bmColor) bmColor.value = fallbackHex;
     if (bmColorFromIcon) bmColorFromIcon.checked = false;
     if (bmColorCustom) bmColorCustom.checked = false;
@@ -1721,6 +1765,7 @@ function closeBookmarkModal() {
   editingBookmark = null;
   pendingSectionIdForNewBookmark = null;
   selectedTagIds = new Set();
+  selectedSystemTagIds = new Set();
   resetModalTagEditState();
 }
 
@@ -1832,6 +1877,18 @@ bmSave.addEventListener("click", async () => {
   }
 
   const targetBookmarkId = targetBookmark?.id || null;
+
+  if (targetBookmarkId) {
+    let systemTagsChanged = false;
+    for (const sysTag of SYSTEM_TAGS) {
+      if (setBookmarkSystemTag(targetBookmarkId, sysTag.id, selectedSystemTagIds.has(sysTag.id))) {
+        systemTagsChanged = true;
+      }
+    }
+    if (systemTagsChanged) {
+      await saveSystemTags();
+    }
+  }
 
   await saveState();
   closeBookmarkModal();

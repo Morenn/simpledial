@@ -4,6 +4,7 @@ import {
   generateId,
   getAllGroupBookmarks,
   findBookmarkLocation,
+  SYSTEM_TAGS,
   SYSTEM_TAG_HTTP_ID,
   SYSTEM_TAG_DEAD_LINK_ID,
   SYSTEM_TAG_DUPLICATE_ID,
@@ -114,7 +115,8 @@ function renderHousekeeperTagsList() {
   }
 
   hkTagsList.innerHTML = "";
-  if (activeTags.length === 0) {
+  const allDisplayTags = [...activeTags, ...SYSTEM_TAGS];
+  if (allDisplayTags.length === 0) {
     const emptyEl = document.createElement("div");
     emptyEl.className = "hk-tags-empty";
     emptyEl.textContent = t("hkBookmarkTagsEmpty") || "No bookmark tags created yet.";
@@ -122,9 +124,10 @@ function renderHousekeeperTagsList() {
     return;
   }
 
-  for (const tag of activeTags) {
+  for (const tag of allDisplayTags) {
+    const isSystem = !!tag.system;
     const row = document.createElement("div");
-    row.className = "hk-tag-row";
+    row.className = "hk-tag-row" + (isSystem ? " is-system" : "");
     const tagColor = isValidHexColor(tag.color) ? tag.color : "#4a6bff";
     row.style.setProperty("--tag-color", tagColor);
 
@@ -134,15 +137,19 @@ function renderHousekeeperTagsList() {
     colorInput.className = "hk-tag-color-input";
     colorInput.value = tagColor;
     colorInput.dataset.noDirty = "true";
-    colorInput.title = t("edit") || "Edit";
+    colorInput.title = isSystem ? (t("hkSystemTagReadOnly") || "System tag (local to this browser)") : (t("edit") || "Edit");
     colorInput.setAttribute("aria-label", `${tag.name} color`);
-    colorInput.addEventListener("change", async () => {
-      const result = updateTagInState(tag.id, { name: tag.name, color: colorInput.value });
-      if (!result) return;
-      row.style.setProperty("--tag-color", result.tag.color);
-      await persistAndSyncTagChanges();
-      setHkTagsStatus(`✅ ${t("hkTagUpdated") || "Tag updated."}`);
-    });
+    if (isSystem) {
+      colorInput.disabled = true;
+    } else {
+      colorInput.addEventListener("change", async () => {
+        const result = updateTagInState(tag.id, { name: tag.name, color: colorInput.value });
+        if (!result) return;
+        row.style.setProperty("--tag-color", result.tag.color);
+        await persistAndSyncTagChanges();
+        setHkTagsStatus(`✅ ${t("hkTagUpdated") || "Tag updated."}`);
+      });
+    }
 
     const nameInput = document.createElement("input");
     nameInput.type = "text";
@@ -152,53 +159,66 @@ function renderHousekeeperTagsList() {
     nameInput.value = tag.name;
     nameInput.dataset.noDirty = "true";
     nameInput.setAttribute("aria-label", tag.name);
+    if (isSystem) {
+      nameInput.readOnly = true;
+      nameInput.disabled = true;
+      nameInput.title = t("hkSystemTagReadOnly") || "System tag (local to this browser)";
+    }
 
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "icon-btn hk-tag-save-btn";
-    saveBtn.textContent = t("save") || "Save";
+    saveBtn.textContent = isSystem ? (t("hkSystemTagBadge") || "Local") : (t("save") || "Save");
     saveBtn.disabled = true;
 
-    const syncSaveState = () => {
-      const nextName = nameInput.value.trim();
-      saveBtn.disabled = !nextName || nextName === tag.name || isReservedSystemTagName(nextName);
-    };
-    nameInput.addEventListener("input", syncSaveState);
+    if (!isSystem) {
+      const syncSaveState = () => {
+        const nextName = nameInput.value.trim();
+        saveBtn.disabled = !nextName || nextName === tag.name || isReservedSystemTagName(nextName);
+      };
+      nameInput.addEventListener("input", syncSaveState);
 
-    const commitRename = async () => {
-      const nextName = nameInput.value.trim();
-      if (!nextName || nextName === tag.name || isReservedSystemTagName(nextName)) {
-        nameInput.value = tag.name;
-        syncSaveState();
-        return;
-      }
-      const result = updateTagInState(tag.id, { name: nextName, color: colorInput.value });
-      if (!result) {
-        nameInput.value = tag.name;
-        syncSaveState();
-        return;
-      }
-      await persistAndSyncTagChanges();
-      renderHousekeeperTagsList();
-      setHkTagsStatus(`✅ ${t("hkTagUpdated") || "Tag updated."}`);
-    };
+      const commitRename = async () => {
+        const nextName = nameInput.value.trim();
+        if (isReservedSystemTagName(nextName)) {
+          setHkTagsStatus(`⚠️ ${t("hkSystemTagNameReserved") || "This tag name is reserved for a system tag."}`, "#ef4444");
+          nameInput.value = tag.name;
+          syncSaveState();
+          return;
+        }
+        if (!nextName || nextName === tag.name) {
+          nameInput.value = tag.name;
+          syncSaveState();
+          return;
+        }
+        const result = updateTagInState(tag.id, { name: nextName, color: colorInput.value });
+        if (!result) {
+          nameInput.value = tag.name;
+          syncSaveState();
+          return;
+        }
+        await persistAndSyncTagChanges();
+        renderHousekeeperTagsList();
+        setHkTagsStatus(`✅ ${t("hkTagUpdated") || "Tag updated."}`);
+      };
 
-    saveBtn.addEventListener("click", () => {
-      void commitRename();
-    });
-
-    nameInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") {
-        e.preventDefault();
+      saveBtn.addEventListener("click", () => {
         void commitRename();
-      } else if (e.key === "Escape" && nameInput.value.trim() !== tag.name) {
-        e.preventDefault();
-        e.stopPropagation();
-        nameInput.value = tag.name;
-        syncSaveState();
-        nameInput.blur();
-      }
-    });
+      });
+
+      nameInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          void commitRename();
+        } else if (e.key === "Escape" && nameInput.value.trim() !== tag.name) {
+          e.preventDefault();
+          e.stopPropagation();
+          nameInput.value = tag.name;
+          syncSaveState();
+          nameInput.blur();
+        }
+      });
+    }
 
     const useCount = counts.get(tag.id) || 0;
     const usageBadge = document.createElement("button");
@@ -220,14 +240,28 @@ function renderHousekeeperTagsList() {
     deleteBtn.type = "button";
     deleteBtn.className = "icon-btn danger hk-tag-delete-btn";
     deleteBtn.textContent = "🗑️";
-    deleteBtn.title = t("delete") || "Delete";
-    deleteBtn.setAttribute("aria-label", `${t("delete") || "Delete"} ${tag.name}`);
-    deleteBtn.addEventListener("click", async () => {
-      if (!deleteTagFromState(tag.id)) return;
-      await persistAndSyncTagChanges();
-      renderHousekeeperTagsList();
-      setHkTagsStatus(`✅ ${t("hkTagDeleted") || "Tag deleted."}`);
-    });
+    deleteBtn.title = isSystem
+      ? (t("hkSystemTagClear") || "Clear from all bookmarks (this browser only)")
+      : (t("delete") || "Delete");
+    deleteBtn.setAttribute("aria-label", `${deleteBtn.title} ${tag.name}`);
+    if (isSystem) {
+      deleteBtn.disabled = useCount === 0;
+      deleteBtn.addEventListener("click", async () => {
+        const cleared = clearSystemTagFromAllBookmarks(tag.id);
+        if (!cleared) return;
+        await saveSystemTags();
+        try { render(); } catch {}
+        renderHousekeeperTagsList();
+        setHkTagsStatus(`✅ ${t("hkSystemTagCleared") || "System tag cleared from bookmarks."}`);
+      });
+    } else {
+      deleteBtn.addEventListener("click", async () => {
+        if (!deleteTagFromState(tag.id)) return;
+        await persistAndSyncTagChanges();
+        renderHousekeeperTagsList();
+        setHkTagsStatus(`✅ ${t("hkTagDeleted") || "Tag deleted."}`);
+      });
+    }
 
     row.append(colorInput, nameInput, saveBtn, usageBadge, deleteBtn);
     hkTagsList.appendChild(row);
@@ -922,8 +956,14 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
   const addTagFromHousekeeper = async () => {
     if (!hkNewTagName) return;
     const rawName = hkNewTagName.value.trim();
-    if (!rawName || isReservedSystemTagName(rawName)) {
+    if (!rawName) {
       hkNewTagName.value = "";
+      return;
+    }
+    if (isReservedSystemTagName(rawName)) {
+      setHkTagsStatus(`⚠️ ${t("hkSystemTagNameReserved") || "This tag name is reserved for a system tag."}`, "#ef4444");
+      hkNewTagName.focus();
+      hkNewTagName.select();
       return;
     }
 

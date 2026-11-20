@@ -1834,5 +1834,20 @@
   },
   "failedIconCategoryGroup": {
     "message": "Ryhmä"
+  },
+  "hkSystemTagBadge": {
+    "message": "Paikallinen"
+  },
+  "hkSystemTagReadOnly": {
+    "message": "Järjestelmätunniste (paikallinen tälle selaimelle)"
+  },
+  "hkSystemTagClear": {
+    "message": "Tyhjennä kaikista kirjanmerkeistä (vain tässä selaimessa)"
+  },
+  "hkSystemTagCleared": {
+    "message": "Järjestelmätunniste tyhjennetty kirjanmerkeistä."
+  },
+  "hkSystemTagNameReserved": {
+    "message": "Tämä tunnisteen nimi on varattu järjestelmätunnisteelle."
   }
 }

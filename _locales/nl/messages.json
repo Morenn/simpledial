@@ -1834,5 +1834,20 @@
   },
   "failedIconCategoryGroup": {
     "message": "Groep"
+  },
+  "hkSystemTagBadge": {
+    "message": "Lokaal"
+  },
+  "hkSystemTagReadOnly": {
+    "message": "Systeemtag (lokaal voor deze browser)"
+  },
+  "hkSystemTagClear": {
+    "message": "Wissen van alle bladwijzers (alleen deze browser)"
+  },
+  "hkSystemTagCleared": {
+    "message": "Systeemtag gewist van bladwijzers."
+  },
+  "hkSystemTagNameReserved": {
+    "message": "Deze tagnaam is gereserveerd voor een systeemtag."
   }
 }

@@ -1834,5 +1834,20 @@
   },
   "failedIconCategoryGroup": {
     "message": "Skupina"
+  },
+  "hkSystemTagBadge": {
+    "message": "Lokálny"
+  },
+  "hkSystemTagReadOnly": {
+    "message": "Systémový štítok (lokálny pre tento prehliadač)"
+  },
+  "hkSystemTagClear": {
+    "message": "Odstrániť zo všetkých záložiek (len v tomto prehliadači)"
+  },
+  "hkSystemTagCleared": {
+    "message": "Systémový štítok bol odstránený zo záložiek."
+  },
+  "hkSystemTagNameReserved": {
+    "message": "Tento názov štítku je vyhradený pre systémový štítok."
   }
 }

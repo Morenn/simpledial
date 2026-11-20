@@ -1861,5 +1861,20 @@
   },
   "failedIconCategoryGroup": {
     "message": "Group"
+  },
+  "hkSystemTagBadge": {
+    "message": "Local"
+  },
+  "hkSystemTagReadOnly": {
+    "message": "System tag (local to this browser)"
+  },
+  "hkSystemTagClear": {
+    "message": "Clear from all bookmarks (this browser only)"
+  },
+  "hkSystemTagCleared": {
+    "message": "System tag cleared from bookmarks."
+  },
+  "hkSystemTagNameReserved": {
+    "message": "This tag name is reserved for a system tag."
   }
 }

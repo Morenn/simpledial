@@ -1834,5 +1834,20 @@
   },
   "failedIconCategoryGroup": {
     "message": "Група"
+  },
+  "hkSystemTagBadge": {
+    "message": "Локальний"
+  },
+  "hkSystemTagReadOnly": {
+    "message": "Системний тег (локальний для цього браузера)"
+  },
+  "hkSystemTagClear": {
+    "message": "Очистити з усіх закладок (лише в цьому браузері)"
+  },
+  "hkSystemTagCleared": {
+    "message": "Системний тег очищено із закладок."
+  },
+  "hkSystemTagNameReserved": {
+    "message": "Ця назва тегу зарезервована для системного тегу."
   }
 }

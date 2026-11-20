@@ -1834,5 +1834,20 @@
   },
   "failedIconCategoryGroup": {
     "message": "Groupe"
+  },
+  "hkSystemTagBadge": {
+    "message": "Local"
+  },
+  "hkSystemTagReadOnly": {
+    "message": "Étiquette système (locale à ce navigateur)"
+  },
+  "hkSystemTagClear": {
+    "message": "Effacer de tous les favoris (ce navigateur uniquement)"
+  },
+  "hkSystemTagCleared": {
+    "message": "Étiquette système effacée des favoris."
+  },
+  "hkSystemTagNameReserved": {
+    "message": "Ce nom d'étiquette est réservé à une étiquette système."
   }
 }

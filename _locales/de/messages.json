@@ -1834,5 +1834,20 @@
   },
   "failedIconCategoryGroup": {
     "message": "Gruppe"
+  },
+  "hkSystemTagBadge": {
+    "message": "Lokal"
+  },
+  "hkSystemTagReadOnly": {
+    "message": "System-Tag (lokal in diesem Browser)"
+  },
+  "hkSystemTagClear": {
+    "message": "Von allen Lesezeichen entfernen (nur in diesem Browser)"
+  },
+  "hkSystemTagCleared": {
+    "message": "System-Tag wurde von den Lesezeichen entfernt."
+  },
+  "hkSystemTagNameReserved": {
+    "message": "Dieser Tag-Name ist für einen System-Tag reserviert."
   }
 }

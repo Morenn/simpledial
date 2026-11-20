@@ -175,8 +175,11 @@ export function getTagUsageCounts({ includeDeleted = false } = {}) {
   for (const group of (state.groups || [])) {
     if (!group || (!includeDeleted && group.deleted)) continue;
     for (const item of getAllGroupBookmarks(group, { includeDeleted })) {
-      if (!Array.isArray(item.tags)) continue;
-      for (const tagId of new Set(item.tags)) {
+      const combinedIds = [
+        ...(Array.isArray(item.tags) ? item.tags : []),
+        ...getBookmarkSystemTagIds(item.id)
+      ];
+      for (const tagId of new Set(combinedIds)) {
         if (typeof tagId !== "string" || !tagId) continue;
         counts.set(tagId, (counts.get(tagId) || 0) + 1);
       }
