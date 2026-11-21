@@ -1174,3 +1174,43 @@ test("weather helpers format temperatures, map WMO codes, strip apiKey on export
     globalThis.chrome = prevChrome;
   }
 });
+
+test("markAllRssItemsRead persists new read IDs even when stored read list is already at max capacity", async () => {
+  const fullReadList = Array.from({ length: 120 }, (_, i) => `old_${i}`);
+  const store = new Map([
+    ["myspeeddial-rss-cache", {
+      "cw-rss-full": { fetchedAt: 1000, items: [{ id: "new_1", title: "New 1" }, { id: "new_2", title: "New 2" }] }
+    }],
+    ["myspeeddial-rss-read", {
+      "cw-rss-full": fullReadList
+    }]
+  ]);
+  const prevChrome = globalThis.chrome;
+  globalThis.chrome = {
+    ...prevChrome,
+    storage: {
+      local: {
+        async get(keys) {
+          const out = {};
+          for (const k of (Array.isArray(keys) ? keys : [keys])) {
+            if (store.has(k)) out[k] = structuredClone(store.get(k));
+          }
+          return out;
+        },
+        async set(obj) {
+          for (const [k, v] of Object.entries(obj)) store.set(k, structuredClone(v));
+        }
+      }
+    }
+  };
+  try {
+    const { markAllRssItemsRead } = await import("../newtab/widgets/rss-widget.js");
+    await markAllRssItemsRead([{ id: "cw-rss-full", type: "rss-feed" }]);
+    const saved = store.get("myspeeddial-rss-read")["cw-rss-full"];
+    assert.equal(saved.length, 120);
+    assert.equal(saved[0], "new_1");
+    assert.equal(saved[1], "new_2");
+  } finally {
+    globalThis.chrome = prevChrome;
+  }
+});
