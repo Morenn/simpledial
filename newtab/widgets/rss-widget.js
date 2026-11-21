@@ -418,8 +418,13 @@ function updateRssBarDom(barEl, groupEntry) {
       headlineEl.textContent = allItems[0].title;
       barEl.title = `${groupEntry.groupName || groupEntry.representative.name || "Feed"} — ${allItems[0].title}`;
     } else if (hasError) {
-      headlineEl.textContent = lastError;
-      barEl.title = lastError;
+      if (lastError === "Permission required") {
+        headlineEl.textContent = t("rssPermissionRequiredBar") || "🔒 Permission required — open & refresh";
+        barEl.title = t("rssPermissionRequiredBarTitle") || "Open widget and click Refresh (↻) to grant permission";
+      } else {
+        headlineEl.textContent = lastError;
+        barEl.title = lastError;
+      }
     } else if (!hasLoadedOnce) {
       headlineEl.textContent = t("rssLoading") || "Loading feed...";
     } else {
@@ -548,11 +553,34 @@ export async function openRssFeedModal(groupEntry, barEl = null) {
 
     if (!listEl) return;
     listEl.innerHTML = "";
+    const visibleMembers = activeFilterWidgetId === "all"
+      ? groupEntry.members
+      : groupEntry.members.filter(w => w.id === activeFilterWidgetId);
+    const needsPermission = visibleMembers.some(w => rssCacheByWidget[w.id]?.error === "Permission required");
+    if (needsPermission) {
+      const notice = document.createElement("div");
+      notice.className = "rss-modal-permission-notice";
+      const msg = document.createElement("span");
+      msg.textContent = t("rssPermissionRequiredNotice")
+        || "Host permission is required to fetch this feed. Click Refresh (↻) or Grant permission & Refresh.";
+      const grantBtn = document.createElement("button");
+      grantBtn.type = "button";
+      grantBtn.className = "icon-btn primary rss-grant-permission-btn";
+      grantBtn.textContent = t("rssGrantPermissionAndRefresh") || "Grant permission & Refresh";
+      grantBtn.addEventListener("click", () => {
+        void handleRefresh(grantBtn);
+      });
+      notice.append(msg, grantBtn);
+      listEl.appendChild(notice);
+    }
+
     if (items.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "rss-modal-empty";
-      empty.textContent = t("rssEmpty") || "No articles available.";
-      listEl.appendChild(empty);
+      if (!needsPermission) {
+        const empty = document.createElement("div");
+        empty.className = "rss-modal-empty";
+        empty.textContent = t("rssEmpty") || "No articles available.";
+        listEl.appendChild(empty);
+      }
       return;
     }
 
@@ -595,27 +623,31 @@ export async function openRssFeedModal(groupEntry, barEl = null) {
     };
   }
 
-  if (refreshBtn) {
-    refreshBtn.onclick = async () => {
-      refreshBtn.disabled = true;
-      try {
-        for (const w of groupEntry.members) {
-          await requestRssFeedPermission(w.feedUrl);
-          const res = await fetchRssFeedWidget(w);
-          rssCacheByWidget[w.id] = {
-            fetchedAt: Date.now(),
-            feedTitle: res.feedTitle || "",
-            items: res.ok ? res.items : (rssCacheByWidget[w.id]?.items || []),
-            error: res.ok ? null : res.error
-          };
-        }
-        await persistRssCache();
-        updateRssBarDom(barEl, groupEntry);
-        renderModalBody();
-      } finally {
-        refreshBtn.disabled = false;
+  const handleRefresh = async (triggerBtn = null) => {
+    if (refreshBtn) refreshBtn.disabled = true;
+    if (triggerBtn && triggerBtn !== refreshBtn) triggerBtn.disabled = true;
+    try {
+      for (const w of groupEntry.members) {
+        await requestRssFeedPermission(w.feedUrl);
+        const res = await fetchRssFeedWidget(w);
+        rssCacheByWidget[w.id] = {
+          fetchedAt: Date.now(),
+          feedTitle: res.feedTitle || "",
+          items: res.ok ? res.items : (rssCacheByWidget[w.id]?.items || []),
+          error: res.ok ? null : res.error
+        };
       }
-    };
+      await persistRssCache();
+      updateRssBarDom(barEl, groupEntry);
+      renderModalBody();
+    } finally {
+      if (refreshBtn) refreshBtn.disabled = false;
+      if (triggerBtn && triggerBtn !== refreshBtn) triggerBtn.disabled = false;
+    }
+  };
+
+  if (refreshBtn) {
+    refreshBtn.onclick = () => handleRefresh(refreshBtn);
   }
 
   renderModalBody();

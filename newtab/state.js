@@ -18,7 +18,7 @@ export const SYSTEM_TAGS = [
 const SYSTEM_TAG_ID_SET = new Set(SYSTEM_TAGS.map(tag => tag.id));
 let systemBookmarkTags = {};
 
-import { t } from "./i18n.js";
+import { t, initLanguage } from "./i18n.js";
 import { isValidHexColor } from "./color-utils.js";
 
 export let state = {
@@ -490,9 +490,22 @@ export async function loadState() {
 
   // 🔥 If no groups exist → create default
   if (state.groups.length === 0) {
+    let defaultName = t("defaultGroupName");
+    if (!defaultName || defaultName === "defaultGroupName") {
+      try {
+        await initLanguage();
+        defaultName = t("defaultGroupName");
+      } catch {
+        // ignore in headless/test environments
+      }
+    }
+    if (!defaultName || defaultName === "defaultGroupName") {
+      defaultName = "General";
+    }
+
     const defaultGroup = {
       id: generateId("g"),
-      name: t("defaultGroupName"),
+      name: defaultName,
       sections: [],
       items: [],
       updatedAt: Date.now(),

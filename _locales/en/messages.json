@@ -1919,6 +1919,18 @@
   "rssJustNow": {
     "message": "just now"
   },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Permission required — open & refresh"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Open widget and click Refresh (↻) to grant permission"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Host permission is required to fetch this feed. Click Refresh (↻) or Grant permission & Refresh."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Grant permission & Refresh"
+  },
   "widgetStorageUsage": {
     "message": "Storage usage"
   },
