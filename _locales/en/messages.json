@@ -155,17 +155,8 @@
   "syncEncryptNone": {
     "message": "Do not encrypt"
   },
-  "syncEncryptMaster": {
-    "message": "Encrypt with master password"
-  },
   "syncEncryptLocal": {
     "message": "Encrypt with local key"
-  },
-  "enterMasterPasswordPrompt": {
-    "message": "Enter master password to encrypt/decrypt credentials"
-  },
-  "confirmMasterPasswordPrompt": {
-    "message": "Confirm master password"
   },
   "saveCredentials": {
     "message": "Save credentials"
@@ -211,9 +202,6 @@
   },
   "enableSync": {
     "message": "Enable synchronization"
-  },
-  "saveSettings": {
-    "message": "Save"
   },
   "close": {
     "message": "Close"
@@ -1037,11 +1025,11 @@
   "customWidgetsTab": {
     "message": "🧩 Custom Widgets"
   },
-  "customWidgetsLibraryTitle": {
-    "message": "Saved Custom Widgets"
-  },
   "customWidgetsLibraryEmpty": {
     "message": "No custom widgets yet. Create or import one above."
+  },
+  "customWidgetsFilterEmpty": {
+    "message": "No matching widgets."
   },
   "customSearchSourceUrlPlaceholder": {
     "message": "https://example.com/custom-widgets.json"
@@ -1153,9 +1141,6 @@
   },
   "customTzAddTitle": {
     "message": "Add Time Zone Widget"
-  },
-  "customWidgetsExportAllBtn": {
-    "message": "Export all"
   },
   "customWidgetsExportGroupBtn": {
     "message": "Export group"
@@ -1625,9 +1610,6 @@
   "notesTodoEmpty": {
     "message": "No todos yet."
   },
-  "notesAddTodoTitle": {
-    "message": "Add todo"
-  },
   "notesOpenModalTitle": {
     "message": "Open notes"
   },
@@ -1936,5 +1918,35 @@
   },
   "infoStorageUsageTitle": {
     "message": "💾 Addon Storage Usage"
+  },
+  "all": {
+    "message": "All"
+  },
+  "clear": {
+    "message": "Clear"
+  },
+  "create": {
+    "message": "Create"
+  },
+  "rename": {
+    "message": "Rename"
+  },
+  "backupDownloadFailed": {
+    "message": "Backup download failed."
+  },
+  "customTzSwitchTo12h": {
+    "message": "Temporarily switch to 12-hour format"
+  },
+  "customTzSwitchTo24h": {
+    "message": "Switch to 24-hour format"
+  },
+  "customWidgetsRenameGroupPrompt": {
+    "message": "New group name:"
+  },
+  "hostPermissionRequired": {
+    "message": "Host permission is required."
+  },
+  "noOtherGroups": {
+    "message": "No other groups"
   }
 }

@@ -29,6 +29,34 @@ A clean, privacy-focused, and customizable Speed Dial new-tab browser extension 
 - **HouseKeeper** — Soft-delete recovery and automatic cleanup, dead-link checking/highlighting, and automatic favicon refreshing.
 - **Localization** — Supports English, Czech, German, Finnish, French, Dutch, Slovak, and Ukrainian.
 
+## Default Widget Placement
+
+Widgets can be placed in **Header**, **Left**, **Center**, **Right**, or **Footer** spaces (and optional widgets can be set to **Disabled**) in **Settings → Appearance → Widgets**.
+
+### Built-in Widgets
+
+| Widget | Default Space | Notes |
+|--------|---------------|-------|
+| Group selector | `header` | Cannot be disabled |
+| Manage buttons | `header` | Cannot be disabled |
+| Search bar | `center` | Cannot be disabled |
+| Bookmarks | `center` | Fixed placement |
+| Sync status | `footer` | Can be disabled |
+| Date & Time | `footer` | Can be disabled |
+| Shortcut palette | `footer` | Can be disabled |
+| Bookmarks count | `footer` | Can be disabled |
+| Storage usage | `disabled` | Optional local/sync storage meter |
+
+### Custom Widget Types
+
+| Widget Type | Default Space | Groupable | Notes |
+|-------------|---------------|-----------|-------|
+| RSS / Atom Feed (`rss-feed`) | `left` | Yes | Inherits group space when added/joined to an existing group |
+| REST / JSON Status (`rest-status`) | `left` | Yes | Inherits group space when added/joined to an existing group |
+| Time Zone (`timezone`) | `right` | No | — |
+| Notes / Scratchpad (`notes`) | `right` | No | — |
+| Custom Search (`custom-search`) | `right` | Yes | Inherits group space when added/joined to an existing group |
+
 ---
 
 *Co-developed with Antigravity (Gemini).*

@@ -152,17 +152,8 @@
   "syncEncryptNone": {
     "message": "Nešifrovať"
   },
-  "syncEncryptMaster": {
-    "message": "Šifrovať heslom"
-  },
   "syncEncryptLocal": {
     "message": "Šifrovať lokálnym kľúčom"
-  },
-  "enterMasterPasswordPrompt": {
-    "message": "Zadajte hlavné heslo pre šifrovanie/dešifrovanie"
-  },
-  "confirmMasterPasswordPrompt": {
-    "message": "Potvrďte hlavné heslo"
   },
   "saveCredentials": {
     "message": "Uložiť prihlasovacie údaje"
@@ -208,9 +199,6 @@
   },
   "enableSync": {
     "message": "Zapnúť synchronizáciu"
-  },
-  "saveSettings": {
-    "message": "Uložiť"
   },
   "close": {
     "message": "Zavrieť"
@@ -1025,11 +1013,11 @@
   "customWidgetsTab": {
     "message": "🧩 Vlastné widgety"
   },
-  "customWidgetsLibraryTitle": {
-    "message": "Uložené vlastné widgety"
-  },
   "customWidgetsLibraryEmpty": {
     "message": "Zatiaľ žiadne vlastné widgety. Vytvorte alebo importujte ich vyššie."
+  },
+  "customWidgetsFilterEmpty": {
+    "message": "Žiadne zodpovedajúce widgety."
   },
   "customSearchSourceUrlPlaceholder": {
     "message": "https://example.com/custom-widgets.json"
@@ -1141,9 +1129,6 @@
   },
   "customTzAddTitle": {
     "message": "Pridať widget časových pásem"
-  },
-  "customWidgetsExportAllBtn": {
-    "message": "Exportovať všetko"
   },
   "customWidgetsExportGroupBtn": {
     "message": "Exportovať skupinu"
@@ -1613,9 +1598,6 @@
   "notesTodoEmpty": {
     "message": "Zatiaľ žiadne úlohy."
   },
-  "notesAddTodoTitle": {
-    "message": "Pridať úlohu"
-  },
   "notesOpenModalTitle": {
     "message": "Otvoriť poznámky"
   },
@@ -1888,5 +1870,83 @@
   },
   "infoStorageUsageTitle": {
     "message": "💾 Využitie úložiska doplnku"
+  },
+  "themeToggle": {
+    "message": "Prepnúť motív"
+  },
+  "all": {
+    "message": "Všetko"
+  },
+  "clear": {
+    "message": "Vymazať"
+  },
+  "create": {
+    "message": "Vytvoriť"
+  },
+  "rename": {
+    "message": "Premenovať"
+  },
+  "backupDownloadFailed": {
+    "message": "Stiahnutie zálohy zlyhalo."
+  },
+  "customTzSwitchTo12h": {
+    "message": "Dočasne prepnúť na 12-hodinový formát"
+  },
+  "customTzSwitchTo24h": {
+    "message": "Prepnúť na 24-hodinový formát"
+  },
+  "customWidgetsRenameGroupPrompt": {
+    "message": "Nový názov skupiny:"
+  },
+  "hostPermissionRequired": {
+    "message": "Vyžaduje sa povolenie pre hostiteľa."
+  },
+  "noOtherGroups": {
+    "message": "Žiadne ďalšie skupiny"
+  },
+  "cleanupOrphanedObjects": {
+    "message": "Vyčistiť osirelé objekty"
+  },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Osirelé objekty vyčistené ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Neboli nájdené žiadne osirelé objekty."
+  },
+  "hkBookmarkTagsTitle": {
+    "message": "Štítky záložiek"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Vytvárajte, premenúvajte, prefarbujte alebo odstraňujte štítky záložiek naprieč všetkými skupinami."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Odstrániť nepoužívané štítky"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Zatiaľ nie sú vytvorené žiadne štítky záložiek."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} záložiek"
+  },
+  "hkTagUpdated": {
+    "message": "Štítok aktualizovaný."
+  },
+  "hkTagDeleted": {
+    "message": "Štítok odstránený."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Odstránených {0} nepoužívaných štítkov."
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Vyžaduje sa povolenie — otvorte a obnovte"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Otvorte widget a kliknite na Obnoviť (↻) pre udelenie povolenia"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Na načítanie tohto kanála sa vyžaduje povolenie pre hostiteľa. Kliknite na Obnoviť (↻) alebo Udeliť povolenie a obnoviť."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Udeliť povolenie a obnoviť"
   }
 }

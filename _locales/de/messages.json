@@ -152,17 +152,8 @@
   "syncEncryptNone": {
     "message": "Nicht verschlüsseln"
   },
-  "syncEncryptMaster": {
-    "message": "Mit Master-Passwort verschlüsseln"
-  },
   "syncEncryptLocal": {
     "message": "Mit lokalem Schlüssel verschlüsseln"
-  },
-  "enterMasterPasswordPrompt": {
-    "message": "Master-Passwort zum Verschlüsseln/Entschlüsseln eingeben"
-  },
-  "confirmMasterPasswordPrompt": {
-    "message": "Master-Passwort bestätigen"
   },
   "saveCredentials": {
     "message": "Zugangsdaten speichern"
@@ -208,9 +199,6 @@
   },
   "enableSync": {
     "message": "Synchronisierung aktivieren"
-  },
-  "saveSettings": {
-    "message": "Speichern"
   },
   "close": {
     "message": "Schließen"
@@ -1025,11 +1013,11 @@
   "customWidgetsTab": {
     "message": "🧩 Eigene Widgets"
   },
-  "customWidgetsLibraryTitle": {
-    "message": "Gespeicherte eigene Widgets"
-  },
   "customWidgetsLibraryEmpty": {
     "message": "Noch keine eigenen Widgets. Erstellen oder importieren Sie oben eines."
+  },
+  "customWidgetsFilterEmpty": {
+    "message": "Keine passenden Widgets."
   },
   "customSearchSourceUrlPlaceholder": {
     "message": "https://example.com/custom-widgets.json"
@@ -1141,9 +1129,6 @@
   },
   "customTzAddTitle": {
     "message": "Zeitzonen-Widget hinzufügen"
-  },
-  "customWidgetsExportAllBtn": {
-    "message": "Alle exportieren"
   },
   "customWidgetsExportGroupBtn": {
     "message": "Gruppe exportieren"
@@ -1613,9 +1598,6 @@
   "notesTodoEmpty": {
     "message": "Noch keine Aufgaben."
   },
-  "notesAddTodoTitle": {
-    "message": "Aufgabe hinzufügen"
-  },
   "notesOpenModalTitle": {
     "message": "Notizen öffnen"
   },
@@ -1888,5 +1870,83 @@
   },
   "infoStorageUsageTitle": {
     "message": "💾 Addon-Speichernutzung"
+  },
+  "themeToggle": {
+    "message": "Design wechseln"
+  },
+  "all": {
+    "message": "Alle"
+  },
+  "clear": {
+    "message": "Leeren"
+  },
+  "create": {
+    "message": "Erstellen"
+  },
+  "rename": {
+    "message": "Umbenennen"
+  },
+  "backupDownloadFailed": {
+    "message": "Backup-Download fehlgeschlagen."
+  },
+  "customTzSwitchTo12h": {
+    "message": "Vorübergehend auf 12-Stunden-Format umschalten"
+  },
+  "customTzSwitchTo24h": {
+    "message": "Auf 24-Stunden-Format umschalten"
+  },
+  "customWidgetsRenameGroupPrompt": {
+    "message": "Neuer Gruppenname:"
+  },
+  "hostPermissionRequired": {
+    "message": "Host-Berechtigung ist erforderlich."
+  },
+  "noOtherGroups": {
+    "message": "Keine anderen Gruppen"
+  },
+  "cleanupOrphanedObjects": {
+    "message": "Verwaiste Objekte bereinigen"
+  },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Verwaiste Objekte bereinigt ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Keine verwaisten Objekte gefunden."
+  },
+  "hkBookmarkTagsTitle": {
+    "message": "Lesezeichen-Tags"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Lesezeichen-Tags gruppenübergreifend erstellen, umbenennen, umfärben oder entfernen."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Unbenutzte Tags entfernen"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Noch keine Lesezeichen-Tags erstellt."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} Lesezeichen"
+  },
+  "hkTagUpdated": {
+    "message": "Tag aktualisiert."
+  },
+  "hkTagDeleted": {
+    "message": "Tag gelöscht."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "{0} unbenutzte(s) Tag(s) entfernt."
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Berechtigung erforderlich — öffnen & aktualisieren"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Widget öffnen und auf Aktualisieren (↻) klicken, um die Berechtigung zu erteilen"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Zum Abrufen dieses Feeds ist eine Host-Berechtigung erforderlich. Klicken Sie auf Aktualisieren (↻) oder Berechtigung erteilen & aktualisieren."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Berechtigung erteilen & aktualisieren"
   }
 }

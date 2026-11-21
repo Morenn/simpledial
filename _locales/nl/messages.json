@@ -152,17 +152,8 @@
   "syncEncryptNone": {
     "message": "Niet versleutelen"
   },
-  "syncEncryptMaster": {
-    "message": "Versleutelen met hoofdwachtwoord"
-  },
   "syncEncryptLocal": {
     "message": "Versleutelen met lokale sleutel"
-  },
-  "enterMasterPasswordPrompt": {
-    "message": "Voer het hoofdwachtwoord in om te versleutelen of te ontsleutelen"
-  },
-  "confirmMasterPasswordPrompt": {
-    "message": "Bevestig hoofdwachtwoord"
   },
   "saveCredentials": {
     "message": "Inloggegevens opslaan"
@@ -208,9 +199,6 @@
   },
   "enableSync": {
     "message": "Synchronisatie inschakelen"
-  },
-  "saveSettings": {
-    "message": "Opslaan"
   },
   "close": {
     "message": "Sluiten"
@@ -1025,11 +1013,11 @@
   "customWidgetsTab": {
     "message": "🧩 Aangepaste widgets"
   },
-  "customWidgetsLibraryTitle": {
-    "message": "Opgeslagen aangepaste widgets"
-  },
   "customWidgetsLibraryEmpty": {
     "message": "Nog geen aangepaste widgets. Maak of importeer er hierboven een."
+  },
+  "customWidgetsFilterEmpty": {
+    "message": "Geen overeenkomende widgets."
   },
   "customSearchSourceUrlPlaceholder": {
     "message": "https://example.com/custom-widgets.json"
@@ -1141,9 +1129,6 @@
   },
   "customTzAddTitle": {
     "message": "Tijdzonewidget toevoegen"
-  },
-  "customWidgetsExportAllBtn": {
-    "message": "Alles exporteren"
   },
   "customWidgetsExportGroupBtn": {
     "message": "Groep exporteren"
@@ -1613,9 +1598,6 @@
   "notesTodoEmpty": {
     "message": "Nog geen taken."
   },
-  "notesAddTodoTitle": {
-    "message": "Taak toevoegen"
-  },
   "notesOpenModalTitle": {
     "message": "Notities openen"
   },
@@ -1888,5 +1870,83 @@
   },
   "infoStorageUsageTitle": {
     "message": "💾 Extensie-opslaggebruik"
+  },
+  "themeToggle": {
+    "message": "Thema wisselen"
+  },
+  "all": {
+    "message": "Alles"
+  },
+  "clear": {
+    "message": "Wissen"
+  },
+  "create": {
+    "message": "Aanmaken"
+  },
+  "rename": {
+    "message": "Hernoemen"
+  },
+  "backupDownloadFailed": {
+    "message": "Downloaden van back-up mislukt."
+  },
+  "customTzSwitchTo12h": {
+    "message": "Tijdelijk overschakelen naar 12-uursnotatie"
+  },
+  "customTzSwitchTo24h": {
+    "message": "Overschakelen naar 24-uursnotatie"
+  },
+  "customWidgetsRenameGroupPrompt": {
+    "message": "Nieuwe groepsnaam:"
+  },
+  "hostPermissionRequired": {
+    "message": "Hosttoestemming is vereist."
+  },
+  "noOtherGroups": {
+    "message": "Geen andere groepen"
+  },
+  "cleanupOrphanedObjects": {
+    "message": "Verweesde objecten opschonen"
+  },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Verweesde objecten opgeschoond ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Geen verweesde objecten gevonden."
+  },
+  "hkBookmarkTagsTitle": {
+    "message": "Bladwijzertags"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Maak, hernoem, herkleur of verwijder bladwijzertags in alle groepen."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Ongebruikte tags verwijderen"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Nog geen bladwijzertags aangemaakt."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} bladwijzer(s)"
+  },
+  "hkTagUpdated": {
+    "message": "Tag bijgewerkt."
+  },
+  "hkTagDeleted": {
+    "message": "Tag verwijderd."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "{0} ongebruikte tag(s) verwijderd."
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Toestemming vereist — openen & vernieuwen"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Open de widget en klik op Vernieuwen (↻) om toestemming te verlenen"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Hosttoestemming is vereist om deze feed op te halen. Klik op Vernieuwen (↻) of Toestemming verlenen & vernieuwen."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Toestemming verlenen & vernieuwen"
   }
 }

@@ -152,17 +152,8 @@
   "syncEncryptNone": {
     "message": "Älä salausta"
   },
-  "syncEncryptMaster": {
-    "message": "Salaa pääsalasanalla"
-  },
   "syncEncryptLocal": {
     "message": "Salaa paikallisella avaimella"
-  },
-  "enterMasterPasswordPrompt": {
-    "message": "Syötä pääsalasana salauksen tekemistä / purkamista varten"
-  },
-  "confirmMasterPasswordPrompt": {
-    "message": "Vahvista pääsalasana"
   },
   "saveCredentials": {
     "message": "Tallenna tunnistetiedot"
@@ -208,9 +199,6 @@
   },
   "enableSync": {
     "message": "Ota synkronointi käyttöön"
-  },
-  "saveSettings": {
-    "message": "Tallenna"
   },
   "close": {
     "message": "Sulje"
@@ -1025,11 +1013,11 @@
   "customWidgetsTab": {
     "message": "🧩 Mukautetut widgetit"
   },
-  "customWidgetsLibraryTitle": {
-    "message": "Tallennetut mukautetut widgetit"
-  },
   "customWidgetsLibraryEmpty": {
     "message": "Ei vielä mukautettuja widgetejä. Luo tai tuo sellainen yllä."
+  },
+  "customWidgetsFilterEmpty": {
+    "message": "Ei vastaavia widgetejä."
   },
   "customSearchSourceUrlPlaceholder": {
     "message": "https://example.com/custom-widgets.json"
@@ -1141,9 +1129,6 @@
   },
   "customTzAddTitle": {
     "message": "Lisää aikavyöhykewidget"
-  },
-  "customWidgetsExportAllBtn": {
-    "message": "Vie kaikki"
   },
   "customWidgetsExportGroupBtn": {
     "message": "Vie ryhmä"
@@ -1613,9 +1598,6 @@
   "notesTodoEmpty": {
     "message": "Ei vielä tehtäviä."
   },
-  "notesAddTodoTitle": {
-    "message": "Lisää tehtävä"
-  },
   "notesOpenModalTitle": {
     "message": "Avaa muistiinpanot"
   },
@@ -1888,5 +1870,83 @@
   },
   "infoStorageUsageTitle": {
     "message": "💾 Lisäosan tallennustila"
+  },
+  "themeToggle": {
+    "message": "Vaihda teema"
+  },
+  "all": {
+    "message": "Kaikki"
+  },
+  "clear": {
+    "message": "Tyhjennä"
+  },
+  "create": {
+    "message": "Luo"
+  },
+  "rename": {
+    "message": "Nimeä uudelleen"
+  },
+  "backupDownloadFailed": {
+    "message": "Varmuuskopion lataus epäonnistui."
+  },
+  "customTzSwitchTo12h": {
+    "message": "Vaihda tilapäisesti 12 tunnin muotoon"
+  },
+  "customTzSwitchTo24h": {
+    "message": "Vaihda 24 tunnin muotoon"
+  },
+  "customWidgetsRenameGroupPrompt": {
+    "message": "Uusi ryhmän nimi:"
+  },
+  "hostPermissionRequired": {
+    "message": "Palvelimen käyttöoikeus vaaditaan."
+  },
+  "noOtherGroups": {
+    "message": "Ei muita ryhmiä"
+  },
+  "cleanupOrphanedObjects": {
+    "message": "Siivoa orvot kohteet"
+  },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Orvot kohteet siivottu ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Orpoja kohteita ei löytynyt."
+  },
+  "hkBookmarkTagsTitle": {
+    "message": "Kirjanmerkkien tunnisteet"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Luo, nimeä uudelleen, väritä tai poista kirjanmerkkien tunnisteita kaikissa ryhmissä."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Poista käyttämättömät tunnisteet"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Kirjanmerkkien tunnisteita ei ole vielä luotu."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} kirjanmerkkiä"
+  },
+  "hkTagUpdated": {
+    "message": "Tunniste päivitetty."
+  },
+  "hkTagDeleted": {
+    "message": "Tunniste poistettu."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Poistettiin {0} käyttämätöntä tunnistetta."
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Käyttöoikeus vaaditaan — avaa ja päivitä"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Avaa widget ja napsauta Päivitä (↻) myöntääksesi käyttöoikeuden"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Syötteen hakeminen vaatii palvelimen käyttöoikeuden. Napsauta Päivitä (↻) tai Myönnä oikeus ja päivitä."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Myönnä oikeus ja päivitä"
   }
 }

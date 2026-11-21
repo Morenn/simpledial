@@ -217,6 +217,7 @@ export function serializeCustomWidgetsExport(widgets = [], {
         return {
           ...base,
           type: "rss-feed",
+          space: VALID_WIDGET_SPACES.has(w?.space) ? w.space : "left",
           feedUrl: isValidRssFeedUrl(w.feedUrl) ? w.feedUrl.trim() : "",
           refreshMinutes: normalizeRssRefreshMinutes(w.refreshMinutes),
           maxItems: normalizeRssMaxItems(w.maxItems),
@@ -227,6 +228,7 @@ export function serializeCustomWidgetsExport(widgets = [], {
         return {
           ...base,
           type: "rest-status",
+          space: VALID_WIDGET_SPACES.has(w?.space) ? w.space : "left",
           endpointUrl: typeof w.endpointUrl === "string" ? w.endpointUrl.trim() : "",
           method: w.method === "HEAD" ? "HEAD" : "GET",
           jsonPath: typeof w.jsonPath === "string" ? w.jsonPath.trim() : "",
@@ -352,7 +354,7 @@ export function parseImportedCustomWidgets(parsed) {
         refreshMinutes: normalizeRssRefreshMinutes(raw.refreshMinutes),
         maxItems: normalizeRssMaxItems(raw.maxItems),
         groupName: typeof raw.groupName === "string" ? raw.groupName.trim() : "",
-        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "header",
+        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "left",
         align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
         newRow: !!raw.newRow,
         ...(sourceUrl ? { sourceUrl } : {}),
@@ -392,7 +394,7 @@ export function parseImportedCustomWidgets(parsed) {
         authHeaderValue: typeof raw.authHeaderValue === "string" && !raw.authHeaderValue.startsWith("enc:v1:")
           ? raw.authHeaderValue
           : "",
-        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "right",
+        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "left",
         align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
         newRow: !!raw.newRow,
         ...(sourceUrl ? { sourceUrl } : {}),

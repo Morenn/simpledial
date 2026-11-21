@@ -152,17 +152,8 @@
   "syncEncryptNone": {
     "message": "Не шифрувати"
   },
-  "syncEncryptMaster": {
-    "message": "Шифрувати головним паролем"
-  },
   "syncEncryptLocal": {
     "message": "Шифрувати локальним ключем"
-  },
-  "enterMasterPasswordPrompt": {
-    "message": "Введіть головний пароль для шифрування або дешифрування"
-  },
-  "confirmMasterPasswordPrompt": {
-    "message": "Підтвердьте головний пароль"
   },
   "saveCredentials": {
     "message": "Зберегти облікові дані"
@@ -208,9 +199,6 @@
   },
   "enableSync": {
     "message": "Увімкнути синхронізацію"
-  },
-  "saveSettings": {
-    "message": "Зберегти"
   },
   "close": {
     "message": "Закрити"
@@ -1025,11 +1013,11 @@
   "customWidgetsTab": {
     "message": "🧩 Власні віджети"
   },
-  "customWidgetsLibraryTitle": {
-    "message": "Збережені власні віджети"
-  },
   "customWidgetsLibraryEmpty": {
     "message": "Поки немає власних віджетів. Створіть або імпортуйте їх вище."
+  },
+  "customWidgetsFilterEmpty": {
+    "message": "Немає відповідних віджетів."
   },
   "customSearchSourceUrlPlaceholder": {
     "message": "https://example.com/custom-widgets.json"
@@ -1141,9 +1129,6 @@
   },
   "customTzAddTitle": {
     "message": "Додати віджет часових поясів"
-  },
-  "customWidgetsExportAllBtn": {
-    "message": "Експортувати все"
   },
   "customWidgetsExportGroupBtn": {
     "message": "Експортувати групу"
@@ -1613,9 +1598,6 @@
   "notesTodoEmpty": {
     "message": "Завдань ще немає."
   },
-  "notesAddTodoTitle": {
-    "message": "Додати завдання"
-  },
   "notesOpenModalTitle": {
     "message": "Відкрити нотатки"
   },
@@ -1888,5 +1870,83 @@
   },
   "infoStorageUsageTitle": {
     "message": "💾 Сховище розширення"
+  },
+  "themeToggle": {
+    "message": "Перемкнути тему"
+  },
+  "all": {
+    "message": "Усі"
+  },
+  "clear": {
+    "message": "Очистити"
+  },
+  "create": {
+    "message": "Створити"
+  },
+  "rename": {
+    "message": "Перейменувати"
+  },
+  "backupDownloadFailed": {
+    "message": "Не вдалося завантажити резервну копію."
+  },
+  "customTzSwitchTo12h": {
+    "message": "Тимчасово перемкнути на 12-годинний формат"
+  },
+  "customTzSwitchTo24h": {
+    "message": "Перемкнути на 24-годинний формат"
+  },
+  "customWidgetsRenameGroupPrompt": {
+    "message": "Нова назва групи:"
+  },
+  "hostPermissionRequired": {
+    "message": "Потрібен дозвіл для хоста."
+  },
+  "noOtherGroups": {
+    "message": "Інших груп немає"
+  },
+  "cleanupOrphanedObjects": {
+    "message": "Очистити осиротілі об'єкти"
+  },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Осиротілі об'єкти очищено ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Осиротілих об'єктів не знайдено."
+  },
+  "hkBookmarkTagsTitle": {
+    "message": "Теги закладок"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Створюйте, перейменовуйте, змінюйте колір або видаляйте теги закладок у всіх групах."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Видалити невикористані теги"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Ще не створено жодного тегу закладок."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} закладок"
+  },
+  "hkTagUpdated": {
+    "message": "Тег оновлено."
+  },
+  "hkTagDeleted": {
+    "message": "Тег видалено."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Видалено {0} невикористаних тегів."
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Потрібен дозвіл — відкрийте та оновіть"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Відкрийте віджет і натисніть Оновити (↻), щоб надати дозвіл"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Для завантаження цієї стрічки потрібен дозвіл для хоста. Натисніть Оновити (↻) або Надати дозвіл і оновити."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Надати дозвіл і оновити"
   }
 }

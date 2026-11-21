@@ -527,7 +527,8 @@ export function initCustomWidgetsSettings() {
     }
   };
 
-  const createCustomWidgetSpacePill = (targetWidgetId, currentSpace) => {
+  const createCustomWidgetSpacePill = (targetWidgetIds, currentSpace, defaultActiveSpace = "right") => {
+    const targetIds = new Set(Array.isArray(targetWidgetIds) ? targetWidgetIds : [targetWidgetIds]);
     const validSpaces = ["disabled", "header", "left", "center", "right", "footer"];
     const resolvedSpace = validSpaces.includes(currentSpace) ? currentSpace : "header";
     const isDisabled = resolvedSpace === "disabled";
@@ -550,14 +551,16 @@ export function initCustomWidgetsSettings() {
       e.stopPropagation();
       markSettingsDirty();
       const draft = await ensureAppearanceDraft();
+      const nextDisabled = !isDisabled;
       draft.customWidgets = (draft.customWidgets || []).map(w => {
-        if (w.id !== targetWidgetId) return w;
-        const currentlyDisabled = w.space === "disabled";
-        if (currentlyDisabled) {
-          const restoreSpace = (w.lastActiveSpace && w.lastActiveSpace !== "disabled") ? w.lastActiveSpace : "right";
+        if (!targetIds.has(w.id)) return w;
+        if (!nextDisabled) {
+          const restoreSpace = (w.lastActiveSpace && w.lastActiveSpace !== "disabled") ? w.lastActiveSpace : defaultActiveSpace;
           return { ...w, space: restoreSpace, lastActiveSpace: restoreSpace };
         }
-        const activeSpace = validSpaces.includes(w.space) ? w.space : "right";
+        const activeSpace = (validSpaces.includes(w.space) && w.space !== "disabled")
+          ? w.space
+          : ((w.lastActiveSpace && w.lastActiveSpace !== "disabled") ? w.lastActiveSpace : defaultActiveSpace);
         return { ...w, space: "disabled", lastActiveSpace: activeSpace };
       });
       renderWidgetOrderList(draft);
@@ -786,7 +789,11 @@ export function initCustomWidgetsSettings() {
       }
 
       if (!(typeof customDef.groupName === "string" && customDef.groupName.trim())) {
-        actions.appendChild(createCustomWidgetSpacePill(customDef.id, customDef.space));
+        actions.appendChild(createCustomWidgetSpacePill(
+          customDef.id,
+          customDef.space,
+          (customDef.type === "rss-feed" || customDef.type === "rest-status") ? "left" : "right"
+        ));
       }
 
       const editBtn = document.createElement("button");
@@ -1099,7 +1106,11 @@ export function initCustomWidgetsSettings() {
       const groupActions = document.createElement("div");
       groupActions.className = "custom-widget-group-actions";
 
-      const groupSpacePill = createCustomWidgetSpacePill(groupRep.id, groupRep?.space);
+      const groupSpacePill = createCustomWidgetSpacePill(
+        entry.members.map(m => m.id),
+        groupRep?.space,
+        (groupRep?.type === "rss-feed" || groupRep?.type === "rest-status") ? "left" : "right"
+      );
 
       const renameGroupBtn = document.createElement("button");
       renameGroupBtn.type = "button";
@@ -2122,15 +2133,21 @@ export function initCustomWidgetsSettings() {
         if (customWidgetStatus) customWidgetStatus.textContent = "";
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
+        const inheritedPlacement = resolveGroupPlacement(draft.customWidgets, "rss-feed", groupName, editingCustomWidgetId);
         if (editingCustomWidgetId) {
-          draft.customWidgets = (draft.customWidgets || []).map(w =>
-            w.id === editingCustomWidgetId ? { ...w, ...rssFields } : w
-          );
+          draft.customWidgets = (draft.customWidgets || []).map(w => {
+            if (w.id !== editingCustomWidgetId) return w;
+            const prevKey = typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "";
+            const nextKey = groupName.trim().toLowerCase();
+            const joinPlacement = (nextKey && nextKey !== prevKey) ? inheritedPlacement : null;
+            return { ...w, ...rssFields, ...(joinPlacement || {}) };
+          });
         } else {
           const newWidget = {
             id: `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
             ...rssFields,
-            space: "header",
+            space: inheritedPlacement?.space || "left",
+            ...(inheritedPlacement?.lastActiveSpace ? { lastActiveSpace: inheritedPlacement.lastActiveSpace } : {}),
             align: "auto",
             newRow: false
           };
@@ -2232,15 +2249,21 @@ export function initCustomWidgetsSettings() {
         if (customWidgetStatus) customWidgetStatus.textContent = "";
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
+        const inheritedPlacement = resolveGroupPlacement(draft.customWidgets, "rest-status", groupName, editingCustomWidgetId);
         if (editingCustomWidgetId) {
-          draft.customWidgets = (draft.customWidgets || []).map(w =>
-            w.id === editingCustomWidgetId ? { ...w, ...restFields } : w
-          );
+          draft.customWidgets = (draft.customWidgets || []).map(w => {
+            if (w.id !== editingCustomWidgetId) return w;
+            const prevKey = typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "";
+            const nextKey = groupName.trim().toLowerCase();
+            const joinPlacement = (nextKey && nextKey !== prevKey) ? inheritedPlacement : null;
+            return { ...w, ...restFields, ...(joinPlacement || {}) };
+          });
         } else {
           const newWidget = {
             id: targetWidgetId,
             ...restFields,
-            space: "right",
+            space: inheritedPlacement?.space || "left",
+            ...(inheritedPlacement?.lastActiveSpace ? { lastActiveSpace: inheritedPlacement.lastActiveSpace } : {}),
             align: "auto",
             newRow: false
           };
@@ -2285,10 +2308,14 @@ export function initCustomWidgetsSettings() {
       if (customWidgetStatus) customWidgetStatus.textContent = "";
       markSettingsDirty();
       const draft = await ensureAppearanceDraft();
+      const inheritedPlacement = resolveGroupPlacement(draft.customWidgets, "custom-search", groupName, editingCustomWidgetId);
       if (editingCustomWidgetId) {
         draft.customWidgets = (draft.customWidgets || []).map(w => {
           if (w.id === editingCustomWidgetId) {
-            return { ...w, mode, name, groupName, isDefault, routePrefixes, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables };
+            const prevKey = typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "";
+            const nextKey = groupName.trim().toLowerCase();
+            const joinPlacement = (nextKey && nextKey !== prevKey) ? inheritedPlacement : null;
+            return { ...w, mode, name, groupName, isDefault, routePrefixes, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables, ...(joinPlacement || {}) };
           }
           if (isDefault && groupName && (typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName) {
             return { ...w, isDefault: false };
@@ -2317,7 +2344,8 @@ export function initCustomWidgetsSettings() {
           jsonTemplate,
           openInNewTab,
           variables,
-          space: "right",
+          space: inheritedPlacement?.space || "right",
+          ...(inheritedPlacement?.lastActiveSpace ? { lastActiveSpace: inheritedPlacement.lastActiveSpace } : {}),
           align: "auto",
           newRow: false
         };
@@ -2458,6 +2486,23 @@ export function initCustomWidgetsSettings() {
     }
   };
 
+  const resolveGroupPlacement = (customWidgets, widgetType, targetGroupName, excludeId = null) => {
+    const gKey = typeof targetGroupName === "string" ? targetGroupName.trim().toLowerCase() : "";
+    if (!gKey) return null;
+    const matches = (Array.isArray(customWidgets) ? customWidgets : []).filter(w =>
+      w
+      && w.id !== excludeId
+      && (w.type || "custom-search") === widgetType
+      && (typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "") === gKey
+    );
+    if (matches.length === 0) return null;
+    const rep = matches.find(w => w.isDefault) || matches[0];
+    return {
+      space: rep.space || ((widgetType === "rss-feed" || widgetType === "rest-status") ? "left" : "right"),
+      ...(rep.lastActiveSpace ? { lastActiveSpace: rep.lastActiveSpace } : {})
+    };
+  };
+
   const mergeImportedCustomWidgets = async (importedWidgets, { sourceUrl = null, autoRouteIcons = null, autoRouteDefaults = null } = {}) => {
     markSettingsDirty();
     const draft = await ensureAppearanceDraft();
@@ -2474,9 +2519,12 @@ export function initCustomWidgetsSettings() {
         existing[idx] = applyCustomWidgetUpdate(existing[idx], w, sourceUrl || existing[idx].sourceUrl || null);
         updatedCount++;
       } else {
-        const nextWidget = sourceUrl
-          ? { ...w, sourceUrl, sourceUpdatedAt: nowIso }
-          : w;
+        const inheritedPlacement = resolveGroupPlacement(existing, w.type || "custom-search", w.groupName, w.id);
+        const nextWidget = {
+          ...w,
+          ...(inheritedPlacement || {}),
+          ...(sourceUrl ? { sourceUrl, sourceUpdatedAt: nowIso } : {})
+        };
         existingIndexById.set(nextWidget.id, existing.length);
         existing.push(nextWidget);
         addedCount++;

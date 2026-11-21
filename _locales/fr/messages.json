@@ -152,17 +152,8 @@
   "syncEncryptNone": {
     "message": "Ne pas chiffrer"
   },
-  "syncEncryptMaster": {
-    "message": "Chiffrer avec le mot de passe principal"
-  },
   "syncEncryptLocal": {
     "message": "Chiffrer avec une clé locale"
-  },
-  "enterMasterPasswordPrompt": {
-    "message": "Saisissez le mot de passe principal pour chiffrer ou déchiffrer"
-  },
-  "confirmMasterPasswordPrompt": {
-    "message": "Confirmer le mot de passe principal"
   },
   "saveCredentials": {
     "message": "Enregistrer les identifiants"
@@ -208,9 +199,6 @@
   },
   "enableSync": {
     "message": "Activer la synchronisation"
-  },
-  "saveSettings": {
-    "message": "Enregistrer"
   },
   "close": {
     "message": "Fermer"
@@ -1025,11 +1013,11 @@
   "customWidgetsTab": {
     "message": "🧩 Widgets personnalisés"
   },
-  "customWidgetsLibraryTitle": {
-    "message": "Widgets personnalisés enregistrés"
-  },
   "customWidgetsLibraryEmpty": {
     "message": "Aucun widget personnalisé pour le moment. Créez-en ou importez-en un ci-dessus."
+  },
+  "customWidgetsFilterEmpty": {
+    "message": "Aucun widget correspondant."
   },
   "customSearchSourceUrlPlaceholder": {
     "message": "https://example.com/custom-widgets.json"
@@ -1141,9 +1129,6 @@
   },
   "customTzAddTitle": {
     "message": "Ajouter un widget de fuseaux horaires"
-  },
-  "customWidgetsExportAllBtn": {
-    "message": "Tout exporter"
   },
   "customWidgetsExportGroupBtn": {
     "message": "Exporter le groupe"
@@ -1613,9 +1598,6 @@
   "notesTodoEmpty": {
     "message": "Aucune tâche pour le moment."
   },
-  "notesAddTodoTitle": {
-    "message": "Ajouter une tâche"
-  },
   "notesOpenModalTitle": {
     "message": "Ouvrir les notes"
   },
@@ -1888,5 +1870,83 @@
   },
   "infoStorageUsageTitle": {
     "message": "💾 Stockage de l'extension"
+  },
+  "themeToggle": {
+    "message": "Changer de thème"
+  },
+  "all": {
+    "message": "Tout"
+  },
+  "clear": {
+    "message": "Effacer"
+  },
+  "create": {
+    "message": "Créer"
+  },
+  "rename": {
+    "message": "Renommer"
+  },
+  "backupDownloadFailed": {
+    "message": "Échec du téléchargement de la sauvegarde."
+  },
+  "customTzSwitchTo12h": {
+    "message": "Passer temporairement au format 12 heures"
+  },
+  "customTzSwitchTo24h": {
+    "message": "Passer au format 24 heures"
+  },
+  "customWidgetsRenameGroupPrompt": {
+    "message": "Nouveau nom du groupe :"
+  },
+  "hostPermissionRequired": {
+    "message": "L'autorisation d'accès à l'hôte est requise."
+  },
+  "noOtherGroups": {
+    "message": "Aucun autre groupe"
+  },
+  "cleanupOrphanedObjects": {
+    "message": "Nettoyer les objets orphelins"
+  },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Objets orphelins nettoyés ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Aucun objet orphelin trouvé."
+  },
+  "hkBookmarkTagsTitle": {
+    "message": "Étiquettes des favoris"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Créez, renommez, recolorez ou supprimez des étiquettes de favoris dans tous les groupes."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Supprimer les étiquettes inutilisées"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Aucune étiquette de favori créée pour le moment."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} favori(s)"
+  },
+  "hkTagUpdated": {
+    "message": "Étiquette mise à jour."
+  },
+  "hkTagDeleted": {
+    "message": "Étiquette supprimée."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "{0} étiquette(s) inutilisée(s) supprimée(s)."
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Autorisation requise — ouvrir et actualiser"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Ouvrez le widget et cliquez sur Actualiser (↻) pour accorder l'autorisation"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "L'autorisation d'accès à l'hôte est requise pour récupérer ce flux. Cliquez sur Actualiser (↻) ou Accorder et actualiser."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Accorder et actualiser"
   }
 }
