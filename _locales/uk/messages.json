@@ -1948,5 +1948,122 @@
   },
   "rssGrantPermissionAndRefresh": {
     "message": "Надати дозвіл і оновити"
+  },
+  "customWidgetModeWeather": {
+    "message": "Погода"
+  },
+  "customWeatherAddTitle": {
+    "message": "Додати віджет погоди"
+  },
+  "customWeatherProviderLabel": {
+    "message": "Джерело даних"
+  },
+  "customWeatherProviderOpenMeteo": {
+    "message": "Open-Meteo (без API-ключа)"
+  },
+  "customWeatherProviderOpenWeather": {
+    "message": "OpenWeatherMap (API-ключ)"
+  },
+  "customWeatherSizeLabel": {
+    "message": "Розмір віджета"
+  },
+  "customWeatherSizePill": {
+    "message": "Пігулка (лише статус)"
+  },
+  "customWeatherSizeSmall": {
+    "message": "Малий (сьогодні)"
+  },
+  "customWeatherSizeMedium": {
+    "message": "Середній (прогноз на 3 дні)"
+  },
+  "customWeatherLocationSearchLabel": {
+    "message": "Пошук міста / місця"
+  },
+  "customWeatherLocationNameLabel": {
+    "message": "Відображуване місце"
+  },
+  "customWeatherLatLabel": {
+    "message": "Широта"
+  },
+  "customWeatherLonLabel": {
+    "message": "Довгота"
+  },
+  "customWeatherUnitLabel": {
+    "message": "Одиниця температури"
+  },
+  "customWeatherApiKeyLabel": {
+    "message": "API-ключ (зберігається в Сховищі секретів, якщо увімкнено)"
+  },
+  "customWeatherLocationNotFound": {
+    "message": "Місце не знайдено."
+  },
+  "customWeatherSearchFailed": {
+    "message": "Помилка пошуку місця."
+  },
+  "customWeatherInvalidError": {
+    "message": "Введіть назву віджета та коректні координати (або знайдіть місце)."
+  },
+  "weatherToday": {
+    "message": "Сьогодні"
+  },
+  "weatherTomorrow": {
+    "message": "Завтра"
+  },
+  "weatherLoading": {
+    "message": "Завантаження погоди..."
+  },
+  "weatherPermissionRequiredBar": {
+    "message": "🔒 Потрібен дозвіл — відкрийте та оновіть"
+  },
+  "weatherPermissionRequiredBarTitle": {
+    "message": "Відкрийте віджет і натисніть Оновити (↻), щоб надати дозвіл"
+  },
+  "weatherPermissionRequiredNotice": {
+    "message": "Для отримання даних про погоду потрібен дозвіл для хоста. Натисніть Оновити (↻) або Надати дозвіл і оновити."
+  },
+  "search": {
+    "message": "Пошук"
+  },
+  "weatherCondClear": {
+    "message": "Ясно"
+  },
+  "weatherCondMostlyClear": {
+    "message": "Переважно ясно"
+  },
+  "weatherCondPartlyCloudy": {
+    "message": "Мінлива хмарність"
+  },
+  "weatherCondFewClouds": {
+    "message": "Невелика хмарність"
+  },
+  "weatherCondCloudy": {
+    "message": "Хмарно"
+  },
+  "weatherCondFog": {
+    "message": "Туман"
+  },
+  "weatherCondDrizzle": {
+    "message": "Мряка"
+  },
+  "weatherCondRain": {
+    "message": "Дощ"
+  },
+  "weatherCondSnow": {
+    "message": "Сніг"
+  },
+  "weatherCondShowers": {
+    "message": "Зливи"
+  },
+  "weatherCondSnowShowers": {
+    "message": "Снігові зливи"
+  },
+  "weatherCondThunderstorm": {
+    "message": "Гроза"
+  },
+  "weatherCondWeather": {
+    "message": "Погода"
+  },
+  "weatherFeelsLike": {
+    "message": "Відчувається як {0}"
   }
 }

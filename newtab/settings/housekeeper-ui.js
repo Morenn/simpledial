@@ -23,6 +23,7 @@ import { loadConfig, saveConfig } from "../config.js";
 import { cleanupDeletedItems, checkDeadLinks, syncWrite } from "../sync.js";
 import { pruneNotesStorageForWidgets } from "../widgets/notes-widget.js";
 import { pruneRssStorageForWidgets } from "../widgets/rss-widget.js";
+import { pruneWeatherStorageForWidgets } from "../widgets/weather-widget.js";
 import { t } from "../i18n.js";
 import { render, searchByBookmarkTag } from "../render.js";
 import {
@@ -494,16 +495,18 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
       try {
         const config = await loadConfig();
         const activeWidgets = Array.isArray(config?.appearance?.customWidgets) ? config.appearance.customWidgets : [];
-        const [systemTagsPruned, notesPruned, rssPruned] = await Promise.all([
+        const [systemTagsPruned, notesPruned, rssPruned, weatherPruned] = await Promise.all([
           pruneOrphanedSystemTags(),
           pruneNotesStorageForWidgets(activeWidgets),
-          pruneRssStorageForWidgets(activeWidgets)
+          pruneRssStorageForWidgets(activeWidgets),
+          pruneWeatherStorageForWidgets(activeWidgets)
         ]);
 
         const cleanedParts = [];
         if (systemTagsPruned) cleanedParts.push("system tags");
         if (notesPruned) cleanedParts.push("notes");
         if (rssPruned) cleanedParts.push("RSS cache");
+        if (weatherPruned) cleanedParts.push("weather cache");
 
         if (cleanedParts.length > 0) {
           const msgTemplate = t("hkOrphanedCleanupCompleted") || "Orphaned objects cleaned up ({0}).";

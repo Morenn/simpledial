@@ -1948,5 +1948,122 @@
   },
   "rssGrantPermissionAndRefresh": {
     "message": "Toestemming verlenen & vernieuwen"
+  },
+  "customWidgetModeWeather": {
+    "message": "Weer"
+  },
+  "customWeatherAddTitle": {
+    "message": "Weer-widget toevoegen"
+  },
+  "customWeatherProviderLabel": {
+    "message": "Gegevensbron"
+  },
+  "customWeatherProviderOpenMeteo": {
+    "message": "Open-Meteo (geen API-sleutel)"
+  },
+  "customWeatherProviderOpenWeather": {
+    "message": "OpenWeatherMap (API-sleutel)"
+  },
+  "customWeatherSizeLabel": {
+    "message": "Widgetgrootte"
+  },
+  "customWeatherSizePill": {
+    "message": "Pil (alleen status)"
+  },
+  "customWeatherSizeSmall": {
+    "message": "Klein (vandaag)"
+  },
+  "customWeatherSizeMedium": {
+    "message": "Gemiddeld (3-daagse verwachting)"
+  },
+  "customWeatherLocationSearchLabel": {
+    "message": "Zoek stad / locatie"
+  },
+  "customWeatherLocationNameLabel": {
+    "message": "Weergegeven locatie"
+  },
+  "customWeatherLatLabel": {
+    "message": "Breedtegraad"
+  },
+  "customWeatherLonLabel": {
+    "message": "Lengtegraad"
+  },
+  "customWeatherUnitLabel": {
+    "message": "Temperatuureenheid"
+  },
+  "customWeatherApiKeyLabel": {
+    "message": "API-sleutel (opgeslagen in Secrets Vault indien ingeschakeld)"
+  },
+  "customWeatherLocationNotFound": {
+    "message": "Locatie niet gevonden."
+  },
+  "customWeatherSearchFailed": {
+    "message": "Zoeken naar locatie mislukt."
+  },
+  "customWeatherInvalidError": {
+    "message": "Voer een widgetnaam en geldige coördinaten in (of zoek een locatie)."
+  },
+  "weatherToday": {
+    "message": "Vandaag"
+  },
+  "weatherTomorrow": {
+    "message": "Morgen"
+  },
+  "weatherLoading": {
+    "message": "Weer laden..."
+  },
+  "weatherPermissionRequiredBar": {
+    "message": "🔒 Toestemming vereist — openen & vernieuwen"
+  },
+  "weatherPermissionRequiredBarTitle": {
+    "message": "Open de widget en klik op Vernieuwen (↻) om toestemming te verlenen"
+  },
+  "weatherPermissionRequiredNotice": {
+    "message": "Hosttoestemming is vereist om weergegevens op te halen. Klik op Vernieuwen (↻) of Toestemming verlenen & vernieuwen."
+  },
+  "search": {
+    "message": "Zoeken"
+  },
+  "weatherCondClear": {
+    "message": "Helder"
+  },
+  "weatherCondMostlyClear": {
+    "message": "Overwegend helder"
+  },
+  "weatherCondPartlyCloudy": {
+    "message": "Gedeeltelijk bewolkt"
+  },
+  "weatherCondFewClouds": {
+    "message": "Licht bewolkt"
+  },
+  "weatherCondCloudy": {
+    "message": "Bewolkt"
+  },
+  "weatherCondFog": {
+    "message": "Mist"
+  },
+  "weatherCondDrizzle": {
+    "message": "Motregen"
+  },
+  "weatherCondRain": {
+    "message": "Regen"
+  },
+  "weatherCondSnow": {
+    "message": "Sneeuw"
+  },
+  "weatherCondShowers": {
+    "message": "Buien"
+  },
+  "weatherCondSnowShowers": {
+    "message": "Sneeuwbuien"
+  },
+  "weatherCondThunderstorm": {
+    "message": "Onweer"
+  },
+  "weatherCondWeather": {
+    "message": "Weer"
+  },
+  "weatherFeelsLike": {
+    "message": "Gevoelstemperatuur {0}"
   }
 }

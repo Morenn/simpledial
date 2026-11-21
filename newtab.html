@@ -757,6 +757,8 @@
                 <option value="timezone">TimeZone</option>
                 <option value="rest-status">REST</option>
                 <option value="notes">Notes</option>
+                <option value="rss-feed">RSS</option>
+                <option value="weather">Weather</option>
                 <option value="disabled">Disabled</option>
               </select>
             </div>
@@ -1296,6 +1298,7 @@
           <option value="rest-status" data-i18n="customWidgetModeRestStatus">REST / JSON Status Badge</option>
           <option value="notes" data-i18n="customWidgetModeNotes">Notes / Scratchpad</option>
           <option value="rss-feed" data-i18n="customWidgetModeRssFeed">RSS / Atom Feed</option>
+          <option value="weather" data-i18n="customWidgetModeWeather">Weather</option>
         </select>
       </div>
       <div class="custom-widget-add-block">
@@ -1413,6 +1416,65 @@
               <label for="custom-widget-rss-max-items" class="custom-widget-field-label" data-i18n="customRssMaxItemsLabel">Max headlines</label>
               <input type="number" id="custom-widget-rss-max-items" name="custom-widget-rss-max-items" class="sync-compact-input" min="1" max="50" value="15">
             </div>
+          </div>
+        </div>
+
+        <div id="custom-widget-weather-section" class="custom-widget-weather-section hidden">
+          <div class="custom-widget-rest-row">
+            <div class="custom-widget-field">
+              <label for="custom-widget-weather-provider" class="custom-widget-field-label" data-i18n="customWeatherProviderLabel">Data source</label>
+              <select id="custom-widget-weather-provider" name="custom-widget-weather-provider" class="appearance-select">
+                <option value="open-meteo" data-i18n="customWeatherProviderOpenMeteo">Open-Meteo (No API key)</option>
+                <option value="openweathermap" data-i18n="customWeatherProviderOpenWeather">OpenWeatherMap (API key)</option>
+              </select>
+            </div>
+            <div class="custom-widget-field">
+              <label for="custom-widget-weather-size" class="custom-widget-field-label" data-i18n="customWeatherSizeLabel">Widget size</label>
+              <select id="custom-widget-weather-size" name="custom-widget-weather-size" class="appearance-select">
+                <option value="pill" data-i18n="customWeatherSizePill">Pill (status only)</option>
+                <option value="small" data-i18n="customWeatherSizeSmall" selected>Small (today)</option>
+                <option value="medium" data-i18n="customWeatherSizeMedium">Medium (3-day forecast)</option>
+              </select>
+            </div>
+          </div>
+          <div class="custom-widget-field">
+            <label for="custom-widget-weather-location-query" class="custom-widget-field-label" data-i18n="customWeatherLocationSearchLabel">Search city / location</label>
+            <div class="custom-widget-custom-icon-group">
+              <input type="text" id="custom-widget-weather-location-query" name="custom-widget-weather-location-query" class="sync-compact-input" placeholder="Prague, London, Tokyo...">
+              <button type="button" id="custom-widget-weather-search-btn" class="icon-btn" data-i18n="search">Search</button>
+            </div>
+            <select id="custom-widget-weather-location-results" name="custom-widget-weather-location-results" class="appearance-select hidden"></select>
+          </div>
+          <div class="custom-widget-rest-row">
+            <div class="custom-widget-field">
+              <label for="custom-widget-weather-location-name" class="custom-widget-field-label" data-i18n="customWeatherLocationNameLabel">Display location</label>
+              <input type="text" id="custom-widget-weather-location-name" name="custom-widget-weather-location-name" class="sync-compact-input" placeholder="Prague">
+            </div>
+            <div class="custom-widget-field">
+              <label for="custom-widget-weather-lat" class="custom-widget-field-label" data-i18n="customWeatherLatLabel">Latitude</label>
+              <input type="number" step="any" id="custom-widget-weather-lat" name="custom-widget-weather-lat" class="sync-compact-input" placeholder="50.0755">
+            </div>
+            <div class="custom-widget-field">
+              <label for="custom-widget-weather-lon" class="custom-widget-field-label" data-i18n="customWeatherLonLabel">Longitude</label>
+              <input type="number" step="any" id="custom-widget-weather-lon" name="custom-widget-weather-lon" class="sync-compact-input" placeholder="14.4378">
+            </div>
+          </div>
+          <div class="custom-widget-rest-row">
+            <div class="custom-widget-field">
+              <label for="custom-widget-weather-unit" class="custom-widget-field-label" data-i18n="customWeatherUnitLabel">Temperature unit</label>
+              <select id="custom-widget-weather-unit" name="custom-widget-weather-unit" class="appearance-select">
+                <option value="C">°C</option>
+                <option value="F">°F</option>
+              </select>
+            </div>
+            <div class="custom-widget-field">
+              <label for="custom-widget-weather-refresh" class="custom-widget-field-label" data-i18n="customRssRefreshLabel">Refresh (minutes)</label>
+              <input type="number" id="custom-widget-weather-refresh" name="custom-widget-weather-refresh" class="sync-compact-input" min="10" max="1440" value="30">
+            </div>
+          </div>
+          <div id="custom-widget-weather-apikey-row" class="custom-widget-field hidden">
+            <label for="custom-widget-weather-apikey" class="custom-widget-field-label" data-i18n="customWeatherApiKeyLabel">API Key (stored in Secrets Vault if enabled)</label>
+            <input type="password" id="custom-widget-weather-apikey" name="custom-widget-weather-apikey" class="sync-compact-input" autocomplete="off" placeholder="Enter provider API key">
           </div>
         </div>
 

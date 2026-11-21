@@ -10,6 +10,7 @@ import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypt
 let tzWidgetMod = null;
 let restWidgetMod = null;
 let rssWidgetMod = null;
+let weatherWidgetMod = null;
 let notesReminderStarted = false;
 
 function startActiveCustomWidgets(config) {
@@ -33,12 +34,27 @@ function startActiveCustomWidgets(config) {
       m.startNotesReminderPolling();
     });
   }
-  if (!rssWidgetMod && customWidgets.some(w => w?.type === "rss-feed" && w?.space !== "disabled")) {
-    void import("./widgets/rss-widget.js").then(m => {
-      rssWidgetMod = m;
-      void m.pollAllRssFeedWidgets({ force: false });
-      m.startRssFeedPolling();
-    });
+  if (customWidgets.some(w => w?.type === "rss-feed" && w?.space !== "disabled")) {
+    if (!rssWidgetMod) {
+      void import("./widgets/rss-widget.js").then(m => {
+        rssWidgetMod = m;
+        void m.pollAllRssFeedWidgets({ force: false });
+        m.startRssFeedPolling();
+      });
+    } else {
+      void rssWidgetMod.pollAllRssFeedWidgets({ force: false });
+    }
+  }
+  if (customWidgets.some(w => w?.type === "weather" && w?.space !== "disabled")) {
+    if (!weatherWidgetMod) {
+      void import("./widgets/weather-widget.js").then(m => {
+        weatherWidgetMod = m;
+        void m.pollAllWeatherWidgets({ force: false });
+        m.startWeatherPolling();
+      });
+    } else {
+      void weatherWidgetMod.pollAllWeatherWidgets({ force: false });
+    }
   }
 }
 

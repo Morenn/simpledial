@@ -53,6 +53,7 @@ Widgets can be placed in **Header**, **Left**, **Center**, **Right**, or **Foote
 |-------------|---------------|-----------|-------|
 | RSS / Atom Feed (`rss-feed`) | `left` | Yes | Inherits group space when added/joined to an existing group |
 | REST / JSON Status (`rest-status`) | `left` | Yes | Inherits group space when added/joined to an existing group |
+| Weather (`weather`) | `left` | No | `pill`, `small`, `medium` inline + `big` modal on click; Open-Meteo default or API-key provider |
 | Time Zone (`timezone`) | `right` | No | — |
 | Notes / Scratchpad (`notes`) | `right` | No | — |
 | Custom Search (`custom-search`) | `right` | Yes | Inherits group space when added/joined to an existing group |

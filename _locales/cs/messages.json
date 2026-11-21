@@ -1948,5 +1948,122 @@
   },
   "rssGrantPermissionAndRefresh": {
     "message": "Udělit oprávnění a obnovit"
+  },
+  "customWidgetModeWeather": {
+    "message": "Počasí"
+  },
+  "customWeatherAddTitle": {
+    "message": "Přidat widget počasí"
+  },
+  "customWeatherProviderLabel": {
+    "message": "Zdroj dat"
+  },
+  "customWeatherProviderOpenMeteo": {
+    "message": "Open-Meteo (bez API klíče)"
+  },
+  "customWeatherProviderOpenWeather": {
+    "message": "OpenWeatherMap (API klíč)"
+  },
+  "customWeatherSizeLabel": {
+    "message": "Velikost widgetu"
+  },
+  "customWeatherSizePill": {
+    "message": "Pilulka (jen stav)"
+  },
+  "customWeatherSizeSmall": {
+    "message": "Malý (dnešek)"
+  },
+  "customWeatherSizeMedium": {
+    "message": "Střední (3denní předpověď)"
+  },
+  "customWeatherLocationSearchLabel": {
+    "message": "Hledat město / místo"
+  },
+  "customWeatherLocationNameLabel": {
+    "message": "Zobrazený název místa"
+  },
+  "customWeatherLatLabel": {
+    "message": "Zeměpisná šířka"
+  },
+  "customWeatherLonLabel": {
+    "message": "Zeměpisná délka"
+  },
+  "customWeatherUnitLabel": {
+    "message": "Jednotka teploty"
+  },
+  "customWeatherApiKeyLabel": {
+    "message": "API klíč (uložen v Trezoru tajemství, je-li zapnut)"
+  },
+  "customWeatherLocationNotFound": {
+    "message": "Místo nenalezeno."
+  },
+  "customWeatherSearchFailed": {
+    "message": "Vyhledání místa selhalo."
+  },
+  "customWeatherInvalidError": {
+    "message": "Zadejte název widgetu a platné souřadnice (nebo vyhledejte místo)."
+  },
+  "weatherToday": {
+    "message": "Dnes"
+  },
+  "weatherTomorrow": {
+    "message": "Zítra"
+  },
+  "weatherLoading": {
+    "message": "Načítání počasí..."
+  },
+  "weatherPermissionRequiredBar": {
+    "message": "🔒 Vyžadováno oprávnění — otevřete a obnovte"
+  },
+  "weatherPermissionRequiredBarTitle": {
+    "message": "Otevřete widget a klikněte na Obnovit (↻) pro udělení oprávnění"
+  },
+  "weatherPermissionRequiredNotice": {
+    "message": "Pro načtení dat o počasí je vyžadováno oprávnění k hostiteli. Klikněte na Obnovit (↻) nebo Udělit oprávnění a obnovit."
+  },
+  "search": {
+    "message": "Hledat"
+  },
+  "weatherCondClear": {
+    "message": "Jasno"
+  },
+  "weatherCondMostlyClear": {
+    "message": "Převážně jasno"
+  },
+  "weatherCondPartlyCloudy": {
+    "message": "Polojasno"
+  },
+  "weatherCondFewClouds": {
+    "message": "Málo oblačnosti"
+  },
+  "weatherCondCloudy": {
+    "message": "Zataženo"
+  },
+  "weatherCondFog": {
+    "message": "Mlha"
+  },
+  "weatherCondDrizzle": {
+    "message": "Mrholení"
+  },
+  "weatherCondRain": {
+    "message": "Déšť"
+  },
+  "weatherCondSnow": {
+    "message": "Sněžení"
+  },
+  "weatherCondShowers": {
+    "message": "Přeháňky"
+  },
+  "weatherCondSnowShowers": {
+    "message": "Sněhové přeháňky"
+  },
+  "weatherCondThunderstorm": {
+    "message": "Bouřka"
+  },
+  "weatherCondWeather": {
+    "message": "Počasí"
+  },
+  "weatherFeelsLike": {
+    "message": "Pocitově {0}"
   }
 }

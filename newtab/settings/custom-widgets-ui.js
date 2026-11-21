@@ -32,7 +32,14 @@ import {
   normalizeRssRefreshMinutes,
   normalizeRssMaxItems,
   requestRssFeedPermission,
-  pollAllRssFeedWidgets
+  pollAllRssFeedWidgets,
+  normalizeWeatherDisplaySize,
+  normalizeWeatherProvider,
+  normalizeWeatherUnit,
+  normalizeWeatherRefreshMinutes,
+  requestWeatherPermission,
+  searchWeatherLocations,
+  pollAllWeatherWidgets
 } from "../custom-widgets.js";
 import { normalizeCustomIconValue, applyCachedIconImageSrc } from "../color-utils.js";
 import { loadConfig } from "../config.js";
@@ -107,6 +114,19 @@ const customWidgetRssSection = document.getElementById("custom-widget-rss-sectio
 const customWidgetRssUrl = document.getElementById("custom-widget-rss-url");
 const customWidgetRssRefresh = document.getElementById("custom-widget-rss-refresh");
 const customWidgetRssMaxItems = document.getElementById("custom-widget-rss-max-items");
+const customWidgetWeatherSection = document.getElementById("custom-widget-weather-section");
+const customWidgetWeatherProvider = document.getElementById("custom-widget-weather-provider");
+const customWidgetWeatherSize = document.getElementById("custom-widget-weather-size");
+const customWidgetWeatherLocQuery = document.getElementById("custom-widget-weather-location-query");
+const customWidgetWeatherSearchBtn = document.getElementById("custom-widget-weather-search-btn");
+const customWidgetWeatherLocResults = document.getElementById("custom-widget-weather-location-results");
+const customWidgetWeatherLocName = document.getElementById("custom-widget-weather-location-name");
+const customWidgetWeatherLat = document.getElementById("custom-widget-weather-lat");
+const customWidgetWeatherLon = document.getElementById("custom-widget-weather-lon");
+const customWidgetWeatherUnit = document.getElementById("custom-widget-weather-unit");
+const customWidgetWeatherRefresh = document.getElementById("custom-widget-weather-refresh");
+const customWidgetWeatherApiKeyRow = document.getElementById("custom-widget-weather-apikey-row");
+const customWidgetWeatherApiKey = document.getElementById("custom-widget-weather-apikey");
 const customWidgetNewTabLabel = customWidgetNewTabInput?.closest(".custom-widget-newtab-label");
 const customWidgetDefaultLabel = customWidgetDefaultInput?.closest(".custom-widget-default-label");
 const customWidgetAddBtn = document.getElementById("custom-widget-add-btn");
@@ -691,19 +711,22 @@ export function initCustomWidgetsSettings() {
       const isRestStatus = customDef.type === "rest-status";
       const isNotes = customDef.type === "notes";
       const isRssFeed = customDef.type === "rss-feed";
-      const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed;
+      const isWeather = customDef.type === "weather";
+      const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed || isWeather;
       const tzList = isTimezone ? normalizeCustomTimeZones(customDef.timeZones) : [];
       const badge = document.createElement("span");
       badge.className = "custom-widget-mode-badge";
-      badge.textContent = isRssFeed
-        ? "RSS"
-        : (isNotes
-          ? "📝"
-          : (isRestStatus
-            ? "REST"
-            : (isTimezone
-              ? `🕒 ${tzList.length}`
-              : (customDef.mode === "json" ? "JSON" : "Simple"))));
+      badge.textContent = isWeather
+        ? (customDef.displaySize || "small").toUpperCase()
+        : (isRssFeed
+          ? "RSS"
+          : (isNotes
+            ? "📝"
+            : (isRestStatus
+              ? "REST"
+              : (isTimezone
+                ? `🕒 ${tzList.length}`
+                : (customDef.mode === "json" ? "JSON" : "Simple")))));
       titleEl.appendChild(badge);
       const groupName = !isNonSearch && typeof customDef.groupName === "string" ? customDef.groupName.trim() : "";
       if (groupName && !insideGroup) {
@@ -730,15 +753,17 @@ export function initCustomWidgetsSettings() {
 
       const urlEl = document.createElement("div");
       urlEl.className = "custom-widget-library-url";
-      const rawSubtitle = isRssFeed
-        ? (customDef.feedUrl || "")
-        : (isNotes
+      const rawSubtitle = isWeather
+        ? (customDef.locationName || `${customDef.latitude}, ${customDef.longitude}`)
+        : (isRssFeed
+          ? (customDef.feedUrl || "")
+          : (isNotes
           ? (customDef.compactMode ? (t("customNotesCompactMode") || "Compact button only") : (t("customWidgetModeNotes") || "Notes / Scratchpad"))
           : (isRestStatus
             ? (customDef.endpointUrl || "")
             : (isTimezone
               ? tzList.map(z => `${z.label} (${z.timeZone})`).join(", ")
-              : (customDef.urlTemplate || ""))));
+              : (customDef.urlTemplate || "")))));
       urlEl.textContent = (isNotes || isTimezone) ? rawSubtitle : formatCompactWidgetSubtitle(rawSubtitle);
       if (rawSubtitle) {
         urlEl.title = rawSubtitle;
@@ -792,7 +817,7 @@ export function initCustomWidgetsSettings() {
         actions.appendChild(createCustomWidgetSpacePill(
           customDef.id,
           customDef.space,
-          (customDef.type === "rss-feed" || customDef.type === "rest-status") ? "left" : "right"
+          (customDef.type === "rss-feed" || customDef.type === "rest-status" || customDef.type === "weather") ? "left" : "right"
         ));
       }
 
@@ -848,6 +873,7 @@ export function initCustomWidgetsSettings() {
         delete cloned.sourceUpdatedAt;
         delete cloned.previousVersion;
         if ("authHeaderValue" in cloned) cloned.authHeaderValue = "";
+        if ("apiKey" in cloned) cloned.apiKey = "";
         draft.customWidgets = [...(draft.customWidgets || []), cloned];
         draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), cloned.id], draft.customWidgets);
         renderWidgetOrderList(draft);
@@ -1208,6 +1234,7 @@ export function initCustomWidgetsSettings() {
 
   let editingCustomWidgetId = null;
   let lockedEncryptedRestToken = "";
+  let lockedEncryptedWeatherApiKey = "";
   let customWidgetVarsDraft = [{ key: "query", label: "Search", type: "text", optionsText: "" }];
 
   const updateRestAuthWarningBadge = (hasLockedToken = false) => {
@@ -1436,27 +1463,32 @@ export function initCustomWidgetsSettings() {
     const isRestStatus = mode === "rest-status";
     const isNotes = mode === "notes";
     const isRssFeed = mode === "rss-feed";
-    const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed;
+    const isWeather = mode === "weather";
+    const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed || isWeather;
 
     if (customWidgetAddTitle) {
       if (editingCustomWidgetId) {
         customWidgetAddTitle.setAttribute("data-i18n", "customWidgetEditTitle");
         customWidgetAddTitle.textContent = t("customWidgetEditTitle") || "Edit Custom Widget";
       } else {
-        const titleKey = isRssFeed
-          ? "customRssAddTitle"
-          : (isNotes
-            ? "customNotesAddTitle"
-            : (isRestStatus
-              ? "customRestAddTitle"
-              : (isTimezone ? "customTzAddTitle" : "customSearchAddTitle")));
-        const titleFallback = isRssFeed
-          ? "Add RSS / Atom Feed Widget"
-          : (isNotes
-            ? "Add Notes / Scratchpad Widget"
-            : (isRestStatus
-              ? "Add REST / JSON Status Widget"
-              : (isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget")));
+        const titleKey = isWeather
+          ? "customWeatherAddTitle"
+          : (isRssFeed
+            ? "customRssAddTitle"
+            : (isNotes
+              ? "customNotesAddTitle"
+              : (isRestStatus
+                ? "customRestAddTitle"
+                : (isTimezone ? "customTzAddTitle" : "customSearchAddTitle"))));
+        const titleFallback = isWeather
+          ? "Add Weather Widget"
+          : (isRssFeed
+            ? "Add RSS / Atom Feed Widget"
+            : (isNotes
+              ? "Add Notes / Scratchpad Widget"
+              : (isRestStatus
+                ? "Add REST / JSON Status Widget"
+                : (isTimezone ? "Add Time Zone Widget" : "Add Custom Search Widget"))));
         customWidgetAddTitle.setAttribute("data-i18n", titleKey);
         customWidgetAddTitle.textContent = t(titleKey) || titleFallback;
       }
@@ -1477,6 +1509,12 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRssSection) {
       customWidgetRssSection.classList.toggle("hidden", !isRssFeed);
     }
+    if (customWidgetWeatherSection) {
+      customWidgetWeatherSection.classList.toggle("hidden", !isWeather);
+    }
+    if (customWidgetWeatherApiKeyRow && customWidgetWeatherProvider) {
+      customWidgetWeatherApiKeyRow.classList.toggle("hidden", customWidgetWeatherProvider.value !== "openweathermap");
+    }
     if (customWidgetVarsSection) {
       customWidgetVarsSection.classList.toggle("hidden", isNonSearch);
     }
@@ -1489,7 +1527,7 @@ export function initCustomWidgetsSettings() {
         : (t("customSearchUrlPlaceholder") || "https://www.google.com/search?q={query}");
     }
     if (customWidgetGroupField) {
-      customWidgetGroupField.classList.toggle("hidden", isTimezone || isNotes);
+      customWidgetGroupField.classList.toggle("hidden", isTimezone || isNotes || isWeather);
     }
     renderCustomWidgetGroupSelect();
     if (customWidgetSearchAdvanced) {
@@ -1680,6 +1718,7 @@ export function initCustomWidgetsSettings() {
   const resetCustomWidgetForm = () => {
     editingCustomWidgetId = null;
     lockedEncryptedRestToken = "";
+    lockedEncryptedWeatherApiKey = "";
     updateRestAuthWarningBadge(false);
     if (customWidgetIconInput) customWidgetIconInput.value = "🔎";
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = "";
@@ -1721,6 +1760,19 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRssUrl) customWidgetRssUrl.value = "";
     if (customWidgetRssRefresh) customWidgetRssRefresh.value = "30";
     if (customWidgetRssMaxItems) customWidgetRssMaxItems.value = "15";
+    if (customWidgetWeatherProvider) customWidgetWeatherProvider.value = "open-meteo";
+    if (customWidgetWeatherSize) customWidgetWeatherSize.value = "small";
+    if (customWidgetWeatherLocQuery) customWidgetWeatherLocQuery.value = "";
+    if (customWidgetWeatherLocResults) {
+      customWidgetWeatherLocResults.innerHTML = "";
+      customWidgetWeatherLocResults.classList.add("hidden");
+    }
+    if (customWidgetWeatherLocName) customWidgetWeatherLocName.value = "";
+    if (customWidgetWeatherLat) customWidgetWeatherLat.value = "";
+    if (customWidgetWeatherLon) customWidgetWeatherLon.value = "";
+    if (customWidgetWeatherUnit) customWidgetWeatherUnit.value = "C";
+    if (customWidgetWeatherRefresh) customWidgetWeatherRefresh.value = "30";
+    if (customWidgetWeatherApiKey) customWidgetWeatherApiKey.value = "";
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     if (customWidgetAdvancedDetails) customWidgetAdvancedDetails.open = false;
     syncCustomWidgetModeUI();
@@ -1735,23 +1787,26 @@ export function initCustomWidgetsSettings() {
     const isRestStatus = widget.type === "rest-status";
     const isNotes = widget.type === "notes";
     const isRssFeed = widget.type === "rss-feed";
-    const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed;
+    const isWeather = widget.type === "weather";
+    const isNonSearch = isTimezone || isRestStatus || isNotes || isRssFeed || isWeather;
     editingCustomWidgetId = widget.id;
     if (customWidgetIconInput) {
-      customWidgetIconInput.value = widget.icon || (isRssFeed ? "📰" : (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"))));
+      customWidgetIconInput.value = widget.icon || (isWeather ? "🌤️" : (isRssFeed ? "📰" : (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎")))));
     }
     if (customWidgetCustomIconInput) customWidgetCustomIconInput.value = widget.customIcon || "";
     if (customWidgetModeSelect) {
-      customWidgetModeSelect.value = isRssFeed
-        ? "rss-feed"
-        : (isNotes
-          ? "notes"
-          : (isRestStatus
-            ? "rest-status"
-            : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple"))));
+      customWidgetModeSelect.value = isWeather
+        ? "weather"
+        : (isRssFeed
+          ? "rss-feed"
+          : (isNotes
+            ? "notes"
+            : (isRestStatus
+              ? "rest-status"
+              : (isTimezone ? "timezone" : (widget.mode === "json" ? "json" : "simple")))));
     }
     if (customWidgetNameInput) customWidgetNameInput.value = widget.name || "";
-    const initialGroupName = isTimezone || isNotes ? "" : (widget.groupName || "");
+    const initialGroupName = isTimezone || isNotes || isWeather ? "" : (widget.groupName || "");
     lastSelectedWidgetGroup = initialGroupName;
     if (customWidgetRoutePrefixesInput) {
       customWidgetRoutePrefixesInput.value = isNonSearch
@@ -1775,6 +1830,7 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestLink) customWidgetRestLink.value = widget.linkUrl || "";
     if (customWidgetRestHeaderName) customWidgetRestHeaderName.value = widget.authHeaderName || "";
     lockedEncryptedRestToken = "";
+    lockedEncryptedWeatherApiKey = "";
     if (customWidgetRestHeaderValue) {
       if (isEncryptedSecret(widget.authHeaderValue)) {
         customWidgetRestHeaderValue.value = "";
@@ -1788,6 +1844,7 @@ export function initCustomWidgetsSettings() {
           if (res.ok && editingCustomWidgetId === widget.id) {
             customWidgetRestHeaderValue.value = res.value;
             lockedEncryptedRestToken = "";
+    lockedEncryptedWeatherApiKey = "";
             updateRestAuthWarningBadge(false);
           }
         })();
@@ -1804,6 +1861,32 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRssUrl) customWidgetRssUrl.value = widget.feedUrl || "";
     if (customWidgetRssRefresh) customWidgetRssRefresh.value = String(normalizeRssRefreshMinutes(widget.refreshMinutes));
     if (customWidgetRssMaxItems) customWidgetRssMaxItems.value = String(normalizeRssMaxItems(widget.maxItems));
+    if (customWidgetWeatherProvider) customWidgetWeatherProvider.value = normalizeWeatherProvider(widget.provider);
+    if (customWidgetWeatherSize) customWidgetWeatherSize.value = normalizeWeatherDisplaySize(widget.displaySize);
+    if (customWidgetWeatherLocName) customWidgetWeatherLocName.value = widget.locationName || "";
+    if (customWidgetWeatherLat) customWidgetWeatherLat.value = Number.isFinite(Number(widget.latitude)) ? String(widget.latitude) : "";
+    if (customWidgetWeatherLon) customWidgetWeatherLon.value = Number.isFinite(Number(widget.longitude)) ? String(widget.longitude) : "";
+    if (customWidgetWeatherUnit) customWidgetWeatherUnit.value = normalizeWeatherUnit(widget.unit);
+    if (customWidgetWeatherRefresh) customWidgetWeatherRefresh.value = String(normalizeWeatherRefreshMinutes(widget.refreshMinutes));
+    lockedEncryptedWeatherApiKey = "";
+    if (customWidgetWeatherApiKey) {
+      customWidgetWeatherApiKey.value = "";
+      if (isEncryptedSecret(widget.apiKey)) {
+        lockedEncryptedWeatherApiKey = widget.apiKey;
+        void (async () => {
+          const cfg = await loadConfig();
+          const res = await getSecret(widget.apiKey, `widget:${widget.id}:apiKey`, {
+            vaultHeader: cfg?.vaultHeader || null
+          });
+          if (res.ok && editingCustomWidgetId === widget.id) {
+            customWidgetWeatherApiKey.value = res.value;
+            lockedEncryptedWeatherApiKey = "";
+          }
+        })();
+      } else if (typeof widget.apiKey === "string") {
+        customWidgetWeatherApiKey.value = widget.apiKey;
+      }
+    }
     if (customWidgetRestTestResult) customWidgetRestTestResult.textContent = "";
     if (customWidgetAddBtn) customWidgetAddBtn.textContent = t("save") || "Save";
     if (customWidgetStatus) customWidgetStatus.textContent = "";
@@ -2037,6 +2120,65 @@ export function initCustomWidgetsSettings() {
     });
   }
 
+  if (customWidgetWeatherProvider && customWidgetWeatherApiKeyRow) {
+    customWidgetWeatherProvider.addEventListener("change", () => {
+      customWidgetWeatherApiKeyRow.classList.toggle("hidden", customWidgetWeatherProvider.value !== "openweathermap");
+    });
+  }
+
+  if (customWidgetWeatherSearchBtn && customWidgetWeatherLocQuery && customWidgetWeatherLocResults) {
+    customWidgetWeatherSearchBtn.addEventListener("click", async () => {
+      const q = customWidgetWeatherLocQuery.value.trim();
+      if (!q) return;
+      customWidgetWeatherSearchBtn.disabled = true;
+      try {
+        const results = await searchWeatherLocations(q);
+        customWidgetWeatherLocResults.innerHTML = "";
+        if (results.length === 0) {
+          customWidgetWeatherLocResults.classList.add("hidden");
+          if (customWidgetEditorStatus) {
+            customWidgetEditorStatus.textContent = "❌ " + (t("customWeatherLocationNotFound") || "Location not found.");
+          }
+          return;
+        }
+        for (const loc of results) {
+          const opt = document.createElement("option");
+          opt.value = JSON.stringify(loc);
+          opt.textContent = `${loc.label} (${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)})`;
+          customWidgetWeatherLocResults.appendChild(opt);
+        }
+        customWidgetWeatherLocResults.classList.remove("hidden");
+        const first = results[0];
+        if (customWidgetWeatherLocName) customWidgetWeatherLocName.value = first.label;
+        if (customWidgetWeatherLat) customWidgetWeatherLat.value = String(first.latitude);
+        if (customWidgetWeatherLon) customWidgetWeatherLon.value = String(first.longitude);
+        if (customWidgetNameInput && !customWidgetNameInput.value.trim()) {
+          customWidgetNameInput.value = first.label.split(",")[0].trim();
+        }
+        if (customWidgetEditorStatus) customWidgetEditorStatus.textContent = "";
+      } catch (err) {
+        if (customWidgetEditorStatus) {
+          customWidgetEditorStatus.textContent = err?.message === "PERMISSION_REQUIRED"
+            ? "❌ " + (t("hostPermissionRequired") || "Host permission is required.")
+            : "❌ " + (t("customWeatherSearchFailed") || "Location search failed.");
+        }
+      } finally {
+        customWidgetWeatherSearchBtn.disabled = false;
+      }
+    });
+
+    customWidgetWeatherLocResults.addEventListener("change", () => {
+      try {
+        const loc = JSON.parse(customWidgetWeatherLocResults.value);
+        if (customWidgetWeatherLocName) customWidgetWeatherLocName.value = loc.label;
+        if (customWidgetWeatherLat) customWidgetWeatherLat.value = String(loc.latitude);
+        if (customWidgetWeatherLon) customWidgetWeatherLon.value = String(loc.longitude);
+      } catch {
+        // ignore
+      }
+    });
+  }
+
   if (customWidgetAddBtn) {
     customWidgetAddBtn.addEventListener('click', async () => {
       const selectedMode = customWidgetModeSelect?.value || "simple";
@@ -2044,13 +2186,14 @@ export function initCustomWidgetsSettings() {
       const isRestStatus = selectedMode === "rest-status";
       const isNotes = selectedMode === "notes";
       const isRssFeed = selectedMode === "rss-feed";
+      const isWeather = selectedMode === "weather";
       const mode = selectedMode === "json" ? "json" : "simple";
       const name = (customWidgetNameInput?.value || "").trim();
       const rawGroupName = (customWidgetGroupSelect?.value || "").trim();
       const groupName = rawGroupName === "__create__" ? "" : rawGroupName;
       const urlTemplate = (customWidgetUrlInput?.value || "").trim();
       const jsonTemplate = (customWidgetJsonTemplateInput?.value || "").trim();
-      const defaultIcon = isRssFeed ? "📰" : (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎")));
+      const defaultIcon = isWeather ? "🌤️" : (isRssFeed ? "📰" : (isNotes ? "📝" : (isRestStatus ? "📡" : (isTimezone ? "🕒" : "🔎"))));
       const icon = (customWidgetIconInput?.value || defaultIcon).trim() || defaultIcon;
       const rawCustomIcon = (customWidgetCustomIconInput?.value || "").trim();
       let customIcon = null;
@@ -2105,9 +2248,75 @@ export function initCustomWidgetsSettings() {
 
         closeCustomWidgetEditorModal();
         renderWidgetOrderList(draft);
+        renderCustomWidgetsList(draft);
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();
+        return;
+      }
+
+      if (isWeather) {
+        const provider = normalizeWeatherProvider(customWidgetWeatherProvider?.value);
+        const locationName = (customWidgetWeatherLocName?.value || "").trim() || name;
+        const lat = Number(customWidgetWeatherLat?.value);
+        const lon = Number(customWidgetWeatherLon?.value);
+        if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+          if (customWidgetEditorStatus) {
+            customWidgetEditorStatus.textContent = "❌ " + (t("customWeatherInvalidError") || "Enter a widget name and valid coordinates (or search a location).");
+          }
+          return;
+        }
+        const targetWidgetId = editingCustomWidgetId || `cw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        let apiKey = (customWidgetWeatherApiKey?.value || "").trim();
+        if (provider === "openweathermap") {
+          if (!apiKey && lockedEncryptedWeatherApiKey) {
+            apiKey = lockedEncryptedWeatherApiKey;
+          } else if (apiKey) {
+            apiKey = await setSecret(apiKey, `widget:${targetWidgetId}:apiKey`);
+          }
+        } else {
+          apiKey = "";
+        }
+        await requestWeatherPermission(provider);
+        const weatherFields = {
+          type: "weather",
+          name,
+          icon,
+          customIcon,
+          provider,
+          locationName,
+          latitude: lat,
+          longitude: lon,
+          displaySize: normalizeWeatherDisplaySize(customWidgetWeatherSize?.value),
+          unit: normalizeWeatherUnit(customWidgetWeatherUnit?.value),
+          refreshMinutes: normalizeWeatherRefreshMinutes(customWidgetWeatherRefresh?.value),
+          apiKey
+        };
+        if (customWidgetStatus) customWidgetStatus.textContent = "";
+        markSettingsDirty();
+        const draft = await ensureAppearanceDraft();
+        if (editingCustomWidgetId) {
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w.id === editingCustomWidgetId ? { ...w, ...weatherFields } : w
+          );
+        } else {
+          const newWidget = {
+            id: targetWidgetId,
+            ...weatherFields,
+            space: "left",
+            align: "auto",
+            newRow: false
+          };
+          draft.customWidgets = [...(draft.customWidgets || []), newWidget];
+          draft.widgetOrder = normalizeWidgetOrder([...(draft.widgetOrder || []), newWidget.id], draft.customWidgets);
+        }
+        closeCustomWidgetEditorModal();
+        renderWidgetOrderList(draft);
+        renderCustomWidgetsList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+        void pollAllWeatherWidgets({ force: true });
         return;
       }
 
@@ -2156,6 +2365,7 @@ export function initCustomWidgetsSettings() {
         }
         closeCustomWidgetEditorModal();
         renderWidgetOrderList(draft);
+        renderCustomWidgetsList(draft);
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();
@@ -2192,6 +2402,7 @@ export function initCustomWidgetsSettings() {
         }
         closeCustomWidgetEditorModal();
         renderWidgetOrderList(draft);
+        renderCustomWidgetsList(draft);
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();
@@ -2273,6 +2484,7 @@ export function initCustomWidgetsSettings() {
 
         closeCustomWidgetEditorModal();
         renderWidgetOrderList(draft);
+        renderCustomWidgetsList(draft);
         await applySideSpaces({ appearance: draft });
         await render();
         calculateGridLayout();

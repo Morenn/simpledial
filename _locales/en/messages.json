@@ -1948,5 +1948,122 @@
   },
   "noOtherGroups": {
     "message": "No other groups"
+  },
+  "customWidgetModeWeather": {
+    "message": "Weather"
+  },
+  "customWeatherAddTitle": {
+    "message": "Add Weather Widget"
+  },
+  "customWeatherProviderLabel": {
+    "message": "Data source"
+  },
+  "customWeatherProviderOpenMeteo": {
+    "message": "Open-Meteo (No API key)"
+  },
+  "customWeatherProviderOpenWeather": {
+    "message": "OpenWeatherMap (API key)"
+  },
+  "customWeatherSizeLabel": {
+    "message": "Widget size"
+  },
+  "customWeatherSizePill": {
+    "message": "Pill (status only)"
+  },
+  "customWeatherSizeSmall": {
+    "message": "Small (today)"
+  },
+  "customWeatherSizeMedium": {
+    "message": "Medium (3-day forecast)"
+  },
+  "customWeatherLocationSearchLabel": {
+    "message": "Search city / location"
+  },
+  "customWeatherLocationNameLabel": {
+    "message": "Display location"
+  },
+  "customWeatherLatLabel": {
+    "message": "Latitude"
+  },
+  "customWeatherLonLabel": {
+    "message": "Longitude"
+  },
+  "customWeatherUnitLabel": {
+    "message": "Temperature unit"
+  },
+  "customWeatherApiKeyLabel": {
+    "message": "API Key (stored in Secrets Vault if enabled)"
+  },
+  "customWeatherLocationNotFound": {
+    "message": "Location not found."
+  },
+  "customWeatherSearchFailed": {
+    "message": "Location search failed."
+  },
+  "customWeatherInvalidError": {
+    "message": "Enter a widget name and valid coordinates (or search a location)."
+  },
+  "weatherToday": {
+    "message": "Today"
+  },
+  "weatherTomorrow": {
+    "message": "Tomorrow"
+  },
+  "weatherLoading": {
+    "message": "Loading weather..."
+  },
+  "weatherPermissionRequiredBar": {
+    "message": "🔒 Permission required — open & refresh"
+  },
+  "weatherPermissionRequiredBarTitle": {
+    "message": "Open widget and click Refresh (↻) to grant permission"
+  },
+  "weatherPermissionRequiredNotice": {
+    "message": "Host permission is required to fetch weather data. Click Refresh (↻) or Grant permission & Refresh."
+  },
+  "search": {
+    "message": "Search"
+  },
+  "weatherCondClear": {
+    "message": "Clear"
+  },
+  "weatherCondMostlyClear": {
+    "message": "Mostly clear"
+  },
+  "weatherCondPartlyCloudy": {
+    "message": "Partly cloudy"
+  },
+  "weatherCondFewClouds": {
+    "message": "Few clouds"
+  },
+  "weatherCondCloudy": {
+    "message": "Cloudy"
+  },
+  "weatherCondFog": {
+    "message": "Fog"
+  },
+  "weatherCondDrizzle": {
+    "message": "Drizzle"
+  },
+  "weatherCondRain": {
+    "message": "Rain"
+  },
+  "weatherCondSnow": {
+    "message": "Snow"
+  },
+  "weatherCondShowers": {
+    "message": "Showers"
+  },
+  "weatherCondSnowShowers": {
+    "message": "Snow showers"
+  },
+  "weatherCondThunderstorm": {
+    "message": "Thunderstorm"
+  },
+  "weatherCondWeather": {
+    "message": "Weather"
+  },
+  "weatherFeelsLike": {
+    "message": "Feels like {0}"
   }
 }

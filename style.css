@@ -5883,3 +5883,178 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   justify-content: space-between;
   gap: 0.5rem;
 }
+
+
+/* ─── WEATHER WIDGET & MODAL ─── */
+
+.custom-weather-widget {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.custom-weather-widget:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.custom-weather-widget.is-pill {
+  flex-direction: row;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.custom-weather-widget.is-small,
+.custom-weather-widget.is-medium {
+  min-width: 170px;
+}
+
+.custom-weather-card-header {
+  font-size: 0.76rem;
+  opacity: 0.8;
+}
+
+.custom-weather-main-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.custom-weather-icon {
+  font-size: 1.25rem;
+}
+
+.custom-weather-temp {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.custom-weather-cond {
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+
+.custom-weather-today-row {
+  font-size: 0.76rem;
+  opacity: 0.78;
+}
+
+.custom-weather-forecast-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+
+.custom-weather-forecast-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.custom-weather-forecast-day {
+  min-width: 56px;
+}
+
+.weather-modal-content {
+  width: min(520px, 92vw);
+}
+
+.weather-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.weather-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.weather-modal-title {
+  margin: 0;
+}
+
+.weather-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.weather-modal-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.9rem;
+}
+
+.weather-modal-hero-temp {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.weather-modal-hero-meta {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.weather-modal-hourly {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  margin-bottom: 0.9rem;
+  font-size: 0.78rem;
+}
+
+.weather-modal-hour-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.weather-modal-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.weather-modal-day-row {
+  display: grid;
+  grid-template-columns: 80px 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: var(--bg2);
+  font-size: 0.85rem;
+}
+
+.weather-modal-day-precip {
+  opacity: 0.75;
+  font-size: 0.78rem;
+}

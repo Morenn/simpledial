@@ -1948,5 +1948,122 @@
   },
   "rssGrantPermissionAndRefresh": {
     "message": "Myönnä oikeus ja päivitä"
+  },
+  "customWidgetModeWeather": {
+    "message": "Sää"
+  },
+  "customWeatherAddTitle": {
+    "message": "Lisää sää-widget"
+  },
+  "customWeatherProviderLabel": {
+    "message": "Tietolähde"
+  },
+  "customWeatherProviderOpenMeteo": {
+    "message": "Open-Meteo (ei API-avainta)"
+  },
+  "customWeatherProviderOpenWeather": {
+    "message": "OpenWeatherMap (API-avain)"
+  },
+  "customWeatherSizeLabel": {
+    "message": "Widgetin koko"
+  },
+  "customWeatherSizePill": {
+    "message": "Pilleri (vain tila)"
+  },
+  "customWeatherSizeSmall": {
+    "message": "Pieni (tänään)"
+  },
+  "customWeatherSizeMedium": {
+    "message": "Keskikokoinen (3 päivän ennuste)"
+  },
+  "customWeatherLocationSearchLabel": {
+    "message": "Hae kaupunkia / sijaintia"
+  },
+  "customWeatherLocationNameLabel": {
+    "message": "Näytettävä sijainti"
+  },
+  "customWeatherLatLabel": {
+    "message": "Leveysaste"
+  },
+  "customWeatherLonLabel": {
+    "message": "Pituusaste"
+  },
+  "customWeatherUnitLabel": {
+    "message": "Lämpötilayksikkö"
+  },
+  "customWeatherApiKeyLabel": {
+    "message": "API-avain (tallennetaan Salaisuusholviin, jos käytössä)"
+  },
+  "customWeatherLocationNotFound": {
+    "message": "Sijaintia ei löytynyt."
+  },
+  "customWeatherSearchFailed": {
+    "message": "Sijainnin haku epäonnistui."
+  },
+  "customWeatherInvalidError": {
+    "message": "Anna widgetin nimi ja kelvolliset koordinaatit (tai hae sijainti)."
+  },
+  "weatherToday": {
+    "message": "Tänään"
+  },
+  "weatherTomorrow": {
+    "message": "Huomenna"
+  },
+  "weatherLoading": {
+    "message": "Ladataan säätä..."
+  },
+  "weatherPermissionRequiredBar": {
+    "message": "🔒 Käyttöoikeus vaaditaan — avaa ja päivitä"
+  },
+  "weatherPermissionRequiredBarTitle": {
+    "message": "Avaa widget ja napsauta Päivitä (↻) myöntääksesi käyttöoikeuden"
+  },
+  "weatherPermissionRequiredNotice": {
+    "message": "Säätietojen hakeminen vaatii palvelimen käyttöoikeuden. Napsauta Päivitä (↻) tai Myönnä oikeus ja päivitä."
+  },
+  "search": {
+    "message": "Hae"
+  },
+  "weatherCondClear": {
+    "message": "Selkeää"
+  },
+  "weatherCondMostlyClear": {
+    "message": "Melko selkeää"
+  },
+  "weatherCondPartlyCloudy": {
+    "message": "Puolipilvistä"
+  },
+  "weatherCondFewClouds": {
+    "message": "Vähän pilviä"
+  },
+  "weatherCondCloudy": {
+    "message": "Pilvistä"
+  },
+  "weatherCondFog": {
+    "message": "Sumua"
+  },
+  "weatherCondDrizzle": {
+    "message": "Tihkusadetta"
+  },
+  "weatherCondRain": {
+    "message": "Sadetta"
+  },
+  "weatherCondSnow": {
+    "message": "Lumisadetta"
+  },
+  "weatherCondShowers": {
+    "message": "Kuuroja"
+  },
+  "weatherCondSnowShowers": {
+    "message": "Lumikuuroja"
+  },
+  "weatherCondThunderstorm": {
+    "message": "Ukkosta"
+  },
+  "weatherCondWeather": {
+    "message": "Sää"
+  },
+  "weatherFeelsLike": {
+    "message": "Tuntuu kuin {0}"
   }
 }

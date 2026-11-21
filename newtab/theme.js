@@ -26,6 +26,8 @@ async function getWidgetModuleIfActive(type, customWidgets) {
       loadedMod = await import("./widgets/notes-widget.js");
     } else if (type === "rss-feed") {
       loadedMod = await import("./widgets/rss-widget.js");
+    } else if (type === "weather") {
+      loadedMod = await import("./widgets/weather-widget.js");
     } else {
       return null;
     }
@@ -699,19 +701,21 @@ export async function applySideSpaces(config = null) {
   const autoRouteIcons = (appearance.customSearchAutoRouteIcons && typeof appearance.customSearchAutoRouteIcons === "object")
     ? appearance.customSearchAutoRouteIcons
     : {};
-  const [searchMod, tzMod, restMod, notesMod, rssMod] = await Promise.all([
+  const [searchMod, tzMod, restMod, notesMod, rssMod, weatherMod] = await Promise.all([
     getWidgetModuleIfActive("custom-search", customWidgets),
     getWidgetModuleIfActive("timezone", customWidgets),
     getWidgetModuleIfActive("rest-status", customWidgets),
     getWidgetModuleIfActive("notes", customWidgets),
-    getWidgetModuleIfActive("rss-feed", customWidgets)
+    getWidgetModuleIfActive("rss-feed", customWidgets),
+    getWidgetModuleIfActive("weather", customWidgets)
   ]);
   const customElements = {
     ...(searchMod ? searchMod.syncCustomSearchWidgetElements(customWidgets, autoRouteDefaults, autoRouteIcons) : {}),
     ...(tzMod ? tzMod.syncCustomTimeZoneWidgetElements(customWidgets) : {}),
     ...(restMod ? restMod.syncCustomRestStatusWidgetElements(customWidgets) : {}),
     ...(notesMod ? notesMod.syncCustomNotesWidgetElements(customWidgets) : {}),
-    ...(rssMod ? rssMod.syncCustomRssWidgetElements(customWidgets) : {})
+    ...(rssMod ? rssMod.syncCustomRssWidgetElements(customWidgets) : {}),
+    ...(weatherMod ? weatherMod.syncCustomWeatherWidgetElements(customWidgets) : {})
   };
   const widgetOrder = normalizeWidgetOrder(appearance.widgetOrder, customWidgets);
   const rawSearchStyle = appearance.searchStyle;

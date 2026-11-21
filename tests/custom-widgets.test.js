@@ -54,7 +54,10 @@ const {
   revertCustomWidgetVersion,
   parseFeedResponse,
   pruneRssStorageForWidgets,
-  pruneNotesStorageForWidgets
+  pruneNotesStorageForWidgets,
+  mapWmoWeatherCode,
+  formatTemperature,
+  pruneWeatherStorageForWidgets
 } = await import("../newtab/custom-widgets.js");
 
 test("simple mode replaces multiple placeholders and encodes values", () => {
@@ -1103,6 +1106,70 @@ test("pruneNotesStorageForWidgets removes stale Notes data for deleted widgets",
     const pruned = await pruneNotesStorageForWidgets([{ id: "cw-notes-keep", type: "notes" }]);
     assert.equal(pruned, true);
     assert.deepEqual(Object.keys(store.get("myspeeddial-widget-notes")), ["cw-notes-keep"]);
+  } finally {
+    globalThis.chrome = prevChrome;
+  }
+});
+
+
+test("weather helpers format temperatures, map WMO codes, strip apiKey on export, and prune stale cache", async () => {
+  assert.equal(formatTemperature(24.4, "C"), "24°C");
+  assert.equal(formatTemperature(0, "F"), "32°F");
+  assert.deepEqual(mapWmoWeatherCode(3), { icon: "☁️", key: "weatherCondCloudy", label: "Cloudy" });
+
+  const exported = serializeCustomWidgetsExport([
+    {
+      id: "cw-weather-1",
+      type: "weather",
+      name: "Prague",
+      provider: "openweathermap",
+      locationName: "Prague, CZ",
+      latitude: 50.0755,
+      longitude: 14.4378,
+      displaySize: "medium",
+      unit: "C",
+      refreshMinutes: 30,
+      apiKey: "secret-owm-key"
+    }
+  ]);
+  assert.equal(exported.widgets[0].apiKey, "");
+  assert.equal(exported.widgets[0].hadSecret, true);
+  assert.equal(exported.widgets[0].space, "left");
+
+  const imported = parseImportedCustomWidgets(exported);
+  assert.equal(imported.validFormat, true);
+  assert.equal(imported.widgets.length, 1);
+  assert.equal(imported.widgets[0].displaySize, "medium");
+  assert.equal(imported.widgets[0].space, "left");
+
+  const store = new Map([
+    ["myspeeddial-weather-cache", {
+      "cw-weather-keep": { fetchedAt: 1000, current: { tempC: 20 } },
+      "cw-weather-del": { fetchedAt: 1000, current: { tempC: 10 } }
+    }]
+  ]);
+  const prevChrome = globalThis.chrome;
+  globalThis.chrome = {
+    ...prevChrome,
+    storage: {
+      local: {
+        async get(keys) {
+          const out = {};
+          for (const k of (Array.isArray(keys) ? keys : [keys])) {
+            if (store.has(k)) out[k] = structuredClone(store.get(k));
+          }
+          return out;
+        },
+        async set(obj) {
+          for (const [k, v] of Object.entries(obj)) store.set(k, structuredClone(v));
+        }
+      }
+    }
+  };
+  try {
+    const pruned = await pruneWeatherStorageForWidgets([{ id: "cw-weather-keep", type: "weather" }]);
+    assert.equal(pruned, true);
+    assert.deepEqual(Object.keys(store.get("myspeeddial-weather-cache")), ["cw-weather-keep"]);
   } finally {
     globalThis.chrome = prevChrome;
   }

@@ -1948,5 +1948,122 @@
   },
   "rssGrantPermissionAndRefresh": {
     "message": "Accorder et actualiser"
+  },
+  "customWidgetModeWeather": {
+    "message": "Météo"
+  },
+  "customWeatherAddTitle": {
+    "message": "Ajouter un widget Météo"
+  },
+  "customWeatherProviderLabel": {
+    "message": "Source de données"
+  },
+  "customWeatherProviderOpenMeteo": {
+    "message": "Open-Meteo (sans clé API)"
+  },
+  "customWeatherProviderOpenWeather": {
+    "message": "OpenWeatherMap (clé API)"
+  },
+  "customWeatherSizeLabel": {
+    "message": "Taille du widget"
+  },
+  "customWeatherSizePill": {
+    "message": "Pilule (statut uniquement)"
+  },
+  "customWeatherSizeSmall": {
+    "message": "Petit (aujourd'hui)"
+  },
+  "customWeatherSizeMedium": {
+    "message": "Moyen (prévisions 3 jours)"
+  },
+  "customWeatherLocationSearchLabel": {
+    "message": "Rechercher une ville / un lieu"
+  },
+  "customWeatherLocationNameLabel": {
+    "message": "Lieu affiché"
+  },
+  "customWeatherLatLabel": {
+    "message": "Latitude"
+  },
+  "customWeatherLonLabel": {
+    "message": "Longitude"
+  },
+  "customWeatherUnitLabel": {
+    "message": "Unité de température"
+  },
+  "customWeatherApiKeyLabel": {
+    "message": "Clé API (stockée dans le Coffre-fort si activé)"
+  },
+  "customWeatherLocationNotFound": {
+    "message": "Lieu introuvable."
+  },
+  "customWeatherSearchFailed": {
+    "message": "Échec de la recherche du lieu."
+  },
+  "customWeatherInvalidError": {
+    "message": "Saisissez un nom de widget et des coordonnées valides (ou recherchez un lieu)."
+  },
+  "weatherToday": {
+    "message": "Aujourd'hui"
+  },
+  "weatherTomorrow": {
+    "message": "Demain"
+  },
+  "weatherLoading": {
+    "message": "Chargement de la météo..."
+  },
+  "weatherPermissionRequiredBar": {
+    "message": "🔒 Autorisation requise — ouvrir et actualiser"
+  },
+  "weatherPermissionRequiredBarTitle": {
+    "message": "Ouvrez le widget et cliquez sur Actualiser (↻) pour accorder l'autorisation"
+  },
+  "weatherPermissionRequiredNotice": {
+    "message": "L'autorisation d'accès à l'hôte est requise pour récupérer la météo. Cliquez sur Actualiser (↻) ou Accorder et actualiser."
+  },
+  "search": {
+    "message": "Rechercher"
+  },
+  "weatherCondClear": {
+    "message": "Dégagé"
+  },
+  "weatherCondMostlyClear": {
+    "message": "Plutôt dégagé"
+  },
+  "weatherCondPartlyCloudy": {
+    "message": "Partiellement nuageux"
+  },
+  "weatherCondFewClouds": {
+    "message": "Quelques nuages"
+  },
+  "weatherCondCloudy": {
+    "message": "Nuageux"
+  },
+  "weatherCondFog": {
+    "message": "Brouillard"
+  },
+  "weatherCondDrizzle": {
+    "message": "Bruine"
+  },
+  "weatherCondRain": {
+    "message": "Pluie"
+  },
+  "weatherCondSnow": {
+    "message": "Neige"
+  },
+  "weatherCondShowers": {
+    "message": "Averses"
+  },
+  "weatherCondSnowShowers": {
+    "message": "Averses de neige"
+  },
+  "weatherCondThunderstorm": {
+    "message": "Orage"
+  },
+  "weatherCondWeather": {
+    "message": "Météo"
+  },
+  "weatherFeelsLike": {
+    "message": "Ressenti {0}"
   }
 }

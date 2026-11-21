@@ -87,13 +87,16 @@ async function buildBackupSnapshot(resolvedType) {
     if (Array.isArray(appearanceToBackup.customWidgets)) {
       appearanceToBackup.customWidgets = appearanceToBackup.customWidgets.map(w => {
         if (!w || typeof w !== "object") return w;
-        const hasSecret = Boolean(
+        const hasAuthSecret = Boolean(
           (typeof w.authHeaderValue === "string" && w.authHeaderValue !== "") ||
           (typeof w.authHeaderName === "string" && w.authHeaderName.trim() !== "")
         );
-        if (!("authHeaderValue" in w) && !hasSecret) return w;
-        const copy = { ...w, authHeaderValue: "" };
-        if (hasSecret) copy.hadSecret = true;
+        const hasApiKey = typeof w.apiKey === "string" && w.apiKey !== "";
+        if (!("authHeaderValue" in w) && !hasAuthSecret && !("apiKey" in w) && !hasApiKey) return w;
+        const copy = { ...w };
+        if ("authHeaderValue" in w || hasAuthSecret) copy.authHeaderValue = "";
+        if ("apiKey" in w || hasApiKey) copy.apiKey = "";
+        if (hasAuthSecret || hasApiKey) copy.hadSecret = true;
         return copy;
       });
     }

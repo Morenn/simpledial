@@ -273,12 +273,13 @@ async function renderInfoStorageStats() {
     ["themeCache", "Background & Theme Cache"],
     ["notes", "Notes"],
     ["rss", "RSS Cache & Read State"],
+    ["weather", "Weather Cache"],
     ["systemTags", "Local System Tags"],
     ["other", "Other"]
   ];
   for (const [key, label] of catLabels) {
     const bytes = stats.categories[key] || 0;
-    if (bytes === 0 && key === "other") continue;
+    if (bytes === 0 && (key === "other" || key === "weather")) continue;
     const chip = document.createElement("div");
     chip.className = "info-storage-chip";
     const kSpan = document.createElement("span");

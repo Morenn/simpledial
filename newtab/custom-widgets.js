@@ -73,6 +73,22 @@ import {
   openRssFeedModal,
   syncCustomRssWidgetElements
 } from "./widgets/rss-widget.js";
+import {
+  normalizeWeatherDisplaySize,
+  normalizeWeatherProvider,
+  normalizeWeatherUnit,
+  normalizeWeatherRefreshMinutes,
+  formatTemperature,
+  mapWmoWeatherCode,
+  mapOpenWeatherCondition,
+  requestWeatherPermission,
+  searchWeatherLocations,
+  fetchWeatherWidget,
+  pollAllWeatherWidgets,
+  startWeatherPolling,
+  pruneWeatherStorageForWidgets,
+  syncCustomWeatherWidgetElements
+} from "./widgets/weather-widget.js";
 
 export {
   VALID_WIDGET_SPACES,
@@ -135,7 +151,21 @@ export {
   startRssFeedPolling,
   pruneRssStorageForWidgets,
   openRssFeedModal,
-  syncCustomRssWidgetElements
+  syncCustomRssWidgetElements,
+  normalizeWeatherDisplaySize,
+  normalizeWeatherProvider,
+  normalizeWeatherUnit,
+  normalizeWeatherRefreshMinutes,
+  formatTemperature,
+  mapWmoWeatherCode,
+  mapOpenWeatherCondition,
+  requestWeatherPermission,
+  searchWeatherLocations,
+  fetchWeatherWidget,
+  pollAllWeatherWidgets,
+  startWeatherPolling,
+  pruneWeatherStorageForWidgets,
+  syncCustomWeatherWidgetElements
 };
 
 function getWidgetGroupKeySet(widgets = []) {
@@ -222,6 +252,23 @@ export function serializeCustomWidgetsExport(widgets = [], {
           refreshMinutes: normalizeRssRefreshMinutes(w.refreshMinutes),
           maxItems: normalizeRssMaxItems(w.maxItems),
           groupName: typeof w.groupName === "string" ? w.groupName.trim() : ""
+        };
+      }
+      if (w?.type === "weather") {
+        const hasKey = typeof w.apiKey === "string" && w.apiKey !== "";
+        return {
+          ...base,
+          type: "weather",
+          space: VALID_WIDGET_SPACES.has(w?.space) ? w.space : "left",
+          provider: normalizeWeatherProvider(w.provider),
+          locationName: typeof w.locationName === "string" ? w.locationName.trim() : "",
+          latitude: Number.isFinite(Number(w.latitude)) ? Number(w.latitude) : null,
+          longitude: Number.isFinite(Number(w.longitude)) ? Number(w.longitude) : null,
+          displaySize: normalizeWeatherDisplaySize(w.displaySize),
+          unit: normalizeWeatherUnit(w.unit),
+          refreshMinutes: normalizeWeatherRefreshMinutes(w.refreshMinutes),
+          apiKey: includeSecrets && hasKey && !w.apiKey.startsWith("enc:v1:") ? w.apiKey : "",
+          ...(hasKey ? { hadSecret: true } : {})
         };
       }
       if (w?.type === "rest-status") {
@@ -354,6 +401,37 @@ export function parseImportedCustomWidgets(parsed) {
         refreshMinutes: normalizeRssRefreshMinutes(raw.refreshMinutes),
         maxItems: normalizeRssMaxItems(raw.maxItems),
         groupName: typeof raw.groupName === "string" ? raw.groupName.trim() : "",
+        space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "left",
+        align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
+        newRow: !!raw.newRow,
+        ...(sourceUrl ? { sourceUrl } : {}),
+        ...(typeof raw.sourceUpdatedAt === "string" && raw.sourceUpdatedAt ? { sourceUpdatedAt: raw.sourceUpdatedAt } : {})
+      });
+      continue;
+    }
+
+    if (raw.type === "weather") {
+      const name = typeof raw.name === "string" ? raw.name.trim() : "";
+      const lat = Number(raw.latitude);
+      const lon = Number(raw.longitude);
+      if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+        skipped++;
+        continue;
+      }
+      widgets.push({
+        id,
+        type: "weather",
+        name,
+        icon: emoji.slice(0, 4),
+        customIcon,
+        provider: normalizeWeatherProvider(raw.provider),
+        locationName: typeof raw.locationName === "string" ? raw.locationName.trim() : name,
+        latitude: lat,
+        longitude: lon,
+        displaySize: normalizeWeatherDisplaySize(raw.displaySize),
+        unit: normalizeWeatherUnit(raw.unit),
+        refreshMinutes: normalizeWeatherRefreshMinutes(raw.refreshMinutes),
+        apiKey: typeof raw.apiKey === "string" && !raw.apiKey.startsWith("enc:v1:") ? raw.apiKey : "",
         space: VALID_WIDGET_SPACES.has(raw.space) ? raw.space : "left",
         align: VALID_WIDGET_ALIGNS.has(raw.align) ? raw.align : "auto",
         newRow: !!raw.newRow,

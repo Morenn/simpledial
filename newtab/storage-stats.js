@@ -30,6 +30,7 @@ function categorizeLocalStorageKey(key) {
   if (key.includes("background-image") || key.includes("custom-theme")) return "themeCache";
   if (key === "myspeeddial-widget-notes" || key === "myspeeddial-notes") return "notes";
   if (key.startsWith("myspeeddial-rss")) return "rss";
+  if (key === "myspeeddial-weather-cache") return "weather";
   if (key === "myspeeddial-system-tags") return "systemTags";
   return "other";
 }
@@ -55,6 +56,7 @@ export async function measureAddonStorageUsage() {
     themeCache: 0,
     notes: 0,
     rss: 0,
+    weather: 0,
     systemTags: 0,
     other: 0
   };
