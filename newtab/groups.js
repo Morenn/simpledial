@@ -416,9 +416,7 @@ function showGroupContextMenu(e, group, optionElement) {
   const deleteBtn = document.createElement("div");
   deleteBtn.textContent = t("delete");
   deleteBtn.addEventListener("click", async () => {
-    group.deleted = true;
-    group.deletedAt = Date.now();
-    group.updatedAt = Date.now();
+    softDeleteGroupRecords(group);
 
     if (window.activeGroupId === group.id) {
       const firstActive = state.groups.find(g => !g.deleted);
@@ -435,9 +433,7 @@ function showGroupContextMenu(e, group, optionElement) {
   const restoreBtn = document.createElement("div");
   restoreBtn.textContent = t("restore");
   restoreBtn.addEventListener("click", async () => {
-    group.deleted = false;
-    group.deletedAt = null;
-    group.updatedAt = Date.now();
+    restoreSoftDeletedGroupRecords(group);
 
     await saveState();
     await syncWrite();
@@ -482,6 +478,58 @@ function showGroupContextMenu(e, group, optionElement) {
       document.body.removeChild(menu);
     }
   }, 5000);
+}
+
+function softDeleteGroupRecords(group, now = Date.now()) {
+  if (!group) return;
+  group.deleted = true;
+  group.deletedAt = now;
+  group.updatedAt = now;
+
+  for (const item of (group.items || [])) {
+    if (!item) continue;
+    if (!item.deleted) {
+      item.deleted = true;
+      item.deletedAt = now;
+      item.updatedAt = now;
+    }
+    if (Array.isArray(item.children)) {
+      for (const child of item.children) {
+        if (child && !child.deleted) {
+          child.deleted = true;
+          child.deletedAt = now;
+          child.updatedAt = now;
+        }
+      }
+    }
+  }
+}
+
+function restoreSoftDeletedGroupRecords(group, now = Date.now()) {
+  if (!group) return;
+  const groupDeletedAt = group.deletedAt;
+  group.deleted = false;
+  group.deletedAt = null;
+  group.updatedAt = now;
+
+  if (!groupDeletedAt) return;
+  for (const item of (group.items || [])) {
+    if (!item) continue;
+    if (item.deleted && item.deletedAt === groupDeletedAt) {
+      item.deleted = false;
+      item.deletedAt = null;
+      item.updatedAt = now;
+    }
+    if (Array.isArray(item.children)) {
+      for (const child of item.children) {
+        if (child && child.deleted && child.deletedAt === groupDeletedAt) {
+          child.deleted = false;
+          child.deletedAt = null;
+          child.updatedAt = now;
+        }
+      }
+    }
+  }
 }
 
 function collectGroupPurgedIds(group) {
@@ -614,9 +662,7 @@ export async function handleGroupContext(action, el) {
   }
 
   if (action === "delete") {
-    group.deleted = true;
-    group.deletedAt = Date.now();
-    group.updatedAt = Date.now();
+    softDeleteGroupRecords(group);
 
     if (window.activeGroupId === id) {
       const firstActive = state.groups.find(g => !g.deleted);
@@ -630,9 +676,7 @@ export async function handleGroupContext(action, el) {
   }
 
   if (action === "restore") {
-    group.deleted = false;
-    group.deletedAt = null;
-    group.updatedAt = Date.now();
+    restoreSoftDeletedGroupRecords(group);
 
     await saveState();
     await syncWrite();

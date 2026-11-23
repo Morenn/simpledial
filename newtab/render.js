@@ -416,7 +416,7 @@ async function renderBookmarks(providedConfig = null) {
             if (!child) return;
             searchEntries.push({
               ...child,
-              deleted: !!(item.deleted || child.deleted),
+              deleted: !!(group.deleted || item.deleted || child.deleted),
               _groupId: group.id,
               _groupName: group.name || "",
               _sectionName: sectionName,
@@ -427,6 +427,7 @@ async function renderBookmarks(providedConfig = null) {
         } else {
           searchEntries.push({
             ...item,
+            deleted: !!(group.deleted || item.deleted),
             _groupId: group.id,
             _groupName: group.name || "",
             _sectionName: sectionName,
@@ -526,7 +527,7 @@ async function renderBookmarks(providedConfig = null) {
   // ============================================
   // 2) Normal workspace view for active group
   // ============================================
-  const group = state.groups.find(g => g.id === window.activeGroupId);
+  const group = state.groups.find(g => g.id === window.activeGroupId && (showDeleted || !g.deleted));
 
   if (!group) {
     if (sectionsContainer) sectionsContainer.classList.add("hidden");
