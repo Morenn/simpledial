@@ -266,9 +266,6 @@
   "immediateSyncWarning": {
     "message": "Okamžitá synchronizace (při každé změně)"
   },
-  "customInterval": {
-    "message": "Vlastní interval (minuty):"
-  },
   "manualSyncOnly": {
     "message": "Pouze ruční synchronizace"
   },
@@ -322,6 +319,12 @@
   },
   "syncUnexpectedHtmlResponse": {
     "message": "Server vrátil HTML stránku místo JSON synchronizace. Pokud URL funguje pouze při přihlášení v prohlížeči, uložte platné WebDAV přihlašovací údaje nebo heslo aplikace."
+  },
+  "syncEmptyResponse": {
+    "message": "Vzdálený synchronizační soubor je prázdný nebo chybí."
+  },
+  "syncInvalidJson": {
+    "message": "Vzdálený synchronizační soubor obsahuje neplatný JSON."
   },
   "syncRemoteLocked": {
     "message": "Vzdálený soubor je dočasně uzamčen (423). Zkuste to prosím za několik sekund."
@@ -2065,5 +2068,29 @@
   },
   "weatherFeelsLike": {
     "message": "Pocitově {0}"
+  },
+  "syncForceUploadTitle": {
+    "message": "Vynutit nahrání (přepsat vzdálená data)"
+  },
+  "syncForceUploadBody": {
+    "message": "Tímto bez sloučení přepíšete vzdálené záložky a štítky vašimi místními daty. Všechny nesloučené vzdálené změny budou ztraceny."
+  },
+  "syncForceUploadCheckbox": {
+    "message": "Rozumím, že vzdálené záložky a štítky budou přepsány bez sloučení"
+  },
+  "syncForceUploadConfirm": {
+    "message": "Přepsat a nahrát"
+  },
+  "syncForceDownloadTitle": {
+    "message": "Vynutit stažení (přepsat místní data)"
+  },
+  "syncForceDownloadBody": {
+    "message": "Tímto bez sloučení přepíšete místní záložky a štítky vzdálenými daty. Všechny nesloučené místní změny budou ztraceny."
+  },
+  "syncForceDownloadCheckbox": {
+    "message": "Rozumím, že místní záložky a štítky budou přepsány bez sloučení"
+  },
+  "syncForceDownloadConfirm": {
+    "message": "Přepsat a stáhnout"
   }
 }

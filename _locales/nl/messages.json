@@ -266,9 +266,6 @@
   "immediateSyncWarning": {
     "message": "Directe synchronisatie (bij elke wijziging)"
   },
-  "customInterval": {
-    "message": "Aangepast interval (minuten):"
-  },
   "manualSyncOnly": {
     "message": "Alleen handmatige synchronisatie"
   },
@@ -322,6 +319,12 @@
   },
   "syncUnexpectedHtmlResponse": {
     "message": "De server gaf een HTML-pagina terug in plaats van sync-JSON. Als de URL alleen werkt terwijl u in de browser bent ingelogd, sla dan geldige WebDAV-inloggegevens of een app-wachtwoord op."
+  },
+  "syncEmptyResponse": {
+    "message": "Het externe synchronisatiebestand is leeg of ontbreekt."
+  },
+  "syncInvalidJson": {
+    "message": "Het externe synchronisatiebestand bevat ongeldige JSON."
   },
   "syncRemoteLocked": {
     "message": "Extern bestand is tijdelijk vergrendeld (423). Probeer het over enkele seconden opnieuw."
@@ -2065,5 +2068,29 @@
   },
   "weatherFeelsLike": {
     "message": "Gevoelstemperatuur {0}"
+  },
+  "syncForceUploadTitle": {
+    "message": "Uploaden forceren (extern overschrijven)"
+  },
+  "syncForceUploadBody": {
+    "message": "Hierdoor worden externe bladwijzers en tags zonder samenvoegen overschreven met uw lokale gegevens. Niet-samengevoegde externe wijzigingen gaan verloren."
+  },
+  "syncForceUploadCheckbox": {
+    "message": "Ik begrijp dat externe bladwijzers en tags zonder samenvoegen worden overschreven"
+  },
+  "syncForceUploadConfirm": {
+    "message": "Overschrijven & Uploaden"
+  },
+  "syncForceDownloadTitle": {
+    "message": "Downloaden forceren (lokaal overschrijven)"
+  },
+  "syncForceDownloadBody": {
+    "message": "Hierdoor worden uw lokale bladwijzers en tags zonder samenvoegen overschreven met externe gegevens. Niet-samengevoegde lokale wijzigingen gaan verloren."
+  },
+  "syncForceDownloadCheckbox": {
+    "message": "Ik begrijp dat lokale bladwijzers en tags zonder samenvoegen worden overschreven"
+  },
+  "syncForceDownloadConfirm": {
+    "message": "Overschrijven & Downloaden"
   }
 }

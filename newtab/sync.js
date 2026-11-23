@@ -1,5 +1,5 @@
 import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded, SYSTEM_TAG_DEAD_LINK_ID, getBookmarkSystemTagIds, setBookmarkSystemTag, saveSystemTags } from "./state.js";
-import { loadConfig, saveConfig, shouldSync, updateLastSyncTime, logDebug } from "./config.js";
+import { loadConfig, saveConfig, shouldSync, updateLastSyncTime, logDebug, DEFAULT_SYNC_INTERVAL } from "./config.js";
 import { importRawKey, decryptWithKey, getSecret } from './crypto.js';
 
 const deadLinkDebugLog = (...args) => logDebug("deadLink", ...args);
@@ -741,7 +741,8 @@ async function resolveSyncCredentials(cfg, operation) {
   }
 }
 
-async function syncReadDetailed(cfg = null) {
+async function syncReadDetailed(cfg = null, options = {}) {
+  const allowInitialize = options?.allowInitialize !== false;
   const resolvedCfg = cfg || await loadSyncConfig();
   if (!resolvedCfg) {
     return { ok: false, reason: 'not-configured' };
@@ -801,6 +802,9 @@ async function syncReadDetailed(cfg = null) {
     }
 
     if (res.status === 404) {
+      if (!allowInitialize) {
+        return { ok: false, reason: 'http-error', status: 404 };
+      }
       console.warn("syncRead: 404 → initializing remote file");
       return await initializeRemoteDetailed(fetchUrl, headers);
     }
@@ -817,6 +821,9 @@ async function syncReadDetailed(cfg = null) {
     const contentType = (res.headers.get('content-type') || '').toLowerCase();
 
     if (!text.trim()) {
+      if (!allowInitialize) {
+        return { ok: false, reason: 'empty-response', status: res.status };
+      }
       console.warn("syncRead: empty file → initializing");
       return await initializeRemoteDetailed(fetchUrl, headers);
     }
@@ -848,6 +855,9 @@ async function syncReadDetailed(cfg = null) {
         }
       };
     } catch (e) {
+      if (!allowInitialize) {
+        return { ok: false, reason: 'invalid-json', status: res.status };
+      }
       console.warn("syncRead: invalid JSON → initializing");
       return await initializeRemoteDetailed(fetchUrl, headers);
     }
@@ -864,7 +874,8 @@ async function syncReadDetailed(cfg = null) {
   }
 }
 
-async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = null) {
+async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = null, options = {}) {
+  const skipBootstrapGuard = !!options?.skipBootstrapGuard;
   const resolvedCfg = cfg || await loadSyncConfig();
   if (!resolvedCfg) {
     return { ok: false, reason: 'not-configured' };
@@ -916,7 +927,7 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
   const lockRetryDelays = [400, 900, 1500];
 
   try {
-    if (resolvedCfg.lastSync === 0 && isBootstrapPlaceholderState(groupsToWrite)) {
+    if (!skipBootstrapGuard && resolvedCfg.lastSync === 0 && isBootstrapPlaceholderState(groupsToWrite)) {
       const remote = await syncReadDetailed(resolvedCfg);
       if (!remote.ok) {
         return remote;
@@ -1091,13 +1102,17 @@ export async function syncWrite(sourceState = state, options = {}) {
   return await withSyncLock(async () => {
     // do no sync if sync is disabled in config
     const config = await loadConfig();
+    if (!config.sync.enabled) {
+      return true; // sync disabled — nothing to do, not an error
+    }
+
     const extraPurgedIds = Array.isArray(options?.purgedIds) ? options.purgedIds.filter(Boolean) : [];
     if (persistPendingPurgedIdsInConfig(config, extraPurgedIds)) {
       await saveConfig(config);
     }
 
-    if (!config.sync.enabled) {
-      return true; // sync disabled — nothing to do, not an error
+    if (!shouldSync(config) && !options?.force) {
+      return true; // manual mode — purged IDs queued, skip network sync until user triggers it
     }
 
     const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
@@ -1655,6 +1670,9 @@ export function startSyncLoop(options = {}) {
       const config = await loadConfig();
       if (!config.sync.enabled) return;
       if (!shouldSync(config)) return;
+      if (config.sync.lastSync && (Date.now() - config.sync.lastSync) < DEFAULT_SYNC_INTERVAL) {
+        return;
+      }
 
       const result = await syncNow({ ifAvailable: true });
       if (result.ok && result.reason === 'sync-locked') {
@@ -1675,9 +1693,8 @@ export function startSyncLoop(options = {}) {
     }
   };
 
-  // Run sync loop every 20 seconds to check if sync is needed
-  // This allows for flexible interval configuration without restarting the interval
-  setInterval(runSyncLoop, 20000);
+  // Run periodic sync check every 60 seconds (skipped when any tab synced within the last 60s)
+  setInterval(runSyncLoop, DEFAULT_SYNC_INTERVAL);
   if (initialDelayMs > 0) {
     setTimeout(runSyncLoop, initialDelayMs);
   } else {
@@ -2177,6 +2194,7 @@ export async function syncNow(options = {}) {
       if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
         await syncWebdavFolderExtras(config, { includeManual });
       }
+      await updateLastSyncTime(config);
       return { ok: true, reason: 'remote-marker-unchanged', changed: false };
     }
 
@@ -2200,6 +2218,73 @@ export async function syncNow(options = {}) {
     return { ok: true, reason: 'sync-locked', changed: false };
   }
   return lockResult;
+}
+
+export async function syncForceUpload(sourceState = state) {
+  return await withSyncLock(async () => {
+    const config = await loadConfig();
+    const syncCfg = await loadSyncConfig();
+    if (!syncCfg) {
+      return { ok: false, reason: 'not-configured' };
+    }
+
+    const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
+    const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
+    const writeResult = await syncWriteDetailed(
+      { ...syncCfg, lastSync: Date.now() },
+      groups,
+      tags,
+      { skipBootstrapGuard: true }
+    );
+    if (!writeResult.ok) {
+      lastSyncErrorReason = writeResult.reason || 'sync-failed';
+      return writeResult;
+    }
+
+    lastSyncErrorReason = null;
+    if (writeResult.remoteMarker) {
+      applyRemoteMarkerToConfig(config, writeResult.remoteMarker);
+    } else if (config.sync?.type && config.sync.type !== 'browser' && config.sync.remoteChangeHeaderType) {
+      const postWriteMarker = await getRemoteChangeMarker(syncCfg, {
+        allowFallback: false,
+        preferredType: config.sync.remoteChangeHeaderType
+      });
+      if (!applyRemoteMarkerToConfig(config, postWriteMarker)) {
+        config.sync.lastSeenRemoteMarker = '';
+      }
+    }
+    if (config.sync) config.sync.pendingPurgedIds = [];
+    config.sync.lastSyncedLocalHash = await getGroupsHash(groups, tags);
+    await updateLastSyncTime(config);
+    return { ok: true, reason: writeResult.reason || 'ok' };
+  });
+}
+
+export async function syncForceDownload() {
+  return await withSyncLock(async () => {
+    const config = await loadConfig();
+    const syncCfg = await loadSyncConfig();
+    if (!syncCfg) {
+      return { ok: false, reason: 'not-configured' };
+    }
+
+    const readResult = await syncReadDetailed(syncCfg, { allowInitialize: false });
+    if (!readResult.ok) {
+      lastSyncErrorReason = readResult.reason || 'sync-failed';
+      return readResult;
+    }
+
+    state.groups = Array.isArray(readResult.data?.groups) ? readResult.data.groups : [];
+    state.tags = Array.isArray(readResult.data?.tags) ? readResult.data.tags : [];
+    await saveState();
+
+    lastSyncErrorReason = null;
+    applyRemoteMarkerToConfig(config, readResult.remoteMarker);
+    if (config.sync) config.sync.pendingPurgedIds = [];
+    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
+    await updateLastSyncTime(config);
+    return { ok: true, reason: 'ok', data: readResult.data };
+  });
 }
 
 // ─────────────────────────────────────────────────────────────

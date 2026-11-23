@@ -266,9 +266,6 @@
   "immediateSyncWarning": {
     "message": "Sofortige Synchronisierung (bei jeder Änderung)"
   },
-  "customInterval": {
-    "message": "Benutzerdefiniertes Intervall (Minuten):"
-  },
   "manualSyncOnly": {
     "message": "Nur manuelle Synchronisierung"
   },
@@ -322,6 +319,12 @@
   },
   "syncUnexpectedHtmlResponse": {
     "message": "Der Server hat eine HTML-Seite statt eines Synchronisations-JSON zurückgegeben. Wenn die URL nur funktioniert, wenn Sie im Browser angemeldet sind, speichern Sie gültige WebDAV-Zugangsdaten oder ein App-Passwort."
+  },
+  "syncEmptyResponse": {
+    "message": "Die entfernte Synchronisationsdatei ist leer oder fehlt."
+  },
+  "syncInvalidJson": {
+    "message": "Die entfernte Synchronisationsdatei enthält ungültiges JSON."
   },
   "syncRemoteLocked": {
     "message": "Die entfernte Datei ist vorübergehend gesperrt (423). Bitte versuchen Sie es in wenigen Sekunden erneut."
@@ -2065,5 +2068,29 @@
   },
   "weatherFeelsLike": {
     "message": "Gefühlt {0}"
+  },
+  "syncForceUploadTitle": {
+    "message": "Hochladen erzwingen (Remote überschreiben)"
+  },
+  "syncForceUploadBody": {
+    "message": "Hierdurch werden Remote-Lesezeichen und -Tags ohne Zusammenführung mit Ihren lokalen Daten überschrieben. Nicht zusammengeführte Remote-Änderungen gehen verloren."
+  },
+  "syncForceUploadCheckbox": {
+    "message": "Ich verstehe, dass Remote-Lesezeichen und -Tags ohne Zusammenführung überschrieben werden"
+  },
+  "syncForceUploadConfirm": {
+    "message": "Überschreiben & Hochladen"
+  },
+  "syncForceDownloadTitle": {
+    "message": "Herunterladen erzwingen (Lokal überschreiben)"
+  },
+  "syncForceDownloadBody": {
+    "message": "Hierdurch werden Ihre lokalen Lesezeichen und Tags ohne Zusammenführung mit Remote-Daten überschrieben. Nicht zusammengeführte lokale Änderungen gehen verloren."
+  },
+  "syncForceDownloadCheckbox": {
+    "message": "Ich verstehe, dass lokale Lesezeichen und Tags ohne Zusammenführung überschrieben werden"
+  },
+  "syncForceDownloadConfirm": {
+    "message": "Überschreiben & Herunterladen"
   }
 }

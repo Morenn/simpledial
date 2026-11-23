@@ -266,9 +266,6 @@
   "immediateSyncWarning": {
     "message": "Välitön synkronointi (jokaisen muutoksen yhteydessä)"
   },
-  "customInterval": {
-    "message": "Mukautettu aikaväli (minuuttia):"
-  },
   "manualSyncOnly": {
     "message": "Vain manuaalinen synkronointi"
   },
@@ -322,6 +319,12 @@
   },
   "syncUnexpectedHtmlResponse": {
     "message": "Palvelin palautti HTML-sivun synkronointiin tarkoitetun JSON:n sijaan. Jos URL-osoite toimii vain, kun olet kirjautuneena selaimeen, tallenna kelvolliset WebDAV-tunnistetiedot tai sovellussalasana."
+  },
+  "syncEmptyResponse": {
+    "message": "Etäsynkronointitiedosto on tyhjä tai puuttuu."
+  },
+  "syncInvalidJson": {
+    "message": "Etäsynkronointitiedosto sisältää virheellistä JSONia."
   },
   "syncRemoteLocked": {
     "message": "Etätiedosto on tilapäisesti lukittu (423). Yritä uudelleen muutaman sekunnin kuluttua."
@@ -2065,5 +2068,29 @@
   },
   "weatherFeelsLike": {
     "message": "Tuntuu kuin {0}"
+  },
+  "syncForceUploadTitle": {
+    "message": "Pakota lähetys (korvaa etätiedot)"
+  },
+  "syncForceUploadBody": {
+    "message": "Tämä korvaa etäkirjanmerkit ja -tunnisteet paikallisilla tiedoillasi ilman yhdistämistä. Yhdistämättömät etämuutokset menetetään."
+  },
+  "syncForceUploadCheckbox": {
+    "message": "Ymmärrän, että etäkirjanmerkit ja -tunnisteet korvataan ilman yhdistämistä"
+  },
+  "syncForceUploadConfirm": {
+    "message": "Korvaa ja lähetä"
+  },
+  "syncForceDownloadTitle": {
+    "message": "Pakota lataus (korvaa paikalliset)"
+  },
+  "syncForceDownloadBody": {
+    "message": "Tämä korvaa paikalliset kirjanmerkkisi ja tunnisteesi etätiedoilla ilman yhdistämistä. Yhdistämättömät paikalliset muutokset menetetään."
+  },
+  "syncForceDownloadCheckbox": {
+    "message": "Ymmärrän, että paikalliset kirjanmerkit ja tunnisteet korvataan ilman yhdistämistä"
+  },
+  "syncForceDownloadConfirm": {
+    "message": "Korvaa ja lataa"
   }
 }

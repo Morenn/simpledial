@@ -1,6 +1,6 @@
 import { state, saveState } from "../state.js";
 import { loadConfig, saveConfig, logDebug } from "../config.js";
-import { testSyncConnection, requestHostPermission, syncNow, syncWrite, syncRead, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount } from "../sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount } from "../sync.js";
 import { t } from "../i18n.js";
 import {
   generateLocalKeyRaw,
@@ -75,12 +75,83 @@ const syncStatus = document.getElementById("sync-status");
 const syncCredentialsSaveBtn = document.getElementById("sync-credentials-save");
 const syncCredentialsRow = document.getElementById("sync-credentials-row");
 const syncImmediate = document.getElementById("sync-immediate");
-const syncCustom = document.getElementById("sync-custom");
-const syncCustomValue = document.getElementById("sync-interval-value");
 const syncManual = document.getElementById("sync-manual");
 const syncNowBtn = document.getElementById("sync-now-btn");
 const syncUploadBtn = document.getElementById("sync-upload-btn");
 const syncDownloadBtn = document.getElementById("sync-download-btn");
+const syncForceModal = document.getElementById("sync-force-overwrite-modal");
+const syncForceTitle = document.getElementById("sync-force-overwrite-title");
+const syncForceBody = document.getElementById("sync-force-overwrite-body");
+const syncForceCheckbox = document.getElementById("sync-force-overwrite-checkbox");
+const syncForceCheckboxLabel = document.getElementById("sync-force-overwrite-checkbox-label");
+const syncForceConfirmBtn = document.getElementById("sync-force-overwrite-confirm");
+const syncForceCancelBtn = document.getElementById("sync-force-overwrite-cancel");
+
+function confirmSyncForceOverwrite(direction) {
+  const isUpload = direction === "upload";
+  if (!syncForceModal || !syncForceCheckbox || !syncForceConfirmBtn) {
+    const fallback = isUpload
+      ? (t("syncForceUploadBody") || "This will overwrite remote bookmarks and tags without merging. Continue?")
+      : (t("syncForceDownloadBody") || "This will overwrite local bookmarks and tags without merging. Continue?");
+    return Promise.resolve(confirm(fallback));
+  }
+
+  if (syncForceTitle) {
+    syncForceTitle.textContent = "⚠️ " + (isUpload
+      ? (t("syncForceUploadTitle") || "Force Upload (Overwrite Remote)")
+      : (t("syncForceDownloadTitle") || "Force Download (Overwrite Local)"));
+  }
+  if (syncForceBody) {
+    syncForceBody.textContent = isUpload
+      ? (t("syncForceUploadBody") || "This will force-overwrite remote bookmarks and tags with your local data without merging. Any unmerged remote changes will be lost.")
+      : (t("syncForceDownloadBody") || "This will force-overwrite your local bookmarks and tags with remote data without merging. Any unmerged local changes will be lost.");
+  }
+  if (syncForceCheckboxLabel) {
+    syncForceCheckboxLabel.textContent = isUpload
+      ? (t("syncForceUploadCheckbox") || "I understand that remote bookmarks and tags will be overwritten without merging")
+      : (t("syncForceDownloadCheckbox") || "I understand that local bookmarks and tags will be overwritten without merging");
+  }
+  syncForceConfirmBtn.textContent = "⚠️ " + (isUpload
+    ? (t("syncForceUploadConfirm") || "Overwrite & Upload")
+    : (t("syncForceDownloadConfirm") || "Overwrite & Download"));
+
+  syncForceCheckbox.checked = false;
+  syncForceConfirmBtn.disabled = true;
+  syncForceModal.classList.remove("hidden");
+
+  return new Promise((resolve) => {
+    const cleanup = (accepted) => {
+      syncForceModal.classList.add("hidden");
+      syncForceCheckbox.removeEventListener("change", onCheck);
+      syncForceConfirmBtn.removeEventListener("click", onConfirm);
+      syncForceCancelBtn?.removeEventListener("click", onCancel);
+      syncForceModal.removeEventListener("click", onBackdrop);
+      document.removeEventListener("keydown", onKeyDown);
+      resolve(accepted);
+    };
+    const onCheck = () => {
+      syncForceConfirmBtn.disabled = !syncForceCheckbox.checked;
+    };
+    const onConfirm = () => {
+      if (syncForceCheckbox.checked) cleanup(true);
+    };
+    const onCancel = () => cleanup(false);
+    const onBackdrop = (e) => {
+      if (e.target === syncForceModal) cleanup(false);
+    };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cleanup(false);
+      }
+    };
+    syncForceCheckbox.addEventListener("change", onCheck);
+    syncForceConfirmBtn.addEventListener("click", onConfirm);
+    syncForceCancelBtn?.addEventListener("click", onCancel);
+    syncForceModal.addEventListener("click", onBackdrop);
+    document.addEventListener("keydown", onKeyDown);
+  });
+}
 const syncTestStatus = document.getElementById("sync-test-status");
 const syncNowStatus = document.getElementById("sync-now-status");
 const lastSyncInfo = document.getElementById("last-sync-info");
@@ -218,6 +289,10 @@ export function getSyncFailureMessage(result) {
       return t("syncCredentialsDecryptFailed");
     case "unexpected-html-response":
       return t("syncUnexpectedHtmlResponse");
+    case "empty-response":
+      return t("syncEmptyResponse");
+    case "invalid-json":
+      return t("syncInvalidJson");
     case "locked":
       return t("syncRemoteLocked");
     case "auth-redirect":
@@ -359,19 +434,11 @@ export async function populateSyncSettings(config) {
   updateSyncFields();
   updateSyncNowButtonDisabledState();
 
-  const intervalMode = config.sync.intervalMode || "default";
-  if (intervalMode === "immediate") {
-    if (syncImmediate) syncImmediate.checked = true;
-    if (syncCustomValue) syncCustomValue.disabled = true;
-  } else if (intervalMode === "custom") {
-    if (syncCustom) syncCustom.checked = true;
-    if (syncCustomValue) {
-      syncCustomValue.disabled = false;
-      syncCustomValue.value = config.sync.customIntervalMinutes || 60;
-    }
-  } else {
+  const intervalMode = config?.sync?.intervalMode === "manual" ? "manual" : "immediate";
+  if (intervalMode === "manual") {
     if (syncManual) syncManual.checked = true;
-    if (syncCustomValue) syncCustomValue.disabled = true;
+  } else {
+    if (syncImmediate) syncImmediate.checked = true;
   }
   updateChoiceOptionStates();
 
@@ -426,14 +493,7 @@ export function applySyncToConfig(config) {
 
   config.sync.enabled = !!syncEnable?.checked;
 
-  if (syncImmediate?.checked) {
-    config.sync.intervalMode = "immediate";
-  } else if (syncCustom?.checked) {
-    config.sync.intervalMode = "custom";
-    config.sync.customIntervalMinutes = parseInt(syncCustomValue?.value, 10) || 60;
-  } else {
-    config.sync.intervalMode = "manual";
-  }
+  config.sync.intervalMode = syncManual?.checked ? "manual" : "immediate";
 
   return true;
 }
@@ -449,25 +509,10 @@ export function initSyncSettings({ persistSettings }) {
   }
 
   if (syncImmediate) {
-    syncImmediate.addEventListener("change", () => {
-      if (syncCustomValue) syncCustomValue.disabled = true;
-      updateChoiceOptionStates();
-    });
-  }
-  if (syncCustom) {
-    syncCustom.addEventListener("change", () => {
-      if (syncCustomValue) {
-        syncCustomValue.disabled = false;
-        syncCustomValue.focus();
-      }
-      updateChoiceOptionStates();
-    });
+    syncImmediate.addEventListener("change", updateChoiceOptionStates);
   }
   if (syncManual) {
-    syncManual.addEventListener("change", () => {
-      if (syncCustomValue) syncCustomValue.disabled = true;
-      updateChoiceOptionStates();
-    });
+    syncManual.addEventListener("change", updateChoiceOptionStates);
   }
 
   if (syncAuthMode) {
@@ -759,6 +804,9 @@ export function initSyncSettings({ persistSettings }) {
 
   if (syncUploadBtn) {
     syncUploadBtn.addEventListener("click", async () => {
+      const confirmed = await confirmSyncForceOverwrite("upload");
+      if (!confirmed) return;
+
       syncUploadBtn.disabled = true;
       if (syncNowStatus) syncNowStatus.textContent = "⏫ " + t("syncing");
 
@@ -771,9 +819,11 @@ export function initSyncSettings({ persistSettings }) {
         }
       }
 
-      const ok = await syncWrite(state);
+      const result = await syncForceUpload(state);
       if (syncNowStatus) {
-        syncNowStatus.textContent = ok ? "✅ " + t("syncUploadSuccessful") : "❌ " + t("syncFailed");
+        syncNowStatus.textContent = result?.ok
+          ? "✅ " + t("syncUploadSuccessful")
+          : "❌ " + getSyncFailureMessage(result);
       }
 
       syncUploadBtn.disabled = false;
@@ -783,6 +833,9 @@ export function initSyncSettings({ persistSettings }) {
 
   if (syncDownloadBtn) {
     syncDownloadBtn.addEventListener("click", async () => {
+      const confirmed = await confirmSyncForceOverwrite("download");
+      if (!confirmed) return;
+
       syncDownloadBtn.disabled = true;
       if (syncNowStatus) syncNowStatus.textContent = "⏬ " + t("syncing");
 
@@ -795,14 +848,12 @@ export function initSyncSettings({ persistSettings }) {
         }
       }
 
-      const remote = await syncRead();
-      if (remote && Array.isArray(remote.groups)) {
-        state.groups = remote.groups;
-        await saveState();
+      const result = await syncForceDownload();
+      if (result?.ok) {
         await render();
         if (syncNowStatus) syncNowStatus.textContent = "✅ " + t("syncDownloadSuccessful");
       } else {
-        if (syncNowStatus) syncNowStatus.textContent = "❌ " + t("syncFailed");
+        if (syncNowStatus) syncNowStatus.textContent = "❌ " + getSyncFailureMessage(result);
       }
 
       syncDownloadBtn.disabled = false;
@@ -838,41 +889,6 @@ export function initSyncSettings({ persistSettings }) {
       } finally {
         updateWebdavPartModeStates();
       }
-    });
-  }
-
-  if (manualSyncBtn) {
-    manualSyncBtn.addEventListener("click", async () => {
-      manualSyncBtn.disabled = true;
-      manualSyncBtn.textContent = "⬆️";
-      manualSyncBtn.style.opacity = "0.5";
-
-      if (settingsState.settingsDirty) {
-        const saved = await persistSettings(false);
-        if (!saved) {
-          if (syncStatus) syncStatus.textContent = "❌ " + t("saveCredentialsFirst");
-          manualSyncBtn.disabled = false;
-          manualSyncBtn.style.opacity = "1";
-          return;
-        }
-      }
-
-      const result = await syncNow({ includeManualExtras: true });
-
-      if (result.ok) {
-        manualSyncBtn.style.opacity = "1";
-        if (syncStatus) syncStatus.textContent = "✅ " + t("syncSuccessful");
-        if (result.changed) {
-          window.dispatchEvent(new CustomEvent("speeddial:data-changed"));
-        }
-      } else {
-        if (syncStatus) syncStatus.textContent = "❌ " + getSyncFailureMessage(result);
-      }
-
-      setTimeout(() => {
-        manualSyncBtn.disabled = false;
-        manualSyncBtn.style.opacity = "1";
-      }, 2000);
     });
   }
 }

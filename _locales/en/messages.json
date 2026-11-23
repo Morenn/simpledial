@@ -269,9 +269,6 @@
   "immediateSyncWarning": {
     "message": "Immediate sync (on every change)"
   },
-  "customInterval": {
-    "message": "Custom interval (minutes):"
-  },
   "manualSyncOnly": {
     "message": "Manual sync only"
   },
@@ -325,6 +322,12 @@
   },
   "syncUnexpectedHtmlResponse": {
     "message": "Server returned an HTML page instead of sync JSON. If the URL only works while you are logged into the browser, save valid WebDAV credentials or an app password."
+  },
+  "syncEmptyResponse": {
+    "message": "Remote sync file is empty or missing."
+  },
+  "syncInvalidJson": {
+    "message": "Remote sync file contains invalid JSON."
   },
   "syncRemoteLocked": {
     "message": "Remote file is temporarily locked (423). Please retry in a few seconds."
@@ -2065,5 +2068,29 @@
   },
   "weatherFeelsLike": {
     "message": "Feels like {0}"
+  },
+  "syncForceUploadTitle": {
+    "message": "Force Upload (Overwrite Remote)"
+  },
+  "syncForceUploadBody": {
+    "message": "This will force-overwrite remote bookmarks and tags with your local data without merging. Any unmerged remote changes will be lost."
+  },
+  "syncForceUploadCheckbox": {
+    "message": "I understand that remote bookmarks and tags will be overwritten without merging"
+  },
+  "syncForceUploadConfirm": {
+    "message": "Overwrite & Upload"
+  },
+  "syncForceDownloadTitle": {
+    "message": "Force Download (Overwrite Local)"
+  },
+  "syncForceDownloadBody": {
+    "message": "This will force-overwrite your local bookmarks and tags with remote data without merging. Any unmerged local changes will be lost."
+  },
+  "syncForceDownloadCheckbox": {
+    "message": "I understand that local bookmarks and tags will be overwritten without merging"
+  },
+  "syncForceDownloadConfirm": {
+    "message": "Overwrite & Download"
   }
 }

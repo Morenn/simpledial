@@ -96,7 +96,7 @@ const [{
   updateTagInState,
   deleteTagFromState,
   removeUnusedTagsFromState
-}, { syncNow, syncWrite, syncWebdavFolderExtras }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
+}, { syncNow, syncWrite, syncForceUpload, syncForceDownload, syncWebdavFolderExtras }, { shouldSync, getSyncIntervalMs }] = await Promise.all([
   import("../newtab/state.js"),
   import("../newtab/sync.js"),
   import("../newtab/config.js")
@@ -123,8 +123,7 @@ function browserConfig(lastSyncedLocalHash = "") {
       enabled: true,
       type: "browser",
       serverUrl: "",
-      intervalMode: "custom",
-      customIntervalMinutes: 1,
+      intervalMode: "immediate",
       lastSync: 0,
       lastSyncedLocalHash,
       remoteChangeHeaderType: null,
@@ -480,22 +479,19 @@ for (const provider of ["direct", "webdav"]) {
   });
 }
 
-test("sync interval policy supports immediate, custom, default, and manual modes", () => {
+test("sync interval policy supports immediate, manual, and migrates legacy custom/default to immediate", () => {
   const now = Date.now();
   const config = { sync: { intervalMode: "immediate", lastSync: now } };
   assert.equal(shouldSync(config), true);
   assert.equal(getSyncIntervalMs(config), 0);
 
   config.sync.intervalMode = "custom";
-  config.sync.customIntervalMinutes = 5;
-  config.sync.lastSync = now - 4 * 60_000;
-  assert.equal(shouldSync(config), false);
-  config.sync.lastSync = now - 5 * 60_000 - 1;
   assert.equal(shouldSync(config), true);
-  assert.equal(getSyncIntervalMs(config), 5 * 60_000);
+  assert.equal(getSyncIntervalMs(config), 0);
 
   config.sync.intervalMode = "default";
-  assert.equal(getSyncIntervalMs(config), 60_000);
+  assert.equal(shouldSync(config), true);
+  assert.equal(getSyncIntervalMs(config), 0);
 
   config.sync.intervalMode = "manual";
   assert.equal(shouldSync(config), false);
@@ -1367,4 +1363,111 @@ test("syncWrite and syncNow share mutex and ifAvailable syncNow skips while writ
   assert.equal(syncNowResult.ok, true);
   assert.equal(syncNowResult.reason, "remote-marker-unchanged");
   assert.deepEqual(httpRequests.map(r => r.method), ["GET", "PUT", "HEAD", "HEAD"]);
+});
+
+
+test("syncWrite skips network in manual and disabled modes while queuing purgedIds only when enabled", async () => {
+  installHttpServer({ groups: [] });
+  setClient([group([item("b1", "Keep", 100)])], httpConfig("direct", { enabled: true, intervalMode: "manual" }));
+  httpRequests = [];
+
+  assert.equal(await syncWrite(state, { purgedIds: ["b_deleted"] }), true);
+  assert.equal(httpRequests.length, 0);
+  assert.deepEqual(readStoredConfig().sync.pendingPurgedIds, ["b_deleted"]);
+
+  // Disabled sync skips both network and pendingPurgedIds queuing
+  setClient([group([item("b1", "Keep", 100)])], httpConfig("direct", { enabled: false, intervalMode: "immediate", pendingPurgedIds: [] }));
+  assert.equal(await syncWrite(state, { purgedIds: ["b_deleted_disabled"] }), true);
+  assert.equal(httpRequests.length, 0);
+  assert.deepEqual(readStoredConfig().sync.pendingPurgedIds, []);
+});
+
+test("syncNow updates lastSync when remote-marker-unchanged skips GET", async () => {
+  const localGroups = [group([item("b1", "Same", 100)])];
+  installHttpServer({
+    groups: localGroups,
+    markerType: "etag",
+    markerValue: '"v1"'
+  });
+  setClient(localGroups, httpConfig("direct", {
+    enabled: true,
+    intervalMode: "immediate",
+    lastSync: 1000,
+    remoteChangeHeaderType: "etag",
+    lastSeenRemoteMarker: '"v1"',
+    lastSyncedLocalHash: await hashGroups(localGroups),
+    lastMarkerCheckUrl: "direct::https://sync.example/bookmarks.json"
+  }));
+  httpRequests = [];
+
+  const result = await syncNow();
+  assert.equal(result.ok, true);
+  assert.equal(result.reason, "remote-marker-unchanged");
+  assert.deepEqual(httpRequests.map(r => r.method), ["HEAD"]);
+  assert.ok(readStoredConfig().sync.lastSync > 1000);
+});
+
+test("syncForceUpload and syncForceDownload overwrite cleanly even when sync is disabled and reject 404/empty/invalid JSON on download", async () => {
+  const localGroups = [group([item("b_local", "Local", 100)])];
+  const localTags = [{ id: "t1", name: "LocalTag", color: "#3b82f6", updatedAt: 100, deleted: false, deletedAt: null }];
+  let serverPayload = { groups: [group([item("b_remote", "OldRemote", 50)])], tags: [] };
+
+  installHttpServer({
+    groups: serverPayload.groups,
+    markerType: "etag",
+    markerValue: '"forced-1"'
+  });
+  setClient(localGroups, httpConfig("direct", {
+    enabled: false,
+    lastSync: 0,
+    pendingPurgedIds: ["b_old_purge"]
+  }), localTags);
+
+  let lastPutBody = null;
+  fetchRemote = async (url, init = {}) => {
+    const method = (init.method || "GET").toUpperCase();
+    if (method === "PUT") {
+      lastPutBody = init.body;
+      return new Response("", { status: 200, headers: { etag: '"forced-1"' } });
+    }
+    if (method === "GET") {
+      return new Response(JSON.stringify(serverPayload), {
+        status: 200,
+        headers: { "content-type": "application/json", etag: '"forced-2"' }
+      });
+    }
+    return new Response("", { status: 405 });
+  };
+
+  // Force upload even when sync is disabled
+  const upRes = await syncForceUpload(state);
+  assert.equal(upRes.ok, true);
+  assert.deepEqual(readStoredConfig().sync.pendingPurgedIds, []);
+  assert.ok(readStoredConfig().sync.lastSync > 0);
+  const uploaded = JSON.parse(lastPutBody);
+  assert.equal(uploaded.groups[0].items[0].id, "b_local");
+  assert.equal(uploaded.tags[0].id, "t1");
+
+  // Force download overwrites both groups and tags without merging
+  serverPayload = {
+    groups: [group([item("b_dl", "Downloaded", 200)])],
+    tags: [{ id: "t_dl", name: "DlTag", color: "#ef4444", updatedAt: 200, deleted: false, deletedAt: null }]
+  };
+  const dlRes = await syncForceDownload();
+  assert.equal(dlRes.ok, true);
+  assert.equal(state.groups[0].items[0].id, "b_dl");
+  assert.equal(state.tags[0].id, "t_dl");
+  assert.equal(readStoredConfig().sync.lastSeenRemoteMarker, '"forced-2"');
+
+  // Force download refuses to wipe local data on 404, empty body, or invalid JSON
+  for (const badRes of [
+    new Response("", { status: 404 }),
+    new Response("   ", { status: 200 }),
+    new Response("{bad json", { status: 200, headers: { "content-type": "application/json" } })
+  ]) {
+    fetchRemote = async () => badRes;
+    const failRes = await syncForceDownload();
+    assert.equal(failRes.ok, false);
+    assert.equal(state.groups[0].items[0].id, "b_dl");
+  }
 });

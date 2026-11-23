@@ -1,4 +1,4 @@
-import { loadConfig, saveConfig } from "../config.js";
+import { loadConfig, saveConfig, shouldSync } from "../config.js";
 import { t } from "../i18n.js";
 import { pollAllRestStatusWidgets } from "../custom-widgets.js";
 import { updateFooter } from "../render.js";
@@ -319,7 +319,7 @@ export async function promptUnlockVault() {
         await populateSecuritySettings(cfg);
         void updateFooter(cfg);
         void pollAllRestStatusWidgets({ force: true });
-        if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault") {
+        if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault" && shouldSync(cfg)) {
           void syncNow().then((r) => {
             updateFooter();
             if (r?.ok && r?.changed) {
@@ -423,7 +423,7 @@ export function initSecuritySettings() {
       }
       await populateSecuritySettings(cfg);
       void updateFooter(cfg);
-      if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault") {
+      if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault" && shouldSync(cfg)) {
         void syncNow().then((r) => {
           updateFooter();
           if (r?.ok && r?.changed) {

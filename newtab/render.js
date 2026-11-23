@@ -204,9 +204,6 @@ export async function updateFooter(providedConfig = null) {
         if (await window.promptUnlockVault()) {
           clearLastSyncErrorReason();
           await updateFooter();
-          const r = await syncNow();
-          await updateFooter();
-          if (r?.changed) await render();
         }
       };
     } else {

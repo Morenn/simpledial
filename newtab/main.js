@@ -2,7 +2,7 @@ import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, SYSTEM
 import { loadTheme } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
-import { loadConfig, updateDebugLoggingFlags, logDebug } from "./config.js";
+import { loadConfig, updateDebugLoggingFlags, logDebug, shouldSync } from "./config.js";
 import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems, clearLastSyncErrorReason } from "./sync.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
 import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypto.js";
@@ -82,6 +82,37 @@ document.getElementById("settings-btn")?.addEventListener("click", async () => {
   const mod = await ensureSettingsUiLoaded();
   await mod.openSettingsModal();
 });
+
+const headerManualSyncBtn = document.getElementById("manual-sync-btn");
+function updateHeaderManualSyncButton(config) {
+  if (!headerManualSyncBtn) return;
+  const show = !!(config?.sync?.enabled && config?.sync?.intervalMode === "manual");
+  headerManualSyncBtn.classList.toggle("hidden", !show);
+}
+
+if (headerManualSyncBtn) {
+  headerManualSyncBtn.addEventListener("click", async () => {
+    headerManualSyncBtn.disabled = true;
+    headerManualSyncBtn.textContent = "⬆️";
+    headerManualSyncBtn.style.opacity = "0.5";
+    try {
+      const result = await syncNow({ includeManualExtras: true });
+      void updateFooter();
+      if (result.ok) {
+        if (result.changed) {
+          render();
+        }
+      } else {
+        showSyncUnavailableNotification(result);
+      }
+    } finally {
+      setTimeout(() => {
+        headerManualSyncBtn.disabled = false;
+        headerManualSyncBtn.style.opacity = "1";
+      }, 1000);
+    }
+  });
+}
 
 const dateTimeDisplay = document.getElementById("date-time-display");
 const ICON_REFRESH_CHECK_INTERVAL_MS = 60 * 60 * 1000;
@@ -325,7 +356,8 @@ export function updateShowDeletedButtonAppearance() {
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
   const initialWidgetsSnapshot = { appearance: { customWidgets: config.appearance?.customWidgets } };
-  const startupSyncEnabled = !!(config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser'));
+  updateHeaderManualSyncButton(config);
+  const startupSyncEnabled = !!(config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser') && shouldSync(config));
   const startupHousekeeperCleanup = config.housekeeper?.autoCleanupEnabled
     ? (config.housekeeper?.retentionDays || 30)
     : 0;
@@ -460,6 +492,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
   updateDebugLoggingFlags(configChange.newValue.advanced);
   updateDateTimeEnabledFromConfig(configChange.newValue);
+  updateHeaderManualSyncButton(configChange.newValue);
   void loadTheme(configChange.newValue).then(() => {
     startActiveCustomWidgets(configChange.newValue);
     render(configChange.newValue);
@@ -790,9 +823,6 @@ function showSyncUnavailableNotification(result = null) {
       if (typeof window.promptUnlockVault === "function" && await window.promptUnlockVault()) {
         clearLastSyncErrorReason();
         void updateFooter();
-        const r = await syncNow();
-        void updateFooter();
-        if (r?.changed) render();
       }
     });
   } else {

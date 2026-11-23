@@ -266,9 +266,6 @@
   "immediateSyncWarning": {
     "message": "Synchronisation immédiate (à chaque modification)"
   },
-  "customInterval": {
-    "message": "Intervalle personnalisé (minutes) :"
-  },
   "manualSyncOnly": {
     "message": "Synchronisation manuelle uniquement"
   },
@@ -322,6 +319,12 @@
   },
   "syncUnexpectedHtmlResponse": {
     "message": "Le serveur a renvoyé une page HTML au lieu d'un JSON de synchronisation. Si l'URL ne fonctionne que lorsque vous êtes connecté dans le navigateur, enregistrez des identifiants WebDAV valides ou un mot de passe d'application."
+  },
+  "syncEmptyResponse": {
+    "message": "Le fichier de synchronisation distant est vide ou manquant."
+  },
+  "syncInvalidJson": {
+    "message": "Le fichier de synchronisation distant contient un JSON invalide."
   },
   "syncRemoteLocked": {
     "message": "Le fichier distant est temporairement verrouillé (423). Réessayez dans quelques secondes."
@@ -2065,5 +2068,29 @@
   },
   "weatherFeelsLike": {
     "message": "Ressenti {0}"
+  },
+  "syncForceUploadTitle": {
+    "message": "Forcer l'envoi (écraser le serveur)"
+  },
+  "syncForceUploadBody": {
+    "message": "Cela écrasera les favoris et étiquettes distants avec vos données locales sans fusion. Toute modification distante non fusionnée sera perdue."
+  },
+  "syncForceUploadCheckbox": {
+    "message": "Je comprends que les favoris et étiquettes distants seront écrasés sans fusion"
+  },
+  "syncForceUploadConfirm": {
+    "message": "Écraser et envoyer"
+  },
+  "syncForceDownloadTitle": {
+    "message": "Forcer le téléchargement (écraser le local)"
+  },
+  "syncForceDownloadBody": {
+    "message": "Cela écrasera vos favoris et étiquettes locaux avec les données distantes sans fusion. Toute modification locale non fusionnée sera perdue."
+  },
+  "syncForceDownloadCheckbox": {
+    "message": "Je comprends que les favoris et étiquettes locaux seront écrasés sans fusion"
+  },
+  "syncForceDownloadConfirm": {
+    "message": "Écraser et télécharger"
   }
 }

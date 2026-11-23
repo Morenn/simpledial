@@ -345,12 +345,6 @@
               </label>
 
               <label class="choice-option choice-option-inline">
-                <input type="radio" name="sync-interval" value="custom" id="sync-custom">
-                <span class="choice-option-title" data-i18n="customInterval">Custom interval (minutes):</span>
-                <input type="number" id="sync-interval-value" class="appearance-number-input" min="1" max="1440" placeholder="60">
-              </label>
-
-              <label class="choice-option choice-option-inline">
                 <input type="radio" name="sync-interval" value="manual" id="sync-manual">
                 <span class="choice-option-title" data-i18n="manualSyncOnly">Manual sync only</span>
               </label>
@@ -1217,6 +1211,22 @@
       <div class="modal-buttons">
         <button type="button" id="browser-bookmarks-overwrite-confirm" class="icon-btn danger" data-i18n="browserBookmarksOverwriteConfirm" disabled>⚠️ Overwrite &amp; Import</button>
         <button type="button" id="browser-bookmarks-overwrite-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync Force Overwrite Confirmation Modal -->
+  <div id="sync-force-overwrite-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sync-force-overwrite-title">
+    <div class="modal-content browser-import-modal-content">
+      <h2 id="sync-force-overwrite-title">⚠️ Overwrite</h2>
+      <p id="sync-force-overwrite-body" class="custom-widget-trust-modal-body"></p>
+      <label class="checkbox-row custom-widget-trust-checkbox-row">
+        <input type="checkbox" id="sync-force-overwrite-checkbox" name="sync-force-overwrite-checkbox">
+        <span id="sync-force-overwrite-checkbox-label"></span>
+      </label>
+      <div class="modal-buttons">
+        <button type="button" id="sync-force-overwrite-confirm" class="icon-btn danger" disabled>⚠️ Confirm</button>
+        <button type="button" id="sync-force-overwrite-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>

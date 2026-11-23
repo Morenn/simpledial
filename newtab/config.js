@@ -32,7 +32,7 @@ export const defaultConfig = {
     localKey: "",
     enc: null,
     interval: DEFAULT_SYNC_INTERVAL, // milliseconds
-    intervalMode: "default", // "immediate", "custom", "manual", "default"
+    intervalMode: "immediate", // "immediate" | "manual"
     lastSync: 0,
     lastSyncedLocalHash: "",
     lastSyncedExtraHashes: {},
@@ -164,17 +164,23 @@ export function logDebug(channel, ...args) {
   });
 }
 
+export function normalizeSyncIntervalMode(mode) {
+  return mode === "manual" ? "manual" : "immediate";
+}
+
 function mergeConfigWithDefaults(stored) {
   if (!stored || typeof stored !== "object") {
     return structuredClone(defaultConfig);
   }
+  const mergedSync = {
+    ...defaultConfig.sync,
+    ...(stored.sync || {})
+  };
+  mergedSync.intervalMode = normalizeSyncIntervalMode(mergedSync.intervalMode);
   return {
     ...defaultConfig,
     ...stored,
-    sync: {
-      ...defaultConfig.sync,
-      ...(stored.sync || {})
-    },
+    sync: mergedSync,
     housekeeper: {
       ...defaultConfig.housekeeper,
       ...(stored.housekeeper || {})
@@ -271,36 +277,13 @@ export async function saveConfig(config) {
 
 // Get sync interval in milliseconds based on mode
 export function getSyncIntervalMs(config) {
-  const mode = config.sync.intervalMode || "default";
-
-  if (mode === "immediate") {
-    return 0; // Sync immediately after each change
-  } else if (mode === "custom") {
-    return (config.sync.customIntervalMinutes || 60) * 60000;
-  } else if (mode === "manual") {
-    return -1; // Never auto-sync
-  } else {
-    // "default" mode
-    return DEFAULT_SYNC_INTERVAL; // 1 minute
-  }
+  const mode = normalizeSyncIntervalMode(config?.sync?.intervalMode);
+  return mode === "manual" ? -1 : 0;
 }
 
-// Check if enough time has passed since last sync
+// Check if automatic sync should run
 export function shouldSync(config) {
-  const mode = config.sync.intervalMode || "default";
-
-  if (mode === "manual") {
-    return false; // Never auto-sync
-  }
-
-  if (mode === "immediate") {
-    return true; // Always sync
-  }
-
-  const interval = getSyncIntervalMs(config);
-  const timeSinceLastSync = Date.now() - config.sync.lastSync;
-
-  return timeSinceLastSync >= interval;
+  return normalizeSyncIntervalMode(config?.sync?.intervalMode) === "immediate";
 }
 
 // Update last sync timestamp
