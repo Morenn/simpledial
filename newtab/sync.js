@@ -392,6 +392,7 @@ export async function loadSyncConfig() {
     enc: config.sync.enc || null,
     localKey: config.sync.localKey || null,
     vaultHeader: config.vaultHeader || null,
+    remoteChangeHeaderType: config.sync.remoteChangeHeaderType ?? null,
     lastSync: config.sync.lastSync || 0
   };
 }
@@ -843,17 +844,9 @@ async function syncReadDetailed(cfg = null, options = {}) {
       };
     }
 
+    let parsed;
     try {
-      const parsed = JSON.parse(text);
-      return {
-        ok: true,
-        reason: 'ok',
-        remoteMarker: extractRemoteMarkerFromHeaders(res.headers, resolvedCfg?.remoteChangeHeaderType || null),
-        data: {
-          groups: parsed.groups ?? [],
-          tags: Array.isArray(parsed?.tags) ? parsed.tags : []
-        }
-      };
+      parsed = JSON.parse(text);
     } catch (e) {
       if (!allowInitialize) {
         return { ok: false, reason: 'invalid-json', status: res.status };
@@ -861,6 +854,24 @@ async function syncReadDetailed(cfg = null, options = {}) {
       console.warn("syncRead: invalid JSON → initializing");
       return await initializeRemoteDetailed(fetchUrl, headers);
     }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || (parsed.groups !== undefined && !Array.isArray(parsed.groups))) {
+      if (!allowInitialize) {
+        return { ok: false, reason: 'invalid-json', status: res.status };
+      }
+      console.warn("syncRead: invalid sync payload structure → initializing");
+      return await initializeRemoteDetailed(fetchUrl, headers);
+    }
+
+    return {
+      ok: true,
+      reason: 'ok',
+      remoteMarker: extractRemoteMarkerFromHeaders(res.headers, resolvedCfg?.remoteChangeHeaderType || null),
+      data: {
+        groups: Array.isArray(parsed.groups) ? parsed.groups : [],
+        tags: Array.isArray(parsed.tags) ? parsed.tags : []
+      }
+    };
 
   } catch (e) {
     console.log("fetch failed (syncRead)", e);
@@ -1400,13 +1411,29 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
     }
   }
 
-  // Strip bookmarks that moved back to top-level from any stale stack snapshot,
+  const supersededStackChildren = new Map();
+  for (const [childId, localChildEntry] of Object.entries(localChildIndex)) {
+    const cloudChildEntry = cloudChildIndex[childId];
+    if (!cloudChildEntry || localChildEntry.stackId === cloudChildEntry.stackId) continue;
+    const losingStackId = pickNewerRecord(localChildEntry.child, cloudChildEntry.child) === localChildEntry.child
+      ? cloudChildEntry.stackId
+      : localChildEntry.stackId;
+    if (!supersededStackChildren.has(losingStackId)) {
+      supersededStackChildren.set(losingStackId, new Set());
+    }
+    supersededStackChildren.get(losingStackId).add(childId);
+  }
+
+  // Strip bookmarks that moved back to top-level or to another stack from any stale stack snapshot,
   // and remove dissolved empty non-deleted stacks.
-  if (promotedTopLevelBookmarkIds.size > 0) {
+  if (promotedTopLevelBookmarkIds.size > 0 || supersededStackChildren.size > 0) {
     for (const group of Object.values(mergedGroupMeta)) {
       group.items = group.items.filter(item => {
         if (!isStackItem(item)) return true;
-        item.children = (item.children || []).filter(c => !promotedTopLevelBookmarkIds.has(c.id));
+        const movedFromThisStack = supersededStackChildren.get(item.id);
+        item.children = (item.children || []).filter(
+          c => !promotedTopLevelBookmarkIds.has(c.id) && !(movedFromThisStack && movedFromThisStack.has(c.id))
+        );
         if (item.children.length === 0 && !item.deleted) {
           return false;
         }
@@ -2253,6 +2280,7 @@ export async function syncNow(options = {}) {
 export async function syncForceUpload(sourceState = state) {
   return await withSyncLock(async () => {
     const config = await loadConfig();
+    resetRemoteMarkerStateIfUrlChanged(config);
     const syncCfg = await loadSyncConfig();
     if (!syncCfg) {
       return { ok: false, reason: 'not-configured' };
@@ -2293,6 +2321,7 @@ export async function syncForceUpload(sourceState = state) {
 export async function syncForceDownload() {
   return await withSyncLock(async () => {
     const config = await loadConfig();
+    resetRemoteMarkerStateIfUrlChanged(config);
     const syncCfg = await loadSyncConfig();
     if (!syncCfg) {
       return { ok: false, reason: 'not-configured' };
@@ -2309,7 +2338,9 @@ export async function syncForceDownload() {
     await saveState();
 
     lastSyncErrorReason = null;
-    applyRemoteMarkerToConfig(config, readResult.remoteMarker);
+    if (!applyRemoteMarkerToConfig(config, readResult.remoteMarker)) {
+      config.sync.lastSeenRemoteMarker = '';
+    }
     if (config.sync) config.sync.pendingPurgedIds = [];
     config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
     await updateLastSyncTime(config);
