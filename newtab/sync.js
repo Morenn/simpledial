@@ -1428,17 +1428,22 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
   // and remove dissolved empty non-deleted stacks.
   if (promotedTopLevelBookmarkIds.size > 0 || supersededStackChildren.size > 0) {
     for (const group of Object.values(mergedGroupMeta)) {
-      group.items = group.items.filter(item => {
-        if (!isStackItem(item)) return true;
+      const nextItems = [];
+      for (const item of group.items) {
+        if (!isStackItem(item)) {
+          nextItems.push(item);
+          continue;
+        }
         const movedFromThisStack = supersededStackChildren.get(item.id);
-        item.children = (item.children || []).filter(
+        const nextChildren = (item.children || []).filter(
           c => !promotedTopLevelBookmarkIds.has(c.id) && !(movedFromThisStack && movedFromThisStack.has(c.id))
         );
-        if (item.children.length === 0 && !item.deleted) {
-          return false;
+        if (nextChildren.length === 0 && !item.deleted) {
+          continue;
         }
-        return true;
-      });
+        nextItems.push({ ...item, children: nextChildren });
+      }
+      group.items = nextItems;
     }
   }
 
