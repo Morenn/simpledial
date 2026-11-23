@@ -1,6 +1,6 @@
 import { t } from "../i18n.js";
 import { render, calculateGridLayout } from "../render.js";
-import { applySideSpaces } from "../theme.js";
+import { applySideSpaces, applyTileSize } from "../theme.js";
 import { formatBackupTimestamp } from "../backup.js";
 import {
   normalizeWidgetOrder,
