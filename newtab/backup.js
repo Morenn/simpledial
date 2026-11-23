@@ -195,11 +195,12 @@ async function restoreParsedBackupData(parsedData, resolvedType, filename = "bac
     if (Array.isArray(restoredAppearance.customWidgets)) {
       restoredAppearance.customWidgets = restoredAppearance.customWidgets.map(w => {
         if (!w || typeof w !== "object") return w;
-        if (w.hadSecret || w.authHeaderValue || (typeof w.authHeaderName === "string" && w.authHeaderName.trim() !== "")) {
+        if (w.hadSecret || w.authHeaderValue || w.apiKey || (typeof w.authHeaderName === "string" && w.authHeaderName.trim() !== "")) {
           secretsRemoved = true;
         }
         const { hadSecret: _hs, ...cleanWidget } = w;
         if ("authHeaderValue" in cleanWidget) cleanWidget.authHeaderValue = "";
+        if ("apiKey" in cleanWidget) cleanWidget.apiKey = "";
         return cleanWidget;
       });
     }

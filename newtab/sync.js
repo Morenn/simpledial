@@ -1815,7 +1815,14 @@ function buildWidgetsExtraPayload(config) {
   const a = config.appearance || {};
   return {
     customWidgets: Array.isArray(a.customWidgets)
-      ? a.customWidgets.map(w => (w && typeof w === "object" && "authHeaderValue" in w ? { ...w, authHeaderValue: "" } : w))
+      ? a.customWidgets.map(w => {
+          if (!w || typeof w !== "object") return w;
+          if (!("authHeaderValue" in w) && !("apiKey" in w)) return w;
+          const sanitized = { ...w };
+          if ("authHeaderValue" in sanitized) sanitized.authHeaderValue = "";
+          if ("apiKey" in sanitized) sanitized.apiKey = "";
+          return sanitized;
+        })
       : [],
     customSearchAutoRouteDefaults: a.customSearchAutoRouteDefaults || {},
     customSearchAutoRouteIcons: a.customSearchAutoRouteIcons || {},
@@ -1980,11 +1987,24 @@ export async function syncWebdavFolderExtras(config = null, options = {}) {
               .filter(w => w?.id && w?.authHeaderValue)
               .map(w => [w.id, w.authHeaderValue])
           );
+          const localApiKeyById = new Map(
+            (currentConfig.appearance?.customWidgets || [])
+              .filter(w => w?.id && w?.apiKey)
+              .map(w => [w.id, w.apiKey])
+          );
           const nextRemote = { ...remoteData };
           if (Array.isArray(nextRemote.customWidgets)) {
-            nextRemote.customWidgets = nextRemote.customWidgets.map(w =>
-              w?.id && localById.has(w.id) ? { ...w, authHeaderValue: localById.get(w.id) } : { ...w, authHeaderValue: "" }
-            );
+            nextRemote.customWidgets = nextRemote.customWidgets.map(w => {
+              if (!w || typeof w !== "object") return w;
+              const nextWidget = {
+                ...w,
+                authHeaderValue: w.id && localById.has(w.id) ? localById.get(w.id) : ""
+              };
+              if ("apiKey" in w || (w.id && localApiKeyById.has(w.id))) {
+                nextWidget.apiKey = w.id && localApiKeyById.has(w.id) ? localApiKeyById.get(w.id) : "";
+              }
+              return nextWidget;
+            });
           }
           currentConfig.appearance = { ...currentConfig.appearance, ...nextRemote };
         }

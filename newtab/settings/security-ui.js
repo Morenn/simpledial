@@ -54,8 +54,9 @@ const actionStatusEl = document.getElementById("security-action-status");
 
 function countPlaintextWidgetTokens(widgets = []) {
   if (!Array.isArray(widgets)) return 0;
-  return widgets.filter(
-    w => w?.type === "rest-status" && typeof w.authHeaderValue === "string" && w.authHeaderValue !== "" && !isEncryptedSecret(w.authHeaderValue)
+  return widgets.filter(w =>
+    (w?.type === "rest-status" && typeof w.authHeaderValue === "string" && w.authHeaderValue !== "" && !isEncryptedSecret(w.authHeaderValue))
+    || (w?.type === "weather" && typeof w.apiKey === "string" && w.apiKey !== "" && !isEncryptedSecret(w.apiKey))
   ).length;
 }
 
@@ -72,6 +73,15 @@ async function encryptWidgetsList(widgets = []) {
     ) {
       const encrypted = await setSecret(w.authHeaderValue, `widget:${w.id}:authHeaderValue`, { requireVault: true });
       next.push({ ...w, authHeaderValue: encrypted });
+      changed = true;
+    } else if (
+      w?.type === "weather" &&
+      typeof w.apiKey === "string" &&
+      w.apiKey !== "" &&
+      !isEncryptedSecret(w.apiKey)
+    ) {
+      const encrypted = await setSecret(w.apiKey, `widget:${w.id}:apiKey`, { requireVault: true });
+      next.push({ ...w, apiKey: encrypted });
       changed = true;
     } else {
       next.push(w);
@@ -151,7 +161,14 @@ export async function populateSecuritySettings(config = null) {
 
 function clearAllWidgetSecrets(widgets = []) {
   if (!Array.isArray(widgets)) return [];
-  return widgets.map(w => (w && typeof w === "object" && "authHeaderValue" in w ? { ...w, authHeaderValue: "" } : w));
+  return widgets.map(w => {
+    if (!w || typeof w !== "object") return w;
+    if (!("authHeaderValue" in w) && !("apiKey" in w)) return w;
+    const next = { ...w };
+    if ("authHeaderValue" in next) next.authHeaderValue = "";
+    if ("apiKey" in next) next.apiKey = "";
+    return next;
+  });
 }
 
 export async function destroyVaultAndSecrets() {
