@@ -15,12 +15,12 @@ const AES_ALGO = "AES-GCM";
 const AES_KEY_LENGTH = 256; // bits
 const AES_IV_BYTES = 12;
 
-export const VAULT_MIN_PASSWORD_LENGTH = 6;
+export const VAULT_MIN_PASSWORD_LENGTH = 8;
 export const VAULT_MAX_PASSWORD_LENGTH = 512;
 export const VAULT_MIN_PASSWORD_DIGITS = 1;
 export const VAULT_MIN_PASSWORD_LETTERS = 1;
-export const VAULT_MIN_PASSWORD_LOWERCASE = 0;
-export const VAULT_MIN_PASSWORD_UPPERCASE = 0;
+export const VAULT_MIN_PASSWORD_LOWERCASE = 1;
+export const VAULT_MIN_PASSWORD_UPPERCASE = 1;
 export const VAULT_MIN_PASSWORD_SPECIALS = 0;
 export const VAULT_PASSWORD_CHANGE_INTERVAL = 90; // days
 export const VAULT_MAX_AUTOLOCK_MINUTES = 1440; // 24 hours
@@ -70,8 +70,9 @@ export function resolveVaultKdf(kdf = DEFAULT_VAULT_KDF, iterationsOverride = nu
     ? kdf
     : DEFAULT_VAULT_KDF;
   const preset = VAULT_KDF_PRESETS[normalizedKdf];
-  const iterations = Number.isFinite(Number(iterationsOverride)) && Number(iterationsOverride) > 0
-    ? Number(iterationsOverride)
+  const parsed = Number(iterationsOverride);
+  const iterations = Number.isFinite(parsed) && parsed >= preset.iterations
+    ? Math.floor(parsed)
     : preset.iterations;
   return { kdf: normalizedKdf, hash: preset.hash, iterations };
 }

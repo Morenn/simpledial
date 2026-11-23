@@ -47,15 +47,19 @@ test("crypto vault setup, setSecret/getSecret with AAD, lock, session auto-unloc
 
   // Password policy validation & expiration checks
   assert.equal(cryptoMod.validateVaultPassword("a").valid, false);
-  assert.equal(cryptoMod.validateVaultPassword("123456").valid, false);
-  assert.equal(cryptoMod.validateVaultPassword("abcdef").valid, false);
-  assert.equal(cryptoMod.validateVaultPassword("abc123").valid, true);
+  assert.equal(cryptoMod.validateVaultPassword("12345678").valid, false);
+  assert.equal(cryptoMod.validateVaultPassword("abcdefg1").valid, false);
+  assert.equal(cryptoMod.validateVaultPassword("Abc123").valid, false);
+  assert.equal(cryptoMod.validateVaultPassword("Abcdef12").valid, true);
+  assert.equal(cryptoMod.resolveVaultKdf("PBKDF2-SHA512", 1).iterations, 210000);
+  assert.equal(cryptoMod.resolveVaultKdf("PBKDF2-SHA256", 100).iterations, 600000);
+  assert.equal(cryptoMod.resolveVaultKdf("PBKDF2-SHA512", 300000).iterations, 300000);
   assert.equal(cryptoMod.validateVaultPassword("a1".repeat(257)).valid, false);
   assert.equal(cryptoMod.validateVaultPassword("a1".repeat(257)).errors[0].code, "maxLength");
   await assert.rejects(() => cryptoMod.setupVault("a"), /PASSWORD_POLICY_FAILED/);
   await assert.rejects(() => cryptoMod.setupVault("a1".repeat(257)), /PASSWORD_POLICY_FAILED/);
 
-  const header = await cryptoMod.setupVault("correct-horse-1");
+  const header = await cryptoMod.setupVault("Correct-horse-1");
   assert.equal(header.v, 1);
   assert.equal(header.kdf, "PBKDF2-SHA512");
   assert.equal(header.iterations, 210000);
@@ -102,17 +106,17 @@ test("crypto vault setup, setSecret/getSecret with AAD, lock, session auto-unloc
   await assert.rejects(() => cryptoMod.unlockVault("wrong-password", header), /WRONG_PASSWORD/);
 
   // Unlocking restores session key and allows getSecret
-  await cryptoMod.unlockVault("correct-horse-1", header);
+  await cryptoMod.unlockVault("Correct-horse-1", header);
   assert.equal(cryptoMod.isVaultUnlocked(), true);
 
   // Switching KDF via changeVaultPassword (SHA-512 -> SHA-256) and unlocking with the new KDF
-  const sha256Header = await cryptoMod.changeVaultPassword("correct-horse-1", "correct-horse-2", header, {
+  const sha256Header = await cryptoMod.changeVaultPassword("Correct-horse-1", "Correct-horse-2", header, {
     kdf: "PBKDF2-SHA256"
   });
   assert.equal(sha256Header.kdf, "PBKDF2-SHA256");
   assert.equal(sha256Header.iterations, 600000);
   await cryptoMod.lockVault();
-  await cryptoMod.unlockVault("correct-horse-2", sha256Header);
+  await cryptoMod.unlockVault("Correct-horse-2", sha256Header);
   assert.deepEqual(await cryptoMod.getSecret(encToken, "widget:w1:authHeaderValue"), got);
 
   // Auto-lock normalization, insecure HTTP check, and session expiry
@@ -129,14 +133,14 @@ test("crypto vault setup, setSecret/getSecret with AAD, lock, session auto-unloc
   assert.equal(await cryptoMod.checkVaultAutoLock(15), true);
   assert.equal(cryptoMod.isVaultUnlocked(), false);
   assert.equal(sessionStore.has("sd_vk"), false);
-  await cryptoMod.unlockVault("correct-horse-2", sha256Header);
+  await cryptoMod.unlockVault("Correct-horse-2", sha256Header);
   assert.ok(sessionStore.has("sd_vk"));
 
   // Change password preserves ability to decrypt existing field
-  const nextHeader = await cryptoMod.changeVaultPassword("correct-horse-1", "new-strong-pw-2", header);
+  const nextHeader = await cryptoMod.changeVaultPassword("Correct-horse-1", "New-strong-pw-2", header);
   await cryptoMod.lockVault();
-  await assert.rejects(() => cryptoMod.unlockVault("correct-horse-1", nextHeader), /WRONG_PASSWORD/);
-  await cryptoMod.unlockVault("new-strong-pw-2", nextHeader);
+  await assert.rejects(() => cryptoMod.unlockVault("Correct-horse-1", nextHeader), /WRONG_PASSWORD/);
+  await cryptoMod.unlockVault("New-strong-pw-2", nextHeader);
   const afterPwChange = await cryptoMod.getSecret(encToken, "widget:w1:authHeaderValue");
   assert.equal(afterPwChange.ok, true);
   assert.equal(afterPwChange.value, "PVEAPIToken=root@pam!t=secret");
@@ -146,7 +150,7 @@ test("fetchAndEvaluateRestWidget returns locked badge when vault is locked and s
   await cryptoMod.lockVault();
   sessionStore.clear();
 
-  const header = await cryptoMod.setupVault("pw-123");
+  const header = await cryptoMod.setupVault("Strong-Pw-123");
   const encToken = await cryptoMod.setSecret("Bearer tok-xyz", "widget:w-rest:authHeaderValue");
   const widget = {
     id: "w-rest",
@@ -177,7 +181,7 @@ test("fetchAndEvaluateRestWidget returns locked badge when vault is locked and s
     assert.equal(lockedRes.text, "🔐");
     assert.equal(lockedRes.vaultLocked, true);
 
-    await cryptoMod.unlockVault("pw-123", header);
+    await cryptoMod.unlockVault("Strong-Pw-123", header);
     const unlockedRes = await fetchAndEvaluateRestWidget(widget);
     assert.equal(fetchCalled, true);
     assert.equal(unlockedRes.text, "ok");
@@ -191,7 +195,7 @@ test("fetchWeatherWidget returns vaultLocked when vault is locked and sends decr
   await cryptoMod.lockVault();
   sessionStore.clear();
 
-  const header = await cryptoMod.setupVault("pw-123");
+  const header = await cryptoMod.setupVault("Strong-Pw-123");
   const encKey = await cryptoMod.setSecret("owm-secret-key", "widget:w-weather:apiKey");
   const widget = {
     id: "w-weather",
@@ -228,7 +232,7 @@ test("fetchWeatherWidget returns vaultLocked when vault is locked and sends decr
     assert.equal(lockedRes.vaultLocked, true);
     assert.equal(requestedUrls.length, 0);
 
-    await cryptoMod.unlockVault("pw-123", header);
+    await cryptoMod.unlockVault("Strong-Pw-123", header);
     const unlockedRes = await fetchWeatherWidget(widget);
     assert.equal(unlockedRes.ok, true);
     assert.equal(requestedUrls.length, 2);
