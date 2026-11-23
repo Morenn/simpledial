@@ -2083,15 +2083,25 @@ export async function syncWebdavFolderExtras(config = null, options = {}) {
           const keptNames = new Set(mergedMeta.map(e => e.filename));
 
           // Upload new local backups not yet on remote
+          const failedUploadNames = new Set();
           for (const meta of mergedMeta) {
             if (!remoteByName.has(meta.filename) && localByName.has(meta.filename)) {
               const entry = localByName.get(meta.filename);
               const fileUrl = `${backupsRootUrl}/${type}/${encodeURIComponent(entry.filename)}`;
-              await fetchWithTimeout(fileUrl, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", ...headers },
-                body: typeof entry.data === "string" ? entry.data : JSON.stringify(entry.data || {})
-              });
+              try {
+                const putRes = await fetchWithTimeout(fileUrl, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json", ...headers },
+                  body: typeof entry.data === "string" ? entry.data : JSON.stringify(entry.data || {})
+                });
+                if (!putRes.ok) {
+                  console.warn(`syncWebdavFolderExtras: backup upload failed (${putRes.status}) for ${entry.filename}`);
+                  failedUploadNames.add(meta.filename);
+                }
+              } catch (err) {
+                console.warn(`syncWebdavFolderExtras: backup upload failed for ${entry.filename}`, err);
+                failedUploadNames.add(meta.filename);
+              }
             }
           }
 
@@ -2127,7 +2137,7 @@ export async function syncWebdavFolderExtras(config = null, options = {}) {
             localChanged = true;
           }
           nextLocalBackups[type] = finalLocalList;
-          nextIndex[type] = mergedMeta;
+          nextIndex[type] = mergedMeta.filter(meta => !failedUploadNames.has(meta.filename));
         }
 
         if (localChanged) {
