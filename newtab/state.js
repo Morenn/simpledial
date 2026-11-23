@@ -490,17 +490,20 @@ export async function loadState() {
 
   // 🔥 If no groups exist → create default
   if (state.groups.length === 0) {
-    let defaultName = t("defaultGroupName");
-    if (!defaultName || defaultName === "defaultGroupName") {
-      try {
-        await initLanguage();
-        defaultName = t("defaultGroupName");
-      } catch {
-        // ignore in headless/test environments
+    let defaultName = "SimpleDial";
+    if (stored) {
+      let localized = t("defaultGroupName");
+      if (!localized || localized === "defaultGroupName") {
+        try {
+          await initLanguage();
+          localized = t("defaultGroupName");
+        } catch {
+          // ignore in headless/test environments
+        }
       }
-    }
-    if (!defaultName || defaultName === "defaultGroupName") {
-      defaultName = "General";
+      if (localized && localized !== "defaultGroupName") {
+        defaultName = localized;
+      }
     }
 
     const defaultGroup = {

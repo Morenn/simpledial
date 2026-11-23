@@ -559,9 +559,13 @@ function collectGroupPurgedIds(group) {
 
 function ensureActiveGroupAfterPermanentDelete(deletedGroupId) {
   if (state.groups.length === 0) {
+    const localizedDefault = t("defaultGroupName");
+    const defaultName = (localizedDefault && localizedDefault !== "defaultGroupName")
+      ? localizedDefault
+      : "SimpleDial";
     const defaultGroup = {
       id: generateId("g"),
-      name: t("defaultGroupName"),
+      name: defaultName,
       sections: [],
       items: [],
       updatedAt: Date.now(),
