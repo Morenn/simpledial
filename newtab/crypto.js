@@ -411,7 +411,7 @@ export async function changeVaultPassword(oldPassword, newPassword, header, { kd
     throw err;
   }
   const existingRec = autoLockMinutes === undefined ? await readSessionRecord() : null;
-  await unlockVault(oldPassword, header, autoLockMinutes ?? 0);
+  await unlockVault(oldPassword, header, { autoLockMinutes: autoLockMinutes ?? 0 });
   if (autoLockMinutes === undefined && existingRec?.exp > 0 && ext?.storage?.session?.set) {
     const recAfterUnlock = await readSessionRecord();
     if (recAfterUnlock?.k && vaultDek) {
