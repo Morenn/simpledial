@@ -855,7 +855,7 @@ async function syncReadDetailed(cfg = null, options = {}) {
       return await initializeRemoteDetailed(fetchUrl, headers);
     }
 
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || (parsed.groups !== undefined && !Array.isArray(parsed.groups))) {
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !Array.isArray(parsed.groups)) {
       if (!allowInitialize) {
         return { ok: false, reason: 'invalid-json', status: res.status };
       }
