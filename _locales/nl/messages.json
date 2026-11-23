@@ -152,8 +152,8 @@
   "syncEncryptNone": {
     "message": "Niet versleutelen"
   },
-  "syncEncryptLocal": {
-    "message": "Versleutelen met lokale sleutel"
+  "syncEncryptNoneWarning": {
+    "message": "Niet veilig: synchronisatiegegevens worden onversleuteld opgeslagen in de lokale extensieopslag. Gebruik kluisversleuteling om ze te beschermen."
   },
   "saveCredentials": {
     "message": "Inloggegevens opslaan"

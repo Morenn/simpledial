@@ -152,8 +152,8 @@
   "syncEncryptNone": {
     "message": "Älä salausta"
   },
-  "syncEncryptLocal": {
-    "message": "Salaa paikallisella avaimella"
+  "syncEncryptNoneWarning": {
+    "message": "Ei turvallinen: synkronoinnin tunnistetiedot tallennetaan salaamattomina laajennuksen paikalliseen tallennustilaan. Suojaa ne holvisalauksella."
   },
   "saveCredentials": {
     "message": "Tallenna tunnistetiedot"

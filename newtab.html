@@ -307,11 +307,10 @@
               <div class="choice-group appearance-choice-group" id="sync-encrypt-choice-group">
                 <label class="choice-option choice-option-inline">
                   <input type="radio" name="sync-encrypt-choice" value="none" checked>
-                  <span class="choice-option-title" data-i18n="syncEncryptNone">Do not encrypt</span>
-                </label>
-                <label class="choice-option choice-option-inline">
-                  <input type="radio" name="sync-encrypt-choice" value="local">
-                  <span class="choice-option-title" data-i18n="syncEncryptLocal">Encrypt with local key</span>
+                  <span class="choice-option-title">
+                    <span data-i18n="syncEncryptNone">Do not encrypt</span>
+                    <span id="sync-encrypt-none-warn" class="sync-encrypt-warn-icon" title="syncEncryptNoneWarning" aria-label="syncEncryptNoneWarning">❗</span>
+                  </span>
                 </label>
                 <label class="choice-option choice-option-inline">
                   <input type="radio" name="sync-encrypt-choice" value="vault">

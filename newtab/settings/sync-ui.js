@@ -3,9 +3,7 @@ import { loadConfig, saveConfig, logDebug } from "../config.js";
 import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount } from "../sync.js";
 import { t } from "../i18n.js";
 import {
-  generateLocalKeyRaw,
   importRawKey,
-  encryptWithKey,
   decryptWithKey,
   setSecret,
   getSecret,
@@ -394,7 +392,7 @@ export async function populateSyncSettings(config) {
 
   const syncEncryptMode = document.getElementById("sync-encrypt-mode");
   if (syncEncryptMode) {
-    syncEncryptMode.value = config.sync.encryptionMode || "none";
+    syncEncryptMode.value = config.sync.encryptionMode === "vault" ? "vault" : "none";
     syncRadioGroupFromModel(syncEncryptMode, syncEncryptChoices);
   }
 
@@ -581,30 +579,14 @@ export function initSyncSettings({ persistSettings }) {
       }
 
       const encryptModeEl = document.getElementById("sync-encrypt-mode");
-      const encryptMode = encryptModeEl ? encryptModeEl.value : "none";
-      config.sync.encryptionMode = encryptMode || "none";
+      const encryptMode = encryptModeEl?.value === "vault" ? "vault" : "none";
+      config.sync.encryptionMode = encryptMode;
 
       if (encryptMode === "none") {
         config.sync.username = formUsername;
         config.sync.password = formPassword;
         delete config.sync.enc;
         delete config.sync.localKey;
-      } else if (encryptMode === "local") {
-        if (!config.sync.localKey) {
-          config.sync.localKey = await generateLocalKeyRaw();
-        }
-        try {
-          const key = await importRawKey(config.sync.localKey);
-          const payload = JSON.stringify({ username: formUsername, password: formPassword });
-          const enc = await encryptWithKey(key, payload);
-          config.sync.enc = { ciphertext: enc.ciphertext, iv: enc.iv };
-          config.sync.username = "";
-          config.sync.password = "";
-        } catch (e) {
-          console.error("Failed to encrypt with local key", e);
-          if (syncStatus) syncStatus.textContent = "❌ Encryption failed";
-          return;
-        }
       } else if (encryptMode === "vault") {
         if (!config.vaultHeader?.check) {
           if (syncStatus) syncStatus.textContent = "❌ " + (t("syncVaultNotSetupError") || "Enable the Vault in the Security tab first.");

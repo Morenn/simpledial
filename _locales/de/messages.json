@@ -152,8 +152,8 @@
   "syncEncryptNone": {
     "message": "Nicht verschlüsseln"
   },
-  "syncEncryptLocal": {
-    "message": "Mit lokalem Schlüssel verschlüsseln"
+  "syncEncryptNoneWarning": {
+    "message": "Nicht sicher: Synchronisierungs-Zugangsdaten werden unverschlüsselt im lokalen Erweiterungsspeicher gespeichert. Verwenden Sie die Tresor-Verschlüsselung zum Schutz."
   },
   "saveCredentials": {
     "message": "Zugangsdaten speichern"

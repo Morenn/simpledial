@@ -155,8 +155,8 @@
   "syncEncryptNone": {
     "message": "Do not encrypt"
   },
-  "syncEncryptLocal": {
-    "message": "Encrypt with local key"
+  "syncEncryptNoneWarning": {
+    "message": "Not safe: sync credentials are stored unencrypted in local extension storage. Use Vault encryption to protect them."
   },
   "saveCredentials": {
     "message": "Save credentials"

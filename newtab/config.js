@@ -28,8 +28,7 @@ export const defaultConfig = {
     authMode: "none", // "none" or "basic"
     username: "",
     password: "",
-    encryptionMode: "none", // "none", "local", "vault"
-    localKey: "",
+    encryptionMode: "none", // "none", "vault"
     enc: null,
     interval: DEFAULT_SYNC_INTERVAL, // milliseconds
     intervalMode: "immediate", // "immediate" | "manual"

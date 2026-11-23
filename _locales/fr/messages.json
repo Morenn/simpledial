@@ -152,8 +152,8 @@
   "syncEncryptNone": {
     "message": "Ne pas chiffrer"
   },
-  "syncEncryptLocal": {
-    "message": "Chiffrer avec une clé locale"
+  "syncEncryptNoneWarning": {
+    "message": "Non sécurisé : les identifiants de synchronisation sont stockés en clair dans le stockage local de l'extension. Utilisez le chiffrement par coffre-fort pour les protéger."
   },
   "saveCredentials": {
     "message": "Enregistrer les identifiants"

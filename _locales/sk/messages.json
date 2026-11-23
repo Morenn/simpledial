@@ -152,8 +152,8 @@
   "syncEncryptNone": {
     "message": "Nešifrovať"
   },
-  "syncEncryptLocal": {
-    "message": "Šifrovať lokálnym kľúčom"
+  "syncEncryptNoneWarning": {
+    "message": "Nie je bezpečné: prihlasovacie údaje sú uložené nešifrovane v lokálnom úložisku rozšírenia. Na ich ochranu použite šifrovanie trezorom."
   },
   "saveCredentials": {
     "message": "Uložiť prihlasovacie údaje"
