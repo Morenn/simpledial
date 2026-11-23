@@ -348,14 +348,18 @@ document.addEventListener("keydown", e => {
       if (subModal && !subModal.classList.contains("hidden")) {
         if (id === "custom-widget-editor-modal" && typeof window.closeCustomWidgetEditorModal === "function") {
           window.closeCustomWidgetEditorModal();
+        } else if (id === "custom-widget-trust-modal") {
+          document.getElementById("custom-widget-trust-cancel")?.click();
         } else {
           subModal.classList.add("hidden");
         }
         return;
       }
     }
-    settingsModal?.classList.add("hidden");
-    void revertAppearancePreviewToSaved();
+    if (settingsModal && !settingsModal.classList.contains("hidden")) {
+      settingsModal.classList.add("hidden");
+      void revertAppearancePreviewToSaved();
+    }
   }
 });
 
