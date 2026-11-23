@@ -446,6 +446,24 @@ export async function populateSyncSettings(config) {
   updateManualSyncButtonVisibility(config);
 }
 
+function applyServerUrlChange(config, rawNextUrl) {
+  const prevUrl = (config.sync.serverUrl || "").trim().replace(/\/$/, "");
+  const nextUrl = (rawNextUrl || "").trim().replace(/\/$/, "");
+  if (nextUrl === prevUrl) return false;
+
+  config.sync.serverUrl = nextUrl;
+  config.sync.enabled = false;
+  config.sync.lastSync = 0;
+  config.sync.lastSyncedLocalHash = "";
+  config.sync.lastSeenRemoteMarker = "";
+  config.sync.remoteChangeHeaderType = null;
+  config.sync.lastMarkerCheckUrl = "";
+  if (syncEnable) syncEnable.checked = false;
+  updateSyncNowButtonDisabledState();
+  updateManualSyncButtonVisibility(config);
+  return true;
+}
+
 export function applySyncToConfig(config) {
   if (syncType) {
     config.sync.type = syncType.value || "direct";
@@ -466,16 +484,17 @@ export function applySyncToConfig(config) {
     }
   }
 
+  let urlChanged = false;
   if (syncType && syncType.value === "browser") {
-    config.sync.serverUrl = "";
+    urlChanged = applyServerUrlChange(config, "");
     config.sync.authMode = "none";
     config.sync.username = "";
     config.sync.password = "";
     delete config.sync.enc;
     delete config.sync.localKey;
     config.sync.encryptionMode = "none";
-  } else if (syncUrl?.value.trim()) {
-    config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, "");
+  } else {
+    urlChanged = applyServerUrlChange(config, syncUrl?.value || "");
   }
 
   if (syncType && (syncType.value === "direct" || syncType.value === "webdav") && syncAuthMode) {
@@ -491,7 +510,9 @@ export function applySyncToConfig(config) {
     return false;
   }
 
-  config.sync.enabled = !!syncEnable?.checked;
+  if (!urlChanged) {
+    config.sync.enabled = !!syncEnable?.checked;
+  }
 
   config.sync.intervalMode = syncManual?.checked ? "manual" : "immediate";
 
@@ -543,11 +564,11 @@ export function initSyncSettings({ persistSettings }) {
 
       config.sync.type = syncType.value || "direct";
       if (syncType && syncType.value === "browser") {
-        config.sync.serverUrl = "";
+        applyServerUrlChange(config, "");
         config.sync.authMode = "none";
         clearSyncCredentialsInConfig(config);
-      } else if (syncUrl?.value.trim()) {
-        config.sync.serverUrl = syncUrl.value.trim().replace(/\/$/, "");
+      } else {
+        applyServerUrlChange(config, syncUrl?.value || "");
       }
 
       config.sync.authMode = "basic";
