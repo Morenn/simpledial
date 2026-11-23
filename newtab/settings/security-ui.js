@@ -270,7 +270,9 @@ async function promptForceChangeExpiredPassword(oldPassword, cfg) {
         return;
       }
       try {
-        cfg.vaultHeader = await changeVaultPassword(oldPassword, nextPw, cfg.vaultHeader);
+        cfg.vaultHeader = await changeVaultPassword(oldPassword, nextPw, cfg.vaultHeader, {
+          autoLockMinutes: cfg?.vaultAutoLockMinutes || 0
+        });
         await saveConfig(cfg);
         finish();
       } catch (err) {
@@ -513,7 +515,10 @@ export function initSecuritySettings() {
         if (actionStatusEl) actionStatusEl.textContent = "❌ " + (t("securityPasswordSameError") || "New password must be different from your current password.");
         return;
       }
-      const nextHeader = await changeVaultPassword(oldPw, newPw, cfg.vaultHeader, { kdf });
+      const nextHeader = await changeVaultPassword(oldPw, newPw, cfg.vaultHeader, {
+        kdf,
+        autoLockMinutes: cfg?.vaultAutoLockMinutes || 0
+      });
       cfg.vaultHeader = nextHeader;
       await saveConfig(cfg);
       if (oldPasswordInput) oldPasswordInput.value = "";

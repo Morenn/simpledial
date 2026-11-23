@@ -212,7 +212,7 @@ export async function touchVaultActivity(autoLockMinutes = 0, { force = false } 
   if (!force && now - lastActivityTouchMs < 15000) return;
   lastActivityTouchMs = now;
   const rec = await readSessionRecord();
-  if (!rec) return;
+  if (!rec || !vaultDek) return;
   if (rec.exp > 0 && now >= rec.exp) {
     await lockVault();
     return;
@@ -220,6 +220,7 @@ export async function touchVaultActivity(autoLockMinutes = 0, { force = false } 
   const mins = normalizeVaultAutoLockMinutes(autoLockMinutes);
   const nextExp = mins > 0 ? now + mins * 60000 : 0;
   try {
+    if (!vaultDek) return;
     await ext.storage.session.set({ [SESSION_KEY]: { k: rec.k, exp: nextExp } });
   } catch {
     // ignore
@@ -402,14 +403,25 @@ export async function lockVault() {
   await clearSessionKey();
 }
 
-export async function changeVaultPassword(oldPassword, newPassword, header, { kdf } = {}) {
+export async function changeVaultPassword(oldPassword, newPassword, header, { kdf, autoLockMinutes } = {}) {
   const check = validateVaultPassword(newPassword);
   if (!check.valid) {
     const err = new Error("PASSWORD_POLICY_FAILED");
     err.policyErrors = check.errors;
     throw err;
   }
-  await unlockVault(oldPassword, header);
+  const existingRec = autoLockMinutes === undefined ? await readSessionRecord() : null;
+  await unlockVault(oldPassword, header, autoLockMinutes ?? 0);
+  if (autoLockMinutes === undefined && existingRec?.exp > 0 && ext?.storage?.session?.set) {
+    const recAfterUnlock = await readSessionRecord();
+    if (recAfterUnlock?.k && vaultDek) {
+      try {
+        await ext.storage.session.set({ [SESSION_KEY]: { k: recAfterUnlock.k, exp: existingRec.exp } });
+      } catch {
+        // ignore
+      }
+    }
+  }
   const resolved = resolveVaultKdf(header.kdf || "PBKDF2-SHA256", header.iterations);
   const { key: kek } = await deriveKeyFromPassword(oldPassword, header.salt, {
     iterations: resolved.iterations,
