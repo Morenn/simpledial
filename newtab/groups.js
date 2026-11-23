@@ -604,11 +604,16 @@ function setupGroupDrag() {
       e.dataTransfer.effectAllowed = "move";
     });
 
-    tab.addEventListener("dragend", async () => {
+    tab.addEventListener("dragend", async e => {
       document.body?.classList.remove("is-dragging-group");
       if (!draggedGroupTab) return;
       draggedGroupTab.classList.remove("dragging");
       draggedGroupTab = null;
+
+      if (e.dataTransfer?.dropEffect === "none") {
+        render();
+        return;
+      }
 
       const ids = [...groupsHeader.querySelectorAll(".group-tab")]
         .filter(el => !el.classList.contains("add-group"))

@@ -591,6 +591,11 @@ async function commitActiveDragSession() {
 
 async function handleDropDocument(e) {
   if (!dragSession) return;
+  if (dragSession.cancelled) {
+    resetDragVisuals();
+    dragSession = null;
+    return;
+  }
   e.preventDefault();
   await commitActiveDragSession();
 }
@@ -661,14 +666,17 @@ function initializeGlobalDragListeners() {
     if (e.key === "Escape" && dragSession) {
       dragSession.cancelled = true;
       resetDragVisuals();
+      e.preventDefault();
+      e.stopPropagation();
     }
-  });
+  }, { capture: true });
 
-  document.addEventListener("dragend", () => {
+  document.addEventListener("dragend", e => {
     if (!dragSession) return;
+    const wasCancelled = dragSession.cancelled || e.dataTransfer?.dropEffect === "none";
     if (
+      !wasCancelled &&
       !dragSession.dropHandled &&
-      !dragSession.cancelled &&
       (dragSession.placeholder?.parentNode || dragSession.stackTargetTile || dragSession.hoveredGroupTab)
     ) {
       void commitActiveDragSession();
