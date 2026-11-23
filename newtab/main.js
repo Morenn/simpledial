@@ -1,5 +1,5 @@
 import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, SYSTEM_TAGS_KEY, applyStateFromStorageChange, applySystemTagsFromStorageChange } from "./state.js";
-import { loadTheme } from "./theme.js";
+import { loadTheme, applySideSpaces } from "./theme.js";
 import { render, updateFooter, getSyncErrorLabel } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
 import { loadConfig, updateDebugLoggingFlags, logDebug, shouldSync } from "./config.js";
