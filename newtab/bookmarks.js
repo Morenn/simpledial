@@ -760,19 +760,40 @@ export function createStackTile(stackItem, config = null) {
 
 // ---------- Floating Stack Popover ----------
 let activeStackPopoverId = null;
+let stackTitleDirty = false;
 
 export function getActiveStackPopoverId() {
   return activeStackPopoverId;
+}
+
+async function commitStackTitleChange(stackId) {
+  if (!stackId) return;
+  const titleInput = document.getElementById("stack-popover-title");
+  if (!titleInput) return;
+  const loc = findBookmarkLocation(stackId);
+  if (!loc || !isStackItem(loc.item)) return;
+  const nextTitle = titleInput.value.trim() || (t("defaultStackName") || "Stack");
+  stackTitleDirty = false;
+  if (loc.item.title === nextTitle) return;
+  loc.item.title = nextTitle;
+  loc.item.updatedAt = Date.now();
+  await saveState();
+  await syncWrite();
+  render();
 }
 
 export function closeStackPopover() {
   const backdrop = document.getElementById("stack-popover");
   if (!backdrop) return;
   const previousStackId = activeStackPopoverId;
+  const shouldCommitTitle = stackTitleDirty && previousStackId;
   const shouldRestoreFocus = !!(document.activeElement && backdrop.contains(document.activeElement));
   backdrop.classList.add("hidden");
   backdrop.classList.remove("dragging-outside");
   activeStackPopoverId = null;
+  if (shouldCommitTitle) {
+    void commitStackTitleChange(previousStackId);
+  }
   if (shouldRestoreFocus && previousStackId) {
     const stackTile = document.querySelector(`.stack-tile[data-bookmark-id="${CSS.escape(previousStackId)}"]`);
     stackTile?.focus({ preventScroll: true });
@@ -780,6 +801,7 @@ export function closeStackPopover() {
 }
 
 function populateStackPopover(stackItem, config = null) {
+  stackTitleDirty = false;
   const titleInput = document.getElementById("stack-popover-title");
   const countBadge = document.getElementById("stack-popover-count");
   const grid = document.getElementById("stack-popover-grid");
@@ -889,6 +911,7 @@ export async function openStackPopover(stackId, options = {}) {
       if (!activeStackPopoverId) return;
       const loc = findBookmarkLocation(activeStackPopoverId);
       if (!loc || !isStackItem(loc.item)) return;
+      stackTitleDirty = true;
       const nextTitle = titleInput.value.trim() || (t("defaultStackName") || "Stack");
       loc.item.title = titleInput.value;
       loc.item.updatedAt = Date.now();
@@ -897,13 +920,7 @@ export async function openStackPopover(stackId, options = {}) {
     });
     titleInput.addEventListener("change", async () => {
       if (!activeStackPopoverId) return;
-      const loc = findBookmarkLocation(activeStackPopoverId);
-      if (!loc || !isStackItem(loc.item)) return;
-      loc.item.title = titleInput.value.trim() || (t("defaultStackName") || "Stack");
-      loc.item.updatedAt = Date.now();
-      await saveState();
-      await syncWrite();
-      render();
+      await commitStackTitleChange(activeStackPopoverId);
     });
     titleInput.addEventListener("keydown", e => {
       if (e.key === "Enter") {
@@ -1796,8 +1813,8 @@ bmSave.addEventListener("click", async () => {
     return;
   }
 
-  const group = state.groups.find(g => g.id === window.activeGroupId);
-  if (!group) return;
+  const initialGroupId = window.activeGroupId;
+  if (!state.groups.some(g => g.id === initialGroupId)) return;
 
   const wantColorFromIcon = !!bmColorFromIcon?.checked;
   const wantCustomColor = !!bmColorCustom?.checked;
@@ -1810,6 +1827,10 @@ bmSave.addEventListener("click", async () => {
   if (wantColorFromIcon || icon || needsExperimental) {
     await ensureHostPermission();
   }
+
+  // Re-resolve group after await in case background sync replaced state.groups.
+  const group = state.groups.find(g => g.id === (window.activeGroupId || initialGroupId));
+  if (!group) return;
 
   let targetBookmark = null;
   let iconChanged = false;
