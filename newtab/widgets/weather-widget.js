@@ -1,6 +1,6 @@
 import { loadConfig } from "../config.js";
 import { t } from "../i18n.js";
-import { getSecret } from "../crypto.js";
+import { getSecret, isVaultUnlocked } from "../crypto.js";
 import { requestRestEndpointPermission, hasHostPermissionForUrl } from "./rest-status-widget.js";
 
 export const WEATHER_CACHE_KEY = "myspeeddial-weather-cache";
@@ -654,12 +654,12 @@ export async function pollAllWeatherWidgets({ force = false } = {}) {
       const cache = weatherCacheByWidget[w.id];
       const locKey = getWeatherLocKey(w);
       const refreshMs = normalizeWeatherRefreshMinutes(w.refreshMinutes) * 60 * 1000;
-      if (!force && cache?.fetchedAt && cache?.locKey === locKey && (now - cache.fetchedAt) < refreshMs) continue;
+      if (!force && cache?.fetchedAt && cache?.locKey === locKey && !(cache.vaultLocked && isVaultUnlocked()) && (now - cache.fetchedAt) < refreshMs) continue;
 
       const res = await fetchWeatherWidget(w);
       weatherCacheByWidget[w.id] = res.ok
-        ? { fetchedAt: now, locKey, current: res.current, daily: res.daily, hourly: res.hourly, error: null }
-        : { ...(cache || {}), fetchedAt: now, locKey, error: res.error };
+        ? { fetchedAt: now, locKey, current: res.current, daily: res.daily, hourly: res.hourly, error: null, vaultLocked: false }
+        : { ...(cache || {}), fetchedAt: now, locKey, error: res.error, vaultLocked: Boolean(res.vaultLocked) };
       changed = true;
       const el = document.querySelector(`.custom-weather-widget[data-widget-id="${w.id}"]`);
       if (el) renderWeatherBarDom(el, w);

@@ -1,6 +1,7 @@
 import { loadConfig, saveConfig, shouldSync } from "../config.js";
 import { t } from "../i18n.js";
 import { pollAllRestStatusWidgets } from "../custom-widgets.js";
+import { pollAllWeatherWidgets } from "../widgets/weather-widget.js";
 import { updateFooter } from "../render.js";
 import { syncNow, clearLastSyncErrorReason } from "../sync.js";
 import {
@@ -21,7 +22,7 @@ import {
   touchVaultActivity
 } from "../crypto.js";
 import { settingsState } from "./context.js";
-import { clearSyncCredentialsInUi } from "./sync-ui.js";
+import { clearSyncCredentialsInUi, populateSyncSettings } from "./sync-ui.js";
 
 const statusBadgeEl = document.getElementById("security-vault-status");
 const plaintextCountEl = document.getElementById("security-plaintext-count");
@@ -51,6 +52,11 @@ const changeKdfSelect = document.getElementById("security-change-kdf");
 const changePwBtn = document.getElementById("security-change-pw-btn");
 
 const actionStatusEl = document.getElementById("security-action-status");
+
+function refreshVaultDependentWidgets() {
+  void pollAllRestStatusWidgets({ force: true });
+  void pollAllWeatherWidgets({ force: true });
+}
 
 function countPlaintextWidgetTokens(widgets = []) {
   if (!Array.isArray(widgets)) return 0;
@@ -206,7 +212,7 @@ export async function destroyVaultAndSecrets() {
   }
   await populateSecuritySettings(cfg);
   void updateFooter(cfg);
-  void pollAllRestStatusWidgets({ force: true });
+  refreshVaultDependentWidgets();
   return true;
 }
 
@@ -336,8 +342,9 @@ export async function promptUnlockVault() {
           await promptForceChangeExpiredPassword(pw, cfg);
         }
         await populateSecuritySettings(cfg);
+        void populateSyncSettings(cfg);
         void updateFooter(cfg);
-        void pollAllRestStatusWidgets({ force: true });
+        refreshVaultDependentWidgets();
         if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault" && shouldSync(cfg)) {
           void syncNow().then((r) => {
             updateFooter();
@@ -415,7 +422,8 @@ export function initSecuritySettings() {
       if (setupConfirmInput) setupConfirmInput.value = "";
       if (actionStatusEl) actionStatusEl.textContent = "✅ " + (t("securityVaultEnabled") || "Vault enabled and existing tokens encrypted.");
       await populateSecuritySettings(cfg);
-      void pollAllRestStatusWidgets({ force: true });
+      void populateSyncSettings(cfg);
+      refreshVaultDependentWidgets();
     } catch (err) {
       if (actionStatusEl) actionStatusEl.textContent = `❌ ${err?.message || "Setup failed"}`;
     }
@@ -441,6 +449,7 @@ export function initSecuritySettings() {
         actionStatusEl.textContent = "✅ " + (t("securityStatusUnlocked") || "Vault unlocked");
       }
       await populateSecuritySettings(cfg);
+      void populateSyncSettings(cfg);
       void updateFooter(cfg);
       if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault" && shouldSync(cfg)) {
         void syncNow().then((r) => {
@@ -450,7 +459,7 @@ export function initSecuritySettings() {
           }
         });
       }
-      void pollAllRestStatusWidgets({ force: true });
+      refreshVaultDependentWidgets();
     } catch {
       if (actionStatusEl) actionStatusEl.textContent = "❌ " + (t("securityWrongPassword") || "Incorrect vault password.");
     }
@@ -459,9 +468,11 @@ export function initSecuritySettings() {
   lockBtn?.addEventListener("click", async () => {
     await lockVault();
     if (actionStatusEl) actionStatusEl.textContent = "🔒 " + (t("securityStatusLocked") || "Vault locked");
-    await populateSecuritySettings();
-    void updateFooter();
-    void pollAllRestStatusWidgets({ force: true });
+    const cfg = await loadConfig();
+    await populateSecuritySettings(cfg);
+    void populateSyncSettings(cfg);
+    void updateFooter(cfg);
+    refreshVaultDependentWidgets();
   });
 
   autoLockInput?.addEventListener("change", async () => {
@@ -486,7 +497,7 @@ export function initSecuritySettings() {
     await encryptAndPersistPlaintextTokens();
     if (actionStatusEl) actionStatusEl.textContent = "✅ " + (t("securityTokensEncrypted") || "All widget tokens encrypted.");
     await populateSecuritySettings();
-    void pollAllRestStatusWidgets({ force: true });
+    refreshVaultDependentWidgets();
   });
 
   changePwBtn?.addEventListener("click", async () => {
