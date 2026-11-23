@@ -236,6 +236,8 @@ function cloneConfig(cfg) {
   return cloned;
 }
 
+let configSaveGeneration = 0;
+
 // Load configuration from storage
 export async function loadConfig() {
   const canUseLongLivedCache = typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function";
@@ -247,14 +249,15 @@ export async function loadConfig() {
     return cloneConfig(resolved);
   }
 
+  const loadGeneration = configSaveGeneration;
   inFlightConfigLoad = (async () => {
     const res = await chrome.storage.local.get(CONFIG_STORAGE_KEY);
     const merged = mergeConfigWithDefaults(res?.[CONFIG_STORAGE_KEY]);
     updateDebugLoggingFlags(merged.advanced);
-    if (canUseLongLivedCache) {
+    if (canUseLongLivedCache && loadGeneration === configSaveGeneration) {
       cachedConfig = merged;
     }
-    return merged;
+    return cachedConfig && loadGeneration !== configSaveGeneration ? cloneConfig(cachedConfig) : merged;
   })();
 
   try {
@@ -268,11 +271,21 @@ export async function loadConfig() {
 // Save configuration to storage
 export async function saveConfig(config) {
   const normalized = mergeConfigWithDefaults(config);
+  configSaveGeneration++;
   updateDebugLoggingFlags(normalized.advanced);
-  if (typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function") {
+  const canUseCache = typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function";
+  const previousCachedConfig = cachedConfig;
+  if (canUseCache) {
     cachedConfig = cloneConfig(normalized);
   }
-  await chrome.storage.local.set({ [CONFIG_STORAGE_KEY]: config });
+  try {
+    await chrome.storage.local.set({ [CONFIG_STORAGE_KEY]: config });
+  } catch (err) {
+    if (canUseCache) {
+      cachedConfig = previousCachedConfig;
+    }
+    throw err;
+  }
 }
 
 // Get sync interval in milliseconds based on mode

@@ -35,9 +35,17 @@ export function formatBackupTimestamp(timestampMs = Date.now()) {
   return `${yy}${mm}${dd}-${hh}${mi}${ss}`;
 }
 
-function createBackupFilename(timestampMs, type = "bookmarks") {
+function createBackupFilename(timestampMs, type = "bookmarks", existingEntries = []) {
   const { filenamePrefix } = BACKUP_TYPE_META[normalizeBackupType(type)];
-  return `${filenamePrefix}${formatBackupTimestamp(timestampMs)}.json`;
+  const base = `${filenamePrefix}${formatBackupTimestamp(timestampMs)}`;
+  const existingNames = new Set((existingEntries || []).map(e => e?.filename).filter(Boolean));
+  let candidate = `${base}.json`;
+  let suffix = 2;
+  while (existingNames.has(candidate)) {
+    candidate = `${base}-${suffix}.json`;
+    suffix++;
+  }
+  return candidate;
 }
 
 function parseBackupInput(file) {
@@ -139,7 +147,7 @@ export async function createBackup(type = "bookmarks", prebuiltSnapshot = null) 
   const entries = await readBackupEntries(resolvedType);
   entries.push({
     type: resolvedType,
-    filename: createBackupFilename(timestamp, resolvedType),
+    filename: createBackupFilename(timestamp, resolvedType, entries),
     timestamp,
     sizeBytes,
     ...metadata,
@@ -359,8 +367,20 @@ async function maybeCreateAutomaticBackup() {
   }
 }
 
+let autoBackupQueue = Promise.resolve();
+
+async function withAutoBackupLock(task) {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : null;
+  if (locks && typeof locks.request === "function") {
+    return locks.request("simple-dial-auto-backup", { mode: "exclusive" }, async () => await task());
+  }
+  const next = autoBackupQueue.then(task, task);
+  autoBackupQueue = next.catch(() => {});
+  return next;
+}
+
 export async function runBackupInitCheck() {
-  await maybeCreateAutomaticBackup().catch(err => {
+  await withAutoBackupLock(() => maybeCreateAutomaticBackup()).catch(err => {
     console.warn("backup init check failed", err);
   });
 }

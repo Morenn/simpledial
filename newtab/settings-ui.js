@@ -161,14 +161,17 @@ async function persistSettings(closeAfterSave = false) {
   delete config.advanced.experimentalFaviconFetchLink;
   delete config.advanced.experimentalFaviconFetchManifest;
 
+  let languageChanged = false;
   if (settingsState.pendingLanguageReset) {
     await resetLanguageToBrowser({ persist: true });
     settingsState.pendingLanguageReset = false;
+    languageChanged = true;
   } else if (
     languageSelect?.value &&
     (settingsState.savedLanguageSnapshot?.override !== languageSelect.value || getCurrentLanguage() !== languageSelect.value)
   ) {
     await setLanguage(languageSelect.value, { persist: true });
+    languageChanged = true;
   }
   settingsState.savedLanguageSnapshot = {
     lang: getCurrentLanguage(),
@@ -182,6 +185,10 @@ async function persistSettings(closeAfterSave = false) {
 
   try {
     render();
+    if (languageChanged) {
+      updateUIText();
+      updateClock();
+    }
   } catch {}
 
   if (typeof window.applySavedDateTimeEnabled === "function") {

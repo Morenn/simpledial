@@ -1131,9 +1131,17 @@ export function initCustomWidgetsSettings() {
 
       const groupActions = document.createElement("div");
       groupActions.className = "custom-widget-group-actions";
+      const fullGroupMembers = customList.filter(w =>
+        w
+        && typeof w.groupName === "string"
+        && w.groupName.trim().toLowerCase() === groupKey
+        && (w.type === "rest-status") === (groupRep?.type === "rest-status")
+        && (w.type === "rss-feed") === (groupRep?.type === "rss-feed")
+      );
+      const effectiveGroupMembers = fullGroupMembers.length > 0 ? fullGroupMembers : entry.members;
 
       const groupSpacePill = createCustomWidgetSpacePill(
-        entry.members.map(m => m.id),
+        effectiveGroupMembers.map(m => m.id),
         groupRep?.space,
         (groupRep?.type === "rss-feed" || groupRep?.type === "rest-status") ? "left" : "right"
       );
@@ -1151,7 +1159,7 @@ export function initCustomWidgetsSettings() {
         if (!nextName || nextName === entry.groupName) return;
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
-        const memberIds = new Set(entry.members.map(m => m.id));
+        const memberIds = new Set(effectiveGroupMembers.map(m => m.id));
         draft.customWidgets = (draft.customWidgets || []).map(w =>
           memberIds.has(w.id) ? { ...w, groupName: nextName } : w
         );
@@ -1181,7 +1189,7 @@ export function initCustomWidgetsSettings() {
       exportGroupBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         const slug = entry.groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "group";
-        exportCustomWidgetsLibrary(entry.members, `simple-dial-group-${slug}`, customWidgetsLibraryStatus);
+        exportCustomWidgetsLibrary(effectiveGroupMembers, `simple-dial-group-${slug}`, customWidgetsLibraryStatus);
       });
 
       const deleteGroupBtn = document.createElement("button");
@@ -1191,10 +1199,10 @@ export function initCustomWidgetsSettings() {
       deleteGroupBtn.title = t("delete") || "Delete group";
       deleteGroupBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (!confirm(`Delete group "${entry.groupName}" and all ${entry.members.length} widgets in it?`)) return;
+        if (!confirm(`Delete group "${entry.groupName}" and all ${effectiveGroupMembers.length} widgets in it?`)) return;
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
-        const memberIds = new Set(entry.members.map(m => m.id));
+        const memberIds = new Set(effectiveGroupMembers.map(m => m.id));
         draft.customWidgets = (draft.customWidgets || []).filter(w => !memberIds.has(w.id));
         draft.widgetOrder = normalizeWidgetOrder(
           (draft.widgetOrder || []).filter(id => !memberIds.has(id)),
@@ -1354,16 +1362,16 @@ export function initCustomWidgetsSettings() {
       customWidgetGroupSelect.classList.add("hidden");
       return;
     }
-    const isRest = mode === "rest-status";
+    const targetCategory = mode === "rest-status" ? "rest-status" : (mode === "rss-feed" ? "rss-feed" : "search");
     const list = Array.isArray(settingsState.appearanceDraft?.customWidgets)
       ? settingsState.appearanceDraft.customWidgets
       : [];
     const seen = new Map();
     for (const w of list) {
       if (!w) continue;
-      const wIsRest = w.type === "rest-status";
-      const wIsUnsupported = w.type === "timezone" || w.type === "notes";
-      if (wIsUnsupported || wIsRest !== isRest) continue;
+      if (w.type === "timezone" || w.type === "notes" || w.type === "weather") continue;
+      const wCategory = w.type === "rest-status" ? "rest-status" : (w.type === "rss-feed" ? "rss-feed" : "search");
+      if (wCategory !== targetCategory) continue;
       const name = typeof w.groupName === "string" ? w.groupName.trim() : "";
       if (!name) continue;
       const key = name.toLowerCase();

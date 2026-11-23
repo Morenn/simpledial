@@ -388,16 +388,22 @@ function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
   });
 
   // Close dropdown when clicking outside
-  document.addEventListener("click", (e) => {
+  if (dropdownOutsideClickHandler) {
+    document.removeEventListener("click", dropdownOutsideClickHandler);
+  }
+  dropdownOutsideClickHandler = (e) => {
     if (!dropdownContainer.contains(e.target)) {
       dropdownMenu.classList.remove("show");
     }
-  });
+  };
+  document.addEventListener("click", dropdownOutsideClickHandler);
 
   dropdownContainer.appendChild(dropdownBtn);
   dropdownContainer.appendChild(dropdownMenu);
   groupsHeader.appendChild(dropdownContainer);
 }
+
+let dropdownOutsideClickHandler = null;
 
 // ---------- Group context menu ----------
 function showGroupContextMenu(e, group, optionElement) {
@@ -409,7 +415,7 @@ function showGroupContextMenu(e, group, optionElement) {
   const editBtn = document.createElement("div");
   editBtn.textContent = t("edit");
   editBtn.addEventListener("click", () => {
-    document.body.removeChild(menu);
+    if (menu.parentNode) document.body.removeChild(menu);
     openGroupModal(group);
   });
 
@@ -427,7 +433,7 @@ function showGroupContextMenu(e, group, optionElement) {
     await saveState();
     await syncWrite();
     render();
-    document.body.removeChild(menu);
+    if (menu.parentNode) document.body.removeChild(menu);
   });
 
   const restoreBtn = document.createElement("div");
@@ -438,7 +444,7 @@ function showGroupContextMenu(e, group, optionElement) {
     await saveState();
     await syncWrite();
     render();
-    document.body.removeChild(menu);
+    if (menu.parentNode) document.body.removeChild(menu);
   });
 
   const deletePermanentBtn = document.createElement("div");
