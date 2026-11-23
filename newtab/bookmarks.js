@@ -773,8 +773,9 @@ async function commitStackTitleChange(stackId) {
   const loc = findBookmarkLocation(stackId);
   if (!loc || !isStackItem(loc.item)) return;
   const nextTitle = titleInput.value.trim() || (t("defaultStackName") || "Stack");
+  const wasDirty = stackTitleDirty;
   stackTitleDirty = false;
-  if (loc.item.title === nextTitle) return;
+  if (!wasDirty && loc.item.title === nextTitle) return;
   loc.item.title = nextTitle;
   loc.item.updatedAt = Date.now();
   await saveState();
