@@ -591,21 +591,22 @@ export function createBookmarkTile(item, config = null) {
   icon.loading = "lazy";
   icon.decoding = "async";
 
+  if (config?.appearance && "defaultBookmarkIcon" in config.appearance) {
+    setCustomFallbackBookmarkIcon(config.appearance.defaultBookmarkIcon);
+  }
+  const fallbackIconUrl = getFallbackBookmarkIconUrl(config);
+
   if (item.colorFromIcon && !effectiveColor) {
     if (cachedEntry.dataUrl) {
       void syncBookmarkColorFromIcon(item, tile, cachedEntry.dataUrl);
     } else {
       icon.addEventListener("load", () => {
         const loadedSrc = icon.currentSrc || icon.src;
+        if (!loadedSrc || loadedSrc === PLACEHOLDER_ICON_URL || loadedSrc === fallbackIconUrl) return;
         void syncBookmarkColorFromIcon(item, tile, loadedSrc);
       });
     }
   }
-
-  if (config?.appearance && "defaultBookmarkIcon" in config.appearance) {
-    setCustomFallbackBookmarkIcon(config.appearance.defaultBookmarkIcon);
-  }
-  const fallbackIconUrl = getFallbackBookmarkIconUrl(config);
 
   icon.addEventListener("error", () => {
     if (icon.src !== PLACEHOLDER_ICON_URL && icon.src !== fallbackIconUrl) {

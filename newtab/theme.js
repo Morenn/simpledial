@@ -127,8 +127,8 @@ export function sanitizeCustomCss(cssText) {
     // Strip @import rules so external stylesheets cannot be loaded
     .replace(/@import\s+(?:url\([^)]*\)|"[^"]*"|'[^']*'|[^;\r\n]+)\s*(?:;|$)/gim, "")
     // Strip external or scriptable url(...) references; allow safe inline data:image/* and #fragment
-    .replace(/url\(\s*(['"]?)([^)'"]*)\1\s*\)/gi, (full, _quote, rawTarget) => {
-      const target = String(rawTarget || "").trim();
+    .replace(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s"']*))\s*\)/gi, (full, dq, sq, uq) => {
+      const target = String(dq ?? sq ?? uq ?? "").trim();
       if (!target) return "none";
       if (target.startsWith("#")) return full;
       if (/^data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon|svg\+xml)(?:;[^,]*)?,/i.test(target)) {
@@ -524,6 +524,7 @@ export async function applyBackground(config = null, options = {}) {
     body.style.backgroundPosition = "";
     body.style.backgroundRepeat = "";
     body.style.backgroundAttachment = "";
+    body.style.backgroundColor = "";
     return;
   }
 
@@ -535,6 +536,7 @@ export async function applyBackground(config = null, options = {}) {
     body.style.backgroundPosition = "";
     body.style.backgroundRepeat = "";
     body.style.backgroundAttachment = "";
+    body.style.backgroundColor = "";
     return;
   }
 
@@ -550,6 +552,8 @@ export async function applyBackground(config = null, options = {}) {
     .replace(/\)/g, "\\)");
   body.style.backgroundImage = `url('${safeBgUrl}')`;
   body.style.backgroundAttachment = "fixed";
+
+  body.style.backgroundColor = "";
 
   // Apply size option
   switch (bgSize) {

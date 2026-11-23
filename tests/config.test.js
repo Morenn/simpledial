@@ -278,11 +278,11 @@ test("applyThemeStyle and applyBackground apply built-in themes, custom CSS, and
   await applyBackground({ appearance: { backgroundImage: null } });
   assert.equal(document.body.style.backgroundImage, "");
 
-  // Security: strip @import and external url(...) in custom CSS
+  // Security: strip @import and external url(...) in custom CSS (including quoted URLs with ')' or opposite quotes)
   await applyThemeStyle({
     appearance: {
       theme: "custom-file",
-      customThemeCss: "@import url('https://evil.test/x.css'); body { background: url(https://evil.test/leak?q=1); color: blue; } .icon { background: url('data:image/png;base64,AAA'); }"
+      customThemeCss: "@import url('https://evil.test/x.css'); body { background: url(https://evil.test/leak?q=1); color: blue; } .a { bg: url(\"https://evil.test/a'b\"); } .b { bg: url(\"https://evil.test/a)b\"); } .icon { background: url('data:image/png;base64,AAA'); }"
     }
   });
   const sanitizedStyleEl = elementsById.get("theme-custom-style");
@@ -291,6 +291,16 @@ test("applyThemeStyle and applyBackground apply built-in themes, custom CSS, and
   assert.ok(!sanitizedStyleEl.textContent.includes("https://evil.test"));
   assert.ok(sanitizedStyleEl.textContent.includes("color: blue;"));
   assert.ok(sanitizedStyleEl.textContent.includes("data:image/png;base64,AAA"));
+
+  // applyBackground "fit" sets #000 and clears it when switching away or removing background
+  await applyBackground({ appearance: { backgroundImage: "data:image/png;base64,AAA", backgroundSize: "fit" } });
+  assert.equal(document.body.style.backgroundColor, "#000");
+  await applyBackground({ appearance: { backgroundImage: "data:image/png;base64,AAA", backgroundSize: "fill" } });
+  assert.equal(document.body.style.backgroundColor, "");
+  await applyBackground({ appearance: { backgroundImage: "data:image/png;base64,AAA", backgroundSize: "fit" } });
+  assert.equal(document.body.style.backgroundColor, "#000");
+  await applyBackground({ appearance: { backgroundImage: null } });
+  assert.equal(document.body.style.backgroundColor, "");
 
   // Security: block unsafe backgroundImage schemes and escape delimiters
   await applyBackground({ appearance: { backgroundImage: "javascript:alert(1)" } });

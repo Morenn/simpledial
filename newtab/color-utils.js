@@ -558,7 +558,6 @@ export async function cacheIconUrlIfNeeded(url) {
       }
       return dataUrl;
     } catch {
-      writeIconUrlCacheEntry(key, { failedAt: Date.now() });
       return null;
     } finally {
       inFlightIconUrlFetches.delete(key);
