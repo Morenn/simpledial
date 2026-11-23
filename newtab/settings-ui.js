@@ -349,14 +349,36 @@ if (settingsCancelBtn) {
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
-    const subModalIds = ["browser-bookmarks-overwrite-modal", "browser-import-modal", "failed-icons-modal", "custom-widget-trust-modal", "custom-widget-editor-modal"];
+    const subModalCancelMap = {
+      "custom-widget-new-group-modal": "custom-widget-new-group-cancel-btn",
+      "custom-widget-trust-modal": "custom-widget-trust-cancel",
+      "sync-force-overwrite-modal": "sync-force-overwrite-cancel",
+      "vault-unlock-modal": "vault-unlock-cancel",
+      "vault-force-change-modal": "vault-force-change-cancel"
+    };
+    const subModalIds = [
+      "custom-widget-new-group-modal",
+      "custom-widget-trust-modal",
+      "sync-force-overwrite-modal",
+      "vault-unlock-modal",
+      "vault-force-change-modal",
+      "browser-bookmarks-overwrite-modal",
+      "browser-import-modal",
+      "failed-icons-modal",
+      "custom-widget-editor-modal"
+    ];
     for (const id of subModalIds) {
       const subModal = document.getElementById(id);
       if (subModal && !subModal.classList.contains("hidden")) {
         if (id === "custom-widget-editor-modal" && typeof window.closeCustomWidgetEditorModal === "function") {
           window.closeCustomWidgetEditorModal();
-        } else if (id === "custom-widget-trust-modal") {
-          document.getElementById("custom-widget-trust-cancel")?.click();
+        } else if (subModalCancelMap[id]) {
+          const cancelBtn = document.getElementById(subModalCancelMap[id]);
+          if (cancelBtn) {
+            cancelBtn.click();
+          } else {
+            subModal.classList.add("hidden");
+          }
         } else {
           subModal.classList.add("hidden");
         }
