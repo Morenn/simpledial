@@ -301,7 +301,7 @@ function isPointInElement(el, clientX, clientY) {
 }
 
 function handleDragOverDocument(e) {
-  if (!dragSession) return;
+  if (!dragSession || dragSession.cancelled) return;
   e.preventDefault();
 
   const targetEl = toElement(e.target);
@@ -410,7 +410,7 @@ function handleDragOverDocument(e) {
 }
 
 async function commitActiveDragSession() {
-  if (!dragSession || dragSession.dropHandled) return;
+  if (!dragSession || dragSession.dropHandled || dragSession.cancelled) return;
 
   const session = dragSession;
   session.dropHandled = true;
