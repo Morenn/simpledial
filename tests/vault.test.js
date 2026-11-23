@@ -30,6 +30,7 @@ globalThis.document = {
 
 const cryptoMod = await import("../newtab/crypto.js");
 const { fetchAndEvaluateRestWidget } = await import("../newtab/widgets/rest-status-widget.js");
+const { fetchWeatherWidget } = await import("../newtab/widgets/weather-widget.js");
 
 test("crypto vault setup, setSecret/getSecret with AAD, lock, session auto-unlock, wrong password, and password change", async () => {
   await cryptoMod.lockVault();
@@ -180,6 +181,58 @@ test("fetchAndEvaluateRestWidget returns locked badge when vault is locked and s
     const unlockedRes = await fetchAndEvaluateRestWidget(widget);
     assert.equal(fetchCalled, true);
     assert.equal(unlockedRes.text, "ok");
+  } finally {
+    globalThis.fetch = originalFetch;
+    await cryptoMod.lockVault();
+  }
+});
+
+test("fetchWeatherWidget returns vaultLocked when vault is locked and sends decrypted apiKey when unlocked", async () => {
+  await cryptoMod.lockVault();
+  sessionStore.clear();
+
+  const header = await cryptoMod.setupVault("pw-123");
+  const encKey = await cryptoMod.setSecret("owm-secret-key", "widget:w-weather:apiKey");
+  const widget = {
+    id: "w-weather",
+    type: "weather",
+    provider: "openweathermap",
+    latitude: 50.08,
+    longitude: 14.43,
+    apiKey: encKey
+  };
+
+  await cryptoMod.lockVault();
+  sessionStore.clear();
+  const requestedUrls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    requestedUrls.push(String(url));
+    if (String(url).includes("/data/2.5/weather")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          weather: [{ id: 800, main: "Clear" }],
+          main: { temp: 20, feels_like: 19, humidity: 50 },
+          wind: { speed: 2 }
+        })
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({ list: [] }) };
+  };
+
+  try {
+    const lockedRes = await fetchWeatherWidget(widget);
+    assert.equal(lockedRes.ok, false);
+    assert.equal(lockedRes.vaultLocked, true);
+    assert.equal(requestedUrls.length, 0);
+
+    await cryptoMod.unlockVault("pw-123", header);
+    const unlockedRes = await fetchWeatherWidget(widget);
+    assert.equal(unlockedRes.ok, true);
+    assert.equal(requestedUrls.length, 2);
+    assert.ok(requestedUrls.every(u => u.includes("appid=owm-secret-key")));
   } finally {
     globalThis.fetch = originalFetch;
     await cryptoMod.lockVault();

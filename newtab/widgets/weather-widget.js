@@ -1,6 +1,6 @@
 import { loadConfig } from "../config.js";
 import { t } from "../i18n.js";
-import { getSecret, isVaultUnlocked } from "../crypto.js";
+import { getSecret } from "../crypto.js";
 import { requestRestEndpointPermission, hasHostPermissionForUrl } from "./rest-status-widget.js";
 
 export const WEATHER_CACHE_KEY = "myspeeddial-weather-cache";
@@ -229,16 +229,25 @@ async function fetchOpenMeteo(widget) {
 async function fetchOpenWeatherMap(widget) {
   const rawKey = typeof widget.apiKey === "string" ? widget.apiKey.trim() : "";
   if (!rawKey) return { ok: false, error: "API key required" };
-  if (rawKey.startsWith("enc:v1:") && !isVaultUnlocked()) {
-    return { ok: false, error: "Vault locked" };
-  }
   let apiKey = rawKey;
   if (rawKey.startsWith("enc:v1:")) {
+    let vaultHeader = null;
     try {
-      apiKey = await getSecret(rawKey, `widget:${widget.id}:apiKey`);
+      vaultHeader = (await loadConfig())?.vaultHeader || null;
     } catch {
-      return { ok: false, error: "Vault locked" };
+      // ignore
     }
+    const secret = await getSecret(rawKey, `widget:${widget.id}:apiKey`, { vaultHeader });
+    if (!secret.ok) {
+      return {
+        ok: false,
+        error: secret.error === "DECRYPT_FAILED"
+          ? (t("vaultDecryptFailed") || "Failed to decrypt API key")
+          : (t("vaultLockedClickToUnlock") || "Vault locked"),
+        vaultLocked: true
+      };
+    }
+    apiKey = typeof secret.value === "string" ? secret.value.trim() : "";
   }
   if (!apiKey) return { ok: false, error: "API key required" };
 
