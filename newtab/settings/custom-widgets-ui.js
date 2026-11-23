@@ -794,8 +794,9 @@ export function initCustomWidgetsSettings() {
         defaultBtn.addEventListener("click", async () => {
           markSettingsDirty();
           const draft = await ensureAppearanceDraft();
+          const targetGroupKey = groupName.trim().toLowerCase();
           draft.customWidgets = (draft.customWidgets || []).map(w => {
-            if ((typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName) {
+            if (w?.type === "custom-search" && (typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "") === targetGroupKey) {
               return { ...w, isDefault: w.id === customDef.id };
             }
             return w;
@@ -2529,23 +2530,24 @@ export function initCustomWidgetsSettings() {
       markSettingsDirty();
       const draft = await ensureAppearanceDraft();
       const inheritedPlacement = resolveGroupPlacement(draft.customWidgets, "custom-search", groupName, editingCustomWidgetId);
+      const targetGroupKey = groupName.trim().toLowerCase();
       if (editingCustomWidgetId) {
         draft.customWidgets = (draft.customWidgets || []).map(w => {
           if (w.id === editingCustomWidgetId) {
             const prevKey = typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "";
-            const nextKey = groupName.trim().toLowerCase();
+            const nextKey = targetGroupKey;
             const joinPlacement = (nextKey && nextKey !== prevKey) ? inheritedPlacement : null;
             return { ...w, mode, name, groupName, isDefault, routePrefixes, icon, customIcon, urlTemplate, jsonTemplate, openInNewTab, variables, ...(joinPlacement || {}) };
           }
-          if (isDefault && groupName && (typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName) {
+          if (isDefault && targetGroupKey && w?.type === "custom-search" && (typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "") === targetGroupKey) {
             return { ...w, isDefault: false };
           }
           return w;
         });
       } else {
-        const existingWidgets = isDefault && groupName
+        const existingWidgets = isDefault && targetGroupKey
           ? (draft.customWidgets || []).map(w =>
-              (typeof w?.groupName === "string" ? w.groupName.trim() : "") === groupName
+              (w?.type === "custom-search" && (typeof w.groupName === "string" ? w.groupName.trim().toLowerCase() : "") === targetGroupKey)
                 ? { ...w, isDefault: false }
                 : w
             )

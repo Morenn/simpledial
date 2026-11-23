@@ -440,6 +440,7 @@ function renderNotesModalContent(widgetId) {
     btn.type = "button";
     btn.className = `notes-entry-list-item${entry.id === activeModalEntryId ? " is-active" : ""}`;
     btn.addEventListener("click", () => {
+      flushPendingEntryTextSave();
       activeModalEntryId = entry.id;
       renderNotesModalContent(widgetId);
     });
@@ -546,6 +547,44 @@ function renderNotesModalContent(widgetId) {
 }
 
 let notesModalListenersBound = false;
+let notesEntrySaveTimer = null;
+let notesEntryTextDirty = false;
+
+function commitEntryTextSave(targetWidgetId, targetEntryId, titleSnapshot, bodySnapshot) {
+  if (!targetWidgetId || !targetEntryId) return;
+  void updateNotesData(targetWidgetId, cur => ({
+    ...cur,
+    entries: cur.entries.map(e =>
+      e.id === targetEntryId
+        ? {
+            ...e,
+            title: titleSnapshot,
+            body: bodySnapshot,
+            updatedAt: Date.now()
+          }
+        : e
+    )
+  }));
+}
+
+function flushPendingEntryTextSave() {
+  if (notesEntrySaveTimer) {
+    clearTimeout(notesEntrySaveTimer);
+    notesEntrySaveTimer = null;
+  }
+  if (!notesEntryTextDirty || !activeModalWidgetId || !activeModalEntryId || typeof document === "undefined") {
+    notesEntryTextDirty = false;
+    return;
+  }
+  const targetWidgetId = activeModalWidgetId;
+  const targetEntryId = activeModalEntryId;
+  const entryTitleInput = document.getElementById("notes-entry-title");
+  const textarea = document.getElementById("notes-modal-textarea");
+  const titleSnapshot = entryTitleInput?.value ?? "";
+  const bodySnapshot = textarea?.value ?? "";
+  notesEntryTextDirty = false;
+  commitEntryTextSave(targetWidgetId, targetEntryId, titleSnapshot, bodySnapshot);
+}
 
 function updateBodyCharCounter(length) {
   if (typeof document === "undefined") return;
@@ -572,6 +611,7 @@ function ensureNotesModalListeners() {
   const addTodoBtn = document.getElementById("notes-todo-add-btn");
 
   const closeModal = () => {
+    flushPendingEntryTextSave();
     modal?.classList.add("hidden");
     activeModalWidgetId = null;
     activeModalEntryId = null;
@@ -589,6 +629,7 @@ function ensureNotesModalListeners() {
 
   const createNewEntry = async () => {
     if (!activeModalWidgetId) return;
+    flushPendingEntryTextSave();
     const newEntry = {
       id: makeId("ne"),
       title: "",
@@ -609,6 +650,11 @@ function ensureNotesModalListeners() {
 
   deleteEntryBtn?.addEventListener("click", async () => {
     if (!activeModalWidgetId || !activeModalEntryId) return;
+    if (notesEntrySaveTimer) {
+      clearTimeout(notesEntrySaveTimer);
+      notesEntrySaveTimer = null;
+    }
+    notesEntryTextDirty = false;
     const deletingId = activeModalEntryId;
     activeModalEntryId = null;
     await updateNotesData(activeModalWidgetId, cur => ({
@@ -617,50 +663,23 @@ function ensureNotesModalListeners() {
     }));
   });
 
-  let saveTimer = null;
   const scheduleEntryTextSave = () => {
     if (!activeModalWidgetId || !activeModalEntryId) return;
     const targetWidgetId = activeModalWidgetId;
     const targetEntryId = activeModalEntryId;
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      void updateNotesData(targetWidgetId, cur => ({
-        ...cur,
-        entries: cur.entries.map(e =>
-          e.id === targetEntryId
-            ? {
-                ...e,
-                title: entryTitleInput?.value ?? e.title,
-                body: textarea?.value ?? e.body,
-                updatedAt: Date.now()
-              }
-            : e
-        )
-      }));
+    const titleSnapshot = entryTitleInput?.value ?? "";
+    const bodySnapshot = textarea?.value ?? "";
+    notesEntryTextDirty = true;
+    if (notesEntrySaveTimer) clearTimeout(notesEntrySaveTimer);
+    notesEntrySaveTimer = setTimeout(() => {
+      notesEntrySaveTimer = null;
+      notesEntryTextDirty = false;
+      commitEntryTextSave(targetWidgetId, targetEntryId, titleSnapshot, bodySnapshot);
     }, 200);
   };
 
   const flushEntryTextSave = () => {
-    if (!activeModalWidgetId || !activeModalEntryId) return;
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = null;
-    }
-    const targetWidgetId = activeModalWidgetId;
-    const targetEntryId = activeModalEntryId;
-    void updateNotesData(targetWidgetId, cur => ({
-      ...cur,
-      entries: cur.entries.map(e =>
-        e.id === targetEntryId
-          ? {
-              ...e,
-              title: entryTitleInput?.value ?? e.title,
-              body: textarea?.value ?? e.body,
-              updatedAt: Date.now()
-            }
-          : e
-      )
-    }));
+    flushPendingEntryTextSave();
   };
 
   entryTitleInput?.addEventListener("input", scheduleEntryTextSave);

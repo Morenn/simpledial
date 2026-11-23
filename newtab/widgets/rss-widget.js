@@ -9,6 +9,7 @@ const RSS_REQUEST_TIMEOUT_MS = 10000;
 const RSS_MAX_STORED_READ_IDS = 120;
 
 let rssCacheLoaded = false;
+let rssCacheLoadPromise = null;
 let rssCacheByWidget = {};
 let rssReadLoaded = false;
 let rssReadByWidget = {};
@@ -250,22 +251,30 @@ export function parseFeedResponse(rawText, feedUrl = "") {
 
 async function ensureRssCacheLoaded() {
   if (rssCacheLoaded) return rssCacheByWidget;
-  rssCacheLoaded = true;
-  if (typeof chrome !== "undefined" && chrome.storage?.local) {
-    try {
-      const res = await chrome.storage.local.get([RSS_CACHE_KEY, RSS_READ_KEY]);
-      if (res?.[RSS_CACHE_KEY] && typeof res[RSS_CACHE_KEY] === "object") {
-        rssCacheByWidget = res[RSS_CACHE_KEY];
+  if (rssCacheLoadPromise) return rssCacheLoadPromise;
+  rssCacheLoadPromise = (async () => {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      try {
+        const res = await chrome.storage.local.get([RSS_CACHE_KEY, RSS_READ_KEY]);
+        if (res?.[RSS_CACHE_KEY] && typeof res[RSS_CACHE_KEY] === "object") {
+          rssCacheByWidget = res[RSS_CACHE_KEY];
+        }
+        if (res?.[RSS_READ_KEY] && typeof res[RSS_READ_KEY] === "object") {
+          rssReadByWidget = res[RSS_READ_KEY];
+        }
+        rssReadLoaded = true;
+        rssCacheLoaded = true;
+      } catch {
+        // ignore
       }
-      if (res?.[RSS_READ_KEY] && typeof res[RSS_READ_KEY] === "object") {
-        rssReadByWidget = res[RSS_READ_KEY];
-      }
-      rssReadLoaded = true;
-    } catch {
-      // ignore
+    } else {
+      rssCacheLoaded = true;
     }
-  }
-  return rssCacheByWidget;
+    return rssCacheByWidget;
+  })().finally(() => {
+    rssCacheLoadPromise = null;
+  });
+  return rssCacheLoadPromise;
 }
 
 async function persistRssCache() {
