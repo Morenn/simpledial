@@ -1799,6 +1799,9 @@
   "insecureHttpAuthWarning": {
     "message": "HTTP URL sends credentials unencrypted."
   },
+  "insecureHttpAuthConfirm": {
+    "message": "Warning: This URL uses unencrypted HTTP (not HTTPS). Basic Auth credentials and sync data will be sent in plaintext over the network.\n\nContinue anyway?"
+  },
   "appearanceCustomCssTrustConfirm": {
     "message": "Only load custom CSS from URLs you trust. Untrusted CSS can alter or spoof interface elements. Continue?"
   },

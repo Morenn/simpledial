@@ -1787,6 +1787,9 @@
   "insecureHttpAuthWarning": {
     "message": "HTTP-URL sendet Zugangsdaten unverschlüsselt."
   },
+  "insecureHttpAuthConfirm": {
+    "message": "Warnung: Diese URL verwendet unverschlüsseltes HTTP (kein HTTPS). Basic-Auth-Zugangsdaten und Synchronisierungsdaten werden im Klartext über das Netzwerk übertragen.\n\nTrotzdem fortfahren?"
+  },
   "appearanceCustomCssTrustConfirm": {
     "message": "Laden Sie benutzerdefiniertes CSS nur von vertrauenswürdigen URLs. Nicht vertrauenswürdiges CSS kann UI-Elemente verändern oder vortäuschen. Fortfahren?"
   },

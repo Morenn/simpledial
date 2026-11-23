@@ -1787,6 +1787,9 @@
   "insecureHttpAuthWarning": {
     "message": "L'URL HTTP envoie les identifiants en clair."
   },
+  "insecureHttpAuthConfirm": {
+    "message": "Avertissement : cette URL utilise HTTP non chiffré (et non HTTPS). Les identifiants Basic Auth et les données de synchronisation seront envoyés en clair sur le réseau.\n\nContinuer quand même ?"
+  },
   "appearanceCustomCssTrustConfirm": {
     "message": "Ne chargez du CSS personnalisé que depuis des URL de confiance. Un CSS non fiable peut modifier ou usurper l'interface. Continuer ?"
   },

@@ -1787,6 +1787,9 @@
   "insecureHttpAuthWarning": {
     "message": "HTTP-osoite lähettää tunnukset salaamattomina."
   },
+  "insecureHttpAuthConfirm": {
+    "message": "Varoitus: Tämä osoite käyttää salaamatonta HTTP-yhteyttä (ei HTTPS). Basic Auth -tunnukset ja synkronointitiedot lähetetään verkossa selväkielisinä.\n\nJatketaanko silti?"
+  },
   "appearanceCustomCssTrustConfirm": {
     "message": "Lataa mukautettua CSS:ää vain luotetuista osoitteista. Epäluotettava CSS voi muokata tai väärentää käyttöliittymää. Jatketaanko?"
   },

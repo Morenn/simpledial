@@ -1787,6 +1787,9 @@
   "insecureHttpAuthWarning": {
     "message": "HTTP-URL verzendt inloggegevens onversleuteld."
   },
+  "insecureHttpAuthConfirm": {
+    "message": "Waarschuwing: deze URL gebruikt onversleutelde HTTP (geen HTTPS). Basic Auth-gegevens en synchronisatiedata worden onversleuteld via het netwerk verzonden.\n\nToch doorgaan?"
+  },
   "appearanceCustomCssTrustConfirm": {
     "message": "Laad aangepaste CSS alleen van vertrouwde URL's. Onbetrouwbare CSS kan interface-elementen wijzigen of nabootsen. Doorgaan?"
   },

@@ -249,7 +249,15 @@ export function updateSyncFields() {
   updateWebdavPartModeStates();
 }
 
-export function updateSyncNowButtonDisabledState() {
+export function confirmInsecureHttpBasicAuth(url, useBasic = true) {
+  if (!useBasic || !isInsecureHttpUrl(url)) return true;
+  return window.confirm(
+    t("insecureHttpAuthConfirm")
+      || "Warning: This URL uses unencrypted HTTP (not HTTPS). Basic Auth credentials and sync data will be sent in plaintext over the network.\n\nContinue anyway?"
+  );
+}
+
+function updateSyncNowButtonDisabledState() {
   if (!syncNowBtn) return;
   syncNowBtn.disabled = !(syncEnable && syncEnable.checked);
 }
@@ -578,6 +586,11 @@ export function initSyncSettings({ persistSettings }) {
         return;
       }
 
+      if (!confirmInsecureHttpBasicAuth(config.sync.serverUrl, true)) {
+        if (syncStatus) syncStatus.textContent = "❌ " + (t("insecureHttpAuthWarning") || "HTTP URL sends credentials unencrypted.");
+        return;
+      }
+
       const encryptModeEl = document.getElementById("sync-encrypt-mode");
       const encryptMode = encryptModeEl?.value === "vault" ? "vault" : "none";
       config.sync.encryptionMode = encryptMode;
@@ -643,6 +656,12 @@ export function initSyncSettings({ persistSettings }) {
         return;
       }
 
+      const useBasic = syncAuthMode && syncAuthMode.value === "basic";
+      if (!confirmInsecureHttpBasicAuth(url, useBasic)) {
+        if (syncTestStatus) syncTestStatus.textContent = "❌ " + (t("insecureHttpAuthWarning") || "HTTP URL sends credentials unencrypted.");
+        return;
+      }
+
       const granted = await requestHostPermission(url, syncType && syncType.value ? syncType.value : "direct");
       if (!granted) {
         if (syncTestStatus) syncTestStatus.textContent = "❌ " + t("permissionDenied");
@@ -651,7 +670,6 @@ export function initSyncSettings({ persistSettings }) {
 
       if (syncTestStatus) syncTestStatus.textContent = "🔍 " + t("testingConnection");
 
-      const useBasic = syncAuthMode && syncAuthMode.value === "basic";
       const webdavMode = syncWebdavMode && syncWebdavMode.value === "folder" ? "folder" : "file";
       const webdavFolderPath = syncWebdavFolder ? syncWebdavFolder.value.trim() : "";
       const result = await testSyncConnection(

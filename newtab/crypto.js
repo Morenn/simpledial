@@ -153,7 +153,10 @@ export function normalizeVaultAutoLockMinutes(minutes) {
 export function isInsecureHttpUrl(rawUrl) {
   if (typeof rawUrl !== "string" || !rawUrl.trim()) return false;
   try {
-    const parsed = new URL(rawUrl.trim());
+    let normalized = rawUrl.trim();
+    if (normalized.startsWith("davs://")) normalized = "https://" + normalized.slice(7);
+    else if (normalized.startsWith("dav://")) normalized = "http://" + normalized.slice(6);
+    const parsed = new URL(normalized);
     if (parsed.protocol !== "http:") return false;
     const host = (parsed.hostname || "").toLowerCase();
     return host !== "localhost" && host !== "127.0.0.1" && host !== "::1" && host !== "[::1]";

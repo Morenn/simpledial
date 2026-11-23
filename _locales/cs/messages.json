@@ -1787,6 +1787,9 @@
   "insecureHttpAuthWarning": {
     "message": "HTTP URL odesílá přihlašovací údaje nešifrovaně."
   },
+  "insecureHttpAuthConfirm": {
+    "message": "Upozornění: Tato URL používá nešifrované HTTP (nikoli HTTPS). Přihlašovací údaje Basic Auth a data synchronizace budou po síti odesílány v čitelné podobě.\n\nPřesto pokračovat?"
+  },
   "appearanceCustomCssTrustConfirm": {
     "message": "Načítejte vlastní CSS pouze z důvěryhodných URL. Nedůvěryhodné CSS může upravit nebo napodobit prvky rozhraní. Pokračovat?"
   },
