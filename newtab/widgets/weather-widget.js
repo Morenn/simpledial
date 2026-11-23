@@ -456,6 +456,11 @@ function ensureWeatherModalElement() {
   modal.querySelector(".weather-close-btn")?.addEventListener("click", () => {
     modal.classList.add("hidden");
   });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+      modal.classList.add("hidden");
+    }
+  });
   document.body.appendChild(modal);
   return modal;
 }

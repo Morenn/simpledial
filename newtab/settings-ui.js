@@ -353,8 +353,8 @@ document.addEventListener("keydown", e => {
       "custom-widget-new-group-modal": "custom-widget-new-group-cancel-btn",
       "custom-widget-trust-modal": "custom-widget-trust-cancel",
       "sync-force-overwrite-modal": "sync-force-overwrite-cancel",
-      "vault-unlock-modal": "vault-unlock-cancel",
-      "vault-force-change-modal": "vault-force-change-cancel"
+      "vault-unlock-modal": "vault-unlock-modal-cancel",
+      "failed-icons-modal": "failed-icons-close"
     };
     const subModalIds = [
       "custom-widget-new-group-modal",
@@ -370,7 +370,9 @@ document.addEventListener("keydown", e => {
     for (const id of subModalIds) {
       const subModal = document.getElementById(id);
       if (subModal && !subModal.classList.contains("hidden")) {
-        if (id === "custom-widget-editor-modal" && typeof window.closeCustomWidgetEditorModal === "function") {
+        if (id === "vault-force-change-modal") {
+          return;
+        } else if (id === "custom-widget-editor-modal" && typeof window.closeCustomWidgetEditorModal === "function") {
           window.closeCustomWidgetEditorModal();
         } else if (subModalCancelMap[id]) {
           const cancelBtn = document.getElementById(subModalCancelMap[id]);
