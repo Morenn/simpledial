@@ -109,15 +109,37 @@ function isAllowedBackgroundImage(bgImage) {
   if (!bgImage || typeof bgImage !== "string") return false;
 
   const trimmed = bgImage.trim();
-  if (!trimmed) return false;
-  if (trimmed.startsWith("//")) return false;
+  if (!trimmed || /[\r\n]/.test(trimmed)) return false;
 
   try {
-    const parsed = new URL(trimmed, window.location.href);
-    return parsed.protocol !== "http:" && parsed.protocol !== "https:";
+    const baseHref = typeof window !== "undefined" && window.location?.href ? window.location.href : "https://localhost/";
+    const parsed = new URL(trimmed, baseHref);
+    if (parsed.protocol !== "data:") return false;
+    return /^data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon|svg\+xml)(?:;[^,]*)?,/i.test(trimmed);
   } catch {
-    return true;
+    return false;
   }
+}
+
+export function sanitizeCustomCss(cssText) {
+  if (!cssText || typeof cssText !== "string") return "";
+  return cssText
+    // Strip @import rules so external stylesheets cannot be loaded
+    .replace(/@import\s+(?:url\([^)]*\)|"[^"]*"|'[^']*'|[^;\r\n]+)\s*(?:;|$)/gim, "")
+    // Strip external or scriptable url(...) references; allow safe inline data:image/* and #fragment
+    .replace(/url\(\s*(['"]?)([^)'"]*)\1\s*\)/gi, (full, _quote, rawTarget) => {
+      const target = String(rawTarget || "").trim();
+      if (!target) return "none";
+      if (target.startsWith("#")) return full;
+      if (/^data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon|svg\+xml)(?:;[^,]*)?,/i.test(target)) {
+        return full;
+      }
+      return "none";
+    })
+    // Strip legacy script-execution CSS constructs
+    .replace(/expression\s*\(/gi, "/* blocked */(")
+    .replace(/-moz-binding\s*:/gi, "/* blocked */:")
+    .replace(/<\/style/gi, "<\\/style");
 }
 
 
@@ -337,7 +359,8 @@ function ensureHeadLinkElement(href) {
 }
 
 function setHeadCustomStyle(cssText) {
-  if (!cssText) {
+  const sanitized = sanitizeCustomCss(cssText);
+  if (!sanitized || !sanitized.trim()) {
     removeElementIfPresent(THEME_CUSTOM_STYLE_ID);
     return;
   }
@@ -348,7 +371,7 @@ function setHeadCustomStyle(cssText) {
     styleEl.id = THEME_CUSTOM_STYLE_ID;
     document.head.appendChild(styleEl);
   }
-  styleEl.textContent = cssText;
+  styleEl.textContent = sanitized;
 }
 
 // ---------- Apply override theme stylesheet ----------
@@ -518,8 +541,14 @@ export async function applyBackground(config = null, options = {}) {
   if (!hasKnownCache || bgImage !== cachedBackground) {
     await saveBackgroundImageToCache(bgImage);
   }
-  // Set base background image
-  body.style.backgroundImage = `url('${bgImage}')`;
+  // Set base background image (escape CSS url(...) delimiters)
+  const safeBgUrl = bgImage
+    .trim()
+    .replace(/[\r\n]/g, "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\)/g, "\\)");
+  body.style.backgroundImage = `url('${safeBgUrl}')`;
   body.style.backgroundAttachment = "fixed";
 
   // Apply size option

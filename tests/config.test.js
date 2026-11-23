@@ -277,6 +277,28 @@ test("applyThemeStyle and applyBackground apply built-in themes, custom CSS, and
 
   await applyBackground({ appearance: { backgroundImage: null } });
   assert.equal(document.body.style.backgroundImage, "");
+
+  // Security: strip @import and external url(...) in custom CSS
+  await applyThemeStyle({
+    appearance: {
+      theme: "custom-file",
+      customThemeCss: "@import url('https://evil.test/x.css'); body { background: url(https://evil.test/leak?q=1); color: blue; } .icon { background: url('data:image/png;base64,AAA'); }"
+    }
+  });
+  const sanitizedStyleEl = elementsById.get("theme-custom-style");
+  assert.ok(sanitizedStyleEl);
+  assert.ok(!sanitizedStyleEl.textContent.includes("@import"));
+  assert.ok(!sanitizedStyleEl.textContent.includes("https://evil.test"));
+  assert.ok(sanitizedStyleEl.textContent.includes("color: blue;"));
+  assert.ok(sanitizedStyleEl.textContent.includes("data:image/png;base64,AAA"));
+
+  // Security: block unsafe backgroundImage schemes and escape delimiters
+  await applyBackground({ appearance: { backgroundImage: "javascript:alert(1)" } });
+  assert.equal(document.body.style.backgroundImage, "");
+  await applyBackground({ appearance: { backgroundImage: "data:text/html,<script>alert(1)</script>" } });
+  assert.equal(document.body.style.backgroundImage, "");
+  await applyBackground({ appearance: { backgroundImage: "data:image/png;base64,iVBORw0KGgo=');}" } });
+  assert.equal(document.body.style.backgroundImage, "url('data:image/png;base64,iVBORw0KGgo=\\'\\);}')");
 });
 
 test("measureAddonStorageUsage categorizes chrome.storage.local keys and formats byte sizes", async () => {
