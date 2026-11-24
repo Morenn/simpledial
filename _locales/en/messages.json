@@ -1904,6 +1904,12 @@
   "rssMarkAllRead": {
     "message": "Mark all read"
   },
+  "rssMarkRead": {
+    "message": "Mark as read"
+  },
+  "rssMarkUnread": {
+    "message": "Mark as unread"
+  },
   "rssJustNow": {
     "message": "just now"
   },

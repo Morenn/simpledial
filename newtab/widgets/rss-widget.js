@@ -331,6 +331,16 @@ export async function markRssItemRead(widgetId, itemId) {
   await persistRssReadState();
 }
 
+export async function markRssItemUnread(widgetId, itemId) {
+  if (!widgetId || !itemId) return;
+  await ensureRssCacheLoaded();
+  await refreshRssReadFromStorage();
+  const prev = Array.isArray(rssReadByWidget[widgetId]) ? rssReadByWidget[widgetId] : [];
+  if (!prev.includes(itemId)) return;
+  rssReadByWidget[widgetId] = prev.filter(id => id !== itemId);
+  await persistRssReadState();
+}
+
 export async function markAllRssItemsRead(widgets = []) {
   await ensureRssCacheLoaded();
   const missingCache = widgets.some(w => w?.id && !rssCacheByWidget[w.id]);
@@ -565,7 +575,8 @@ export async function openRssFeedModal(groupEntry, barEl = null) {
   if (titleEl) titleEl.textContent = titleText;
   if (markAllBtn) markAllBtn.textContent = t("rssMarkAllRead") || "Mark all read";
 
-  const renderModalBody = () => {
+  const renderModalBody = (focusToggleKey = null) => {
+    const prevScrollTop = listEl ? listEl.scrollTop : 0;
     const items = [];
     for (const w of groupEntry.members) {
       if (activeFilterWidgetId !== "all" && w.id !== activeFilterWidgetId) continue;
@@ -643,10 +654,13 @@ export async function openRssFeedModal(groupEntry, barEl = null) {
     }
 
     for (const item of items) {
-      const row = document.createElement("button");
-      row.type = "button";
+      const row = document.createElement("div");
       row.className = "rss-modal-item" + (item.read ? " is-read" : " is-unread");
-      row.title = item.link;
+
+      const mainBtn = document.createElement("button");
+      mainBtn.type = "button";
+      mainBtn.className = "rss-item-main";
+      mainBtn.title = item.link;
 
       const dot = document.createElement("span");
       dot.className = "rss-item-dot";
@@ -662,14 +676,55 @@ export async function openRssFeedModal(groupEntry, barEl = null) {
         ? (timeStr ? `${item.widgetName} · ${timeStr}` : item.widgetName)
         : timeStr;
 
-      row.append(dot, titleSpan, meta);
-      row.addEventListener("click", async () => {
+      mainBtn.append(dot, titleSpan, meta);
+      mainBtn.addEventListener("click", async () => {
         await markRssItemRead(item.widgetId, item.id);
         updateRssBarDom(barEl, groupEntry);
         renderModalBody();
         window.open(item.link, "_blank", "noopener,noreferrer");
       });
+
+      const toggleReadBtn = document.createElement("button");
+      toggleReadBtn.type = "button";
+      toggleReadBtn.className = "rss-item-toggle-read";
+      const toggleLabel = item.read
+        ? (t("rssMarkUnread") || "Mark as unread")
+        : (t("rssMarkRead") || "Mark as read");
+      toggleReadBtn.title = toggleLabel;
+      toggleReadBtn.setAttribute("aria-label", toggleLabel);
+      toggleReadBtn.textContent = item.read ? "●" : "✓";
+      const toggleKey = `${item.widgetId}:${item.id}`;
+      toggleReadBtn.dataset.rssToggleKey = toggleKey;
+      toggleReadBtn.addEventListener("click", async () => {
+        const hadFocus = document.activeElement === toggleReadBtn;
+        toggleReadBtn.disabled = true;
+        try {
+          if (item.read) {
+            await markRssItemUnread(item.widgetId, item.id);
+          } else {
+            await markRssItemRead(item.widgetId, item.id);
+          }
+          updateRssBarDom(barEl, groupEntry);
+          renderModalBody(hadFocus ? toggleKey : null);
+        } finally {
+          toggleReadBtn.disabled = false;
+        }
+      });
+
+      row.append(mainBtn, toggleReadBtn);
       listEl.appendChild(row);
+    }
+
+    if (prevScrollTop > 0) {
+      listEl.scrollTop = prevScrollTop;
+    }
+    if (focusToggleKey) {
+      for (const btn of listEl.querySelectorAll(".rss-item-toggle-read")) {
+        if (btn.dataset.rssToggleKey === focusToggleKey) {
+          btn.focus();
+          break;
+        }
+      }
     }
   };
 

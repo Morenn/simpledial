@@ -1214,3 +1214,41 @@ test("markAllRssItemsRead persists new read IDs even when stored read list is al
     globalThis.chrome = prevChrome;
   }
 });
+
+test("markRssItemRead and markRssItemUnread toggle single RSS article read state", async () => {
+  const store = new Map([
+    ["myspeeddial-rss-read", { "cw-rss-toggle": ["item_a"] }],
+    ["myspeeddial-rss-cache", {}]
+  ]);
+  const prevChrome = globalThis.chrome;
+  globalThis.chrome = {
+    storage: {
+      local: {
+        async get(keys) {
+          const out = {};
+          for (const k of (Array.isArray(keys) ? keys : [keys])) {
+            if (store.has(k)) out[k] = structuredClone(store.get(k));
+          }
+          return out;
+        },
+        async set(obj) {
+          for (const [k, v] of Object.entries(obj)) store.set(k, structuredClone(v));
+        }
+      }
+    }
+  };
+  try {
+    const { markRssItemRead, markRssItemUnread } = await import("../newtab/widgets/rss-widget.js");
+    await markRssItemRead("cw-rss-toggle", "item_b");
+    assert.deepEqual(store.get("myspeeddial-rss-read")["cw-rss-toggle"], ["item_b", "item_a"]);
+
+    await markRssItemUnread("cw-rss-toggle", "item_a");
+    assert.deepEqual(store.get("myspeeddial-rss-read")["cw-rss-toggle"], ["item_b"]);
+
+    // No-op when already unread
+    await markRssItemUnread("cw-rss-toggle", "item_missing");
+    assert.deepEqual(store.get("myspeeddial-rss-read")["cw-rss-toggle"], ["item_b"]);
+  } finally {
+    globalThis.chrome = prevChrome;
+  }
+});
