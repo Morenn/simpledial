@@ -241,6 +241,7 @@ export function renderGroups(show = true, config = null) {
   if (needsDropdown) {
     renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount);
   } else {
+    cleanupDropdownOutsideClickHandler();
     renderGroupsTabs(groupsHeader, visibleGroups, showGroupCount);
   }
 }
@@ -388,9 +389,7 @@ function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
   });
 
   // Close dropdown when clicking outside
-  if (dropdownOutsideClickHandler) {
-    document.removeEventListener("click", dropdownOutsideClickHandler);
-  }
+  cleanupDropdownOutsideClickHandler();
   dropdownOutsideClickHandler = (e) => {
     if (!dropdownContainer.contains(e.target)) {
       dropdownMenu.classList.remove("show");
@@ -404,18 +403,58 @@ function renderGroupsDropdown(groupsHeader, visibleGroups, showGroupCount) {
 }
 
 let dropdownOutsideClickHandler = null;
+let closeActiveGroupContextMenu = null;
+
+function cleanupDropdownOutsideClickHandler() {
+  if (dropdownOutsideClickHandler) {
+    document.removeEventListener("click", dropdownOutsideClickHandler);
+    dropdownOutsideClickHandler = null;
+  }
+}
 
 // ---------- Group context menu ----------
 function showGroupContextMenu(e, group, optionElement) {
+  closeActiveGroupContextMenu?.();
+  document.querySelectorAll("body > .context-menu").forEach(el => el.remove());
+
   const menu = document.createElement("div");
   menu.className = "context-menu";
   menu.style.left = e.clientX + "px";
   menu.style.top = e.clientY + "px";
 
+  let autoCloseTimer = null;
+  const onOutsideClick = (evt) => {
+    if (!menu.contains(evt.target)) {
+      closeMenu();
+    }
+  };
+  const onKeyDown = (evt) => {
+    if (evt.key === "Escape") {
+      evt.preventDefault();
+      evt.stopPropagation();
+      closeMenu();
+    }
+  };
+  const closeMenu = () => {
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
+    document.removeEventListener("click", onOutsideClick);
+    document.removeEventListener("keydown", onKeyDown, true);
+    if (menu.parentNode) {
+      menu.parentNode.removeChild(menu);
+    }
+    if (closeActiveGroupContextMenu === closeMenu) {
+      closeActiveGroupContextMenu = null;
+    }
+  };
+  closeActiveGroupContextMenu = closeMenu;
+
   const editBtn = document.createElement("div");
   editBtn.textContent = t("edit");
   editBtn.addEventListener("click", () => {
-    if (menu.parentNode) document.body.removeChild(menu);
+    closeMenu();
     openGroupModal(group);
   });
 
@@ -433,7 +472,7 @@ function showGroupContextMenu(e, group, optionElement) {
     await saveState();
     await syncWrite();
     render();
-    if (menu.parentNode) document.body.removeChild(menu);
+    closeMenu();
   });
 
   const restoreBtn = document.createElement("div");
@@ -444,7 +483,7 @@ function showGroupContextMenu(e, group, optionElement) {
     await saveState();
     await syncWrite();
     render();
-    if (menu.parentNode) document.body.removeChild(menu);
+    closeMenu();
   });
 
   const deletePermanentBtn = document.createElement("div");
@@ -465,7 +504,7 @@ function showGroupContextMenu(e, group, optionElement) {
     await saveState();
     await syncWrite(state, { purgedIds });
     render();
-    if (menu.parentNode) menu.parentNode.removeChild(menu);
+    closeMenu();
   });
 
   // Show/hide buttons based on deleted status
@@ -478,12 +517,10 @@ function showGroupContextMenu(e, group, optionElement) {
   }
 
   document.body.appendChild(menu);
+  document.addEventListener("click", onOutsideClick);
+  document.addEventListener("keydown", onKeyDown, true);
 
-  setTimeout(() => {
-    if (document.body.contains(menu)) {
-      document.body.removeChild(menu);
-    }
-  }, 5000);
+  autoCloseTimer = setTimeout(closeMenu, 5000);
 }
 
 function softDeleteGroupRecords(group, now = Date.now()) {
@@ -619,7 +656,12 @@ function setupGroupDrag() {
         .filter(el => !el.classList.contains("add-group"))
         .map(el => el.dataset.groupId);
 
-      state.groups.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+      const orderMap = new Map(ids.map((id, idx) => [id, idx]));
+      const visibleReordered = state.groups
+        .filter(g => orderMap.has(g.id))
+        .sort((a, b) => orderMap.get(a.id) - orderMap.get(b.id));
+      const hiddenGroups = state.groups.filter(g => !orderMap.has(g.id));
+      state.groups = [...visibleReordered, ...hiddenGroups];
 
       await saveState();
       await syncWrite();
