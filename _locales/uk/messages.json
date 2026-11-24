@@ -1751,6 +1751,22 @@
   "securityForceChangeDesc": {
     "message": "Термін дії пароля сховища минув. Встановіть новий пароль, щоб продовжити."
   },
+  "syncPausedStatus": { "message": "Синхронізацію призупинено через проблему" },
+  "syncStaleConflictLabel": { "message": "Синхронізацію призупинено: пристрій застарів" },
+  "syncDbuidMismatchLabel": { "message": "Синхронізацію призупинено: виявлено іншу базу закладок" },
+  "syncStaleClickToResolve": { "message": "Натисніть, щоб вирішити" },
+  "syncMergeWizardTitle": { "message": "Майстер об'єднання синхронізації" },
+  "syncMergeWizardDesc": { "message": "Цей пристрій був офлайн довше за вікно історії видалень. Оберіть, як узгодити локальні елементи, відсутні на сервері." },
+  "syncMergeWizardLastSync": { "message": "Остання синхронізація пристрою" },
+  "syncMergeWizardCutoff": { "message": "Межа віддаленої історії видалень" },
+  "syncMergeWizardSmart": { "message": "Розумне об'єднання (Рекомендовано)" },
+  "syncMergeWizardReview": { "message": "Переглянути неоднозначні елементи" },
+  "syncMergeWizardForceDownload": { "message": "Використати віддалену копію" },
+  "syncMergeWizardForceUpload": { "message": "Використати копію цього пристрою" },
+  "syncMergeWizardApplySelected": { "message": "Застосувати вибране" },
+  "syncMergeWizardNoAmbiguous": { "message": "Неоднозначних локальних елементів не знайдено." },
+  "selectAll": { "message": "Вибрати все" },
+  "deselectAll": { "message": "Зняти виділення" },
   "securityPostponeBtn": {
     "message": "Відкласти"
   },

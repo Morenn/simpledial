@@ -1,6 +1,6 @@
 import { state, saveState } from "../state.js";
 import { loadConfig, saveConfig, logDebug } from "../config.js";
-import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount } from "../sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount, getStaleDeviceConflictDetails, resolveStaleDeviceConflict, clearSyncPauseState } from "../sync.js";
 import { t } from "../i18n.js";
 import {
   importRawKey,
@@ -293,6 +293,10 @@ export function getSyncFailureMessage(result) {
       return t("syncCredentialsLocked");
     case "credentials-decrypt-failed":
       return t("syncCredentialsDecryptFailed");
+    case "stale-device-conflict":
+      return t("syncStaleConflictLabel") || "Sync paused: device out of date";
+    case "dbuid-mismatch":
+      return t("syncDbuidMismatchLabel") || "Sync paused: different bookmark database detected";
     case "unexpected-html-response":
       return t("syncUnexpectedHtmlResponse");
     case "empty-response":
@@ -471,6 +475,7 @@ function applyServerUrlChange(config, rawNextUrl) {
 }
 
 export function applySyncToConfig(config) {
+  clearSyncPauseState(config);
   if (syncType) {
     config.sync.type = syncType.value || "direct";
   }
@@ -802,7 +807,7 @@ export function initSyncSettings({ persistSettings }) {
         }
       }
 
-      const result = await syncNow({ includeManualExtras: true });
+      const result = await syncNow({ includeManualExtras: true, force: true });
 
       if (result.ok) {
         if (syncNowStatus) syncNowStatus.textContent = "✅ " + t("syncSuccessful");
@@ -909,5 +914,126 @@ export function initSyncSettings({ persistSettings }) {
         updateWebdavPartModeStates();
       }
     });
+  }
+}
+
+export async function openSyncMergeWizard() {
+  const modal = document.getElementById("sync-merge-wizard-modal");
+  const datesEl = document.getElementById("sync-merge-wizard-dates");
+  const statusEl = document.getElementById("sync-merge-wizard-status");
+  const smartBtn = document.getElementById("sync-merge-wizard-smart");
+  const reviewToggleBtn = document.getElementById("sync-merge-wizard-review-toggle");
+  const forceDownloadBtn = document.getElementById("sync-merge-wizard-force-download");
+  const forceUploadBtn = document.getElementById("sync-merge-wizard-force-upload");
+  const reviewBox = document.getElementById("sync-merge-wizard-review");
+  const selectAllBtn = document.getElementById("sync-merge-wizard-select-all");
+  const deselectAllBtn = document.getElementById("sync-merge-wizard-deselect-all");
+  const listEl = document.getElementById("sync-merge-wizard-list");
+  const applySelectiveBtn = document.getElementById("sync-merge-wizard-apply-selective");
+  const cancelBtn = document.getElementById("sync-merge-wizard-cancel");
+  if (!modal) return;
+
+  if (statusEl) statusEl.textContent = "⏳ " + (t("syncing") || "Checking...");
+  if (datesEl) datesEl.innerHTML = "";
+  if (listEl) listEl.innerHTML = "";
+  reviewBox?.classList.add("hidden");
+  modal.classList.remove("hidden");
+
+  const setButtonsDisabled = (disabled) => {
+    for (const btn of [smartBtn, reviewToggleBtn, forceDownloadBtn, forceUploadBtn, applySelectiveBtn, selectAllBtn, deselectAllBtn]) {
+      if (btn) btn.disabled = disabled;
+    }
+  };
+
+  setButtonsDisabled(true);
+  const details = await getStaleDeviceConflictDetails();
+  if (!details?.ok) {
+    if (statusEl) statusEl.textContent = "❌ " + getSyncFailureMessage(details);
+    setButtonsDisabled(false);
+  } else {
+    if (statusEl) statusEl.textContent = "";
+    if (datesEl) {
+      const lastSyncStr = details.lastSync ? new Date(details.lastSync).toLocaleString() : (t("footerNeverSynced") || "Never");
+      const cutoffStr = details.tombstonePrunedBefore ? new Date(details.tombstonePrunedBefore).toLocaleString() : "-";
+      const line1 = document.createElement("div");
+      line1.textContent = `${t("syncMergeWizardLastSync") || "This device last synced"}: ${lastSyncStr}`;
+      const line2 = document.createElement("div");
+      line2.textContent = `${t("syncMergeWizardCutoff") || "Remote deletion history cutoff"}: ${cutoffStr}`;
+      datesEl.append(line1, line2);
+      if (details.dbuidMismatch) {
+        const line3 = document.createElement("div");
+        line3.textContent = `DBUID: ${details.localDbuid || "(none)"} ≠ ${details.remoteDbuid || "(none)"}`;
+        datesEl.append(line3);
+      }
+    }
+
+    if (listEl) {
+      const byGroup = new Map();
+      for (const entry of (details.ambiguousItems || [])) {
+        const gLabel = entry.groupName || (entry.kind === "tag" ? (t("tags") || "Tags") : (t("defaultGroupName") || "General"));
+        if (!byGroup.has(gLabel)) byGroup.set(gLabel, []);
+        byGroup.get(gLabel).push(entry);
+      }
+      if (byGroup.size === 0) {
+        const empty = document.createElement("div");
+        empty.textContent = t("syncMergeWizardNoAmbiguous") || "No ambiguous local-only items found.";
+        listEl.appendChild(empty);
+      } else {
+        for (const [gLabel, items] of byGroup.entries()) {
+          const heading = document.createElement("div");
+          heading.className = "sync-merge-wizard-group-heading";
+          heading.textContent = gLabel;
+          listEl.appendChild(heading);
+          for (const entry of items) {
+            const row = document.createElement("label");
+            row.className = "sync-merge-wizard-item";
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.value = entry.id;
+            cb.name = "sync-merge-wizard-item";
+            const span = document.createElement("span");
+            span.textContent = `[${entry.kind}] ${entry.title}${entry.url ? ` (${entry.url})` : ""}`;
+            row.append(cb, span);
+            listEl.appendChild(row);
+          }
+        }
+      }
+    }
+    setButtonsDisabled(false);
+  }
+
+  const runResolution = async (mode) => {
+    setButtonsDisabled(true);
+    if (statusEl) statusEl.textContent = "⏳ " + (t("syncing") || "Syncing...");
+    const keepIds = mode === "selective" && listEl
+      ? Array.from(listEl.querySelectorAll('input[type="checkbox"]:checked')).map(el => el.value)
+      : [];
+    const res = await resolveStaleDeviceConflict({ mode, keepIds });
+    if (res?.ok) {
+      modal.classList.add("hidden");
+      render();
+      window.dispatchEvent(new CustomEvent("speeddial:data-changed"));
+      loadConfig().then(cfg => updateLastSyncInfo(cfg));
+    } else {
+      if (statusEl) statusEl.textContent = "❌ " + getSyncFailureMessage(res);
+      setButtonsDisabled(false);
+    }
+  };
+
+  if (smartBtn) smartBtn.onclick = () => void runResolution("smart");
+  if (forceDownloadBtn) forceDownloadBtn.onclick = () => void runResolution("force-download");
+  if (forceUploadBtn) forceUploadBtn.onclick = () => void runResolution("force-upload");
+  if (applySelectiveBtn) applySelectiveBtn.onclick = () => void runResolution("selective");
+  if (reviewToggleBtn) {
+    reviewToggleBtn.onclick = () => reviewBox?.classList.toggle("hidden");
+  }
+  if (selectAllBtn && listEl) {
+    selectAllBtn.onclick = () => listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+  }
+  if (deselectAllBtn && listEl) {
+    deselectAllBtn.onclick = () => listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+  }
+  if (cancelBtn) {
+    cancelBtn.onclick = () => modal.classList.add("hidden");
   }
 }

@@ -1751,6 +1751,22 @@
   "securityForceChangeDesc": {
     "message": "Le mot de passe de votre coffre a expiré. Définissez un nouveau mot de passe pour continuer."
   },
+  "syncPausedStatus": { "message": "Synchronisation en pause suite à un problème" },
+  "syncStaleConflictLabel": { "message": "Synchronisation en pause : appareil obsolète" },
+  "syncDbuidMismatchLabel": { "message": "Synchronisation en pause : base de données de favoris différente détectée" },
+  "syncStaleClickToResolve": { "message": "Cliquer pour résoudre" },
+  "syncMergeWizardTitle": { "message": "Assistant de fusion de synchronisation" },
+  "syncMergeWizardDesc": { "message": "Cet appareil est resté hors ligne plus longtemps que l'historique des suppressions. Choisissez comment réconcilier les éléments locaux." },
+  "syncMergeWizardLastSync": { "message": "Dernière synchronisation de cet appareil" },
+  "syncMergeWizardCutoff": { "message": "Limite de l'historique de suppression distant" },
+  "syncMergeWizardSmart": { "message": "Fusion intelligente (Recommandé)" },
+  "syncMergeWizardReview": { "message": "Examiner les éléments ambigus" },
+  "syncMergeWizardForceDownload": { "message": "Utiliser la copie distante" },
+  "syncMergeWizardForceUpload": { "message": "Utiliser la copie de cet appareil" },
+  "syncMergeWizardApplySelected": { "message": "Appliquer la sélection" },
+  "syncMergeWizardNoAmbiguous": { "message": "Aucun élément local ambigu trouvé." },
+  "selectAll": { "message": "Tout sélectionner" },
+  "deselectAll": { "message": "Tout désélectionner" },
   "securityPostponeBtn": {
     "message": "Reporter"
   },

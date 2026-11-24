@@ -1230,6 +1230,35 @@
     </div>
   </div>
 
+  <!-- Stale Sync Merge Wizard Modal -->
+  <div id="sync-merge-wizard-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sync-merge-wizard-title">
+    <div class="modal-content sync-merge-wizard-modal-content">
+      <h2 id="sync-merge-wizard-title" data-i18n="syncMergeWizardTitle">⚠️ Sync Merge Wizard</h2>
+      <p id="sync-merge-wizard-desc" class="appearance-card-desc" data-i18n="syncMergeWizardDesc">This device has been offline longer than the deletion history window. Choose how to reconcile local-only items missing from remote.</p>
+      <div id="sync-merge-wizard-dates" class="sync-merge-wizard-dates"></div>
+      <div id="sync-merge-wizard-status" class="status"></div>
+      <div class="sync-merge-wizard-actions">
+        <button type="button" id="sync-merge-wizard-smart" class="icon-btn primary" data-i18n="syncMergeWizardSmart">✨ Smart Merge (Recommended)</button>
+        <button type="button" id="sync-merge-wizard-review-toggle" class="icon-btn" data-i18n="syncMergeWizardReview">🔍 Review Ambiguous Items</button>
+        <button type="button" id="sync-merge-wizard-force-download" class="icon-btn" data-i18n="syncMergeWizardForceDownload">⬇️ Use Remote Copy</button>
+        <button type="button" id="sync-merge-wizard-force-upload" class="icon-btn danger" data-i18n="syncMergeWizardForceUpload">⬆️ Use This Device's Copy</button>
+      </div>
+      <div id="sync-merge-wizard-review" class="sync-merge-wizard-review hidden">
+        <div class="sync-merge-wizard-review-toolbar">
+          <button type="button" id="sync-merge-wizard-select-all" class="icon-btn" data-i18n="selectAll">Select All</button>
+          <button type="button" id="sync-merge-wizard-deselect-all" class="icon-btn" data-i18n="deselectAll">Deselect All</button>
+        </div>
+        <div id="sync-merge-wizard-list" class="sync-merge-wizard-list"></div>
+        <div class="modal-buttons">
+          <button type="button" id="sync-merge-wizard-apply-selective" class="icon-btn primary" data-i18n="syncMergeWizardApplySelected">Apply Selected</button>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" id="sync-merge-wizard-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Shortcut Palette Modal -->
   <div id="shortcuts-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
     <div class="modal-content shortcuts-modal-content">

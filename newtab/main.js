@@ -78,6 +78,20 @@ const lazyPromptUnlockVault = async () => {
 };
 window.promptUnlockVault = lazyPromptUnlockVault;
 
+window.openSyncSettings = async () => {
+  const mod = await ensureSettingsUiLoaded();
+  await mod.openSettingsModal("sync");
+};
+
+window.openSyncMergeWizard = async () => {
+  const mod = await ensureSettingsUiLoaded();
+  if (typeof mod.openSyncMergeWizard === "function") {
+    await mod.openSyncMergeWizard();
+  } else {
+    await mod.openSettingsModal("sync");
+  }
+};
+
 document.getElementById("settings-btn")?.addEventListener("click", async () => {
   const mod = await ensureSettingsUiLoaded();
   await mod.openSettingsModal();
@@ -96,7 +110,7 @@ if (headerManualSyncBtn) {
     headerManualSyncBtn.textContent = "⬆️";
     headerManualSyncBtn.style.opacity = "0.5";
     try {
-      const result = await syncNow({ includeManualExtras: true });
+      const result = await syncNow({ includeManualExtras: true, force: true });
       void updateFooter();
       if (result.ok) {
         if (result.changed) {
@@ -824,6 +838,13 @@ function showSyncUnavailableNotification(result = null) {
         clearLastSyncErrorReason();
         void updateFooter();
       }
+    });
+  } else if (reason === "stale-device-conflict" || reason === "dbuid-mismatch") {
+    notification.textContent = `⚠️ ${message} — ${t("syncStaleClickToResolve") || "Click to resolve"}`;
+    notification.style.cursor = "pointer";
+    notification.addEventListener("click", async () => {
+      notification.remove();
+      await window.openSyncMergeWizard?.();
     });
   } else {
     notification.textContent = message;

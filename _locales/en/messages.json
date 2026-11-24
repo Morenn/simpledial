@@ -1763,6 +1763,22 @@
   "securityForceChangeDesc": {
     "message": "Your vault password has expired. Set a new password to continue."
   },
+  "syncPausedStatus": { "message": "Sync paused due to issue" },
+  "syncStaleConflictLabel": { "message": "Sync paused: device out of date" },
+  "syncDbuidMismatchLabel": { "message": "Sync paused: different bookmark database detected" },
+  "syncStaleClickToResolve": { "message": "Click to resolve" },
+  "syncMergeWizardTitle": { "message": "Sync Merge Wizard" },
+  "syncMergeWizardDesc": { "message": "This device has been offline longer than the deletion history window. Choose how to reconcile local-only items missing from remote." },
+  "syncMergeWizardLastSync": { "message": "This device last synced" },
+  "syncMergeWizardCutoff": { "message": "Remote deletion history cutoff" },
+  "syncMergeWizardSmart": { "message": "Smart Merge (Recommended)" },
+  "syncMergeWizardReview": { "message": "Review Ambiguous Items" },
+  "syncMergeWizardForceDownload": { "message": "Use Remote Copy" },
+  "syncMergeWizardForceUpload": { "message": "Use This Device's Copy" },
+  "syncMergeWizardApplySelected": { "message": "Apply Selected" },
+  "syncMergeWizardNoAmbiguous": { "message": "No ambiguous local-only items found." },
+  "selectAll": { "message": "Select All" },
+  "deselectAll": { "message": "Deselect All" },
   "securityPostponeBtn": {
     "message": "Postpone"
   },

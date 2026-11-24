@@ -660,7 +660,7 @@ async function initializeRemote(url, headers = {}) {
 }
 
 async function initializeRemoteDetailed(url, headers = {}) {
-  const defaultData = { groups: [] };
+  const defaultData = { groups: [], dbuid: generateDbUid() };
 
   try {
     const res = await fetchWithTimeout(url, {
@@ -684,7 +684,11 @@ async function initializeRemoteDetailed(url, headers = {}) {
     return { ok: false, reason: 'network-or-cors' };
   }
 
-  return { ok: true, reason: 'initialized-remote', data: defaultData };
+  return {
+    ok: true,
+    reason: 'initialized-remote',
+    data: { ...defaultData, tags: [], tombstones: {}, tombstonePrunedBefore: 0 }
+  };
 }
 
 async function resolveSyncCredentials(cfg, operation) {
@@ -762,7 +766,10 @@ async function syncReadDetailed(cfg = null, options = {}) {
         reason: 'ok',
         data: {
           groups: (stored && stored.groups) ? stored.groups : [],
-          tags: Array.isArray(stored?.tags) ? stored.tags : []
+          tags: Array.isArray(stored?.tags) ? stored.tags : [],
+          dbuid: typeof stored?.dbuid === "string" ? stored.dbuid.trim() : "",
+          tombstones: sanitizeTombstonesObject(stored?.tombstones),
+          tombstonePrunedBefore: Number(stored?.tombstonePrunedBefore) > 0 ? Number(stored.tombstonePrunedBefore) : 0
         }
       };
     } catch (e) {
@@ -867,7 +874,10 @@ async function syncReadDetailed(cfg = null, options = {}) {
       remoteMarker: extractRemoteMarkerFromHeaders(res.headers, resolvedCfg?.remoteChangeHeaderType || null),
       data: {
         groups: Array.isArray(parsed.groups) ? parsed.groups : [],
-        tags: Array.isArray(parsed.tags) ? parsed.tags : []
+        tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+        dbuid: typeof parsed.dbuid === "string" ? parsed.dbuid.trim() : "",
+        tombstones: sanitizeTombstonesObject(parsed.tombstones),
+        tombstonePrunedBefore: Number(parsed.tombstonePrunedBefore) > 0 ? Number(parsed.tombstonePrunedBefore) : 0
       }
     };
 
@@ -893,13 +903,19 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
   const tagsToWrite = Array.isArray(sourceTags)
     ? sourceTags
     : (Array.isArray(state.tags) ? state.tags : []);
+  const tombstonesToWrite = sanitizeTombstonesObject(options?.tombstones);
+  const hasTombstones = Object.keys(tombstonesToWrite).length > 0;
+  const prunedBeforeToWrite = Number(options?.tombstonePrunedBefore) > 0 ? Number(options.tombstonePrunedBefore) : 0;
+  const dbuidToWrite = typeof options?.dbuid === "string" ? options.dbuid.trim() : "";
 
   if (resolvedCfg.type === 'browser') {
     try {
       const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
-      const syncPayload = tagsToWrite.length > 0
-        ? { groups: groupsToWrite, tags: tagsToWrite }
-        : { groups: groupsToWrite };
+      const syncPayload = { groups: groupsToWrite };
+      if (tagsToWrite.length > 0) syncPayload.tags = tagsToWrite;
+      if (dbuidToWrite) syncPayload.dbuid = dbuidToWrite;
+      if (hasTombstones) syncPayload.tombstones = tombstonesToWrite;
+      if (prunedBeforeToWrite > 0) syncPayload.tombstonePrunedBefore = prunedBeforeToWrite;
       await chrome.storage.sync.set({ [CLOUD_STORAGE_KEY]: syncPayload });
       const verified = await chrome.storage.sync.get(CLOUD_STORAGE_KEY);
       if (stableSerialize(verified[CLOUD_STORAGE_KEY]?.groups || []) !== stableSerialize(groupsToWrite)) {
@@ -929,9 +945,11 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
   const credUser = credentials.username || '';
   const credPass = credentials.password || '';
   const groupsToWrite = Array.isArray(sourceGroups) ? sourceGroups : state.groups;
-  const writePayload = tagsToWrite.length > 0
-    ? { groups: groupsToWrite, tags: tagsToWrite }
-    : { groups: groupsToWrite };
+  const writePayload = { groups: groupsToWrite };
+  if (tagsToWrite.length > 0) writePayload.tags = tagsToWrite;
+  if (dbuidToWrite) writePayload.dbuid = dbuidToWrite;
+  if (hasTombstones) writePayload.tombstones = tombstonesToWrite;
+  if (prunedBeforeToWrite > 0) writePayload.tombstonePrunedBefore = prunedBeforeToWrite;
   const writeBody = JSON.stringify(writePayload);
   const lockRetryDelays = [400, 900, 1500];
 
@@ -1051,6 +1069,376 @@ export async function syncRead() {
 //  WRITE
 // ─────────────────────────────────────────────────────────────
 
+const TOMBSTONE_STORAGE_KEY = "myspeeddial-sync-tombstones";
+const DANGEROUS_TOMBSTONE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const MAX_TOMBSTONES_HTTP = 500;
+const MAX_TOMBSTONES_BROWSER = 100;
+const CLOCK_SKEW_BUFFER_MS = 60 * 60 * 1000;
+const FATAL_SYNC_PAUSE_THRESHOLD = 3;
+const FATAL_SYNC_REASONS = new Set([
+  "auth",
+  "credentials-decrypt-failed",
+  "invalid-url",
+  "auth-redirect",
+  "unexpected-html-response"
+]);
+const TRANSIENT_BACKOFF_STEPS_MS = [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000];
+
+function getTombstoneRetentionDays(config) {
+  const baseDays = Math.max(1, Number(config?.housekeeper?.retentionDays) || 30);
+  return Math.max(1, Math.round(baseDays * 1.5));
+}
+
+function getMaxTombstonesForSyncType(syncType) {
+  return syncType === "browser" ? MAX_TOMBSTONES_BROWSER : MAX_TOMBSTONES_HTTP;
+}
+
+function sanitizeTombstonesMap(raw) {
+  const map = new Map();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return map;
+  const entries = raw instanceof Map ? raw.entries() : Object.entries(raw);
+  for (const [id, ts] of entries) {
+    if (typeof id !== "string" || !id || DANGEROUS_TOMBSTONE_KEYS.has(id)) continue;
+    const num = Number(ts);
+    if (Number.isFinite(num) && num > 0) {
+      map.set(id, num);
+    }
+  }
+  return map;
+}
+
+function sanitizeTombstonesObject(raw) {
+  return Object.fromEntries(sanitizeTombstonesMap(raw));
+}
+
+function generateDbUid() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `db_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+}
+
+async function loadLocalTombstoneState() {
+  if (typeof chrome === "undefined" || !chrome?.storage?.local?.get) {
+    return { dbuid: "", tombstones: new Map(), tombstonePrunedBefore: 0 };
+  }
+  try {
+    const res = await chrome.storage.local.get(TOMBSTONE_STORAGE_KEY);
+    const stored = res?.[TOMBSTONE_STORAGE_KEY];
+    return {
+      dbuid: typeof stored?.dbuid === "string" ? stored.dbuid.trim() : "",
+      tombstones: sanitizeTombstonesMap(stored?.tombstones),
+      tombstonePrunedBefore: Number(stored?.tombstonePrunedBefore) > 0 ? Number(stored.tombstonePrunedBefore) : 0
+    };
+  } catch {
+    return { dbuid: "", tombstones: new Map(), tombstonePrunedBefore: 0 };
+  }
+}
+
+async function saveLocalTombstoneState({ dbuid = "", tombstones, tombstonePrunedBefore }) {
+  if (typeof chrome === "undefined" || !chrome?.storage?.local?.set) return;
+  const payload = {
+    dbuid: typeof dbuid === "string" ? dbuid.trim() : "",
+    tombstones: sanitizeTombstonesObject(tombstones),
+    tombstonePrunedBefore: Number(tombstonePrunedBefore) > 0 ? Number(tombstonePrunedBefore) : 0
+  };
+  await chrome.storage.local.set({ [TOMBSTONE_STORAGE_KEY]: payload });
+}
+
+export async function clearLocalTombstoneState({ resetDbUid = false } = {}) {
+  const existing = resetDbUid ? null : await loadLocalTombstoneState();
+  await saveLocalTombstoneState({
+    dbuid: resetDbUid ? generateDbUid() : (existing?.dbuid || ""),
+    tombstones: new Map(),
+    tombstonePrunedBefore: 0
+  });
+}
+
+function mergeTombstoneMaps(localMap, remoteMap) {
+  const merged = new Map();
+  for (const [id, ts] of sanitizeTombstonesMap(localMap)) {
+    merged.set(id, ts);
+  }
+  for (const [id, ts] of sanitizeTombstonesMap(remoteMap)) {
+    const prev = merged.get(id) || 0;
+    if (ts > prev) merged.set(id, ts);
+  }
+  return merged;
+}
+
+function pruneTombstoneMap(tombstonesMap, currentPrunedBefore, { retentionDays, maxEntries, now = Date.now() }) {
+  const cutoffMs = now - Math.max(1, retentionDays) * 24 * 60 * 60 * 1000;
+  let maxPrunedTs = 0;
+  const kept = [];
+
+  for (const [id, ts] of sanitizeTombstonesMap(tombstonesMap)) {
+    if (ts < cutoffMs) {
+      if (ts > maxPrunedTs) maxPrunedTs = ts;
+    } else {
+      kept.push([id, ts]);
+    }
+  }
+
+  if (maxEntries > 0 && kept.length > maxEntries) {
+    kept.sort((a, b) => a[1] - b[1]);
+    const excess = kept.length - maxEntries;
+    for (let i = 0; i < excess; i++) {
+      if (kept[i][1] > maxPrunedTs) maxPrunedTs = kept[i][1];
+    }
+    kept.splice(0, excess);
+  }
+
+  return {
+    tombstones: new Map(kept),
+    tombstonePrunedBefore: Math.max(Number(currentPrunedBefore) || 0, maxPrunedTs)
+  };
+}
+
+function getRecordActivityTimestamp(rec) {
+  if (!rec || typeof rec !== "object") return 0;
+  return rec.deleted ? (rec.deletedAt || rec.updatedAt || 0) : (rec.updatedAt || rec.createdAt || 0);
+}
+
+function applyTombstonesToData(groups = [], tags = [], tombstonesMap = new Map()) {
+  if (!tombstonesMap || tombstonesMap.size === 0) {
+    return {
+      groups: Array.isArray(groups) ? groups : [],
+      tags: Array.isArray(tags) ? tags : [],
+      resurrectedIds: new Set()
+    };
+  }
+
+  const resurrectedIds = new Set();
+  const shouldKeepRecord = (rec) => {
+    if (!rec?.id) return true;
+    const purgedAt = tombstonesMap.get(rec.id);
+    if (!purgedAt) return true;
+    const recTs = getRecordActivityTimestamp(rec);
+    if (recTs > purgedAt) {
+      resurrectedIds.add(rec.id);
+      return true;
+    }
+    return false;
+  };
+
+  const nextGroups = [];
+  for (const group of (groups || [])) {
+    if (!group || !shouldKeepRecord(group)) continue;
+    const nextSections = Array.isArray(group.sections)
+      ? group.sections.filter(sec => sec && shouldKeepRecord(sec))
+      : undefined;
+
+    const nextItems = [];
+    for (const item of (group.items || [])) {
+      if (!item || !shouldKeepRecord(item)) continue;
+      if (isStackItem(item)) {
+        const nextChildren = (item.children || []).filter(child => child && shouldKeepRecord(child));
+        if (nextChildren.length === 0 && !item.deleted) continue;
+        nextItems.push({ ...item, children: nextChildren });
+      } else {
+        nextItems.push(item);
+      }
+    }
+
+    const nextGroup = { ...group, items: nextItems };
+    if (nextSections !== undefined) nextGroup.sections = nextSections;
+    nextGroups.push(nextGroup);
+  }
+
+  const nextTags = (tags || []).filter(tag => tag && shouldKeepRecord(tag));
+  return { groups: nextGroups, tags: nextTags, resurrectedIds };
+}
+
+function findAmbiguousLocalOnlyRecords(localGroups = [], localTags = [], cloudGroups = [], cloudTags = [], tombstonePrunedBefore = 0) {
+  if (!(tombstonePrunedBefore > 0)) return [];
+  const cloudIds = collectLocalRecordIds(cloudGroups, cloudTags);
+  const ambiguous = [];
+
+  for (const group of (localGroups || [])) {
+    if (!group?.id) continue;
+    if (!cloudIds.has(group.id) && getRecordActivityTimestamp(group) <= tombstonePrunedBefore) {
+      ambiguous.push({
+        kind: "group",
+        id: group.id,
+        groupId: group.id,
+        groupName: group.name || "",
+        title: group.name || group.id,
+        url: "",
+        updatedAt: getRecordActivityTimestamp(group)
+      });
+    }
+    for (const sec of (group.sections || [])) {
+      if (sec?.id && !cloudIds.has(sec.id) && getRecordActivityTimestamp(sec) <= tombstonePrunedBefore) {
+        ambiguous.push({
+          kind: "section",
+          id: sec.id,
+          groupId: group.id,
+          groupName: group.name || "",
+          title: sec.name || sec.title || sec.id,
+          url: "",
+          updatedAt: getRecordActivityTimestamp(sec)
+        });
+      }
+    }
+    for (const item of (group.items || [])) {
+      if (!item?.id) continue;
+      if (!cloudIds.has(item.id) && getRecordActivityTimestamp(item) <= tombstonePrunedBefore) {
+        ambiguous.push({
+          kind: isStackItem(item) ? "stack" : "bookmark",
+          id: item.id,
+          groupId: group.id,
+          groupName: group.name || "",
+          title: item.title || item.url || item.id,
+          url: item.url || "",
+          updatedAt: getRecordActivityTimestamp(item)
+        });
+      }
+      if (isStackItem(item)) {
+        for (const child of (item.children || [])) {
+          if (child?.id && !cloudIds.has(child.id) && getRecordActivityTimestamp(child) <= tombstonePrunedBefore) {
+            ambiguous.push({
+              kind: "bookmark",
+              id: child.id,
+              groupId: group.id,
+              groupName: group.name || "",
+              title: child.title || child.url || child.id,
+              url: child.url || "",
+              updatedAt: getRecordActivityTimestamp(child)
+            });
+          }
+        }
+      }
+    }
+  }
+
+  for (const tag of (localTags || [])) {
+    if (tag?.id && !cloudIds.has(tag.id) && getRecordActivityTimestamp(tag) <= tombstonePrunedBefore) {
+      ambiguous.push({
+        kind: "tag",
+        id: tag.id,
+        groupId: "",
+        groupName: "",
+        title: tag.name || tag.id,
+        url: "",
+        updatedAt: getRecordActivityTimestamp(tag)
+      });
+    }
+  }
+
+  return ambiguous;
+}
+
+function shouldTriggerStaleDeviceConflict(config, remotePrunedBefore, localGroups, localTags, cloudGroups, cloudTags) {
+  if (!(config?.sync?.lastSync > 0) || !(remotePrunedBefore > 0)) {
+    return { stale: false, ambiguousItems: [] };
+  }
+  if (config.sync.lastSync + CLOCK_SKEW_BUFFER_MS >= remotePrunedBefore) {
+    return { stale: false, ambiguousItems: [] };
+  }
+  const ambiguousItems = findAmbiguousLocalOnlyRecords(localGroups, localTags, cloudGroups, cloudTags, remotePrunedBefore);
+  return { stale: ambiguousItems.length > 0, ambiguousItems };
+}
+
+function applyStaleResolutionToLocalData(groups = [], tags = [], ambiguousIds = new Set(), { mode, keepIdSet = new Set(), now = Date.now() }) {
+  const dropUnselected = (rec) => {
+    if (!rec?.id || !ambiguousIds.has(rec.id)) return { keep: true, rec };
+    if (mode === "selective" && keepIdSet.has(rec.id)) {
+      return { keep: true, rec: { ...rec, updatedAt: Math.max(Number(rec.updatedAt) || 0, now) } };
+    }
+    return { keep: false, rec };
+  };
+
+  const nextGroups = [];
+  for (const group of (groups || [])) {
+    const gRes = dropUnselected(group);
+    if (!gRes.keep) continue;
+    const nextSections = Array.isArray(gRes.rec.sections)
+      ? gRes.rec.sections.map(s => dropUnselected(s)).filter(r => r.keep).map(r => r.rec)
+      : undefined;
+    const nextItems = [];
+    for (const item of (gRes.rec.items || [])) {
+      const iRes = dropUnselected(item);
+      if (!iRes.keep) continue;
+      if (isStackItem(iRes.rec)) {
+        const nextChildren = (iRes.rec.children || []).map(c => dropUnselected(c)).filter(r => r.keep).map(r => r.rec);
+        if (nextChildren.length === 0 && !iRes.rec.deleted) continue;
+        nextItems.push({ ...iRes.rec, children: nextChildren });
+      } else {
+        nextItems.push(iRes.rec);
+      }
+    }
+    const nextGroup = { ...gRes.rec, items: nextItems };
+    if (nextSections !== undefined) nextGroup.sections = nextSections;
+    nextGroups.push(nextGroup);
+  }
+  const nextTags = (tags || []).map(t => dropUnselected(t)).filter(r => r.keep).map(r => r.rec);
+  return { groups: nextGroups, tags: nextTags };
+}
+
+async function migratePendingPurgedIdsToTombstones(config, extraPurgedIds = [], now = Date.now()) {
+  const legacyPending = Array.isArray(config?.sync?.pendingPurgedIds) ? config.sync.pendingPurgedIds : [];
+  const incoming = Array.isArray(extraPurgedIds) ? extraPurgedIds : [];
+  const ids = [...legacyPending, ...incoming].filter(id => typeof id === "string" && id && !DANGEROUS_TOMBSTONE_KEYS.has(id));
+  const localState = await loadLocalTombstoneState();
+  let changed = false;
+  for (const id of ids) {
+    if (!localState.tombstones.has(id)) {
+      localState.tombstones.set(id, now);
+      changed = true;
+    }
+  }
+  if (changed) {
+    await saveLocalTombstoneState(localState);
+  }
+  if (legacyPending.length > 0 && config?.sync) {
+    config.sync.pendingPurgedIds = [];
+  }
+  return localState;
+}
+
+export async function clearSyncPauseState(config = null) {
+  const cfg = config || await loadConfig();
+  if (!cfg?.sync) return cfg;
+  const hadPause = !!(cfg.sync.pausedReason || cfg.sync.consecutiveErrors || cfg.sync.nextRetryAt);
+  cfg.sync.pausedReason = null;
+  cfg.sync.consecutiveErrors = 0;
+  cfg.sync.nextRetryAt = 0;
+  if (!config && hadPause) {
+    await saveConfig(cfg);
+  }
+  return cfg;
+}
+
+async function recordSyncResultForPause(config, result) {
+  if (!config?.sync) return;
+  if (result?.ok) {
+    const hadState = !!(config.sync.pausedReason || config.sync.consecutiveErrors || config.sync.nextRetryAt);
+    config.sync.pausedReason = null;
+    config.sync.consecutiveErrors = 0;
+    config.sync.nextRetryAt = 0;
+    if (hadState) await saveConfig(config);
+    return;
+  }
+  const reason = result?.reason || "sync-failed";
+  if (reason === "not-configured" || reason === "sync-locked" || reason === "credentials-locked") {
+    return;
+  }
+  config.sync.consecutiveErrors = (Number(config.sync.consecutiveErrors) || 0) + 1;
+  if (reason === "stale-device-conflict" || reason === "dbuid-mismatch") {
+    config.sync.pausedReason = reason;
+    config.sync.nextRetryAt = 0;
+  } else if (FATAL_SYNC_REASONS.has(reason)) {
+    if (config.sync.consecutiveErrors >= FATAL_SYNC_PAUSE_THRESHOLD) {
+      config.sync.pausedReason = reason;
+    }
+    config.sync.nextRetryAt = 0;
+  } else {
+    const stepIdx = Math.min(config.sync.consecutiveErrors - 1, TRANSIENT_BACKOFF_STEPS_MS.length - 1);
+    config.sync.nextRetryAt = Date.now() + TRANSIENT_BACKOFF_STEPS_MS[stepIdx];
+  }
+  await saveConfig(config);
+}
+
 function persistPendingPurgedIdsInConfig(config, purgedIds = []) {
   if (!config?.sync) return false;
   const existing = Array.isArray(config.sync.pendingPurgedIds) ? config.sync.pendingPurgedIds : [];
@@ -1115,12 +1503,10 @@ async function syncWriteLocked(sourceState = state, options = {}) {
   }
 
   const extraPurgedIds = Array.isArray(options?.purgedIds) ? options.purgedIds.filter(Boolean) : [];
-  if (persistPendingPurgedIdsInConfig(config, extraPurgedIds)) {
-    await saveConfig(config);
-  }
+  await migratePendingPurgedIdsToTombstones(config, extraPurgedIds);
 
-  if (!shouldSync(config) && !options?.force) {
-    return true; // manual mode — purged IDs queued, skip network sync until user triggers it
+  if ((!shouldSync(config) || config.sync.pausedReason) && !options?.force) {
+    return true; // manual or paused mode — tombstones persisted locally, skip network sync until user triggers it
   }
 
   const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
@@ -1135,6 +1521,7 @@ async function syncWriteLocked(sourceState = state, options = {}) {
   if (!readResult.ok) {
     state.groups = previousGroups;
     state.tags = previousTags;
+    await recordSyncResultForPause(config, readResult);
     return false;
   }
 
@@ -1144,12 +1531,19 @@ async function syncWriteLocked(sourceState = state, options = {}) {
     2,
     readResult.data.tags,
     extraPurgedIds,
-    { forceSaveLocal }
+    {
+      forceSaveLocal,
+      initializedRemote: readResult.reason === "initialized-remote",
+      cloudDbuid: readResult.data.dbuid,
+      cloudTombstones: readResult.data.tombstones,
+      cloudTombstonePrunedBefore: readResult.data.tombstonePrunedBefore
+    }
   );
   if (!result.ok) {
     state.groups = previousGroups;
     state.tags = previousTags;
   }
+  await recordSyncResultForPause(config, result);
   return result.ok;
 }
 
@@ -1531,8 +1925,23 @@ function getGroupsFreshness(groups) {
   return maxTs;
 }
 
-async function getGroupsHash(groups, tags = []) {
-  const payload = Array.isArray(tags) && tags.length > 0 ? { groups: groups || [], tags } : (groups || []);
+async function getGroupsHash(groups, tags = [], tombstoneState = null) {
+  const hasTombstones = tombstoneState?.tombstones && (
+    tombstoneState.tombstones instanceof Map
+      ? tombstoneState.tombstones.size > 0
+      : Object.keys(tombstoneState.tombstones).length > 0
+  );
+  const prunedBefore = Number(tombstoneState?.tombstonePrunedBefore) > 0 ? Number(tombstoneState.tombstonePrunedBefore) : 0;
+  const dbuid = typeof tombstoneState?.dbuid === "string" ? tombstoneState.dbuid.trim() : "";
+  let payload;
+  if (hasTombstones || prunedBefore > 0 || dbuid) {
+    payload = { groups: groups || [], tags: Array.isArray(tags) ? tags : [] };
+    if (dbuid) payload.dbuid = dbuid;
+    if (hasTombstones) payload.tombstones = sanitizeTombstonesObject(tombstoneState.tombstones);
+    if (prunedBefore > 0) payload.tombstonePrunedBefore = prunedBefore;
+  } else {
+    payload = Array.isArray(tags) && tags.length > 0 ? { groups: groups || [], tags } : (groups || []);
+  }
   const data = new TextEncoder().encode(stableSerialize(payload));
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
@@ -1605,43 +2014,148 @@ function stripPurgedIdsFromCloudData(cloudGroups = [], cloudTags = [], purgedIdS
 
 async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetries = 2, cloudTags = [], extraPurgedIds = [], options = {}) {
   const forceSaveLocal = !!options?.forceSaveLocal;
+  const staleResolution = options?.staleResolution || null;
+  const staleKeepIdSet = new Set(Array.isArray(options?.keepIds) ? options.keepIds.filter(Boolean) : []);
   const previousGroups = state.groups;
   const previousTags = Array.isArray(state.tags) ? state.tags : [];
   const resolvedCloudTags = Array.isArray(cloudTags) ? cloudTags : [];
 
+  const localTombstoneState = await migratePendingPurgedIdsToTombstones(config, extraPurgedIds);
+  const cloudTombstonesMap = sanitizeTombstonesMap(options?.cloudTombstones);
+  const cloudPrunedBefore = Number(options?.cloudTombstonePrunedBefore) > 0 ? Number(options.cloudTombstonePrunedBefore) : 0;
+  const localDbuid = localTombstoneState.dbuid || "";
+  const remoteDbuid = typeof options?.cloudDbuid === "string" ? options.cloudDbuid.trim() : "";
+  const isBootstrap = !config.sync?.lastSync && !config.sync?.lastSyncedLocalHash && isBootstrapPlaceholderState(previousGroups);
+
+  let workingLocalGroups = previousGroups;
+  let workingLocalTags = previousTags;
+
+  if (!staleResolution) {
+    const hasDbuidMismatch = !options?.initializedRemote && (
+      (!!localDbuid && !!remoteDbuid && localDbuid !== remoteDbuid)
+      || (!localDbuid && !!remoteDbuid && !config.sync?.lastSync && !isBootstrap && hasMeaningfulGroups(previousGroups))
+    );
+    if (hasDbuidMismatch) {
+      return {
+        ok: false,
+        reason: "dbuid-mismatch",
+        localDbuid,
+        remoteDbuid
+      };
+    }
+
+    const staleCheck = shouldTriggerStaleDeviceConflict(
+      config,
+      cloudPrunedBefore,
+      workingLocalGroups,
+      workingLocalTags,
+      cloudGroups || [],
+      resolvedCloudTags
+    );
+    if (staleCheck.stale) {
+      return {
+        ok: false,
+        reason: "stale-device-conflict",
+        lastSync: config.sync?.lastSync || 0,
+        tombstonePrunedBefore: cloudPrunedBefore,
+        ambiguousCount: staleCheck.ambiguousItems.length
+      };
+    }
+  } else if (staleResolution === "smart" || staleResolution === "selective") {
+    const cutoffForReview = cloudPrunedBefore > 0 ? cloudPrunedBefore : Number.MAX_SAFE_INTEGER;
+    const ambiguous = findAmbiguousLocalOnlyRecords(
+      workingLocalGroups,
+      workingLocalTags,
+      cloudGroups || [],
+      resolvedCloudTags,
+      cutoffForReview
+    );
+    const ambiguousIds = new Set(ambiguous.map(item => item.id));
+    if (staleResolution === "selective" || cloudPrunedBefore > 0) {
+      const resolvedLocal = applyStaleResolutionToLocalData(workingLocalGroups, workingLocalTags, ambiguousIds, {
+        mode: staleResolution,
+        keepIdSet: staleKeepIdSet
+      });
+      workingLocalGroups = resolvedLocal.groups;
+      workingLocalTags = resolvedLocal.tags;
+    }
+  }
+
+  let nextDbuid = localDbuid;
+  if (staleResolution) {
+    nextDbuid = remoteDbuid || localDbuid || generateDbUid();
+  } else if (remoteDbuid && (!localDbuid || isBootstrap)) {
+    nextDbuid = remoteDbuid;
+  } else if (!nextDbuid && options?.force) {
+    nextDbuid = generateDbUid();
+  }
+
+  let mergedTombstonesMap = mergeTombstoneMaps(localTombstoneState.tombstones, cloudTombstonesMap);
+  const combinedPrunedBefore = Math.max(localTombstoneState.tombstonePrunedBefore || 0, cloudPrunedBefore);
+
+  // Backward-compatible fallback for explicit purgedIds if not yet in tombstones
   const combinedPurgedIds = new Set([
     ...(Array.isArray(config.sync?.pendingPurgedIds) ? config.sync.pendingPurgedIds : []),
     ...(Array.isArray(extraPurgedIds) ? extraPurgedIds : [])
   ]);
-  const localIds = collectLocalRecordIds(previousGroups, previousTags);
+  const localIds = collectLocalRecordIds(workingLocalGroups, workingLocalTags);
   const purgedIdsToStrip = new Set(Array.from(combinedPurgedIds).filter(id => id && !localIds.has(id)));
+  const strippedCloudFallback = stripPurgedIdsFromCloudData(cloudGroups || [], resolvedCloudTags, purgedIdsToStrip);
 
-  const strippedCloud = stripPurgedIdsFromCloudData(cloudGroups || [], resolvedCloudTags, purgedIdsToStrip);
-  const effectiveCloudGroups = strippedCloud.groups;
-  const effectiveCloudTags = strippedCloud.tags;
+  const localAfterTombstones = applyTombstonesToData(workingLocalGroups, workingLocalTags, mergedTombstonesMap);
+  const cloudAfterTombstones = applyTombstonesToData(
+    strippedCloudFallback.groups,
+    strippedCloudFallback.tags,
+    mergedTombstonesMap
+  );
 
-  const localFreshness = getGroupsFreshness(previousGroups);
+  for (const id of [...localAfterTombstones.resurrectedIds, ...cloudAfterTombstones.resurrectedIds]) {
+    mergedTombstonesMap.delete(id);
+  }
+
+  const prunedState = pruneTombstoneMap(mergedTombstonesMap, combinedPrunedBefore, {
+    retentionDays: getTombstoneRetentionDays(config),
+    maxEntries: getMaxTombstonesForSyncType(config.sync?.type)
+  });
+  mergedTombstonesMap = prunedState.tombstones;
+  const nextPrunedBefore = prunedState.tombstonePrunedBefore;
+  const nextTombstonesObj = sanitizeTombstonesObject(mergedTombstonesMap);
+
+  const effectiveLocalGroups = localAfterTombstones.groups;
+  const effectiveLocalTags = localAfterTombstones.tags;
+  const effectiveCloudGroups = cloudAfterTombstones.groups;
+  const effectiveCloudTags = cloudAfterTombstones.tags;
+
+  const localFreshness = getGroupsFreshness(effectiveLocalGroups);
   const cloudFreshness = getGroupsFreshness(effectiveCloudGroups);
   const localIsMoreRecent = localFreshness > cloudFreshness;
 
-  const isInitialUnseededSync = !config.sync?.lastSync && !config.sync?.lastSyncedLocalHash && purgedIdsToStrip.size === 0;
-  const mergedGroups = mergeGroups(previousGroups, effectiveCloudGroups, { preferCloudOnBootstrap: isInitialUnseededSync });
-  const mergedTags = mergeTags(previousTags, effectiveCloudTags);
+  const isInitialUnseededSync = !config.sync?.lastSync && !config.sync?.lastSyncedLocalHash && purgedIdsToStrip.size === 0 && mergedTombstonesMap.size === 0;
+  const mergedGroups = mergeGroups(effectiveLocalGroups, effectiveCloudGroups, { preferCloudOnBootstrap: isInitialUnseededSync });
+  const mergedTags = mergeTags(effectiveLocalTags, effectiveCloudTags);
 
   const groupsChanged = !jsonValuesEqual(previousGroups, mergedGroups);
   const tagsChanged = !jsonValuesEqual(previousTags, mergedTags);
   const changed = groupsChanged || tagsChanged;
 
+  const tombstonesChangedLocally = !jsonValuesEqual(sanitizeTombstonesObject(localTombstoneState.tombstones), nextTombstonesObj)
+    || (localTombstoneState.tombstonePrunedBefore || 0) !== nextPrunedBefore
+    || (localDbuid || "") !== (nextDbuid || "");
+
   const remoteGroupsNeedUpdate = !jsonValuesEqual(cloudGroups || [], mergedGroups);
   const remoteTagsNeedUpdate = !jsonValuesEqual(resolvedCloudTags, mergedTags);
-  const remoteNeedsUpdate = remoteGroupsNeedUpdate || remoteTagsNeedUpdate;
+  const remoteTombstonesNeedUpdate = !jsonValuesEqual(sanitizeTombstonesObject(cloudTombstonesMap), nextTombstonesObj)
+    || cloudPrunedBefore !== nextPrunedBefore
+    || (!!nextDbuid && remoteDbuid !== nextDbuid);
+  const remoteNeedsUpdate = remoteGroupsNeedUpdate || remoteTagsNeedUpdate || remoteTombstonesNeedUpdate;
 
   if (changed || remoteNeedsUpdate) {
     logDebug("syncMergeDiff", previousGroups, mergedGroups, previousTags, mergedTags, {
       changed,
       groupsChanged,
       tagsChanged,
-      remoteNeedsUpdate
+      remoteNeedsUpdate,
+      remoteTombstonesNeedUpdate
     });
   }
 
@@ -1649,8 +2163,15 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
     if (forceSaveLocal) {
       await saveState();
     }
+    if (tombstonesChangedLocally) {
+      await saveLocalTombstoneState({ dbuid: nextDbuid, tombstones: mergedTombstonesMap, tombstonePrunedBefore: nextPrunedBefore });
+    }
     if (config.sync) config.sync.pendingPurgedIds = [];
-    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
+    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags, {
+      dbuid: nextDbuid,
+      tombstones: mergedTombstonesMap,
+      tombstonePrunedBefore: nextPrunedBefore
+    });
     await updateLastSyncTime(config);
     return { ok: true, reason: 'no-changes', changed: forceSaveLocal };
   }
@@ -1664,8 +2185,20 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
 
   let writeResult = null;
   if (remoteNeedsUpdate) {
+    if (!nextDbuid) {
+      nextDbuid = generateDbUid();
+    }
     const syncCfg = buildSyncConfigFromConfig(config);
-    writeResult = await syncWriteDetailed({ ...syncCfg, lastSync: Date.now() });
+    writeResult = await syncWriteDetailed(
+      { ...syncCfg, lastSync: Date.now() },
+      state.groups,
+      state.tags,
+      {
+        dbuid: nextDbuid,
+        tombstones: nextTombstonesObj,
+        tombstonePrunedBefore: nextPrunedBefore
+      }
+    );
 
     if (!writeResult.ok) {
       // Never keep a merged local state that failed to persist remotely.
@@ -1684,7 +2217,12 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
           browserConflictRetries - 1,
           latestRemote.data.tags,
           extraPurgedIds,
-          options
+          {
+            ...options,
+            cloudDbuid: latestRemote.data.dbuid,
+            cloudTombstones: latestRemote.data.tombstones,
+            cloudTombstonePrunedBefore: latestRemote.data.tombstonePrunedBefore
+          }
         );
       }
 
@@ -1711,8 +2249,15 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
   if (changed || forceSaveLocal) {
     await saveState();
   }
+  if (tombstonesChangedLocally || remoteNeedsUpdate) {
+    await saveLocalTombstoneState({ dbuid: nextDbuid, tombstones: mergedTombstonesMap, tombstonePrunedBefore: nextPrunedBefore });
+  }
   if (config.sync) config.sync.pendingPurgedIds = [];
-  config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
+  config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags, {
+    dbuid: nextDbuid,
+    tombstones: mergedTombstonesMap,
+    tombstonePrunedBefore: nextPrunedBefore
+  });
   await updateLastSyncTime(config);
   return { ok: true, reason: writeResult?.reason || 'no-changes', changed };
 }
@@ -1735,6 +2280,8 @@ export function startSyncLoop(options = {}) {
       const config = await loadConfig();
       if (!config.sync.enabled) return;
       if (!shouldSync(config)) return;
+      if (config.sync.pausedReason) return;
+      if (config.sync.nextRetryAt && Date.now() < config.sync.nextRetryAt) return;
       if (config.sync.lastSync && (Date.now() - config.sync.lastSync) < DEFAULT_SYNC_INTERVAL) {
         return;
       }
@@ -2260,19 +2807,26 @@ export async function syncNow(options = {}) {
       return { ok: false, reason: 'not-configured' };
     }
 
-    const localHash = await getGroupsHash(state.groups, state.tags);
+    if (config.sync.pausedReason && !options?.force && !options?.staleResolution) {
+      lastSyncErrorReason = config.sync.pausedReason;
+      return { ok: false, reason: config.sync.pausedReason, paused: true };
+    }
+
+    const localTombstoneState = await migratePendingPurgedIdsToTombstones(config);
+    const localHash = await getGroupsHash(state.groups, state.tags, localTombstoneState);
     const lastSyncedLocalHash = config.sync.lastSyncedLocalHash || "";
     const hasPendingPurges = Array.isArray(config.sync.pendingPurgedIds) && config.sync.pendingPurgedIds.length > 0;
     const hasPendingLocalChanges = !lastSyncedLocalHash
       || lastSyncedLocalHash !== localHash
       || hasPendingPurges;
     const previousRemoteMarker = config.sync.lastSeenRemoteMarker || "";
+    const previousMarkerType = config.sync.remoteChangeHeaderType ?? null;
     const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config);
     const currentRemoteMarker = config.sync.lastSeenRemoteMarker || "";
     const markerIsReliableForSkip = config.sync.remoteChangeHeaderType === 'sha256'
       || (config.sync.remoteChangeHeaderType === 'etag'
         && !currentRemoteMarker.startsWith('W/'));
-    const willSkipGet = !hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip;
+    const willSkipGet = !hasPendingLocalChanges && remoteMarkerUnchanged && markerIsReliableForSkip && !options?.staleResolution && !(options?.force && !localTombstoneState.dbuid);
 
     syncDebugLog('syncNow pre-check', {
       localHash,
@@ -2293,6 +2847,7 @@ export async function syncNow(options = {}) {
       if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
         await syncWebdavFolderExtrasLocked(config, { includeManual });
       }
+      await recordSyncResultForPause(config, { ok: true });
       await updateLastSyncTime(config);
       return { ok: true, reason: 'remote-marker-unchanged', changed: false };
     }
@@ -2301,12 +2856,28 @@ export async function syncNow(options = {}) {
     if (!readResult.ok) {
       console.warn("Failed to read from sync server");
       lastSyncErrorReason = readResult.reason || 'sync-failed';
+      config.sync.lastSeenRemoteMarker = previousRemoteMarker;
+      config.sync.remoteChangeHeaderType = previousMarkerType;
+      await recordSyncResultForPause(config, readResult);
       return readResult;
     }
 
     applyRemoteMarkerToConfig(config, readResult.remoteMarker);
-    const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
+    const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, [], {
+      force: !!options?.force,
+      initializedRemote: readResult.reason === "initialized-remote",
+      cloudDbuid: readResult.data.dbuid,
+      cloudTombstones: readResult.data.tombstones,
+      cloudTombstonePrunedBefore: readResult.data.tombstonePrunedBefore,
+      staleResolution: options?.staleResolution || null,
+      keepIds: options?.keepIds || []
+    });
+    if (!mergeResult.ok) {
+      config.sync.lastSeenRemoteMarker = previousRemoteMarker;
+      config.sync.remoteChangeHeaderType = previousMarkerType;
+    }
     lastSyncErrorReason = mergeResult.ok ? null : (mergeResult.reason || 'sync-failed');
+    await recordSyncResultForPause(config, mergeResult);
     if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
       await syncWebdavFolderExtrasLocked(config, { includeManual });
     }
@@ -2330,11 +2901,18 @@ export async function syncForceUpload(sourceState = state) {
 
     const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
     const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
+    const epochNow = Date.now();
+    const nextDbuid = generateDbUid();
     const writeResult = await syncWriteDetailed(
-      { ...syncCfg, lastSync: Date.now() },
+      { ...syncCfg, lastSync: epochNow },
       groups,
       tags,
-      { skipBootstrapGuard: true }
+      {
+        skipBootstrapGuard: true,
+        dbuid: nextDbuid,
+        tombstones: {},
+        tombstonePrunedBefore: epochNow
+      }
     );
     if (!writeResult.ok) {
       lastSyncErrorReason = writeResult.reason || 'sync-failed';
@@ -2353,8 +2931,15 @@ export async function syncForceUpload(sourceState = state) {
         config.sync.lastSeenRemoteMarker = '';
       }
     }
-    if (config.sync) config.sync.pendingPurgedIds = [];
-    config.sync.lastSyncedLocalHash = await getGroupsHash(groups, tags);
+    const nextTombstoneState = { dbuid: nextDbuid, tombstones: new Map(), tombstonePrunedBefore: epochNow };
+    await saveLocalTombstoneState(nextTombstoneState);
+    if (config.sync) {
+      config.sync.pendingPurgedIds = [];
+      config.sync.pausedReason = null;
+      config.sync.consecutiveErrors = 0;
+      config.sync.nextRetryAt = 0;
+    }
+    config.sync.lastSyncedLocalHash = await getGroupsHash(groups, tags, nextTombstoneState);
     await updateLastSyncTime(config);
     return { ok: true, reason: writeResult.reason || 'ok' };
   });
@@ -2379,14 +2964,73 @@ export async function syncForceDownload() {
     state.tags = Array.isArray(readResult.data?.tags) ? readResult.data.tags : [];
     await saveState();
 
+    const nextTombstoneState = {
+      dbuid: (typeof readResult.data?.dbuid === "string" && readResult.data.dbuid.trim()) ? readResult.data.dbuid.trim() : generateDbUid(),
+      tombstones: sanitizeTombstonesMap(readResult.data?.tombstones),
+      tombstonePrunedBefore: Number(readResult.data?.tombstonePrunedBefore) > 0 ? Number(readResult.data.tombstonePrunedBefore) : 0
+    };
+    await saveLocalTombstoneState(nextTombstoneState);
+
     lastSyncErrorReason = null;
     if (!applyRemoteMarkerToConfig(config, readResult.remoteMarker)) {
       config.sync.lastSeenRemoteMarker = '';
     }
-    if (config.sync) config.sync.pendingPurgedIds = [];
-    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
+    if (config.sync) {
+      config.sync.pendingPurgedIds = [];
+      config.sync.pausedReason = null;
+      config.sync.consecutiveErrors = 0;
+      config.sync.nextRetryAt = 0;
+    }
+    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags, nextTombstoneState);
     await updateLastSyncTime(config);
     return { ok: true, reason: 'ok', data: readResult.data };
+  });
+}
+
+export async function getStaleDeviceConflictDetails() {
+  return await withSyncLock(async () => {
+    const config = await loadConfig();
+    const syncCfg = buildSyncConfigFromConfig(config);
+    const readResult = await syncReadDetailed(syncCfg, { allowInitialize: false });
+    if (!readResult.ok) return readResult;
+
+    const localTombstoneState = await loadLocalTombstoneState();
+    const localDbuid = localTombstoneState.dbuid || "";
+    const remoteDbuid = typeof readResult.data?.dbuid === "string" ? readResult.data.dbuid.trim() : "";
+    const remotePrunedBefore = Number(readResult.data?.tombstonePrunedBefore) > 0
+      ? Number(readResult.data.tombstonePrunedBefore)
+      : 0;
+    const cutoffForReview = remotePrunedBefore > 0 ? remotePrunedBefore : Number.MAX_SAFE_INTEGER;
+    const ambiguousItems = findAmbiguousLocalOnlyRecords(
+      state.groups,
+      Array.isArray(state.tags) ? state.tags : [],
+      readResult.data?.groups || [],
+      readResult.data?.tags || [],
+      cutoffForReview
+    );
+    return {
+      ok: true,
+      localDbuid,
+      remoteDbuid,
+      dbuidMismatch: !!remoteDbuid && localDbuid !== remoteDbuid,
+      lastSync: config.sync?.lastSync || 0,
+      tombstonePrunedBefore: remotePrunedBefore,
+      ambiguousItems
+    };
+  });
+}
+
+export async function resolveStaleDeviceConflict({ mode = "smart", keepIds = [] } = {}) {
+  if (mode === "force-download") {
+    return await syncForceDownload();
+  }
+  if (mode === "force-upload") {
+    return await syncForceUpload();
+  }
+  return await syncNow({
+    force: true,
+    staleResolution: mode === "selective" ? "selective" : "smart",
+    keepIds
   });
 }
 

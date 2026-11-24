@@ -143,6 +143,10 @@ export function getSyncErrorLabel(reason) {
       return t("invalidUrl") || "Invalid URL";
     case "browser-sync-error":
       return t("browserSyncUnavailable") || "Browser sync unavailable";
+    case "stale-device-conflict":
+      return t("syncStaleConflictLabel") || "Sync paused: device out of date";
+    case "dbuid-mismatch":
+      return t("syncDbuidMismatchLabel") || "Sync paused: different bookmark database detected";
     default:
       return t("syncServerUnavailable") || "Sync server is unavailable. Using local data.";
   }
@@ -164,7 +168,8 @@ export async function updateFooter(providedConfig = null) {
     await tryAutoUnlockVault(config.vaultHeader);
   }
   const isVaultCredsLocked = usingBasic && config?.sync?.encryptionMode === "vault" && !!config?.sync?.enc && !isVaultUnlocked();
-  const errorReason = syncEnabled ? getLastSyncErrorReason() : null;
+  const pausedReason = syncEnabled ? (config?.sync?.pausedReason || null) : null;
+  const errorReason = syncEnabled ? (pausedReason || getLastSyncErrorReason()) : null;
   const isLocked = isVaultCredsLocked || errorReason === "credentials-locked";
 
   if (footerSyncDot) {
@@ -187,6 +192,9 @@ export async function updateFooter(providedConfig = null) {
     if (isLocked) {
       const lockedText = t("syncCredentialsLocked") || "Sync credentials are locked.";
       footerSyncText.textContent = `${lockedText} • ${lastSyncStr || t("footerNeverSynced")}`;
+    } else if (pausedReason) {
+      const pausedText = t("syncPausedStatus") || "Sync paused due to issue";
+      footerSyncText.textContent = `⚠️ ${pausedText} • ${lastSyncStr || t("footerNeverSynced")}`;
     } else if (errorReason) {
       footerSyncText.textContent = `⚠️ ${getSyncErrorLabel(errorReason)} • ${lastSyncStr || t("footerNeverSynced")}`;
     } else if (syncEnabled) {
@@ -204,6 +212,16 @@ export async function updateFooter(providedConfig = null) {
         if (await window.promptUnlockVault()) {
           clearLastSyncErrorReason();
           await updateFooter();
+        }
+      };
+    } else if (pausedReason && typeof window !== "undefined" && (typeof window.openSyncMergeWizard === "function" || typeof window.openSyncSettings === "function")) {
+      footerSyncStatus.style.cursor = "pointer";
+      footerSyncStatus.title = getSyncErrorLabel(pausedReason);
+      footerSyncStatus.onclick = async () => {
+        if ((pausedReason === "stale-device-conflict" || pausedReason === "dbuid-mismatch") && typeof window.openSyncMergeWizard === "function") {
+          await window.openSyncMergeWizard();
+        } else if (typeof window.openSyncSettings === "function") {
+          await window.openSyncSettings();
         }
       };
     } else {

@@ -1751,6 +1751,22 @@
   "securityForceChangeDesc": {
     "message": "Uw kluiswachtwoord is verlopen. Stel een nieuw wachtwoord in om door te gaan."
   },
+  "syncPausedStatus": { "message": "Synchronisatie gepauzeerd vanwege probleem" },
+  "syncStaleConflictLabel": { "message": "Synchronisatie gepauzeerd: apparaat verouderd" },
+  "syncDbuidMismatchLabel": { "message": "Synchronisatie gepauzeerd: andere bladwijzerdatabase gedetecteerd" },
+  "syncStaleClickToResolve": { "message": "Klik om op te lossen" },
+  "syncMergeWizardTitle": { "message": "Synchronisatie-samenvoegwizard" },
+  "syncMergeWizardDesc": { "message": "Dit apparaat was langer offline dan het verwijderingsvenster. Kies hoe lokale items die op afstand ontbreken worden verwerkt." },
+  "syncMergeWizardLastSync": { "message": "Laatste synchronisatie van dit apparaat" },
+  "syncMergeWizardCutoff": { "message": "Grens van verwijderingsgeschiedenis op afstand" },
+  "syncMergeWizardSmart": { "message": "Slim samenvoegen (Aanbevolen)" },
+  "syncMergeWizardReview": { "message": "Onduidelijke items bekijken" },
+  "syncMergeWizardForceDownload": { "message": "Kopie op afstand gebruiken" },
+  "syncMergeWizardForceUpload": { "message": "Kopie van dit apparaat gebruiken" },
+  "syncMergeWizardApplySelected": { "message": "Selectie toepassen" },
+  "syncMergeWizardNoAmbiguous": { "message": "Geen onduidelijke lokale items gevonden." },
+  "selectAll": { "message": "Alles selecteren" },
+  "deselectAll": { "message": "Alles deselecteren" },
   "securityPostponeBtn": {
     "message": "Uitstellen"
   },

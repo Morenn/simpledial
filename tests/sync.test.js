@@ -157,10 +157,13 @@ function markerHeaders() {
   return { [header]: httpServer.markerValue };
 }
 
-function installHttpServer({ groups = [], tags = undefined, markerType = null, markerValue = "", failReads = 0, failWrites = 0 } = {}) {
+function installHttpServer({ groups = [], tags = undefined, dbuid = undefined, tombstones = undefined, tombstonePrunedBefore = undefined, markerType = null, markerValue = "", failReads = 0, failWrites = 0 } = {}) {
   httpServer = {
     groups: structuredClone(groups),
     tags: tags !== undefined ? structuredClone(tags) : undefined,
+    dbuid,
+    tombstones: tombstones !== undefined ? structuredClone(tombstones) : undefined,
+    tombstonePrunedBefore,
     markerType,
     markerValue,
     failReads,
@@ -181,9 +184,11 @@ function installHttpServer({ groups = [], tags = undefined, markerType = null, m
         httpServer.failReads--;
         return new Response("Unavailable", { status: 503 });
       }
-      const payload = httpServer.tags !== undefined
-        ? { groups: httpServer.groups, tags: httpServer.tags }
-        : { groups: httpServer.groups };
+      const payload = { groups: httpServer.groups };
+      if (httpServer.tags !== undefined) payload.tags = httpServer.tags;
+      if (httpServer.dbuid !== undefined) payload.dbuid = httpServer.dbuid;
+      if (httpServer.tombstones !== undefined) payload.tombstones = httpServer.tombstones;
+      if (httpServer.tombstonePrunedBefore !== undefined) payload.tombstonePrunedBefore = httpServer.tombstonePrunedBefore;
       return new Response(JSON.stringify(payload), {
         status: 200,
         headers: { "Content-Type": "application/json", ...markerHeaders() }
@@ -200,6 +205,9 @@ function installHttpServer({ groups = [], tags = undefined, markerType = null, m
       if (parsed.tags !== undefined) {
         httpServer.tags = parsed.tags;
       }
+      httpServer.dbuid = parsed.dbuid;
+      httpServer.tombstones = parsed.tombstones;
+      httpServer.tombstonePrunedBefore = parsed.tombstonePrunedBefore;
       if (httpServer.markerType === "etag") {
         httpServer.markerValue = `"v${Number.parseInt(httpServer.markerValue.match(/\d+/)?.[0] || "0", 10) + 1}"`;
       } else if (httpServer.markerType === "sha256") {
@@ -1373,13 +1381,13 @@ test("syncWrite skips network in manual and disabled modes while queuing purgedI
 
   assert.equal(await syncWrite(state, { purgedIds: ["b_deleted"] }), true);
   assert.equal(httpRequests.length, 0);
-  assert.deepEqual(readStoredConfig().sync.pendingPurgedIds, ["b_deleted"]);
+  assert.ok(localStorage.get("myspeeddial-sync-tombstones")?.tombstones?.b_deleted > 0);
 
-  // Disabled sync skips both network and pendingPurgedIds queuing
+  // Disabled sync skips both network and tombstone recording
   setClient([group([item("b1", "Keep", 100)])], httpConfig("direct", { enabled: false, intervalMode: "immediate", pendingPurgedIds: [] }));
   assert.equal(await syncWrite(state, { purgedIds: ["b_deleted_disabled"] }), true);
   assert.equal(httpRequests.length, 0);
-  assert.deepEqual(readStoredConfig().sync.pendingPurgedIds, []);
+  assert.equal(localStorage.get("myspeeddial-sync-tombstones")?.tombstones?.b_deleted_disabled, undefined);
 });
 
 test("syncNow updates lastSync when remote-marker-unchanged skips GET", async () => {
@@ -1601,4 +1609,156 @@ test("two clients with equal freshness but different group and tag order converg
 
   assert.deepEqual(orderFromA, orderFromB);
   assert.deepEqual(tagOrderFromA, tagOrderFromB);
+});
+
+test("synced tombstones prevent offline client from resurrecting permanently deleted items", async () => {
+  const { clearLocalTombstoneState } = await import("../newtab/sync.js");
+  await clearLocalTombstoneState();
+
+  const b1 = item("b1", "Keep", 100);
+  const b2 = item("b2", "DeleteMe", 100);
+  installHttpServer({ groups: [group([b1, b2], "g1", 100)], tags: [] });
+
+  // Device A permanently deletes b2
+  setClient([group([b1], "g1", 100)], httpConfig("direct", { lastSync: 200 }));
+  await syncWrite(state, { purgedIds: ["b2"] });
+
+  assert.ok(httpServer.tombstones?.b2 > 0);
+  assert.deepEqual(httpServer.groups[0].items.map(i => i.id), ["b1"]);
+
+  // Offline Device B still has b2 locally (with older updatedAt) and syncs later
+  await clearLocalTombstoneState();
+  setClient([group([b1, b2], "g1", 100)], httpConfig("direct", { lastSync: 150 }));
+  const resB = await syncNow({ force: true });
+  assert.equal(resB.ok, true);
+  assert.deepEqual(state.groups[0].items.map(i => i.id), ["b1"]);
+});
+
+test("record modified after tombstone timestamp survives and clears tombstone", async () => {
+  const { clearLocalTombstoneState } = await import("../newtab/sync.js");
+  await clearLocalTombstoneState();
+  const oldPurgeTs = 1000;
+  localStorage.set("myspeeddial-sync-tombstones", {
+    tombstones: { b2: oldPurgeTs },
+    tombstonePrunedBefore: 0
+  });
+
+  const b2Edited = item("b2", "Recreated", 2000);
+  setClient([group([b2Edited], "g1", 2000)], httpConfig("direct", { lastSync: 500 }));
+  installHttpServer({ groups: [group([], "g1", 1000)], tags: [] });
+
+  const res = await syncNow({ force: true });
+  assert.equal(res.ok, true);
+  assert.deepEqual(state.groups[0].items.map(i => i.id), ["b2"]);
+  const storedTombstones = localStorage.get("myspeeddial-sync-tombstones");
+  assert.equal(storedTombstones?.tombstones?.b2, undefined);
+});
+
+test("stale device pauses with stale-device-conflict and resolves via Smart or Selective merge", async () => {
+  const { clearLocalTombstoneState, getStaleDeviceConflictDetails, resolveStaleDeviceConflict } = await import("../newtab/sync.js");
+  await clearLocalTombstoneState();
+
+  const now = Date.now();
+  const prunedBefore = now - 1000;
+  const staleLastSync = now - (10 * 24 * 60 * 60 * 1000);
+
+  const remoteKeep = item("b1", "RemoteKeep", now - 5000);
+  const localDeletedWhileOffline = item("b_old", "OldLocalOnly", staleLastSync - 1000);
+  const localNewWhileOffline = item("b_new", "NewLocalOnly", now - 500);
+
+  installHttpServer({
+    groups: [group([remoteKeep], "g1", now - 5000)],
+    tags: [],
+    tombstonePrunedBefore: prunedBefore
+  });
+
+  setClient(
+    [group([remoteKeep, localDeletedWhileOffline, localNewWhileOffline], "g1", now - 500)],
+    httpConfig("direct", { lastSync: staleLastSync, lastSeenRemoteMarker: "" })
+  );
+
+  const res = await syncNow();
+  assert.equal(res.ok, false);
+  assert.equal(res.reason, "stale-device-conflict");
+  assert.equal(readStoredConfig().sync.pausedReason, "stale-device-conflict");
+
+  // Smart merge drops b_old (<= tombstonePrunedBefore) and keeps b_new (> tombstonePrunedBefore)
+  const details = await getStaleDeviceConflictDetails();
+  assert.equal(details.ok, true);
+  assert.deepEqual(details.ambiguousItems.map(i => i.id), ["b_old"]);
+
+  const smartRes = await resolveStaleDeviceConflict({ mode: "smart" });
+  assert.equal(smartRes.ok, true);
+  assert.equal(readStoredConfig().sync.pausedReason, null);
+  assert.deepEqual(state.groups[0].items.map(i => i.id).sort(), ["b1", "b_new"]);
+});
+
+test("repeated fatal auth errors pause sync and syncForceUpload resets epoch and clears pause", async () => {
+  const { clearLocalTombstoneState } = await import("../newtab/sync.js");
+  await clearLocalTombstoneState();
+
+  setClient([group([item("b1", "One", 100)], "g1", 100)], httpConfig("direct", { lastSync: 50 }));
+  fetchRemote = async () => new Response("Unauthorized", { status: 401 });
+
+  await syncNow({ force: true });
+  await syncNow({ force: true });
+  await syncNow({ force: true });
+  assert.equal(readStoredConfig().sync.pausedReason, "auth");
+
+  // Subsequent normal syncNow short-circuits while paused
+  const pausedRes = await syncNow();
+  assert.equal(pausedRes.ok, false);
+  assert.equal(pausedRes.paused, true);
+
+  // Force upload succeeds when server recovers, sets tombstonePrunedBefore, and clears pause
+  installHttpServer({ groups: [], tags: [] });
+  const uploadRes = await syncForceUpload();
+  assert.equal(uploadRes.ok, true);
+  assert.equal(readStoredConfig().sync.pausedReason, null);
+  const storedTombstones = localStorage.get("myspeeddial-sync-tombstones");
+  assert.ok(storedTombstones.tombstonePrunedBefore > 0);
+});
+
+test("dbuid mismatch pauses sync and resolves via merge wizard, force download, or force upload", async () => {
+  const { clearLocalTombstoneState, getStaleDeviceConflictDetails, resolveStaleDeviceConflict } = await import("../newtab/sync.js");
+  await clearLocalTombstoneState();
+
+  // Bootstrap empty device automatically adopts remote dbuid without mismatch
+  setClient([group([], "g_boot", 100)], httpConfig("direct", { lastSync: 0, lastSyncedLocalHash: "" }));
+  installHttpServer({ groups: [group([item("b1", "Remote", 200)], "g1", 200)], tags: [], dbuid: "remote-db-1" });
+  const bootRes = await syncNow();
+  assert.equal(bootRes.ok, true);
+  assert.equal(localStorage.get("myspeeddial-sync-tombstones")?.dbuid, "remote-db-1");
+
+  // Two different databases (different dbuids) pause with dbuid-mismatch
+  localStorage.set("myspeeddial-sync-tombstones", {
+    dbuid: "local-db-999",
+    tombstones: {},
+    tombstonePrunedBefore: 0
+  });
+  setClient([group([item("b_local", "LocalOnly", 300)], "g_local", 300)], httpConfig("direct", { lastSync: 100 }));
+  const mismatchRes = await syncNow({ force: true });
+  assert.equal(mismatchRes.ok, false);
+  assert.equal(mismatchRes.reason, "dbuid-mismatch");
+  assert.equal(readStoredConfig().sync.pausedReason, "dbuid-mismatch");
+
+  const details = await getStaleDeviceConflictDetails();
+  assert.equal(details.ok, true);
+  assert.equal(details.dbuidMismatch, true);
+  assert.equal(details.localDbuid, "local-db-999");
+  assert.equal(details.remoteDbuid, "remote-db-1");
+
+  // Resolving via smart merge merges both DBs and adopts remote dbuid
+  const mergeRes = await resolveStaleDeviceConflict({ mode: "smart" });
+  assert.equal(mergeRes.ok, true);
+  assert.equal(readStoredConfig().sync.pausedReason, null);
+  assert.equal(localStorage.get("myspeeddial-sync-tombstones")?.dbuid, "remote-db-1");
+  assert.equal(httpServer.dbuid, "remote-db-1");
+
+  // Force upload mints a fresh dbuid
+  const uploadRes = await syncForceUpload();
+  assert.equal(uploadRes.ok, true);
+  const newDbuid = localStorage.get("myspeeddial-sync-tombstones")?.dbuid;
+  assert.ok(newDbuid && newDbuid !== "remote-db-1");
+  assert.equal(httpServer.dbuid, newDbuid);
 });

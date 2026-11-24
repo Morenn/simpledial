@@ -1751,6 +1751,22 @@
   "securityForceChangeDesc": {
     "message": "Ihr Tresor-Passwort ist abgelaufen. Legen Sie ein neues Passwort fest, um fortzufahren."
   },
+  "syncPausedStatus": { "message": "Synchronisierung wegen Problem pausiert" },
+  "syncStaleConflictLabel": { "message": "Synchronisierung pausiert: Gerät veraltet" },
+  "syncDbuidMismatchLabel": { "message": "Synchronisierung pausiert: andere Lesezeichen-Datenbank erkannt" },
+  "syncStaleClickToResolve": { "message": "Zum Beheben klicken" },
+  "syncMergeWizardTitle": { "message": "Sync-Zusammenführungsassistent" },
+  "syncMergeWizardDesc": { "message": "Dieses Gerät war länger offline als das Löschverlaufsfenster. Wählen Sie, wie nur lokal vorhandene Elemente abgeglichen werden." },
+  "syncMergeWizardLastSync": { "message": "Letzte Synchronisierung dieses Geräts" },
+  "syncMergeWizardCutoff": { "message": "Grenze des Remote-Löschverlaufs" },
+  "syncMergeWizardSmart": { "message": "Intelligentes Zusammenführen (Empfohlen)" },
+  "syncMergeWizardReview": { "message": "Unklare Elemente prüfen" },
+  "syncMergeWizardForceDownload": { "message": "Remote-Kopie verwenden" },
+  "syncMergeWizardForceUpload": { "message": "Kopie dieses Geräts verwenden" },
+  "syncMergeWizardApplySelected": { "message": "Auswahl anwenden" },
+  "syncMergeWizardNoAmbiguous": { "message": "Keine unklaren lokalen Elemente gefunden." },
+  "selectAll": { "message": "Alle auswählen" },
+  "deselectAll": { "message": "Alle abwählen" },
   "securityPostponeBtn": {
     "message": "Verschieben"
   },

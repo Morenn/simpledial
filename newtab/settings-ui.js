@@ -17,7 +17,8 @@ import {
   applySyncToConfig,
   updateManualSyncButtonVisibility,
   setSyncStatusMessage,
-  clearSyncStatuses
+  clearSyncStatuses,
+  openSyncMergeWizard
 } from "./settings/sync-ui.js";
 import {
   initBackupSettings,
@@ -302,8 +303,10 @@ document.getElementById("info-storage-refresh-btn")?.addEventListener("click", (
   void renderInfoStorageStats();
 });
 
+export { openSyncMergeWizard };
+
 // ---------- Open Settings Modal ----------
-export async function openSettingsModal() {
+export async function openSettingsModal(initialTab = null) {
   settingsState.isInitializingSettingsForm = true;
   try {
     if (typeof window.clearDateTimePreview === "function") {
@@ -332,6 +335,9 @@ export async function openSettingsModal() {
     await populateSecuritySettings(config);
 
     clearSyncStatuses();
+    if (initialTab) {
+      document.querySelector(`.settings-tab-btn[data-tab="${CSS.escape(initialTab)}"]`)?.click();
+    }
     settingsModal?.classList.remove("hidden");
     setSettingsDirty(false);
   } finally {
@@ -353,6 +359,7 @@ document.addEventListener("keydown", e => {
       "custom-widget-new-group-modal": "custom-widget-new-group-cancel-btn",
       "custom-widget-trust-modal": "custom-widget-trust-cancel",
       "sync-force-overwrite-modal": "sync-force-overwrite-cancel",
+      "sync-merge-wizard-modal": "sync-merge-wizard-cancel",
       "vault-unlock-modal": "vault-unlock-modal-cancel",
       "failed-icons-modal": "failed-icons-close"
     };
@@ -360,6 +367,7 @@ document.addEventListener("keydown", e => {
       "custom-widget-new-group-modal",
       "custom-widget-trust-modal",
       "sync-force-overwrite-modal",
+      "sync-merge-wizard-modal",
       "vault-unlock-modal",
       "vault-force-change-modal",
       "browser-bookmarks-overwrite-modal",

@@ -39,7 +39,10 @@ export const defaultConfig = {
     lastSeenRemoteMarker: "",
     lastRemoteMarkerCheck: 0,
     lastMarkerCheckUrl: "", // serverUrl the remote marker was last checked against
-    pendingPurgedIds: []
+    pendingPurgedIds: [],
+    pausedReason: null,
+    consecutiveErrors: 0,
+    nextRetryAt: 0
   },
   housekeeper: {
     retentionDays: 30,

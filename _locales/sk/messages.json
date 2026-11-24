@@ -1751,6 +1751,22 @@
   "securityForceChangeDesc": {
     "message": "Platnosť hesla k trezoru vypršala. Pre pokračovanie nastavte nové heslo."
   },
+  "syncPausedStatus": { "message": "Synchronizácia pozastavená kvôli problému" },
+  "syncStaleConflictLabel": { "message": "Synchronizácia pozastavená: zariadenie je zastarané" },
+  "syncDbuidMismatchLabel": { "message": "Synchronizácia pozastavená: zistená iná databáza záložiek" },
+  "syncStaleClickToResolve": { "message": "Kliknutím vyriešite" },
+  "syncMergeWizardTitle": { "message": "Sprievodca zlúčením synchronizácie" },
+  "syncMergeWizardDesc": { "message": "Toto zariadenie bolo offline dlhšie než okno histórie mazania. Vyberte, ako vyriešiť lokálne položky chýbajúce na serveri." },
+  "syncMergeWizardLastSync": { "message": "Posledná synchronizácia zariadenia" },
+  "syncMergeWizardCutoff": { "message": "Hranica vzdialenej histórie mazania" },
+  "syncMergeWizardSmart": { "message": "Inteligentné zlúčenie (Odporúčané)" },
+  "syncMergeWizardReview": { "message": "Skontrolovať nejasné položky" },
+  "syncMergeWizardForceDownload": { "message": "Použiť vzdialenú kópiu" },
+  "syncMergeWizardForceUpload": { "message": "Použiť kópiu tohto zariadenia" },
+  "syncMergeWizardApplySelected": { "message": "Použiť vybrané" },
+  "syncMergeWizardNoAmbiguous": { "message": "Nenašli sa žiadne nejasné lokálne položky." },
+  "selectAll": { "message": "Vybrať všetko" },
+  "deselectAll": { "message": "Zrušiť výber" },
   "securityPostponeBtn": {
     "message": "Odložiť"
   },

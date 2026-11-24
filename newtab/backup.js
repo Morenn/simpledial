@@ -1,7 +1,7 @@
 import { state, saveState, isStackItem } from "./state.js";
 import { loadConfig, saveConfig, parseJsonSafely, sanitizeParsedJson } from "./config.js";
 import { render } from "./render.js";
-import { withSyncLock } from "./sync.js";
+import { withSyncLock, clearLocalTombstoneState } from "./sync.js";
 
 const BACKUP_TYPE_META = {
   bookmarks: {
@@ -244,8 +244,12 @@ async function restoreParsedBackupData(parsedData, resolvedType, filename = "bac
   await withSyncLock(async () => {
     const config = await loadConfig();
     config.sync.enabled = false;
+    config.sync.pausedReason = null;
+    config.sync.consecutiveErrors = 0;
+    config.sync.nextRetryAt = 0;
     config.browserBookmarksAutoSync = false;
     await saveConfig(config);
+    await clearLocalTombstoneState({ resetDbUid: true });
 
     state.groups = safeParsedData.groups;
     state.tags = Array.isArray(safeParsedData.tags) ? safeParsedData.tags : [];

@@ -1751,6 +1751,22 @@
   "securityForceChangeDesc": {
     "message": "Holvisi salasana on vanhentunut. Aseta uusi salasana jatkaaksesi."
   },
+  "syncPausedStatus": { "message": "Synkronointi keskeytetty ongelman vuoksi" },
+  "syncStaleConflictLabel": { "message": "Synkronointi keskeytetty: laite vanhentunut" },
+  "syncDbuidMismatchLabel": { "message": "Synkronointi keskeytetty: eri kirjanmerkkitietokanta havaittu" },
+  "syncStaleClickToResolve": { "message": "Ratkaise napsauttamalla" },
+  "syncMergeWizardTitle": { "message": "Synkronoinnin yhdistämistoiminto" },
+  "syncMergeWizardDesc": { "message": "Tämä laite on ollut offline-tilassa poistohistoriaa pidempään. Valitse, miten vain paikalliset kohteet käsitellään." },
+  "syncMergeWizardLastSync": { "message": "Tämän laitteen viimeisin synkronointi" },
+  "syncMergeWizardCutoff": { "message": "Etäpoistohistorian raja" },
+  "syncMergeWizardSmart": { "message": "Älykäs yhdistäminen (Suositeltu)" },
+  "syncMergeWizardReview": { "message": "Tarkista epäselvät kohteet" },
+  "syncMergeWizardForceDownload": { "message": "Käytä etäkopiota" },
+  "syncMergeWizardForceUpload": { "message": "Käytä tämän laitteen kopiota" },
+  "syncMergeWizardApplySelected": { "message": "Käytä valittuja" },
+  "syncMergeWizardNoAmbiguous": { "message": "Epäselviä paikallisia kohteita ei löytynyt." },
+  "selectAll": { "message": "Valitse kaikki" },
+  "deselectAll": { "message": "Poista valinnat" },
   "securityPostponeBtn": {
     "message": "Lykkää"
   },
