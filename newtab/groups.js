@@ -134,6 +134,8 @@ grpCancel?.addEventListener("click", closeGroupModal);
 
 groupModal?.addEventListener("keydown", e => {
   if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
     closeGroupModal();
   }
 

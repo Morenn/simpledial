@@ -1793,6 +1793,8 @@ bmCancel.addEventListener("click", closeBookmarkModal);
 // Close modal on Escape or save on Enter key
 modal.addEventListener("keydown", e => {
   if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
     closeBookmarkModal();
   }
 
