@@ -1751,6 +1751,9 @@
   "securityForceChangeDesc": {
     "message": "Platnosť hesla k trezoru vypršala. Pre pokračovanie nastavte nové heslo."
   },
+  "securityPostponeBtn": {
+    "message": "Odložiť"
+  },
   "securityKdfLabel": {
     "message": "Odvodenie kľúča (KDF)"
   },

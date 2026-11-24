@@ -1751,6 +1751,9 @@
   "securityForceChangeDesc": {
     "message": "Термін дії пароля сховища минув. Встановіть новий пароль, щоб продовжити."
   },
+  "securityPostponeBtn": {
+    "message": "Відкласти"
+  },
   "securityKdfLabel": {
     "message": "Формування ключа (KDF)"
   },

@@ -356,7 +356,7 @@ export async function setupVault(password, { kdf = DEFAULT_VAULT_KDF, autoLockMi
   return header;
 }
 
-export async function unlockVault(password, header, { autoLockMinutes = 0 } = {}) {
+export async function unlockVault(password, header, { autoLockMinutes = 0, storeSession = true } = {}) {
   if (!header?.salt || !header?.wrappedKey || !header?.check) {
     throw new Error("WRONG_PASSWORD");
   }
@@ -378,7 +378,9 @@ export async function unlockVault(password, header, { autoLockMinutes = 0 } = {}
     throw new Error("WRONG_PASSWORD");
   }
   vaultDek = key;
-  await storeSessionKey(rawDek, autoLockMinutes);
+  if (storeSession) {
+    await storeSessionKey(rawDek, autoLockMinutes);
+  }
 }
 
 export async function tryAutoUnlockVault(header, { autoLockMinutes = 0 } = {}) {

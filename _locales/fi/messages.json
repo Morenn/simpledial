@@ -1751,6 +1751,9 @@
   "securityForceChangeDesc": {
     "message": "Holvisi salasana on vanhentunut. Aseta uusi salasana jatkaaksesi."
   },
+  "securityPostponeBtn": {
+    "message": "Lykkää"
+  },
   "securityKdfLabel": {
     "message": "Avaimen johtaminen (KDF)"
   },

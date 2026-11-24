@@ -242,3 +242,19 @@ test("fetchWeatherWidget returns vaultLocked when vault is locked and sends decr
     await cryptoMod.lockVault();
   }
 });
+
+test("unlockVault with storeSession: false unlocks in memory without persisting session key", async () => {
+  const header = await cryptoMod.setupVault("Strong-Pw-123");
+  await cryptoMod.lockVault();
+  assert.equal(cryptoMod.isVaultUnlocked(), false);
+  assert.equal(sessionStore.size, 0);
+
+  await cryptoMod.unlockVault("Strong-Pw-123", header, { storeSession: false });
+  assert.equal(cryptoMod.isVaultUnlocked(), true);
+  assert.equal(sessionStore.size, 0);
+
+  await cryptoMod.unlockVault("Strong-Pw-123", header, { storeSession: true });
+  assert.equal(cryptoMod.isVaultUnlocked(), true);
+  assert.ok(sessionStore.size > 0);
+  await cryptoMod.lockVault();
+});

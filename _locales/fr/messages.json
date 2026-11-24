@@ -1751,6 +1751,9 @@
   "securityForceChangeDesc": {
     "message": "Le mot de passe de votre coffre a expiré. Définissez un nouveau mot de passe pour continuer."
   },
+  "securityPostponeBtn": {
+    "message": "Reporter"
+  },
   "securityKdfLabel": {
     "message": "Dérivation de clé (KDF)"
   },

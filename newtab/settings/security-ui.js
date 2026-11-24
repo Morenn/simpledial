@@ -232,28 +232,42 @@ async function encryptAndPersistPlaintextTokens() {
   return savedRes.changed;
 }
 
-async function promptForceChangeExpiredPassword(oldPassword, cfg) {
+async function promptForceChangeExpiredPassword(oldPassword, cfg, { autoLockMinutes = 0 } = {}) {
   const modal = document.getElementById("vault-force-change-modal");
   const newInput = document.getElementById("vault-force-new-password");
   const confirmInput = document.getElementById("vault-force-confirm-password");
   const errorEl = document.getElementById("vault-force-change-error");
   const submitBtn = document.getElementById("vault-force-change-submit");
-  if (!modal || !newInput || !confirmInput || !submitBtn) return;
+  const postponeBtn = document.getElementById("vault-force-change-postpone");
+  if (!modal || !newInput || !confirmInput || !submitBtn) return false;
 
   return new Promise(resolve => {
+    let settled = false;
     newInput.value = "";
     confirmInput.value = "";
     if (errorEl) errorEl.textContent = "";
     modal.classList.remove("hidden");
     newInput.focus();
 
-    const finish = () => {
+    const finish = (changed) => {
+      if (settled) return;
+      settled = true;
       modal.classList.add("hidden");
       newInput.value = "";
       confirmInput.value = "";
       submitBtn.removeEventListener("click", onSubmit);
+      postponeBtn?.removeEventListener("click", onPostpone);
       confirmInput.removeEventListener("keydown", onKeyDown);
-      resolve();
+      resolve(changed);
+    };
+
+    const onPostpone = async () => {
+      try {
+        await unlockVault(oldPassword, cfg.vaultHeader, { autoLockMinutes });
+        finish(false);
+      } catch (err) {
+        if (errorEl) errorEl.textContent = `❌ ${err?.message || "Failed to unlock vault"}`;
+      }
     };
 
     const onSubmit = async () => {
@@ -280,7 +294,7 @@ async function promptForceChangeExpiredPassword(oldPassword, cfg) {
           autoLockMinutes: cfg?.vaultAutoLockMinutes || 0
         });
         await saveConfig(cfg);
-        finish();
+        finish(true);
       } catch (err) {
         if (errorEl) errorEl.textContent = `❌ ${err?.message || "Failed to update password"}`;
       }
@@ -294,6 +308,7 @@ async function promptForceChangeExpiredPassword(oldPassword, cfg) {
     };
 
     submitBtn.addEventListener("click", onSubmit);
+    postponeBtn?.addEventListener("click", onPostpone);
     confirmInput.addEventListener("keydown", onKeyDown);
   });
 }
@@ -335,11 +350,12 @@ export async function promptUnlockVault() {
         return;
       }
       try {
-        await unlockVault(pw, cfg.vaultHeader, { autoLockMinutes });
+        const expired = isVaultPasswordExpired(cfg.vaultHeader);
+        await unlockVault(pw, cfg.vaultHeader, { autoLockMinutes, storeSession: !expired });
         clearLastSyncErrorReason();
-        if (isVaultPasswordExpired(cfg.vaultHeader)) {
+        if (expired) {
           modal.classList.add("hidden");
-          await promptForceChangeExpiredPassword(pw, cfg);
+          await promptForceChangeExpiredPassword(pw, cfg, { autoLockMinutes });
         }
         await populateSecuritySettings(cfg);
         void updateFooter(cfg);
@@ -369,6 +385,10 @@ export async function promptUnlockVault() {
     };
     const onDocKeyDown = (e) => {
       if (e.key === "Escape") {
+        const forceModal = document.getElementById("vault-force-change-modal");
+        if (forceModal && !forceModal.classList.contains("hidden")) {
+          return;
+        }
         e.preventDefault();
         cleanup(false);
       }
@@ -436,14 +456,21 @@ export function initSecuritySettings() {
     }
     try {
       const cfg = await loadConfig();
+      const autoLockMinutes = normalizeVaultAutoLockMinutes(cfg?.vaultAutoLockMinutes);
+      const expired = isVaultPasswordExpired(cfg.vaultHeader);
       await unlockVault(pw, cfg.vaultHeader, {
-        autoLockMinutes: normalizeVaultAutoLockMinutes(cfg?.vaultAutoLockMinutes)
+        autoLockMinutes,
+        storeSession: !expired
       });
       clearLastSyncErrorReason();
       if (unlockPasswordInput) unlockPasswordInput.value = "";
-      if (isVaultPasswordExpired(cfg.vaultHeader)) {
-        await promptForceChangeExpiredPassword(pw, cfg);
-        if (actionStatusEl) actionStatusEl.textContent = "✅ " + (t("securityPasswordChanged") || "Vault password updated.");
+      if (expired) {
+        const changed = await promptForceChangeExpiredPassword(pw, cfg, { autoLockMinutes });
+        if (actionStatusEl) {
+          actionStatusEl.textContent = changed
+            ? "✅ " + (t("securityPasswordChanged") || "Vault password updated.")
+            : "✅ " + (t("securityStatusUnlocked") || "Vault unlocked");
+        }
       } else if (actionStatusEl) {
         actionStatusEl.textContent = "✅ " + (t("securityStatusUnlocked") || "Vault unlocked");
       }

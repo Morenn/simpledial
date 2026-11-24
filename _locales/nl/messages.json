@@ -1751,6 +1751,9 @@
   "securityForceChangeDesc": {
     "message": "Uw kluiswachtwoord is verlopen. Stel een nieuw wachtwoord in om door te gaan."
   },
+  "securityPostponeBtn": {
+    "message": "Uitstellen"
+  },
   "securityKdfLabel": {
     "message": "Sleutelafleiding (KDF)"
   },

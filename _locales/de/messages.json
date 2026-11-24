@@ -1751,6 +1751,9 @@
   "securityForceChangeDesc": {
     "message": "Ihr Tresor-Passwort ist abgelaufen. Legen Sie ein neues Passwort fest, um fortzufahren."
   },
+  "securityPostponeBtn": {
+    "message": "Verschieben"
+  },
   "securityKdfLabel": {
     "message": "Schlüsselableitung (KDF)"
   },
