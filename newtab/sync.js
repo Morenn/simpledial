@@ -848,19 +848,13 @@ async function syncReadDetailed(cfg = null, options = {}) {
     try {
       parsed = JSON.parse(text);
     } catch (e) {
-      if (!allowInitialize) {
-        return { ok: false, reason: 'invalid-json', status: res.status };
-      }
-      console.warn("syncRead: invalid JSON → initializing");
-      return await initializeRemoteDetailed(fetchUrl, headers);
+      console.warn("syncRead: invalid JSON → aborting without overwriting remote", { status: res.status });
+      return { ok: false, reason: 'invalid-json', status: res.status };
     }
 
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !Array.isArray(parsed.groups)) {
-      if (!allowInitialize) {
-        return { ok: false, reason: 'invalid-json', status: res.status };
-      }
-      console.warn("syncRead: invalid sync payload structure → initializing");
-      return await initializeRemoteDetailed(fetchUrl, headers);
+      console.warn("syncRead: invalid sync payload structure → aborting without overwriting remote", { status: res.status });
+      return { ok: false, reason: 'invalid-json', status: res.status };
     }
 
     return {

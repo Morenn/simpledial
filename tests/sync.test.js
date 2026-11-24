@@ -1471,3 +1471,28 @@ test("syncForceUpload and syncForceDownload overwrite cleanly even when sync is 
     assert.equal(state.groups[0].items[0].id, "b_dl");
   }
 });
+
+test("syncNow does not overwrite remote data with empty groups on invalid JSON or unexpected payload", async () => {
+  const localGroups = [group([item("b_local", "Local", 50)], "g_local", 50)];
+  setClient(localGroups, httpConfig("direct", {
+    enabled: true,
+    lastSync: 100
+  }));
+
+  for (const badBody of ["{truncated", "Service Unavailable", JSON.stringify({ ok: true }), "[]"]) {
+    let putCalled = false;
+    fetchRemote = async (_url, init = {}) => {
+      if ((init.method || "GET").toUpperCase() === "PUT") {
+        putCalled = true;
+        return new Response("", { status: 200 });
+      }
+      return new Response(badBody, { status: 200, headers: { "content-type": "application/json" } });
+    };
+
+    const res = await syncNow();
+    assert.equal(res.ok, false);
+    assert.equal(res.reason, "invalid-json");
+    assert.equal(putCalled, false);
+    assert.equal(state.groups[0].id, "g_local");
+  }
+});
