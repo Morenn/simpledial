@@ -1762,3 +1762,46 @@ test("dbuid mismatch pauses sync and resolves via merge wizard, force download, 
   assert.ok(newDbuid && newDbuid !== "remote-db-1");
   assert.equal(httpServer.dbuid, newDbuid);
 });
+
+test("selective stale resolution keeps parent group and parent stack when only child item is selected", async () => {
+  const { clearLocalTombstoneState, resolveStaleDeviceConflict } = await import("../newtab/sync.js");
+  await clearLocalTombstoneState();
+
+  const now = Date.now();
+  const staleLastSync = now - (10 * 24 * 60 * 60 * 1000);
+  const prunedBefore = now - (2 * 24 * 60 * 60 * 1000);
+  const oldTs = staleLastSync - 1000;
+
+  const localStack = {
+    id: "stack_local",
+    type: "stack",
+    title: "LocalStack",
+    updatedAt: oldTs,
+    children: [item("b_child", "KeepMe", oldTs), item("b_drop", "DropMe", oldTs)]
+  };
+  const localOnlyGroup = group([localStack, item("b_other", "DropOther", oldTs)], "g_local", oldTs);
+  localOnlyGroup.name = "LocalOnlyGroup";
+
+  installHttpServer({
+    groups: [group([item("b_cloud", "CloudItem", now)], "g_cloud", now)],
+    tags: [],
+    tombstonePrunedBefore: prunedBefore,
+    dbuid: "db-selective-parent"
+  });
+
+  localStorage.set("myspeeddial-sync-tombstones", {
+    dbuid: "db-selective-parent",
+    tombstones: {},
+    tombstonePrunedBefore: 0
+  });
+  setClient([localOnlyGroup], httpConfig("direct", { lastSync: staleLastSync, lastSeenRemoteMarker: "" }));
+
+  const res = await resolveStaleDeviceConflict({ mode: "selective", keepIds: ["b_child"] });
+  assert.equal(res.ok, true);
+
+  const keptGroup = state.groups.find(g => g.id === "g_local");
+  assert.ok(keptGroup, "parent group should be kept when child item is selected");
+  assert.equal(keptGroup.items.length, 1);
+  assert.equal(keptGroup.items[0].id, "stack_local");
+  assert.deepEqual(keptGroup.items[0].children.map(c => c.id), ["b_child"]);
+});

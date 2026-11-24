@@ -373,6 +373,9 @@ export async function saveSyncConfig({ url, type, username, password }) {
   if (typeof username !== 'undefined') config.sync.username = username;
   if (typeof password !== 'undefined') config.sync.password = password;
   await saveConfig(config);
+  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+    window.dispatchEvent(new CustomEvent("speeddial:sync-status-changed"));
+  }
 }
 
 const CLOUD_STORAGE_KEY = "myspeeddial-data";
@@ -1300,6 +1303,7 @@ function findAmbiguousLocalOnlyRecords(localGroups = [], localTags = [], cloudGr
               kind: "bookmark",
               id: child.id,
               groupId: group.id,
+              stackId: item.id,
               groupName: group.name || "",
               title: child.title || child.url || child.id,
               url: child.url || "",
@@ -1340,9 +1344,10 @@ function shouldTriggerStaleDeviceConflict(config, remotePrunedBefore, localGroup
 }
 
 function applyStaleResolutionToLocalData(groups = [], tags = [], ambiguousIds = new Set(), { mode, keepIdSet = new Set(), now = Date.now() }) {
-  const dropUnselected = (rec) => {
+  const isKeptInSelective = (id) => mode === "selective" && !!id && keepIdSet.has(id);
+  const dropUnselected = (rec, forceKeep = false) => {
     if (!rec?.id || !ambiguousIds.has(rec.id)) return { keep: true, rec };
-    if (mode === "selective" && keepIdSet.has(rec.id)) {
+    if (mode === "selective" && (forceKeep || keepIdSet.has(rec.id))) {
       return { keep: true, rec: { ...rec, updatedAt: Math.max(Number(rec.updatedAt) || 0, now) } };
     }
     return { keep: false, rec };
@@ -1350,14 +1355,22 @@ function applyStaleResolutionToLocalData(groups = [], tags = [], ambiguousIds = 
 
   const nextGroups = [];
   for (const group of (groups || [])) {
-    const gRes = dropUnselected(group);
+    const hasSelectedDescendant = mode === "selective" && (
+      (group.sections || []).some(s => isKeptInSelective(s?.id)) ||
+      (group.items || []).some(item =>
+        isKeptInSelective(item?.id) ||
+        (isStackItem(item) && (item.children || []).some(c => isKeptInSelective(c?.id)))
+      )
+    );
+    const gRes = dropUnselected(group, hasSelectedDescendant);
     if (!gRes.keep) continue;
     const nextSections = Array.isArray(gRes.rec.sections)
       ? gRes.rec.sections.map(s => dropUnselected(s)).filter(r => r.keep).map(r => r.rec)
       : undefined;
     const nextItems = [];
     for (const item of (gRes.rec.items || [])) {
-      const iRes = dropUnselected(item);
+      const hasSelectedChild = mode === "selective" && isStackItem(item) && (item.children || []).some(c => isKeptInSelective(c?.id));
+      const iRes = dropUnselected(item, hasSelectedChild);
       if (!iRes.keep) continue;
       if (isStackItem(iRes.rec)) {
         const nextChildren = (iRes.rec.children || []).map(c => dropUnselected(c)).filter(r => r.keep).map(r => r.rec);
@@ -1416,7 +1429,12 @@ async function recordSyncResultForPause(config, result) {
     config.sync.pausedReason = null;
     config.sync.consecutiveErrors = 0;
     config.sync.nextRetryAt = 0;
-    if (hadState) await saveConfig(config);
+    if (hadState) {
+      await saveConfig(config);
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+        window.dispatchEvent(new CustomEvent("speeddial:sync-status-changed"));
+      }
+    }
     return;
   }
   const reason = result?.reason || "sync-failed";
@@ -1437,6 +1455,9 @@ async function recordSyncResultForPause(config, result) {
     config.sync.nextRetryAt = Date.now() + TRANSIENT_BACKOFF_STEPS_MS[stepIdx];
   }
   await saveConfig(config);
+  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+    window.dispatchEvent(new CustomEvent("speeddial:sync-status-changed"));
+  }
 }
 
 function persistPendingPurgedIdsInConfig(config, purgedIds = []) {

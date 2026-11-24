@@ -861,6 +861,9 @@ function showSyncUnavailableNotification(result = null) {
 }
 
 if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("speeddial:sync-status-changed", () => {
+    void updateFooter();
+  });
   window.addEventListener("simpledial:config-synced", async () => {
     try {
       const cfg = await loadConfig();

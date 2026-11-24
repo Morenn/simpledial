@@ -77,6 +77,7 @@ const syncManual = document.getElementById("sync-manual");
 const syncNowBtn = document.getElementById("sync-now-btn");
 const syncUploadBtn = document.getElementById("sync-upload-btn");
 const syncDownloadBtn = document.getElementById("sync-download-btn");
+const syncMergeWizardBtn = document.getElementById("sync-merge-wizard-btn");
 const syncForceModal = document.getElementById("sync-force-overwrite-modal");
 const syncForceTitle = document.getElementById("sync-force-overwrite-title");
 const syncForceBody = document.getElementById("sync-force-overwrite-body");
@@ -345,6 +346,10 @@ export function updateManualSyncButtonVisibility(config) {
 }
 
 export function updateLastSyncInfo(config) {
+  if (syncMergeWizardBtn) {
+    const canWizard = config?.sync?.pausedReason === "stale-device-conflict" || config?.sync?.pausedReason === "dbuid-mismatch";
+    syncMergeWizardBtn.classList.toggle("hidden", !canWizard);
+  }
   if (!lastSyncInfo) return;
   if (!config.sync.lastSync) {
     lastSyncInfo.textContent = "Never synced";
@@ -855,6 +860,18 @@ export function initSyncSettings({ persistSettings }) {
     });
   }
 
+  if (syncMergeWizardBtn) {
+    syncMergeWizardBtn.addEventListener("click", () => {
+      void openSyncMergeWizard();
+    });
+  }
+
+  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    window.addEventListener("speeddial:sync-status-changed", () => {
+      void loadConfig().then(cfg => updateLastSyncInfo(cfg)).catch(() => {});
+    });
+  }
+
   if (syncDownloadBtn) {
     syncDownloadBtn.addEventListener("click", async () => {
       const confirmed = await confirmSyncForceOverwrite("download");
@@ -962,7 +979,22 @@ export async function openSyncMergeWizard() {
       datesEl.append(line1, line2);
       if (details.dbuidMismatch) {
         const line3 = document.createElement("div");
-        line3.textContent = `DBUID: ${details.localDbuid || "(none)"} ≠ ${details.remoteDbuid || "(none)"}`;
+        line3.className = "sync-merge-wizard-dbuid-mismatch";
+        const badge = document.createElement("strong");
+        badge.textContent = "⚠️ " + (t("syncDbuidMismatchTitle") || "DBUID mismatch");
+        const localRow = document.createElement("div");
+        const localLabel = document.createElement("span");
+        localLabel.textContent = `${t("syncDbuidLocalLabel") || "Local"}: `;
+        const localCode = document.createElement("code");
+        localCode.textContent = details.localDbuid || "(none)";
+        localRow.append(localLabel, localCode);
+        const remoteRow = document.createElement("div");
+        const remoteLabel = document.createElement("span");
+        remoteLabel.textContent = `${t("syncDbuidRemoteLabel") || "Remote"}: `;
+        const remoteCode = document.createElement("code");
+        remoteCode.textContent = details.remoteDbuid || "(none)";
+        remoteRow.append(remoteLabel, remoteCode);
+        line3.append(badge, localRow, remoteRow);
         datesEl.append(line3);
       }
     }
@@ -991,6 +1023,24 @@ export async function openSyncMergeWizard() {
             cb.type = "checkbox";
             cb.value = entry.id;
             cb.name = "sync-merge-wizard-item";
+            cb.dataset.kind = entry.kind || "";
+            cb.dataset.groupId = entry.groupId || "";
+            cb.dataset.stackId = entry.stackId || "";
+            if ((entry.kind !== "group" && entry.groupId) || entry.stackId) {
+              cb.addEventListener("change", () => {
+                if (!cb.checked) return;
+                if (entry.kind !== "group" && entry.groupId) {
+                  const parentGroupCb = Array.from(listEl.querySelectorAll('input[type="checkbox"][data-kind="group"]'))
+                    .find(el => el.dataset.groupId === entry.groupId);
+                  if (parentGroupCb) parentGroupCb.checked = true;
+                }
+                if (entry.stackId) {
+                  const parentStackCb = Array.from(listEl.querySelectorAll('input[type="checkbox"][data-kind="stack"]'))
+                    .find(el => el.value === entry.stackId);
+                  if (parentStackCb) parentStackCb.checked = true;
+                }
+              });
+            }
             const span = document.createElement("span");
             span.textContent = `[${entry.kind}] ${entry.title}${entry.url ? ` (${entry.url})` : ""}`;
             row.append(cb, span);

@@ -6157,3 +6157,29 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   gap: 0.45rem;
   font-size: 0.85rem;
 }
+
+.footer-sync-clickable {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.footer-sync-clickable:hover {
+  opacity: 0.85;
+}
+
+.sync-merge-wizard-dbuid-mismatch {
+  margin-top: 0.25rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--text);
+  font-size: 0.84rem;
+  word-break: break-all;
+}
+
+.sync-merge-wizard-dbuid-mismatch code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+}

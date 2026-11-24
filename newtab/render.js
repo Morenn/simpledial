@@ -206,6 +206,7 @@ export async function updateFooter(providedConfig = null) {
 
   if (footerSyncStatus) {
     if (isVaultCredsLocked && typeof window !== "undefined" && typeof window.promptUnlockVault === "function") {
+      footerSyncStatus.classList.add("footer-sync-clickable");
       footerSyncStatus.style.cursor = "pointer";
       footerSyncStatus.title = t("vaultLockedClickToUnlock") || "Vault locked — click badge to unlock";
       footerSyncStatus.onclick = async () => {
@@ -215,6 +216,7 @@ export async function updateFooter(providedConfig = null) {
         }
       };
     } else if (pausedReason && typeof window !== "undefined" && (typeof window.openSyncMergeWizard === "function" || typeof window.openSyncSettings === "function")) {
+      footerSyncStatus.classList.add("footer-sync-clickable");
       footerSyncStatus.style.cursor = "pointer";
       footerSyncStatus.title = getSyncErrorLabel(pausedReason);
       footerSyncStatus.onclick = async () => {
@@ -225,6 +227,7 @@ export async function updateFooter(providedConfig = null) {
         }
       };
     } else {
+      footerSyncStatus.classList.remove("footer-sync-clickable");
       footerSyncStatus.style.cursor = "";
       footerSyncStatus.title = "";
       footerSyncStatus.onclick = null;
