@@ -1523,3 +1523,31 @@ test("cleanupDeletedItems persists pendingPurgedIds before saveState and seriali
   assert.deepEqual(state.groups[0].items.map(i => i.id), ["b_keep"]);
   assert.deepEqual(httpServer.groups[0].items.map(i => i.id), ["b_keep"]);
 });
+
+test("saveState suppresses delayed and overlapping self-writes without blocking external storage changes", async () => {
+  const { saveState, applyStateFromStorageChange } = await import("../newtab/state.js");
+  setClient([group([item("b1", "One", 100)], "g1", 100)], httpConfig("direct", { enabled: false }));
+
+  const firstSnapshot = structuredClone(state);
+  const p1 = saveState();
+  state.groups[0].items[0].title = "Two";
+  const secondSnapshot = structuredClone(state);
+  const p2 = saveState();
+
+  // While saves are in flight, stale storage.onChanged is suppressed without clearing suppression
+  assert.equal(applyStateFromStorageChange(firstSnapshot), false);
+  assert.equal(state.groups[0].items[0].title, "Two");
+
+  await Promise.all([p1, p2]);
+  await new Promise(resolve => setTimeout(resolve, 10));
+
+  // Even after setTimeout(0) has passed, delayed self-write events are still suppressed
+  assert.equal(applyStateFromStorageChange(secondSnapshot), false);
+  assert.equal(state.groups[0].items[0].title, "Two");
+
+  // Genuine external change from another tab is applied
+  const externalSnapshot = structuredClone(secondSnapshot);
+  externalSnapshot.groups[0].items[0].title = "External";
+  assert.equal(applyStateFromStorageChange(externalSnapshot), true);
+  assert.equal(state.groups[0].items[0].title, "External");
+});

@@ -119,24 +119,30 @@ export function generateId(prefix) {
 }
 
 let localSaveDepth = 0;
-let suppressLocalStateChange = false;
+const pendingLocalStateSnapshots = new Map();
+
+function recordPendingLocalStateSnapshot(snapshotJson) {
+  pendingLocalStateSnapshots.set(
+    snapshotJson,
+    (pendingLocalStateSnapshots.get(snapshotJson) || 0) + 1
+  );
+  if (pendingLocalStateSnapshots.size > 10) {
+    const oldestKey = pendingLocalStateSnapshots.keys().next().value;
+    if (oldestKey !== undefined) {
+      pendingLocalStateSnapshots.delete(oldestKey);
+    }
+  }
+}
 
 export async function saveState() {
   localSaveDepth++;
-  suppressLocalStateChange = true;
   try {
     await pruneOrphanedSystemTags();
+    recordPendingLocalStateSnapshot(JSON.stringify(state));
     await chrome.storage.local.set({ [STORAGE_KEY]: state });
     window.dispatchEvent(new Event("speeddial:state-saved"));
   } finally {
     localSaveDepth--;
-    if (typeof setTimeout === "function") {
-      setTimeout(() => {
-        if (localSaveDepth === 0) suppressLocalStateChange = false;
-      }, 0);
-    } else if (localSaveDepth === 0) {
-      suppressLocalStateChange = false;
-    }
   }
 }
 
@@ -438,11 +444,21 @@ function applyStoredState(stored) {
 }
 
 export function applyStateFromStorageChange(stored) {
-  if (suppressLocalStateChange) {
-    suppressLocalStateChange = false;
+  if (localSaveDepth > 0) {
     return false;
   }
   if (!stored || typeof stored !== "object") return false;
+  const incomingJson = JSON.stringify(stored);
+  const pendingCount = pendingLocalStateSnapshots.get(incomingJson) || 0;
+  if (pendingCount > 0) {
+    if (pendingCount === 1) {
+      pendingLocalStateSnapshots.delete(incomingJson);
+    } else {
+      pendingLocalStateSnapshots.set(incomingJson, pendingCount - 1);
+    }
+    return false;
+  }
+  pendingLocalStateSnapshots.clear();
   applyStoredState(stored);
 
   if (typeof window !== "undefined") {
