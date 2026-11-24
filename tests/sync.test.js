@@ -1496,3 +1496,30 @@ test("syncNow does not overwrite remote data with empty groups on invalid JSON o
     assert.equal(state.groups[0].id, "g_local");
   }
 });
+
+test("cleanupDeletedItems persists pendingPurgedIds before saveState and serializes with syncNow", async () => {
+  const { cleanupDeletedItems } = await import("../newtab/sync.js");
+  const oldDeletedAt = Date.now() - (40 * 24 * 60 * 60 * 1000);
+  const keepItem = item("b_keep", "Keep", 100);
+  const expiredItem = { ...item("b_old", "Old", 50), deleted: true, deletedAt: oldDeletedAt };
+
+  installHttpServer({
+    groups: [group([keepItem, expiredItem], "g1", 100)]
+  });
+  setClient(
+    [group([keepItem, expiredItem], "g1", 100)],
+    httpConfig("direct", { enabled: true, lastSync: 100 })
+  );
+
+  // Even if syncNow runs concurrently, cleanupDeletedItems must serialize under withSyncLock
+  // and purge b_old without resurrecting it from the remote copy.
+  const [purgedCount, syncRes] = await Promise.all([
+    cleanupDeletedItems(30),
+    syncNow()
+  ]);
+
+  assert.equal(purgedCount, 1);
+  assert.equal(syncRes.ok, true);
+  assert.deepEqual(state.groups[0].items.map(i => i.id), ["b_keep"]);
+  assert.deepEqual(httpServer.groups[0].items.map(i => i.id), ["b_keep"]);
+});

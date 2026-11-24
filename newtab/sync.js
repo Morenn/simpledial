@@ -1103,44 +1103,46 @@ async function withSyncLock(task, { ifAvailable = false } = {}) {
   return await runInTab();
 }
 
+async function syncWriteLocked(sourceState = state, options = {}) {
+  // do no sync if sync is disabled in config
+  const config = await loadConfig();
+  if (!config.sync.enabled) {
+    return true; // sync disabled — nothing to do, not an error
+  }
+
+  const extraPurgedIds = Array.isArray(options?.purgedIds) ? options.purgedIds.filter(Boolean) : [];
+  if (persistPendingPurgedIdsInConfig(config, extraPurgedIds)) {
+    await saveConfig(config);
+  }
+
+  if (!shouldSync(config) && !options?.force) {
+    return true; // manual mode — purged IDs queued, skip network sync until user triggers it
+  }
+
+  const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
+  const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
+  const previousGroups = state.groups;
+  const previousTags = state.tags;
+  state.groups = groups;
+  state.tags = tags;
+
+  const readResult = await syncReadDetailed();
+  if (!readResult.ok) {
+    state.groups = previousGroups;
+    state.tags = previousTags;
+    return false;
+  }
+
+  const result = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, extraPurgedIds);
+  if (!result.ok) {
+    state.groups = previousGroups;
+    state.tags = previousTags;
+  }
+  return result.ok;
+}
+
 export async function syncWrite(sourceState = state, options = {}) {
-  return await withSyncLock(async () => {
-    // do no sync if sync is disabled in config
-    const config = await loadConfig();
-    if (!config.sync.enabled) {
-      return true; // sync disabled — nothing to do, not an error
-    }
-
-    const extraPurgedIds = Array.isArray(options?.purgedIds) ? options.purgedIds.filter(Boolean) : [];
-    if (persistPendingPurgedIdsInConfig(config, extraPurgedIds)) {
-      await saveConfig(config);
-    }
-
-    if (!shouldSync(config) && !options?.force) {
-      return true; // manual mode — purged IDs queued, skip network sync until user triggers it
-    }
-
-    const groups = Array.isArray(sourceState?.groups) ? sourceState.groups : state.groups;
-    const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
-    const previousGroups = state.groups;
-    const previousTags = state.tags;
-    state.groups = groups;
-    state.tags = tags;
-
-    const readResult = await syncReadDetailed();
-    if (!readResult.ok) {
-      state.groups = previousGroups;
-      state.tags = previousTags;
-      return false;
-    }
-
-    const result = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, extraPurgedIds);
-    if (!result.ok) {
-      state.groups = previousGroups;
-      state.tags = previousTags;
-    }
-    return result.ok;
-  });
+  return await withSyncLock(() => syncWriteLocked(sourceState, options));
 }
 
 export async function syncReadTest() {
@@ -2352,90 +2354,96 @@ export async function syncForceDownload() {
 // ─────────────────────────────────────────────────────────────
 
 export async function cleanupDeletedItems(retentionDays) {
-  let deletedCount = 0;
-  const purgedIds = [];
-  const cutoffTime = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
+  return await withSyncLock(async () => {
+    let deletedCount = 0;
+    const purgedIds = [];
+    const cutoffTime = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
 
-  for (const group of state.groups) {
-    let groupChanged = false;
-    // Filter out permanently deleted items
-    const originalLength = group.items.length;
-    group.items = group.items.filter(item => {
-      if (item.deleted && item.deletedAt && item.deletedAt < cutoffTime) {
-        deletedCount++;
-        if (item.id) purgedIds.push(item.id);
+    for (const group of state.groups) {
+      let groupChanged = false;
+      // Filter out permanently deleted items
+      const originalLength = group.items.length;
+      group.items = group.items.filter(item => {
+        if (item.deleted && item.deletedAt && item.deletedAt < cutoffTime) {
+          deletedCount++;
+          if (item.id) purgedIds.push(item.id);
+          if (isStackItem(item) && Array.isArray(item.children)) {
+            for (const child of item.children) {
+              if (child?.id) purgedIds.push(child.id);
+            }
+          }
+          return false; // Remove this item
+        }
         if (isStackItem(item) && Array.isArray(item.children)) {
-          for (const child of item.children) {
-            if (child?.id) purgedIds.push(child.id);
+          const beforeChildren = item.children.length;
+          item.children = item.children.filter(child => {
+            if (child.deleted && child.deletedAt && child.deletedAt < cutoffTime) {
+              deletedCount++;
+              if (child.id) purgedIds.push(child.id);
+              return false;
+            }
+            return true;
+          });
+          if (item.children.length < beforeChildren) {
+            item.updatedAt = Date.now();
+            groupChanged = true;
           }
         }
-        return false; // Remove this item
+        return true;
+      });
+
+      for (const item of [...group.items]) {
+        if (isStackItem(item)) {
+          const res = cleanupStackIfNeeded(group, item);
+          if (res === "removed" || res === "unwrapped") {
+            if (item.id) purgedIds.push(item.id);
+            groupChanged = true;
+          }
+        }
       }
-      if (isStackItem(item) && Array.isArray(item.children)) {
-        const beforeChildren = item.children.length;
-        item.children = item.children.filter(child => {
-          if (child.deleted && child.deletedAt && child.deletedAt < cutoffTime) {
+
+      if (Array.isArray(group.sections)) {
+        const beforeSections = group.sections.length;
+        group.sections = group.sections.filter(sec => {
+          if (sec.deleted && sec.deletedAt && sec.deletedAt < cutoffTime) {
             deletedCount++;
-            if (child.id) purgedIds.push(child.id);
+            if (sec.id) purgedIds.push(sec.id);
             return false;
           }
           return true;
         });
-        if (item.children.length < beforeChildren) {
-          item.updatedAt = Date.now();
+        if (group.sections.length < beforeSections) {
           groupChanged = true;
         }
       }
-      return true;
-    });
 
-    for (const item of [...group.items]) {
-      if (isStackItem(item)) {
-        const res = cleanupStackIfNeeded(group, item);
-        if (res === "removed" || res === "unwrapped") {
-          if (item.id) purgedIds.push(item.id);
-          groupChanged = true;
-        }
+      if (group.items.length < originalLength || groupChanged) {
+        group.updatedAt = Date.now();
       }
     }
 
-    if (Array.isArray(group.sections)) {
-      const beforeSections = group.sections.length;
-      group.sections = group.sections.filter(sec => {
-        if (sec.deleted && sec.deletedAt && sec.deletedAt < cutoffTime) {
+    if (Array.isArray(state.tags)) {
+      state.tags = state.tags.filter(tag => {
+        if (tag?.deleted && tag.deletedAt && tag.deletedAt < cutoffTime) {
           deletedCount++;
-          if (sec.id) purgedIds.push(sec.id);
+          if (tag.id) purgedIds.push(tag.id);
           return false;
         }
         return true;
       });
-      if (group.sections.length < beforeSections) {
-        groupChanged = true;
-      }
     }
 
-    if (group.items.length < originalLength || groupChanged) {
-      group.updatedAt = Date.now();
-    }
-  }
-
-  if (Array.isArray(state.tags)) {
-    state.tags = state.tags.filter(tag => {
-      if (tag?.deleted && tag.deletedAt && tag.deletedAt < cutoffTime) {
-        deletedCount++;
-        if (tag.id) purgedIds.push(tag.id);
-        return false;
+    if (deletedCount > 0) {
+      const config = await loadConfig();
+      if (config.sync?.enabled && persistPendingPurgedIdsInConfig(config, purgedIds)) {
+        await saveConfig(config);
       }
-      return true;
-    });
-  }
+      await saveState();
+      await syncWriteLocked(state, { purgedIds });
+    }
 
-  if (deletedCount > 0) {
-    await saveState();
-    await syncWrite(state, { purgedIds });
-  }
-
-  return deletedCount;
+    return deletedCount;
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
