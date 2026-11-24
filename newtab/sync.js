@@ -1663,7 +1663,8 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
           latestRemote.data.groups,
           browserConflictRetries - 1,
           latestRemote.data.tags,
-          extraPurgedIds
+          extraPurgedIds,
+          options
         );
       }
 

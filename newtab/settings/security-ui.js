@@ -342,7 +342,6 @@ export async function promptUnlockVault() {
           await promptForceChangeExpiredPassword(pw, cfg);
         }
         await populateSecuritySettings(cfg);
-        void populateSyncSettings(cfg);
         void updateFooter(cfg);
         refreshVaultDependentWidgets();
         if (cfg?.sync?.enabled && cfg?.sync?.encryptionMode === "vault" && shouldSync(cfg)) {

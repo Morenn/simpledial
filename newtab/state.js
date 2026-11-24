@@ -134,12 +134,30 @@ function recordPendingLocalStateSnapshot(snapshotJson) {
   }
 }
 
+function consumePendingLocalStateSnapshot(snapshotJson) {
+  const pendingCount = pendingLocalStateSnapshots.get(snapshotJson) || 0;
+  if (pendingCount <= 0) return false;
+  if (pendingCount === 1) {
+    pendingLocalStateSnapshots.delete(snapshotJson);
+  } else {
+    pendingLocalStateSnapshots.set(snapshotJson, pendingCount - 1);
+  }
+  return true;
+}
+
 export async function saveState() {
   localSaveDepth++;
+  let snapshotJson = null;
   try {
     await pruneOrphanedSystemTags();
-    recordPendingLocalStateSnapshot(JSON.stringify(state));
-    await chrome.storage.local.set({ [STORAGE_KEY]: state });
+    snapshotJson = JSON.stringify(state);
+    recordPendingLocalStateSnapshot(snapshotJson);
+    try {
+      await chrome.storage.local.set({ [STORAGE_KEY]: state });
+    } catch (err) {
+      consumePendingLocalStateSnapshot(snapshotJson);
+      throw err;
+    }
     window.dispatchEvent(new Event("speeddial:state-saved"));
   } finally {
     localSaveDepth--;
@@ -444,18 +462,10 @@ function applyStoredState(stored) {
 }
 
 export function applyStateFromStorageChange(stored) {
-  if (localSaveDepth > 0) {
-    return false;
-  }
   if (!stored || typeof stored !== "object") return false;
   const incomingJson = JSON.stringify(stored);
-  const pendingCount = pendingLocalStateSnapshots.get(incomingJson) || 0;
-  if (pendingCount > 0) {
-    if (pendingCount === 1) {
-      pendingLocalStateSnapshots.delete(incomingJson);
-    } else {
-      pendingLocalStateSnapshots.set(incomingJson, pendingCount - 1);
-    }
+  const matchedPending = consumePendingLocalStateSnapshot(incomingJson);
+  if (localSaveDepth > 0 || matchedPending) {
     return false;
   }
   pendingLocalStateSnapshots.clear();
