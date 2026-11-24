@@ -268,3 +268,107 @@ test("listBookmarkFolders handles Firefox Gecko root________ and ignores separat
   assert.equal(groups[0].name, "Bookmarks Toolbar");
   assert.equal(groups[0].items.length, 1);
 });
+
+test("bookmarks-api wrappers reject when chrome.runtime.lastError is set", async () => {
+  const { getBookmarksTree, getBookmarkChildren, createBookmarkNode, removeBookmarkNode } = await import("../newtab/bookmarks-api.js");
+  const prevBookmarks = globalThis.chrome.bookmarks;
+  const prevRuntime = globalThis.chrome.runtime;
+
+  try {
+    globalThis.chrome.runtime = { lastError: { message: "Permission denied" } };
+    globalThis.chrome.bookmarks = {
+      getTree: (cb) => cb([]),
+      getChildren: (_id, cb) => cb([]),
+      create: (_data, cb) => cb(null),
+      removeTree: (_id, cb) => cb()
+    };
+
+    await assert.rejects(() => getBookmarksTree(), /Permission denied/);
+    await assert.rejects(() => getBookmarkChildren("1"), /Permission denied/);
+    await assert.rejects(() => createBookmarkNode({ parentId: "1", title: "X" }), /Permission denied/);
+    await assert.rejects(() => removeBookmarkNode("1"), /Permission denied/);
+  } finally {
+    globalThis.chrome.bookmarks = prevBookmarks;
+    globalThis.chrome.runtime = prevRuntime;
+  }
+});
+
+test("syncBrowserBookmarks builds before deleting, rolls back on error, and serializes forced calls", async () => {
+  const { state } = await import("../newtab/state.js");
+  const { saveConfig, defaultConfig } = await import("../newtab/config.js");
+  const prevBookmarks = globalThis.chrome.bookmarks;
+  const prevRuntime = globalThis.chrome.runtime;
+  const prevStorage = globalThis.chrome.storage;
+
+  const store = new Map();
+  globalThis.chrome.storage = {
+    local: {
+      get: async (k) => ({ [k]: structuredClone(store.get(k)) }),
+      set: async (obj) => {
+        for (const [k, v] of Object.entries(obj)) store.set(k, structuredClone(v));
+      }
+    }
+  };
+  globalThis.chrome.runtime = {};
+
+  let nextId = 100;
+  let failNextCreate = false;
+  const ops = [];
+  const existingChildren = [{ id: "old_1", title: "Old Group" }];
+
+  globalThis.chrome.bookmarks = {
+    getTree: (cb) => cb([{
+      id: "0",
+      children: [{ id: "1", title: "Bookmarks Bar", children: [{ id: "sd_root", title: "SimpleDial", children: existingChildren }] }]
+    }]),
+    getChildren: (_id, cb) => cb([...existingChildren]),
+    create: (data, cb) => {
+      if (failNextCreate && data.url) {
+        globalThis.chrome.runtime.lastError = { message: "Bookmark create failed" };
+        cb(null);
+        delete globalThis.chrome.runtime.lastError;
+        return;
+      }
+      const node = { id: `new_${++nextId}`, ...data };
+      ops.push(`create:${node.id}:${node.title}`);
+      cb(node);
+    },
+    removeTree: (id, cb) => {
+      ops.push(`remove:${id}`);
+      cb();
+    }
+  };
+
+  try {
+    const { syncBrowserBookmarks } = await import("../newtab/browser-bookmarks-sync.js");
+    const cfg = structuredClone(defaultConfig);
+    cfg.browserBookmarksAutoSync = true;
+    await saveConfig(cfg);
+
+    state.groups = [{
+      id: "g1",
+      name: "Work",
+      deleted: false,
+      items: [{ id: "b1", title: "Portal", url: "https://portal.example", deleted: false }]
+    }];
+
+    // Mid-sync failure should roll back created folder and NOT delete old_1
+    failNextCreate = true;
+    await assert.rejects(() => syncBrowserBookmarks({ force: true }), /Bookmark create failed/);
+    assert.ok(!ops.includes("remove:old_1"), "old_1 must not be removed on failure");
+    assert.ok(ops.some(o => o.startsWith("remove:new_")), "partially created folder must be rolled back");
+
+    // Successful run creates new folder before removing old_1
+    ops.length = 0;
+    failNextCreate = false;
+    const ok = await syncBrowserBookmarks({ force: true });
+    assert.equal(ok, true);
+    const firstCreateIdx = ops.findIndex(o => o.startsWith("create:"));
+    const removeOldIdx = ops.indexOf("remove:old_1");
+    assert.ok(firstCreateIdx !== -1 && removeOldIdx > firstCreateIdx, "new bookmarks must be created before old_1 is removed");
+  } finally {
+    globalThis.chrome.bookmarks = prevBookmarks;
+    globalThis.chrome.runtime = prevRuntime;
+    globalThis.chrome.storage = prevStorage;
+  }
+});

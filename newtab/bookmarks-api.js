@@ -21,12 +21,23 @@ function ensureBookmarksApi() {
   return bookmarksApi;
 }
 
-export function getBookmarksTree() {
+function getRuntimeLastError() {
+  return (typeof chrome !== "undefined" && chrome?.runtime?.lastError)
+    || (typeof browser !== "undefined" && browser?.runtime?.lastError)
+    || null;
+}
+
+function callBookmarksApi(invoke) {
   const bookmarksApi = ensureBookmarksApi();
   return new Promise((resolve, reject) => {
     try {
-      bookmarksApi.getTree((tree) => {
-        resolve(tree);
+      invoke(bookmarksApi, (result) => {
+        const err = getRuntimeLastError();
+        if (err) {
+          reject(new Error(err.message || String(err)));
+          return;
+        }
+        resolve(result);
       });
     } catch (err) {
       reject(err);
@@ -34,17 +45,12 @@ export function getBookmarksTree() {
   });
 }
 
+export function getBookmarksTree() {
+  return callBookmarksApi((api, cb) => api.getTree(cb));
+}
+
 export function getBookmarkChildren(parentId) {
-  const bookmarksApi = ensureBookmarksApi();
-  return new Promise((resolve, reject) => {
-    try {
-      bookmarksApi.getChildren(parentId, (children) => {
-        resolve(children);
-      });
-    } catch (err) {
-      reject(err);
-    }
-  });
+  return callBookmarksApi((api, cb) => api.getChildren(parentId, cb));
 }
 
 export function normalizeBookmarkUrl(url) {
@@ -57,33 +63,15 @@ export function normalizeBookmarkUrl(url) {
 }
 
 export function createBookmarkNode(createData) {
-  const bookmarksApi = ensureBookmarksApi();
   const normalized = { ...createData };
   if (normalized.url) {
     normalized.url = normalizeBookmarkUrl(normalized.url);
   }
-  return new Promise((resolve, reject) => {
-    try {
-      bookmarksApi.create(normalized, (node) => {
-        resolve(node);
-      });
-    } catch (err) {
-      reject(err);
-    }
-  });
+  return callBookmarksApi((api, cb) => api.create(normalized, cb));
 }
 
 export function removeBookmarkNode(nodeId) {
-  const bookmarksApi = ensureBookmarksApi();
-  return new Promise((resolve, reject) => {
-    try {
-      bookmarksApi.removeTree(nodeId, () => {
-        resolve();
-      });
-    } catch (err) {
-      reject(err);
-    }
-  });
+  return callBookmarksApi((api, cb) => api.removeTree(nodeId, cb));
 }
 
 export async function findOrCreateSimpleDialFolder() {
