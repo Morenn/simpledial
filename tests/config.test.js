@@ -353,3 +353,18 @@ test("normalizeCustomIconValue and fetchIconAsDataUrl enforce safe icon URL sche
     }
   }
 });
+
+test("parseJsonSafely strips __proto__, constructor, and prototype keys", async () => {
+  const { parseJsonSafely } = await import("../newtab/config.js");
+
+  const parsed = parseJsonSafely(
+    '{"ok":1,"__proto__":{"polluted":true},"constructor":{"bad":2},"nested":{"prototype":{"x":3},"safe":4}}'
+  );
+
+  assert.equal(parsed.ok, 1);
+  assert.equal(parsed.nested.safe, 4);
+  assert.equal(Object.prototype.hasOwnProperty.call(parsed, "__proto__"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(parsed, "constructor"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(parsed.nested, "prototype"), false);
+  assert.equal(({}).polluted, undefined);
+});

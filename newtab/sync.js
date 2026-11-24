@@ -1,5 +1,5 @@
 import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded, SYSTEM_TAG_DEAD_LINK_ID, getBookmarkSystemTagIds, setBookmarkSystemTag, saveSystemTags } from "./state.js";
-import { loadConfig, saveConfig, shouldSync, updateLastSyncTime, logDebug, DEFAULT_SYNC_INTERVAL } from "./config.js";
+import { loadConfig, saveConfig, shouldSync, updateLastSyncTime, logDebug, DEFAULT_SYNC_INTERVAL, parseJsonSafely } from "./config.js";
 import { importRawKey, decryptWithKey, getSecret } from './crypto.js';
 
 const deadLinkDebugLog = (...args) => logDebug("deadLink", ...args);
@@ -705,7 +705,7 @@ async function resolveSyncCredentials(cfg, operation) {
     if (cfg.encryptionMode === 'local' && cfg.localKey && cfg.enc) {
       const key = await importRawKey(cfg.localKey);
       const plain = await decryptWithKey(key, cfg.enc.ciphertext, cfg.enc.iv);
-      const obj = JSON.parse(plain);
+      const obj = parseJsonSafely(plain);
       username = obj.username || '';
       password = obj.password || '';
       return {
@@ -720,7 +720,7 @@ async function resolveSyncCredentials(cfg, operation) {
       if (!res.ok) {
         return { ok: false, reason: res.error === 'DECRYPT_FAILED' ? 'credentials-decrypt-failed' : 'credentials-locked' };
       }
-      const obj = JSON.parse(res.value);
+      const obj = parseJsonSafely(res.value);
       username = obj.username || '';
       password = obj.password || '';
       return {
@@ -850,7 +850,7 @@ async function syncReadDetailed(cfg = null, options = {}) {
 
     let parsed;
     try {
-      parsed = JSON.parse(text);
+      parsed = parseJsonSafely(text);
     } catch (e) {
       console.warn("syncRead: invalid JSON → aborting without overwriting remote", { status: res.status });
       return { ok: false, reason: 'invalid-json', status: res.status };
@@ -1260,16 +1260,16 @@ function hasMeaningfulGroups(groups) {
 }
 
 function mergeRecordArrays(localRecords = [], cloudRecords = [], { preferCloudOrder = false } = {}) {
-  const localMap = Object.fromEntries((localRecords || []).filter(Boolean).map(r => [r.id, r]));
-  const cloudMap = Object.fromEntries((cloudRecords || []).filter(Boolean).map(r => [r.id, r]));
+  const localMap = new Map((localRecords || []).filter(Boolean).map(r => [r.id, r]));
+  const cloudMap = new Map((cloudRecords || []).filter(Boolean).map(r => [r.id, r]));
   const allIds = preferCloudOrder
-    ? new Set([...Object.keys(cloudMap), ...Object.keys(localMap)])
-    : new Set([...Object.keys(localMap), ...Object.keys(cloudMap)]);
+    ? new Set([...cloudMap.keys(), ...localMap.keys()])
+    : new Set([...localMap.keys(), ...cloudMap.keys()]);
   const merged = [];
 
   for (const id of allIds) {
-    const localRec = localMap[id];
-    const cloudRec = cloudMap[id];
+    const localRec = localMap.get(id);
+    const cloudRec = cloudMap.get(id);
     if (localRec && !cloudRec) {
       merged.push(localRec);
     } else if (!localRec && cloudRec) {
@@ -1305,55 +1305,55 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
   }
 
   // ---- Merge group-level metadata (name, sections, deleted, etc.) ----
-  const localGroupMap = Object.fromEntries((localGroups || []).map(group => [group.id, group]));
-  const cloudGroupMap = Object.fromEntries((cloudGroups || []).map(group => [group.id, group]));
+  const localGroupMap = new Map((localGroups || []).map(group => [group.id, group]));
+  const cloudGroupMap = new Map((cloudGroups || []).map(group => [group.id, group]));
   const preferCloudGroupOrder = getGroupsFreshness(cloudGroups) > getGroupsFreshness(localGroups);
   const allGroupIds = preferCloudGroupOrder
-    ? new Set([...Object.keys(cloudGroupMap), ...Object.keys(localGroupMap)])
-    : new Set([...Object.keys(localGroupMap), ...Object.keys(cloudGroupMap)]);
+    ? new Set([...cloudGroupMap.keys(), ...localGroupMap.keys()])
+    : new Set([...localGroupMap.keys(), ...cloudGroupMap.keys()]);
 
-  const mergedGroupMeta = {};
-  const preferCloudItemOrderByGroupId = {};
+  const mergedGroupMeta = new Map();
+  const preferCloudItemOrderByGroupId = new Map();
   for (const id of allGroupIds) {
-    const localGroup = localGroupMap[id];
-    const cloudGroup = cloudGroupMap[id];
+    const localGroup = localGroupMap.get(id);
+    const cloudGroup = cloudGroupMap.get(id);
 
     if (localGroup && !cloudGroup) {
-      mergedGroupMeta[id] = { ...localGroup, items: [] };
-      preferCloudItemOrderByGroupId[id] = false;
+      mergedGroupMeta.set(id, { ...localGroup, items: [] });
+      preferCloudItemOrderByGroupId.set(id, false);
       continue;
     }
     if (!localGroup && cloudGroup) {
-      mergedGroupMeta[id] = { ...cloudGroup, items: [] };
-      preferCloudItemOrderByGroupId[id] = true;
+      mergedGroupMeta.set(id, { ...cloudGroup, items: [] });
+      preferCloudItemOrderByGroupId.set(id, true);
       continue;
     }
 
     const winningMeta = pickNewerRecord(localGroup, cloudGroup);
     const preferCloud = winningMeta === cloudGroup;
-    preferCloudItemOrderByGroupId[id] = preferCloud;
+    preferCloudItemOrderByGroupId.set(id, preferCloud);
     const nextGroup = { ...winningMeta, items: [] };
     if (Array.isArray(localGroup.sections) || Array.isArray(cloudGroup.sections)) {
       nextGroup.sections = mergeRecordArrays(localGroup.sections || [], cloudGroup.sections || [], {
         preferCloudOrder: preferCloud
       });
     }
-    mergedGroupMeta[id] = nextGroup;
+    mergedGroupMeta.set(id, nextGroup);
   }
 
   // ---- Merge items GLOBALLY by id, tracking stack membership & cross-group moves ----
-  const localItemIndex = {};
-  const cloudItemIndex = {};
-  const localChildIndex = {};
-  const cloudChildIndex = {};
+  const localItemIndex = new Map();
+  const cloudItemIndex = new Map();
+  const localChildIndex = new Map();
+  const cloudChildIndex = new Map();
 
   for (const group of (localGroups || [])) {
     for (const item of (group.items || [])) {
-      localItemIndex[item.id] = { item, groupId: group.id };
+      localItemIndex.set(item.id, { item, groupId: group.id });
       if (isStackItem(item)) {
         for (const child of (item.children || [])) {
           if (child?.id) {
-            localChildIndex[child.id] = { child, stackId: item.id, groupId: group.id };
+            localChildIndex.set(child.id, { child, stackId: item.id, groupId: group.id });
           }
         }
       }
@@ -1361,23 +1361,23 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
   }
   for (const group of (cloudGroups || [])) {
     for (const item of (group.items || [])) {
-      cloudItemIndex[item.id] = { item, groupId: group.id };
+      cloudItemIndex.set(item.id, { item, groupId: group.id });
       if (isStackItem(item)) {
         for (const child of (item.children || [])) {
           if (child?.id) {
-            cloudChildIndex[child.id] = { child, stackId: item.id, groupId: group.id };
+            cloudChildIndex.set(child.id, { child, stackId: item.id, groupId: group.id });
           }
         }
       }
     }
   }
 
-  const allItemIds = new Set([...Object.keys(localItemIndex), ...Object.keys(cloudItemIndex)]);
+  const allItemIds = new Set([...localItemIndex.keys(), ...cloudItemIndex.keys()]);
   const promotedTopLevelBookmarkIds = new Set();
 
   for (const itemId of allItemIds) {
-    const localEntry = localItemIndex[itemId];
-    const cloudEntry = cloudItemIndex[itemId];
+    const localEntry = localItemIndex.get(itemId);
+    const cloudEntry = cloudItemIndex.get(itemId);
 
     let winner, winningGroupId;
 
@@ -1385,8 +1385,8 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
       winner = localEntry.item;
       winningGroupId = localEntry.groupId;
 
-      if (!isStackItem(winner) && cloudChildIndex[itemId]) {
-        const stackedVersion = cloudChildIndex[itemId].child;
+      if (!isStackItem(winner) && cloudChildIndex.has(itemId)) {
+        const stackedVersion = cloudChildIndex.get(itemId).child;
         if (pickNewerRecord(winner, stackedVersion) === stackedVersion) {
           continue; // Stale top-level bookmark was moved into a stack remotely
         }
@@ -1396,8 +1396,8 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
       winner = cloudEntry.item;
       winningGroupId = cloudEntry.groupId;
 
-      if (!isStackItem(winner) && localChildIndex[itemId]) {
-        const stackedVersion = localChildIndex[itemId].child;
+      if (!isStackItem(winner) && localChildIndex.has(itemId)) {
+        const stackedVersion = localChildIndex.get(itemId).child;
         if (pickNewerRecord(stackedVersion, winner) === stackedVersion) {
           continue; // Stale top-level bookmark on remote was moved into a stack locally
         }
@@ -1414,14 +1414,15 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
       }
     }
 
-    if (mergedGroupMeta[winningGroupId]) {
-      mergedGroupMeta[winningGroupId].items.push(winner);
+    const targetGroup = mergedGroupMeta.get(winningGroupId);
+    if (targetGroup) {
+      targetGroup.items.push(winner);
     }
   }
 
   const supersededStackChildren = new Map();
-  for (const [childId, localChildEntry] of Object.entries(localChildIndex)) {
-    const cloudChildEntry = cloudChildIndex[childId];
+  for (const [childId, localChildEntry] of localChildIndex.entries()) {
+    const cloudChildEntry = cloudChildIndex.get(childId);
     if (!cloudChildEntry || localChildEntry.stackId === cloudChildEntry.stackId) continue;
     const losingStackId = pickNewerRecord(localChildEntry.child, cloudChildEntry.child) === localChildEntry.child
       ? cloudChildEntry.stackId
@@ -1435,7 +1436,7 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
   // Strip bookmarks that moved back to top-level or to another stack from any stale stack snapshot,
   // and remove dissolved empty non-deleted stacks.
   if (promotedTopLevelBookmarkIds.size > 0 || supersededStackChildren.size > 0) {
-    for (const group of Object.values(mergedGroupMeta)) {
+    for (const group of mergedGroupMeta.values()) {
       const nextItems = [];
       for (const item of group.items) {
         if (!isStackItem(item)) {
@@ -1457,10 +1458,10 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
 
   // Re-order each group's items according to the newer group snapshot's item order
   // (appending any newly added or cross-group-moved items in their relative order).
-  for (const [groupId, mergedGroup] of Object.entries(mergedGroupMeta)) {
-    const primarySource = preferCloudItemOrderByGroupId[groupId]
-      ? cloudGroupMap[groupId]
-      : localGroupMap[groupId];
+  for (const [groupId, mergedGroup] of mergedGroupMeta.entries()) {
+    const primarySource = preferCloudItemOrderByGroupId.get(groupId)
+      ? cloudGroupMap.get(groupId)
+      : localGroupMap.get(groupId);
     const primaryOrder = (primarySource?.items || []).map(i => i?.id).filter(Boolean);
     if (primaryOrder.length > 0 && mergedGroup.items.length > 1) {
       const rank = new Map(primaryOrder.map((id, idx) => [id, idx]));
@@ -1472,7 +1473,7 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
     }
   }
 
-  return Object.values(mergedGroupMeta);
+  return Array.from(mergedGroupMeta.values());
 }
 
 function getGroupsFreshness(groups) {
@@ -1807,7 +1808,7 @@ async function webdavGetJsonFile(fileUrl, headers) {
       return { ok: false, status: res.status };
     }
     const text = await res.text();
-    const data = text.trim() ? JSON.parse(text) : null;
+    const data = text.trim() ? parseJsonSafely(text) : null;
     return { ok: true, notFound: false, data };
   } catch (err) {
     return { ok: false, error: err };

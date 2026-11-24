@@ -163,6 +163,27 @@ export function logDebug(channel, ...args) {
   });
 }
 
+const DANGEROUS_OBJECT_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+export function sanitizeParsedJson(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeParsedJson(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const clean = {};
+  for (const key of Object.keys(value)) {
+    if (DANGEROUS_OBJECT_KEYS.has(key)) continue;
+    clean[key] = sanitizeParsedJson(value[key]);
+  }
+  return clean;
+}
+
+export function parseJsonSafely(text) {
+  return sanitizeParsedJson(JSON.parse(text));
+}
+
 export function normalizeSyncIntervalMode(mode) {
   return mode === "manual" ? "manual" : "immediate";
 }
@@ -171,30 +192,31 @@ function mergeConfigWithDefaults(stored) {
   if (!stored || typeof stored !== "object") {
     return structuredClone(defaultConfig);
   }
+  const safeStored = sanitizeParsedJson(stored);
   const mergedSync = {
     ...defaultConfig.sync,
-    ...(stored.sync || {})
+    ...(safeStored.sync || {})
   };
   mergedSync.intervalMode = normalizeSyncIntervalMode(mergedSync.intervalMode);
   return {
     ...defaultConfig,
-    ...stored,
+    ...safeStored,
     sync: mergedSync,
     housekeeper: {
       ...defaultConfig.housekeeper,
-      ...(stored.housekeeper || {})
+      ...(safeStored.housekeeper || {})
     },
     backups: {
       ...defaultConfig.backups,
-      ...(stored.backups || {})
+      ...(safeStored.backups || {})
     },
     appearance: {
       ...defaultConfig.appearance,
-      ...(stored.appearance || {})
+      ...(safeStored.appearance || {})
     },
     advanced: {
       ...defaultConfig.advanced,
-      ...(stored.advanced || {})
+      ...(safeStored.advanced || {})
     }
   };
 }

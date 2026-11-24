@@ -1,5 +1,5 @@
 import { state, saveState, isStackItem } from "./state.js";
-import { loadConfig, saveConfig } from "./config.js";
+import { loadConfig, saveConfig, parseJsonSafely, sanitizeParsedJson } from "./config.js";
 import { render } from "./render.js";
 import { withSyncLock } from "./sync.js";
 
@@ -197,8 +197,9 @@ export async function deleteBackup(file, type = "bookmarks") {
 }
 
 async function restoreParsedBackupData(parsedData, resolvedType, filename = "backup.json") {
+  const safeParsedData = sanitizeParsedJson(parsedData);
   if (resolvedType === "config") {
-    if (!parsedData || typeof parsedData.appearance !== "object" || parsedData.appearance === null || Array.isArray(parsedData.appearance)) {
+    if (!safeParsedData || typeof safeParsedData.appearance !== "object" || safeParsedData.appearance === null || Array.isArray(safeParsedData.appearance)) {
       throw new Error("invalid-backup-structure");
     }
 
@@ -207,7 +208,7 @@ async function restoreParsedBackupData(parsedData, resolvedType, filename = "bac
     const {
       backgroundImage: _ignoredBackgroundImage,
       ...restoredAppearance
-    } = parsedData.appearance;
+    } = safeParsedData.appearance;
     let secretsRemoved = false;
     if (Array.isArray(restoredAppearance.customWidgets)) {
       restoredAppearance.customWidgets = restoredAppearance.customWidgets.map(w => {
@@ -236,7 +237,7 @@ async function restoreParsedBackupData(parsedData, resolvedType, filename = "bac
     };
   }
 
-  if (!parsedData || !Array.isArray(parsedData.groups)) {
+  if (!safeParsedData || !Array.isArray(safeParsedData.groups)) {
     throw new Error("invalid-backup-structure");
   }
 
@@ -246,8 +247,8 @@ async function restoreParsedBackupData(parsedData, resolvedType, filename = "bac
     config.browserBookmarksAutoSync = false;
     await saveConfig(config);
 
-    state.groups = parsedData.groups;
-    state.tags = Array.isArray(parsedData.tags) ? parsedData.tags : [];
+    state.groups = safeParsedData.groups;
+    state.tags = Array.isArray(safeParsedData.tags) ? safeParsedData.tags : [];
     await saveState();
   });
   await render();
@@ -263,7 +264,7 @@ async function restoreParsedBackupData(parsedData, resolvedType, filename = "bac
 export async function restoreBackupFromJson(jsonText, type = "auto", filename = "uploaded-backup.json") {
   let parsedData = null;
   try {
-    parsedData = JSON.parse(String(jsonText || ""));
+    parsedData = parseJsonSafely(String(jsonText || ""));
   } catch {
     throw new Error("invalid-backup-json");
   }
@@ -297,7 +298,7 @@ export async function restoreBackup(file, type = "bookmarks") {
 
   let parsedData = null;
   try {
-    parsedData = JSON.parse(target.data);
+    parsedData = parseJsonSafely(target.data);
   } catch (error) {
     throw new Error("invalid-backup-json");
   }

@@ -1551,3 +1551,24 @@ test("saveState suppresses delayed and overlapping self-writes without blocking 
   assert.equal(applyStateFromStorageChange(externalSnapshot), true);
   assert.equal(state.groups[0].items[0].title, "External");
 });
+
+test("syncNow safely merges untrusted ids like __proto__, constructor, and toString", async () => {
+  setClient([group([item("b1", "One", 100)], "g1", 100)], httpConfig("direct"));
+  installHttpServer({
+    groups: [
+      group([
+        item("toString", "Remote toString", 200),
+        item("constructor", "Remote constructor", 200),
+        item("__proto__", "Remote proto", 200)
+      ], "constructor", 200)
+    ],
+    tags: [{ id: "toString", name: "Tag", updatedAt: 200 }]
+  });
+
+  const res = await syncNow({ force: true });
+  assert.equal(res.ok, true);
+  const mergedGroupIds = state.groups.map(g => g.id);
+  assert.ok(mergedGroupIds.includes("g1"));
+  assert.ok(mergedGroupIds.includes("constructor"));
+  assert.equal(({}).polluted, undefined);
+});
