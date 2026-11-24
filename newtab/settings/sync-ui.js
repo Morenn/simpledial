@@ -493,12 +493,9 @@ export function applySyncToConfig(config) {
   let urlChanged = false;
   if (syncType && syncType.value === "browser") {
     urlChanged = applyServerUrlChange(config, "");
-    config.sync.authMode = "none";
-    config.sync.username = "";
-    config.sync.password = "";
-    delete config.sync.enc;
-    delete config.sync.localKey;
-    config.sync.encryptionMode = "none";
+    clearSyncCredentialsInConfig(config);
+    clearSyncCredentialsInUi();
+    settingsState.credentialsTouched = false;
   } else {
     urlChanged = applyServerUrlChange(config, syncUrl?.value || "");
   }
@@ -508,10 +505,11 @@ export function applySyncToConfig(config) {
     if (config.sync.authMode === "none") {
       clearSyncCredentialsInConfig(config);
       clearSyncCredentialsInUi();
+      settingsState.credentialsTouched = false;
     }
   }
 
-  if (settingsState.credentialsTouched && syncAuthMode && syncAuthMode.value === "basic") {
+  if (settingsState.credentialsTouched && config.sync.authMode === "basic") {
     if (syncStatus) syncStatus.textContent = "❌ " + t("saveCredentialsFirst");
     return false;
   }
@@ -892,7 +890,7 @@ export function initSyncSettings({ persistSettings }) {
         }
       }
       const url = syncUrl?.value.trim() || "";
-      if (url && !await requestHostPermission(url)) {
+      if (url && !await requestHostPermission(url, syncType?.value || "webdav")) {
         if (syncWebdavManualStatus) syncWebdavManualStatus.textContent = "❌ " + t("hostPermissionRequired");
         return;
       }
