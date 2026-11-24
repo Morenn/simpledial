@@ -58,6 +58,10 @@ Widgets can be placed in **Header**, **Left**, **Center**, **Right**, or **Foote
 | Notes / Scratchpad (`notes`) | `right` | No | — |
 | Custom Search (`custom-search`) | `right` | Yes | Inherits group space when added/joined to an existing group |
 
+## Known Issues
+
+- **WebDAV `HTTP 405 (Method Not Allowed)` in browser console/network logs:** When using **WebDAV Folder Sync** against a server that does not support `PROPFIND` (returning `405` or `501`), backup directory initialization falls back to `MKCOL`. If a backup folder (`backups/`, `backups/bookmarks/`, `backups/config/`) already exists on the server, `MKCOL` returns `HTTP 405 (Method Not Allowed)` per WebDAV RFC 4918. This is harmless and sync continues to work normally; servers that support `PROPFIND` (such as Nextcloud/SabreDAV) avoid these `405` responses.
+
 ---
 
 *Co-developed with Antigravity (Gemini).*

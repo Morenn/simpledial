@@ -2377,8 +2377,7 @@ export async function checkRemoteMarkerUnchanged(config) {
 
 const WEBDAV_BACKUP_STORAGE_KEYS = {
   bookmarks: "myspeeddial-backups",
-  config: "myspeeddial-backups-config",
-  widgets: "myspeeddial-backups-widgets"
+  config: "myspeeddial-backups-config"
 };
 
 async function webdavGetJsonFile(fileUrl, headers) {
@@ -2542,6 +2541,21 @@ function shouldSyncExtraPart(enabled, mode, { includeManual = false, manualOnly 
   return isManual ? includeManual : true;
 }
 
+async function ensureWebdavBackupDirs(backupsRootUrl, backupTypes, headers) {
+  const dirUrls = [`${backupsRootUrl}/`, ...backupTypes.map(t => `${backupsRootUrl}/${t}/`)];
+  for (const dirUrl of dirUrls) {
+    try {
+      const checkRes = await fetchWithTimeout(dirUrl, {
+        method: "PROPFIND",
+        headers: { Depth: "0", ...headers }
+      });
+      if (checkRes.status === 404 || checkRes.status === 405 || checkRes.status === 501) {
+        await fetchWithTimeout(dirUrl, { method: "MKCOL", headers });
+      }
+    } catch {}
+  }
+}
+
 async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
   const currentConfig = config || await loadConfig();
   if (!currentConfig || currentConfig.sync?.type !== "webdav" || currentConfig.sync?.webdavMode !== "folder") {
@@ -2671,26 +2685,20 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
       const backupsRootUrl = `${folderBase}/backups`;
       const backupTypes = Object.keys(WEBDAV_BACKUP_STORAGE_KEYS);
 
-      // Ensure backups/ and backups/<type>/ directories exist
-      for (const dirUrl of [`${backupsRootUrl}/`, ...backupTypes.map(t => `${backupsRootUrl}/${t}/`)]) {
-        try {
-          await fetchWithTimeout(dirUrl, { method: "MKCOL", headers });
-        } catch {}
-      }
-
-      const [bmStored, cfgStored, wgtStored] = await Promise.all([
+      const [bmStored, cfgStored] = await Promise.all([
         chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.bookmarks),
-        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.config),
-        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.widgets)
+        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.config)
       ]);
       const localBackups = {
         bookmarks: Array.isArray(bmStored[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]) ? bmStored[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks] : [],
-        config: Array.isArray(cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config]) ? cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config] : [],
-        widgets: Array.isArray(wgtStored[WEBDAV_BACKUP_STORAGE_KEYS.widgets]) ? wgtStored[WEBDAV_BACKUP_STORAGE_KEYS.widgets] : []
+        config: Array.isArray(cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config]) ? cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config] : []
       };
 
       const indexUrl = `${backupsRootUrl}/index.json`;
       const remoteIndexRes = await webdavGetJsonFile(indexUrl, headers);
+      if (remoteIndexRes.ok && remoteIndexRes.notFound) {
+        await ensureWebdavBackupDirs(backupsRootUrl, backupTypes, headers);
+      }
       if (remoteIndexRes.ok) {
         const remoteIndex = remoteIndexRes.data?.data || {};
         const nextLocalBackups = {};
@@ -2722,11 +2730,16 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
               const entry = localByName.get(meta.filename);
               const fileUrl = `${backupsRootUrl}/${type}/${encodeURIComponent(entry.filename)}`;
               try {
-                const putRes = await fetchWithTimeout(fileUrl, {
+                const putOptions = {
                   method: "PUT",
                   headers: { "Content-Type": "application/json", ...headers },
                   body: typeof entry.data === "string" ? entry.data : JSON.stringify(entry.data || {})
-                });
+                };
+                let putRes = await fetchWithTimeout(fileUrl, putOptions);
+                if (putRes.status === 404 || putRes.status === 409) {
+                  await ensureWebdavBackupDirs(backupsRootUrl, [type], headers);
+                  putRes = await fetchWithTimeout(fileUrl, putOptions);
+                }
                 if (!putRes.ok) {
                   console.warn(`syncWebdavFolderExtras: backup upload failed (${putRes.status}) for ${entry.filename}`);
                   failedUploadNames.add(meta.filename);
@@ -2776,8 +2789,7 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
         if (localChanged) {
           await chrome.storage.local.set({
             [WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]: nextLocalBackups.bookmarks,
-            [WEBDAV_BACKUP_STORAGE_KEYS.config]: nextLocalBackups.config,
-            [WEBDAV_BACKUP_STORAGE_KEYS.widgets]: nextLocalBackups.widgets
+            [WEBDAV_BACKUP_STORAGE_KEYS.config]: nextLocalBackups.config
           });
         }
 
