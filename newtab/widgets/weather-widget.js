@@ -45,10 +45,11 @@ function tr(key, fallback) {
   return (val && val !== key) ? val : fallback;
 }
 
-export function mapWmoWeatherCode(code) {
+export function mapWmoWeatherCode(code, isDay = true) {
   const c = Number(code);
-  if (c === 0) return { icon: "☀️", key: "weatherCondClear", label: tr("weatherCondClear", "Clear") };
-  if (c === 1) return { icon: "🌤️", key: "weatherCondMostlyClear", label: tr("weatherCondMostlyClear", "Mostly clear") };
+  const night = isDay === false;
+  if (c === 0) return { icon: night ? "🌙" : "☀️", key: "weatherCondClear", label: tr("weatherCondClear", "Clear") };
+  if (c === 1) return { icon: night ? "🌙" : "🌤️", key: "weatherCondMostlyClear", label: tr("weatherCondMostlyClear", "Mostly clear") };
   if (c === 2) return { icon: "⛅", key: "weatherCondPartlyCloudy", label: tr("weatherCondPartlyCloudy", "Partly cloudy") };
   if (c === 3) return { icon: "☁️", key: "weatherCondCloudy", label: tr("weatherCondCloudy", "Cloudy") };
   if (c === 45 || c === 48) return { icon: "🌫️", key: "weatherCondFog", label: tr("weatherCondFog", "Fog") };
@@ -58,21 +59,22 @@ export function mapWmoWeatherCode(code) {
   if (c === 80 || c === 81 || c === 82) return { icon: "🌧️", key: "weatherCondShowers", label: tr("weatherCondShowers", "Showers") };
   if (c === 85 || c === 86) return { icon: "🌨️", key: "weatherCondSnowShowers", label: tr("weatherCondSnowShowers", "Snow showers") };
   if (c === 95 || c === 96 || c === 99) return { icon: "⛈️", key: "weatherCondThunderstorm", label: tr("weatherCondThunderstorm", "Thunderstorm") };
-  return { icon: "🌤️", key: "weatherCondWeather", label: tr("weatherCondWeather", "Weather") };
+  return { icon: night ? "🌙" : "🌤️", key: "weatherCondWeather", label: tr("weatherCondWeather", "Weather") };
 }
 
-export function mapOpenWeatherCondition(id, main = "") {
+export function mapOpenWeatherCondition(id, main = "", isDay = true) {
   const code = Number(id);
+  const night = isDay === false;
   if (code >= 200 && code < 300) return { icon: "⛈️", key: "weatherCondThunderstorm", label: tr("weatherCondThunderstorm", main || "Thunderstorm") };
   if (code >= 300 && code < 400) return { icon: "🌦️", key: "weatherCondDrizzle", label: tr("weatherCondDrizzle", main || "Drizzle") };
   if (code >= 500 && code < 600) return { icon: "🌧️", key: "weatherCondRain", label: tr("weatherCondRain", main || "Rain") };
   if (code >= 600 && code < 700) return { icon: "❄️", key: "weatherCondSnow", label: tr("weatherCondSnow", main || "Snow") };
   if (code >= 700 && code < 800) return { icon: "🌫️", key: "weatherCondFog", label: tr("weatherCondFog", main || "Fog") };
-  if (code === 800) return { icon: "☀️", key: "weatherCondClear", label: tr("weatherCondClear", main || "Clear") };
-  if (code === 801) return { icon: "🌤️", key: "weatherCondFewClouds", label: tr("weatherCondFewClouds", main || "Few clouds") };
+  if (code === 800) return { icon: night ? "🌙" : "☀️", key: "weatherCondClear", label: tr("weatherCondClear", main || "Clear") };
+  if (code === 801) return { icon: night ? "🌙" : "🌤️", key: "weatherCondFewClouds", label: tr("weatherCondFewClouds", main || "Few clouds") };
   if (code === 802) return { icon: "⛅", key: "weatherCondPartlyCloudy", label: tr("weatherCondPartlyCloudy", main || "Partly cloudy") };
   if (code === 803 || code === 804) return { icon: "☁️", key: "weatherCondCloudy", label: tr("weatherCondCloudy", main || "Cloudy") };
-  return { icon: "🌤️", key: "weatherCondWeather", label: tr("weatherCondWeather", main || "Weather") };
+  return { icon: night ? "🌙" : "🌤️", key: "weatherCondWeather", label: tr("weatherCondWeather", main || "Weather") };
 }
 
 export function getWeatherProviderEndpointUrl(provider) {
@@ -169,7 +171,7 @@ function formatDayName(dateStr, index) {
 async function fetchOpenMeteo(widget) {
   const lat = Number(widget.latitude);
   const lon = Number(widget.longitude);
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day&hourly=temperature_2m,weather_code,precipitation_probability,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
   try {
@@ -177,7 +179,8 @@ async function fetchOpenMeteo(widget) {
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
     const data = await res.json();
     const cur = data?.current || {};
-    const mapped = mapWmoWeatherCode(cur.weather_code);
+    const curIsDay = cur.is_day === undefined ? true : Number(cur.is_day) !== 0;
+    const mapped = mapWmoWeatherCode(cur.weather_code, curIsDay);
     const current = {
       tempC: Number(cur.temperature_2m),
       apparentTempC: Number(cur.apparent_temperature),
@@ -209,7 +212,8 @@ async function fetchOpenMeteo(widget) {
     for (let i = 0; i < hourlyTimes.length && hourly.length < 8; i += 3) {
       const ts = Date.parse(hourlyTimes[i]);
       if (Number.isFinite(ts) && ts + 3600000 < nowMs) continue;
-      const m = mapWmoWeatherCode(data.hourly.weather_code?.[i]);
+      const slotIsDay = data.hourly?.is_day?.[i] === undefined ? true : Number(data.hourly.is_day[i]) !== 0;
+      const m = mapWmoWeatherCode(data.hourly.weather_code?.[i], slotIsDay);
       hourly.push({
         time: hourlyTimes[i].slice(11, 16),
         tempC: Number(data.hourly.temperature_2m?.[i]),
@@ -224,6 +228,23 @@ async function fetchOpenMeteo(widget) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isOwmDaytime(entry, fallbackSys = null) {
+  const iconCode = entry?.weather?.[0]?.icon;
+  if (typeof iconCode === "string") {
+    if (iconCode.endsWith("n")) return false;
+    if (iconCode.endsWith("d")) return true;
+  }
+  if (entry?.sys?.pod === "n") return false;
+  if (entry?.sys?.pod === "d") return true;
+  const dt = Number(entry?.dt);
+  const sunrise = Number(fallbackSys?.sunrise);
+  const sunset = Number(fallbackSys?.sunset);
+  if (Number.isFinite(dt) && Number.isFinite(sunrise) && Number.isFinite(sunset)) {
+    return dt >= sunrise && dt < sunset;
+  }
+  return true;
 }
 
 async function fetchOpenWeatherMap(widget) {
@@ -266,7 +287,7 @@ async function fetchOpenWeatherMap(widget) {
     if (!curRes.ok) return { ok: false, error: `HTTP ${curRes.status}` };
     const curData = await curRes.json();
     const w0 = curData?.weather?.[0] || {};
-    const mapped = mapOpenWeatherCondition(w0.id, w0.main);
+    const mapped = mapOpenWeatherCondition(w0.id, w0.main, isOwmDaytime(curData, curData?.sys));
     const current = {
       tempC: Number(curData?.main?.temp),
       apparentTempC: Number(curData?.main?.feels_like),
@@ -280,7 +301,7 @@ async function fetchOpenWeatherMap(widget) {
     const fcData = fcRes.ok ? await fcRes.json() : null;
     const fcList = Array.isArray(fcData?.list) ? fcData.list : [];
     const hourly = fcList.slice(0, 8).map(entry => {
-      const m = mapOpenWeatherCondition(entry?.weather?.[0]?.id, entry?.weather?.[0]?.main);
+      const m = mapOpenWeatherCondition(entry?.weather?.[0]?.id, entry?.weather?.[0]?.main, isOwmDaytime(entry));
       return {
         time: String(entry.dt_txt || "").slice(11, 16),
         tempC: Number(entry?.main?.temp),

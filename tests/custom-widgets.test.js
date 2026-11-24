@@ -1123,6 +1123,9 @@ test("weather helpers format temperatures, map WMO codes, strip apiKey on export
   assert.equal(formatTemperature(24.4, "C"), "24°C");
   assert.equal(formatTemperature(0, "F"), "32°F");
   assert.deepEqual(mapWmoWeatherCode(3), { icon: "☁️", key: "weatherCondCloudy", label: "Cloudy" });
+  assert.equal(mapWmoWeatherCode(0, true).icon, "☀️");
+  assert.equal(mapWmoWeatherCode(0, false).icon, "🌙");
+  assert.equal(mapWmoWeatherCode(1, false).icon, "🌙");
 
   const exported = serializeCustomWidgetsExport([
     {
