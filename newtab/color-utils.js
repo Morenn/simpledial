@@ -1,6 +1,7 @@
 // Shared helpers for custom icons (URLs or emoji/text) and tile color extraction/styling.
 
 const URL_SCHEME_REGEX = /^(https?:|data:|blob:|chrome-extension:|moz-extension:|\/)/i;
+const SAFE_DATA_IMAGE_URL_REGEX = /^data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon|svg\+xml)(?:;[^,]*)?,/i;
 const DOMAIN_OR_FILE_REGEX = /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i;
 const HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/i;
 
@@ -27,7 +28,11 @@ export function normalizeCustomIconValue(rawValue, { allowEmoji = false } = {}) 
     return trimmed;
   }
 
-  if (/^(data:|blob:|chrome-extension:|moz-extension:)/i.test(trimmed)) {
+  if (/^data:/i.test(trimmed)) {
+    return SAFE_DATA_IMAGE_URL_REGEX.test(trimmed) ? trimmed : null;
+  }
+
+  if (/^(blob:|chrome-extension:|moz-extension:)/i.test(trimmed)) {
     return trimmed;
   }
 
@@ -503,6 +508,16 @@ export function blobToDataUrl(blob) {
 export async function fetchIconAsDataUrl(iconUrl, force = false, { requireImageType = false, timeoutMs = 0 } = {}) {
   if (typeof fetch !== "function" || typeof FileReader === "undefined") {
     throw new Error("icon-fetch-unsupported");
+  }
+  if (typeof iconUrl !== "string" || !iconUrl.trim()) {
+    throw new Error("icon-url-invalid");
+  }
+  const trimmedUrl = iconUrl.trim();
+  const isSafeFetchTarget = isHttpIconUrl(trimmedUrl)
+    || SAFE_DATA_IMAGE_URL_REGEX.test(trimmedUrl)
+    || trimmedUrl.startsWith("/");
+  if (!isSafeFetchTarget) {
+    throw new Error("icon-url-disallowed-scheme");
   }
   const controller = timeoutMs > 0 && typeof AbortController !== "undefined" ? new AbortController() : null;
   const timerId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;

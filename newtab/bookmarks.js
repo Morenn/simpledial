@@ -35,7 +35,8 @@ import {
   isUrlHostExcludedFromIconRefresh,
   isIconUrlExcluded,
   isIconUrlFailed,
-  isUrlLikeIcon
+  isUrlLikeIcon,
+  normalizeCustomIconValue
 } from "./color-utils.js";
 
 const DEFAULT_ICON_AUTO_REFRESH_HOURS = 24;
@@ -1083,13 +1084,25 @@ function resolveIconSrc(item) {
   return getDeferredIconSrc(item) || immediateSrc;
 }
 
+function resolveHttpIconUrl(rawUrl, baseUrl) {
+  if (typeof rawUrl !== "string" || !rawUrl.trim()) return null;
+  try {
+    const resolved = new URL(rawUrl.trim(), baseUrl);
+    return (resolved.protocol === "http:" || resolved.protocol === "https:") ? resolved.href : null;
+  } catch {
+    return null;
+  }
+}
+
 // Fetches a page's HTML once and parses it, shared by the link-icon and
 // manifest lookups below.
 async function fetchPageDocument(pageUrl) {
-  const origin = new URL(pageUrl).origin;
-  faviconDebugLog("fetching page HTML", pageUrl);
+  const safePageUrl = resolveHttpIconUrl(pageUrl);
+  if (!safePageUrl) throw new Error("disallowed-page-url");
+  const origin = new URL(safePageUrl).origin;
+  faviconDebugLog("fetching page HTML", safePageUrl);
 
-  const pageResponse = await fetch(pageUrl);
+  const pageResponse = await fetch(safePageUrl);
   const html = await pageResponse.text();
   const doc = new DOMParser().parseFromString(html, "text/html");
   return { doc, origin };
@@ -1098,17 +1111,21 @@ async function fetchPageDocument(pageUrl) {
 function pickBestSizedIcon(candidates, srcKey, baseUrl, defaultSize = 0) {
   if (!candidates || !candidates.length) return null;
 
-  const best = candidates
-    .map(c => ({
-      ...c,
-      size: (!c.sizes || c.sizes === "any")
-        ? defaultSize
-        : Math.max(...c.sizes.split(" ").map(s => parseInt(s, 10) || 0))
-    }))
-    .sort((a, b) => b.size - a.size)[0];
+  const valid = candidates
+    .map(c => {
+      const resolvedHref = resolveHttpIconUrl(c?.[srcKey], baseUrl);
+      if (!resolvedHref) return null;
+      return {
+        resolvedHref,
+        size: (!c.sizes || c.sizes === "any")
+          ? defaultSize
+          : Math.max(...String(c.sizes).split(" ").map(s => parseInt(s, 10) || 0))
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.size - a.size);
 
-  if (!best || !best[srcKey]) return null;
-  return new URL(best[srcKey], baseUrl).href;
+  return valid[0]?.resolvedHref || null;
 }
 
 // The page's own <link rel="icon"> / shortcut icon / apple-touch-icon.
@@ -1135,7 +1152,8 @@ async function getFaviconFromManifest(doc, origin) {
   const href = link.getAttribute("href");
   if (!href) return null;
 
-  const manifestUrl = new URL(href, origin).href;
+  const manifestUrl = resolveHttpIconUrl(href, origin);
+  if (!manifestUrl) return null;
   const manifestResponse = await fetch(manifestUrl);
   if (!manifestResponse.ok) return null;
 
@@ -1254,7 +1272,7 @@ async function refreshBookmarkIcon(item, options = {}) {
         // so subsequent startups load locally without hitting the network.
         if (await hasHostPermission()) {
           try {
-            const dataUrl = await fetchIconAsDataUrl(faviconUrl, true);
+            const dataUrl = await fetchIconAsDataUrl(faviconUrl, true, { requireImageType: true });
             resolvedIconSrc = dataUrl;
             setCachedFaviconDataUrl(item, dataUrl);
             clearFailedIconRefresh(item.id);
@@ -1268,7 +1286,7 @@ async function refreshBookmarkIcon(item, options = {}) {
       } else {
         try {
           // Cache the actual bytes as a data URL when we can.
-          const dataUrl = await fetchIconAsDataUrl(faviconUrl, true);
+          const dataUrl = await fetchIconAsDataUrl(faviconUrl, true, { requireImageType: true });
           resolvedIconSrc = dataUrl;
           setCachedFaviconDataUrl(item, dataUrl);
           clearFailedIconRefresh(item.id);
@@ -1813,13 +1831,22 @@ bmSave.addEventListener("click", async () => {
   try {
     const title = bmTitle.value.trim();
     const rawUrl = bmUrl.value.trim();
-    const icon = bmIcon.value.trim();
+    const rawIcon = bmIcon.value.trim();
     const notes = bmNotes.value.trim();
     const url = normalizeBookmarkUrl(rawUrl);
 
     if (!url) {
       alert("Musíš zadať URL.");
       return;
+    }
+
+    let icon = null;
+    if (rawIcon) {
+      icon = normalizeCustomIconValue(rawIcon, { allowEmoji: false });
+      if (!icon) {
+        alert(t("invalidIconUrl") || "Invalid icon URL.");
+        return;
+      }
     }
 
     const initialGroupId = window.activeGroupId;

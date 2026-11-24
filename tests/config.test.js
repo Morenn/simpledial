@@ -329,3 +329,27 @@ test("measureAddonStorageUsage categorizes chrome.storage.local keys and formats
   assert.equal(formatStorageBytes(2 * 1024 * 1024), "2.00 MB");
   assert.equal(defaultConfig.appearance.storageUsageSpace, "disabled");
 });
+
+test("normalizeCustomIconValue and fetchIconAsDataUrl enforce safe icon URL schemes", async () => {
+  const { normalizeCustomIconValue, fetchIconAsDataUrl } = await import("../newtab/color-utils.js");
+
+  assert.equal(normalizeCustomIconValue("data:text/html,<script>alert(1)</script>"), null);
+  assert.equal(normalizeCustomIconValue("javascript:alert(1)"), null);
+  assert.equal(normalizeCustomIconValue("https://example.com/icon.png"), "https://example.com/icon.png");
+  assert.equal(normalizeCustomIconValue("data:image/png;base64,AAA"), "data:image/png;base64,AAA");
+
+  const prevFileReader = globalThis.FileReader;
+  globalThis.FileReader = class MockFileReader {};
+  try {
+    await assert.rejects(
+      () => fetchIconAsDataUrl("file:///C:/secret.txt"),
+      (err) => err?.message === "icon-url-disallowed-scheme"
+    );
+  } finally {
+    if (prevFileReader === undefined) {
+      delete globalThis.FileReader;
+    } else {
+      globalThis.FileReader = prevFileReader;
+    }
+  }
+});
