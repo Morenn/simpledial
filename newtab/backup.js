@@ -1,6 +1,7 @@
 import { state, saveState, isStackItem } from "./state.js";
 import { loadConfig, saveConfig } from "./config.js";
 import { render } from "./render.js";
+import { withSyncLock } from "./sync.js";
 
 const BACKUP_TYPE_META = {
   bookmarks: {
@@ -231,14 +232,16 @@ async function restoreParsedBackupData(parsedData, resolvedType, filename = "bac
     throw new Error("invalid-backup-structure");
   }
 
-  const config = await loadConfig();
-  config.sync.enabled = false;
-  config.browserBookmarksAutoSync = false;
-  await saveConfig(config);
+  await withSyncLock(async () => {
+    const config = await loadConfig();
+    config.sync.enabled = false;
+    config.browserBookmarksAutoSync = false;
+    await saveConfig(config);
 
-  state.groups = parsedData.groups;
-  state.tags = Array.isArray(parsedData.tags) ? parsedData.tags : [];
-  await saveState();
+    state.groups = parsedData.groups;
+    state.tags = Array.isArray(parsedData.tags) ? parsedData.tags : [];
+    await saveState();
+  });
   await render();
 
   return {

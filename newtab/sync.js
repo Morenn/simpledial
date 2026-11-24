@@ -1067,7 +1067,7 @@ let inTabSyncActive = false;
 /**
  * Serializes sync operations within the tab and across extension tabs via Web Locks.
  */
-async function withSyncLock(task, { ifAvailable = false } = {}) {
+export async function withSyncLock(task, { ifAvailable = false } = {}) {
   if (ifAvailable && inTabSyncActive) {
     return { skipped: true };
   }

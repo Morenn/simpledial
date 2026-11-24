@@ -315,3 +315,95 @@ test("restoreBackupFromJson auto-detects and restores uploaded bookmarks and con
   await assert.rejects(() => restoreBackupFromJson("{bad", "auto"), /invalid-backup-json/);
   await assert.rejects(() => restoreBackupFromJson("{}", "auto"), /invalid-backup-structure/);
 });
+
+test("restoreBackupFromJson serializes with in-flight syncNow so restored data and disabled sync are not clobbered", async () => {
+  const { syncNow } = await import("../newtab/sync.js");
+  localStorageMap.clear();
+
+  const cfg = structuredClone(defaultConfig);
+  cfg.sync.enabled = true;
+  cfg.sync.type = "direct";
+  cfg.sync.serverUrl = "https://sync.example/bookmarks.json";
+  cfg.sync.intervalMode = "immediate";
+  cfg.sync.lastSync = 100;
+  await saveConfig(cfg);
+
+  state.groups = [
+    {
+      id: "g1",
+      name: "Local",
+      sections: [],
+      items: [{ id: "b_local", title: "Local", url: "https://local.example", updatedAt: 100, deleted: false, deletedAt: null }],
+      updatedAt: 100,
+      deleted: false,
+      deletedAt: null
+    }
+  ];
+  state.tags = [];
+
+  const originalFetch = globalThis.fetch;
+  let releaseGet;
+  let pausedOnce = false;
+  const getStarted = new Promise(resolve => {
+    globalThis.fetch = async (_url, init = {}) => {
+      const method = (init.method || "GET").toUpperCase();
+      if (method === "GET" && !pausedOnce) {
+        pausedOnce = true;
+        resolve();
+        await new Promise(r => { releaseGet = r; });
+      }
+      if (method === "GET") {
+        return new Response(JSON.stringify({
+          groups: [
+            {
+              id: "g1",
+              name: "Cloud",
+              sections: [],
+              items: [{ id: "b_cloud", title: "Cloud", url: "https://cloud.example", updatedAt: 200, deleted: false, deletedAt: null }],
+              updatedAt: 200,
+              deleted: false,
+              deletedAt: null
+            }
+          ]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("", { status: 200 });
+    };
+  });
+
+  try {
+    const syncPromise = syncNow();
+    await getStarted;
+
+    const restorePromise = restoreBackupFromJson(
+      JSON.stringify({
+        groups: [
+          {
+            id: "g_restored",
+            name: "Restored",
+            sections: [],
+            items: [{ id: "b_restored", title: "Restored", url: "https://restored.example", updatedAt: 50, deleted: false, deletedAt: null }],
+            updatedAt: 50,
+            deleted: false,
+            deletedAt: null
+          }
+        ],
+        tags: []
+      }),
+      "bookmarks",
+      "restore-race.json"
+    );
+
+    releaseGet();
+    const [syncRes, restoreRes] = await Promise.all([syncPromise, restorePromise]);
+
+    assert.equal(syncRes.ok, true);
+    assert.equal(restoreRes.ok, true);
+    const afterConfig = await loadConfig();
+    assert.equal(afterConfig.sync.enabled, false);
+    assert.deepEqual(state.groups.map(g => g.id), ["g_restored"]);
+    assert.deepEqual(state.groups[0].items.map(i => i.id), ["b_restored"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
