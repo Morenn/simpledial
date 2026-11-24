@@ -267,24 +267,30 @@ export async function loadConfig() {
   }
 }
 
+let configSaveQueue = Promise.resolve();
+
 // Save configuration to storage
-export async function saveConfig(config) {
-  const normalized = mergeConfigWithDefaults(config);
-  configSaveGeneration++;
-  updateDebugLoggingFlags(normalized.advanced);
-  const canUseCache = typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function";
-  const previousCachedConfig = cachedConfig;
-  if (canUseCache) {
-    cachedConfig = cloneConfig(normalized);
-  }
-  try {
-    await chrome.storage.local.set({ [CONFIG_STORAGE_KEY]: config });
-  } catch (err) {
+export function saveConfig(config) {
+  const run = configSaveQueue.then(async () => {
+    const normalized = mergeConfigWithDefaults(config);
+    configSaveGeneration++;
+    updateDebugLoggingFlags(normalized.advanced);
+    const canUseCache = typeof chrome !== "undefined" && typeof chrome?.storage?.onChanged?.addListener === "function";
+    const previousCachedConfig = cachedConfig;
     if (canUseCache) {
-      cachedConfig = previousCachedConfig;
+      cachedConfig = cloneConfig(normalized);
     }
-    throw err;
-  }
+    try {
+      await chrome.storage.local.set({ [CONFIG_STORAGE_KEY]: config });
+    } catch (err) {
+      if (canUseCache) {
+        cachedConfig = previousCachedConfig;
+      }
+      throw err;
+    }
+  });
+  configSaveQueue = run.catch(() => {});
+  return run;
 }
 
 // Get sync interval in milliseconds based on mode

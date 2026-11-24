@@ -377,9 +377,8 @@ export async function saveSyncConfig({ url, type, username, password }) {
 
 const CLOUD_STORAGE_KEY = "myspeeddial-data";
 
-export async function loadSyncConfig() {
-  const config = await loadConfig();
-  if (!config.sync.serverUrl && config.sync.type !== 'browser') return null;
+function buildSyncConfigFromConfig(config) {
+  if (!config?.sync?.serverUrl && config?.sync?.type !== 'browser') return null;
   return {
     url: config.sync.serverUrl,
     type: config.sync.type || 'direct',
@@ -395,6 +394,11 @@ export async function loadSyncConfig() {
     remoteChangeHeaderType: config.sync.remoteChangeHeaderType ?? null,
     lastSync: config.sync.lastSync || 0
   };
+}
+
+export async function loadSyncConfig() {
+  const config = await loadConfig();
+  return buildSyncConfigFromConfig(config);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1123,17 +1127,25 @@ async function syncWriteLocked(sourceState = state, options = {}) {
   const tags = Array.isArray(sourceState?.tags) ? sourceState.tags : (Array.isArray(state.tags) ? state.tags : []);
   const previousGroups = state.groups;
   const previousTags = state.tags;
+  const forceSaveLocal = (groups !== previousGroups) || (tags !== previousTags);
   state.groups = groups;
   state.tags = tags;
 
-  const readResult = await syncReadDetailed();
+  const readResult = await syncReadDetailed(buildSyncConfigFromConfig(config));
   if (!readResult.ok) {
     state.groups = previousGroups;
     state.tags = previousTags;
     return false;
   }
 
-  const result = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, extraPurgedIds);
+  const result = await mergeAndWriteAtomically(
+    config,
+    readResult.data.groups,
+    2,
+    readResult.data.tags,
+    extraPurgedIds,
+    { forceSaveLocal }
+  );
   if (!result.ok) {
     state.groups = previousGroups;
     state.tags = previousTags;
@@ -1571,7 +1583,8 @@ function stripPurgedIdsFromCloudData(cloudGroups = [], cloudTags = [], purgedIdS
   return { groups: filteredGroups, tags: filteredTags };
 }
 
-async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetries = 2, cloudTags = [], extraPurgedIds = []) {
+async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetries = 2, cloudTags = [], extraPurgedIds = [], options = {}) {
+  const forceSaveLocal = !!options?.forceSaveLocal;
   const previousGroups = state.groups;
   const previousTags = Array.isArray(state.tags) ? state.tags : [];
   const resolvedCloudTags = Array.isArray(cloudTags) ? cloudTags : [];
@@ -1613,10 +1626,13 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
   }
 
   if (!changed && !remoteNeedsUpdate) {
+    if (forceSaveLocal) {
+      await saveState();
+    }
     if (config.sync) config.sync.pendingPurgedIds = [];
     config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags);
     await updateLastSyncTime(config);
-    return { ok: true, reason: 'no-changes', changed: false };
+    return { ok: true, reason: 'no-changes', changed: forceSaveLocal };
   }
 
   if (groupsChanged) {
@@ -1628,7 +1644,7 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
 
   let writeResult = null;
   if (remoteNeedsUpdate) {
-    const syncCfg = await loadSyncConfig();
+    const syncCfg = buildSyncConfigFromConfig(config);
     writeResult = await syncWriteDetailed({ ...syncCfg, lastSync: Date.now() });
 
     if (!writeResult.ok) {
@@ -1671,7 +1687,7 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
     }
   }
 
-  if (changed) {
+  if (changed || forceSaveLocal) {
     await saveState();
   }
   if (config.sync) config.sync.pendingPurgedIds = [];
@@ -1741,7 +1757,7 @@ export async function checkRemoteMarkerUnchanged(config) {
 
   resetRemoteMarkerStateIfUrlChanged(config);
   const preferredType = config.sync.remoteChangeHeaderType || null;
-  const resolvedSyncCfg = await loadSyncConfig();
+  const resolvedSyncCfg = buildSyncConfigFromConfig(config);
   const marker = await getRemoteChangeMarker(resolvedSyncCfg, { allowFallback: true, preferredType });
 
   if (!marker) {
@@ -1937,7 +1953,7 @@ function shouldSyncExtraPart(enabled, mode, { includeManual = false, manualOnly 
   return isManual ? includeManual : true;
 }
 
-export async function syncWebdavFolderExtras(config = null, options = {}) {
+async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
   const currentConfig = config || await loadConfig();
   if (!currentConfig || currentConfig.sync?.type !== "webdav" || currentConfig.sync?.webdavMode !== "folder") {
     return { ok: true, skipped: true };
@@ -1955,7 +1971,7 @@ export async function syncWebdavFolderExtras(config = null, options = {}) {
     return { ok: true, skipped: true, configChanged: false };
   }
 
-  const resolvedCfg = await loadSyncConfig();
+  const resolvedCfg = buildSyncConfigFromConfig(currentConfig);
   const credentials = await resolveSyncCredentials(resolvedCfg, "syncWebdavFolderExtras");
   if (!credentials.ok) return credentials;
 
@@ -2198,6 +2214,10 @@ export async function syncWebdavFolderExtras(config = null, options = {}) {
   return { ok: true, configChanged };
 }
 
+export async function syncWebdavFolderExtras(config = null, options = {}) {
+  return await withSyncLock(() => syncWebdavFolderExtrasLocked(config, options));
+}
+
 let lastSyncErrorReason = null;
 
 export function getLastSyncErrorReason() {
@@ -2250,13 +2270,13 @@ export async function syncNow(options = {}) {
     if (willSkipGet) {
       lastSyncErrorReason = null;
       if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
-        await syncWebdavFolderExtras(config, { includeManual });
+        await syncWebdavFolderExtrasLocked(config, { includeManual });
       }
       await updateLastSyncTime(config);
       return { ok: true, reason: 'remote-marker-unchanged', changed: false };
     }
 
-    const readResult = await syncReadDetailed();
+    const readResult = await syncReadDetailed(buildSyncConfigFromConfig(config));
     if (!readResult.ok) {
       console.warn("Failed to read from sync server");
       lastSyncErrorReason = readResult.reason || 'sync-failed';
@@ -2267,7 +2287,7 @@ export async function syncNow(options = {}) {
     const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags);
     lastSyncErrorReason = mergeResult.ok ? null : (mergeResult.reason || 'sync-failed');
     if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
-      await syncWebdavFolderExtras(config, { includeManual });
+      await syncWebdavFolderExtrasLocked(config, { includeManual });
     }
     return mergeResult;
   }, { ifAvailable: !!options?.ifAvailable });

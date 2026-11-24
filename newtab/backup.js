@@ -140,7 +140,7 @@ async function buildBackupSnapshot(resolvedType) {
   return { payload, json, sizeBytes, metadata };
 }
 
-export async function createBackup(type = "bookmarks", prebuiltSnapshot = null) {
+async function createBackupLocked(type = "bookmarks", prebuiltSnapshot = null) {
   const resolvedType = normalizeBackupType(type);
   const timestamp = Date.now();
   const { json, sizeBytes, metadata } = prebuiltSnapshot || await buildBackupSnapshot(resolvedType);
@@ -159,6 +159,10 @@ export async function createBackup(type = "bookmarks", prebuiltSnapshot = null) 
   return entries[entries.length - 1];
 }
 
+export async function createBackup(type = "bookmarks", prebuiltSnapshot = null) {
+  return await withAutoBackupLock(() => createBackupLocked(type, prebuiltSnapshot));
+}
+
 export async function listBackups(type = "bookmarks") {
   const resolvedType = normalizeBackupType(type);
   const entries = await readBackupEntries(resolvedType);
@@ -167,7 +171,7 @@ export async function listBackups(type = "bookmarks") {
     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 }
 
-export async function deleteBackup(file, type = "bookmarks") {
+async function deleteBackupLocked(file, type = "bookmarks") {
   const resolvedType = normalizeBackupType(type);
   const parsed = parseBackupInput(file);
   if (!parsed) {
@@ -186,6 +190,10 @@ export async function deleteBackup(file, type = "bookmarks") {
     ok: true,
     filename: parsed.filename
   };
+}
+
+export async function deleteBackup(file, type = "bookmarks") {
+  return await withAutoBackupLock(() => deleteBackupLocked(file, type));
 }
 
 async function restoreParsedBackupData(parsedData, resolvedType, filename = "backup.json") {
@@ -297,7 +305,7 @@ export async function restoreBackup(file, type = "bookmarks") {
   return restoreParsedBackupData(parsedData, resolvedType, target.filename);
 }
 
-export async function cleanupOldBackups(retentionDays, type = null) {
+async function cleanupOldBackupsLocked(retentionDays, type = null) {
   const days = Math.max(1, Number(retentionDays) || 14);
   const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
   const typesToClean = type ? [normalizeBackupType(type)] : ALL_BACKUP_TYPES;
@@ -327,6 +335,10 @@ export async function cleanupOldBackups(retentionDays, type = null) {
   return totalRemoved;
 }
 
+export async function cleanupOldBackups(retentionDays, type = null) {
+  return await withAutoBackupLock(() => cleanupOldBackupsLocked(retentionDays, type));
+}
+
 async function maybeCreateAutomaticBackup() {
   const config = await loadConfig();
   if (!config.backups) config.backups = {};
@@ -338,7 +350,7 @@ async function maybeCreateAutomaticBackup() {
   const desiredIntervalMs = frequencyHours * 60 * 60 * 1000;
   const effectiveIntervalMs = Math.max(desiredIntervalMs, MIN_AUTO_BACKUP_INTERVAL_MS);
   const retentionDays = config.backups.retentionDays || 14;
-  let configChanged = false;
+  const updatedTimestamps = {};
 
   for (const backupType of ALL_BACKUP_TYPES) {
     const backups = await listBackups(backupType);
@@ -354,19 +366,27 @@ async function maybeCreateAutomaticBackup() {
 
     const snapshot = await buildBackupSnapshot(backupType);
     if (backups[0]?.data !== snapshot.json) {
-      await createBackup(backupType, snapshot);
+      await createBackupLocked(backupType, snapshot);
     }
-    await cleanupOldBackups(retentionDays, backupType);
-    const now = Date.now();
-    if (backupType === "bookmarks") {
-      config.backups.lastAutoBackup = now;
-    }
-    config.backups.lastAutoBackupByType[backupType] = now;
-    configChanged = true;
+    await cleanupOldBackupsLocked(retentionDays, backupType);
+    updatedTimestamps[backupType] = Date.now();
   }
 
-  if (configChanged) {
-    await saveConfig(config);
+  const updatedTypes = Object.keys(updatedTimestamps);
+  if (updatedTypes.length > 0) {
+    const latestConfig = await loadConfig();
+    if (!latestConfig.backups) latestConfig.backups = {};
+    if (!latestConfig.backups.lastAutoBackupByType || typeof latestConfig.backups.lastAutoBackupByType !== "object") {
+      latestConfig.backups.lastAutoBackupByType = {};
+    }
+    for (const backupType of updatedTypes) {
+      const ts = updatedTimestamps[backupType];
+      if (backupType === "bookmarks") {
+        latestConfig.backups.lastAutoBackup = ts;
+      }
+      latestConfig.backups.lastAutoBackupByType[backupType] = ts;
+    }
+    await saveConfig(latestConfig);
   }
 }
 
