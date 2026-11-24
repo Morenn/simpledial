@@ -1282,8 +1282,23 @@ function mergeRecordArrays(localRecords = [], cloudRecords = [], { preferCloudOr
   return merged;
 }
 
+function getRecordsFreshness(records = []) {
+  let maxTs = 0;
+  for (const rec of (records || [])) {
+    if (!rec) continue;
+    const ts = rec.deleted ? (rec.deletedAt || 0) : (rec.updatedAt || 0);
+    if (ts > maxTs) maxTs = ts;
+  }
+  return maxTs;
+}
+
 function mergeTags(localTags = [], cloudTags = []) {
-  return mergeRecordArrays(localTags, cloudTags);
+  const localFreshness = getRecordsFreshness(localTags);
+  const cloudFreshness = getRecordsFreshness(cloudTags);
+  const preferCloudOrder = cloudFreshness !== localFreshness
+    ? cloudFreshness > localFreshness
+    : stableSerialize(cloudTags || []) > stableSerialize(localTags || []);
+  return mergeRecordArrays(localTags, cloudTags, { preferCloudOrder });
 }
 
 function mergeStackItems(localStack, cloudStack) {
@@ -1307,7 +1322,11 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
   // ---- Merge group-level metadata (name, sections, deleted, etc.) ----
   const localGroupMap = new Map((localGroups || []).map(group => [group.id, group]));
   const cloudGroupMap = new Map((cloudGroups || []).map(group => [group.id, group]));
-  const preferCloudGroupOrder = getGroupsFreshness(cloudGroups) > getGroupsFreshness(localGroups);
+  const localGroupFreshness = getGroupsFreshness(localGroups);
+  const cloudGroupFreshness = getGroupsFreshness(cloudGroups);
+  const preferCloudGroupOrder = cloudGroupFreshness !== localGroupFreshness
+    ? cloudGroupFreshness > localGroupFreshness
+    : stableSerialize(cloudGroups || []) > stableSerialize(localGroups || []);
   const allGroupIds = preferCloudGroupOrder
     ? new Set([...cloudGroupMap.keys(), ...localGroupMap.keys()])
     : new Set([...localGroupMap.keys(), ...cloudGroupMap.keys()]);

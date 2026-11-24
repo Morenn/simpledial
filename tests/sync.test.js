@@ -1572,3 +1572,33 @@ test("syncNow safely merges untrusted ids like __proto__, constructor, and toStr
   assert.ok(mergedGroupIds.includes("constructor"));
   assert.equal(({}).polluted, undefined);
 });
+
+test("two clients with equal freshness but different group and tag order converge to identical order", async () => {
+  const g1 = group([item("b1", "One", 100)], "g1", 100);
+  const g2 = group([item("b2", "Two", 100)], "g2", 100);
+  const t1 = { id: "t1", name: "Tag1", updatedAt: 100 };
+  const t2 = { id: "t2", name: "Tag2", updatedAt: 100 };
+
+  // Client A has [g1, g2] and [t1, t2], server has [g2, g1] and [t2, t1]
+  setClient([structuredClone(g1), structuredClone(g2)], httpConfig("direct"), [structuredClone(t1), structuredClone(t2)]);
+  installHttpServer({
+    groups: [structuredClone(g2), structuredClone(g1)],
+    tags: [structuredClone(t2), structuredClone(t1)]
+  });
+  await syncNow({ force: true });
+  const orderFromA = state.groups.map(g => g.id);
+  const tagOrderFromA = state.tags.map(t => t.id);
+
+  // Client B has [g2, g1] and [t2, t1], server has [g1, g2] and [t1, t2]
+  setClient([structuredClone(g2), structuredClone(g1)], httpConfig("direct"), [structuredClone(t2), structuredClone(t1)]);
+  installHttpServer({
+    groups: [structuredClone(g1), structuredClone(g2)],
+    tags: [structuredClone(t1), structuredClone(t2)]
+  });
+  await syncNow({ force: true });
+  const orderFromB = state.groups.map(g => g.id);
+  const tagOrderFromB = state.tags.map(t => t.id);
+
+  assert.deepEqual(orderFromA, orderFromB);
+  assert.deepEqual(tagOrderFromA, tagOrderFromB);
+});
