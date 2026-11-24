@@ -1,4 +1,5 @@
 import { t } from "../i18n.js";
+import { sanitizeSvgDataUrl } from "../color-utils.js";
 import { render, calculateGridLayout } from "../render.js";
 import { applySideSpaces, applyTileSize } from "../theme.js";
 import { formatBackupTimestamp } from "../backup.js";
@@ -2002,7 +2003,12 @@ export function initCustomWidgetsSettings() {
     reader.onload = () => {
       const dataUrl = typeof reader.result === "string" ? reader.result : "";
       if (!dataUrl) return;
-      if (file.type === "image/svg+xml" || dataUrl.length <= 24000) {
+      if (file.type === "image/svg+xml" || /^data:image\/svg\+xml/i.test(dataUrl)) {
+        const sanitized = sanitizeSvgDataUrl(dataUrl);
+        if (sanitized) onDataUrl(sanitized);
+        return;
+      }
+      if (dataUrl.length <= 24000) {
         onDataUrl(dataUrl);
         return;
       }

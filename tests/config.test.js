@@ -368,3 +368,22 @@ test("parseJsonSafely strips __proto__, constructor, and prototype keys", async 
   assert.equal(Object.prototype.hasOwnProperty.call(parsed.nested, "prototype"), false);
   assert.equal(({}).polluted, undefined);
 });
+
+test("sanitizeSvgDataUrl and normalizeCustomIconValue strip scripts and event handlers from SVGs", async () => {
+  const { sanitizeSvgDataUrl, normalizeCustomIconValue } = await import("../newtab/color-utils.js");
+
+  const dirtySvg = '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(2)</script><a href="javascript:alert(3)"><circle cx="5" cy="5" r="4" onclick="alert(4)"/></a></svg>';
+  const rawUrl = `data:image/svg+xml;base64,${Buffer.from(dirtySvg, "utf8").toString("base64")}`;
+  const cleaned = sanitizeSvgDataUrl(rawUrl);
+  const decoded = decodeURIComponent(cleaned.split(",")[1]);
+
+  assert.ok(cleaned.startsWith("data:image/svg+xml;charset=utf-8,"));
+  assert.equal(/<script/i.test(decoded), false);
+  assert.equal(/onload=/i.test(decoded), false);
+  assert.equal(/onclick=/i.test(decoded), false);
+  assert.equal(/javascript:/i.test(decoded), false);
+  assert.ok(decoded.includes("<circle"));
+
+  const normalized = normalizeCustomIconValue(rawUrl);
+  assert.equal(normalized, cleaned);
+});

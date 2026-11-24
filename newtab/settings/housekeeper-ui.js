@@ -1,3 +1,4 @@
+import { sanitizeSvgDataUrl } from "../color-utils.js";
 import {
   state,
   saveState,
@@ -420,11 +421,16 @@ function processFallbackIconUpload(file) {
         return;
       }
       if (file.type === "image/svg+xml") {
-        if (rawDataUrl.length > DEFAULT_FALLBACK_ICON_MAX_BYTES) {
+        const sanitized = sanitizeSvgDataUrl(rawDataUrl);
+        if (!sanitized) {
+          reject(new Error("invalid-image"));
+          return;
+        }
+        if (sanitized.length > DEFAULT_FALLBACK_ICON_MAX_BYTES) {
           reject(new Error("too-large"));
           return;
         }
-        resolve(rawDataUrl);
+        resolve(sanitized);
         return;
       }
       const img = new Image();

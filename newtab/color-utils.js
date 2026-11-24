@@ -15,6 +15,94 @@ export function isUrlLikeIcon(value) {
   return false;
 }
 
+function decodeSvgDataUrlPayload(dataUrl) {
+  const commaIdx = dataUrl.indexOf(",");
+  if (commaIdx < 0) return "";
+  const header = dataUrl.slice(0, commaIdx);
+  const rawBody = dataUrl.slice(commaIdx + 1);
+  if (/;base64/i.test(header)) {
+    try {
+      if (typeof atob === "function") {
+        const binary = atob(rawBody.replace(/\s+/g, ""));
+        if (typeof TextDecoder !== "undefined") {
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+        }
+        return binary;
+      }
+      if (typeof Buffer !== "undefined") {
+        return Buffer.from(rawBody, "base64").toString("utf8");
+      }
+    } catch {
+      return "";
+    }
+  }
+  try {
+    return decodeURIComponent(rawBody);
+  } catch {
+    return rawBody;
+  }
+}
+
+export function sanitizeSvgMarkup(svgText) {
+  if (typeof svgText !== "string" || !svgText.trim()) return "";
+  let cleaned = svgText;
+
+  if (typeof DOMParser !== "undefined" && typeof XMLSerializer !== "undefined") {
+    try {
+      const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+      const root = doc?.documentElement;
+      if (root && !doc.querySelector("parsererror") && root.tagName.toLowerCase() === "svg") {
+        const blockedTags = ["script", "foreignObject", "iframe", "object", "embed", "applet", "meta", "link"];
+        for (const tag of blockedTags) {
+          doc.querySelectorAll(tag).forEach(node => node.remove());
+        }
+        const allNodes = [root, ...root.querySelectorAll("*")];
+        for (const el of allNodes) {
+          for (const attr of Array.from(el.attributes || [])) {
+            const name = attr.name.toLowerCase();
+            const val = String(attr.value || "").trim();
+            if (name.startsWith("on")) {
+              el.removeAttribute(attr.name);
+              continue;
+            }
+            if ((name === "href" || name === "xlink:href" || name === "src" || name === "action" || name === "formaction")
+              && /^(?:javascript:|vbscript:|data:(?!image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon)))/i.test(val)) {
+              el.removeAttribute(attr.name);
+            }
+          }
+        }
+        cleaned = new XMLSerializer().serializeToString(root);
+      }
+    } catch {
+      // Fall back to regex sanitization below
+    }
+  }
+
+  cleaned = cleaned
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<script\b[^>]*\/?>/gi, "")
+    .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject>/gi, "")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
+    .replace(/\s+on[a-z0-9_-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s+(?:xlink:)?href\s*=\s*(?:"\s*(?:javascript:|vbscript:|data:text\/html)[^"]*"|'\s*(?:javascript:|vbscript:|data:text\/html)[^']*')/gi, "");
+
+  return cleaned.trim();
+}
+
+export function sanitizeSvgDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string") return "";
+  const trimmed = dataUrl.trim();
+  if (!/^data:image\/svg\+xml(?:;[^,]*)?,/i.test(trimmed)) {
+    return trimmed;
+  }
+  const svgText = decodeSvgDataUrlPayload(trimmed);
+  const sanitized = sanitizeSvgMarkup(svgText);
+  if (!sanitized) return "";
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sanitized)}`;
+}
+
 export function normalizeCustomIconValue(rawValue, { allowEmoji = false } = {}) {
   if (!rawValue || typeof rawValue !== "string") return null;
   const trimmed = rawValue.trim();
@@ -29,7 +117,11 @@ export function normalizeCustomIconValue(rawValue, { allowEmoji = false } = {}) 
   }
 
   if (/^data:/i.test(trimmed)) {
-    return SAFE_DATA_IMAGE_URL_REGEX.test(trimmed) ? trimmed : null;
+    if (!SAFE_DATA_IMAGE_URL_REGEX.test(trimmed)) return null;
+    if (/^data:image\/svg\+xml/i.test(trimmed)) {
+      return sanitizeSvgDataUrl(trimmed) || null;
+    }
+    return trimmed;
   }
 
   if (/^(blob:|chrome-extension:|moz-extension:)/i.test(trimmed)) {

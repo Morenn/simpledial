@@ -918,7 +918,7 @@ export async function openStackPopover(stackId, options = {}) {
       const nextTitle = titleInput.value.trim() || (t("defaultStackName") || "Stack");
       loc.item.title = titleInput.value;
       loc.item.updatedAt = Date.now();
-      const tileLabel = document.querySelector(`.stack-tile[data-bookmark-id="${activeStackPopoverId}"] .stack-title`);
+      const tileLabel = document.querySelector(`.stack-tile[data-bookmark-id="${CSS.escape(activeStackPopoverId)}"] .stack-title`);
       if (tileLabel) tileLabel.textContent = nextTitle;
     });
     titleInput.addEventListener("change", async () => {

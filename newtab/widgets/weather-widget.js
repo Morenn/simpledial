@@ -611,7 +611,7 @@ export function syncCustomWeatherWidgetElements(customWidgets = []) {
 
   const elements = {};
   for (const w of weatherWidgets) {
-    let el = document.querySelector(`.custom-weather-widget[data-widget-id="${w.id}"]`);
+    let el = document.querySelector(`.custom-weather-widget[data-widget-id="${CSS.escape(w.id)}"]`);
     if (!el) {
       el = document.createElement("button");
       el.type = "button";
@@ -661,7 +661,7 @@ export async function pollAllWeatherWidgets({ force = false } = {}) {
         ? { fetchedAt: now, locKey, current: res.current, daily: res.daily, hourly: res.hourly, error: null, vaultLocked: false }
         : { ...(cache || {}), fetchedAt: now, locKey, error: res.error, vaultLocked: Boolean(res.vaultLocked) };
       changed = true;
-      const el = document.querySelector(`.custom-weather-widget[data-widget-id="${w.id}"]`);
+      const el = document.querySelector(`.custom-weather-widget[data-widget-id="${CSS.escape(w.id)}"]`);
       if (el) renderWeatherBarDom(el, w);
     }
 

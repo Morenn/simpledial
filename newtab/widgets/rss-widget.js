@@ -34,7 +34,7 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged?.addListener) {
         const cfg = await loadConfig();
         const widgets = Array.isArray(cfg?.appearance?.customWidgets) ? cfg.appearance.customWidgets : [];
         for (const groupEntry of groupRssFeedWidgets(widgets)) {
-          const el = document.querySelector(`.custom-rss-widget[data-widget-id="${groupEntry.representative.id}"]`);
+          const el = document.querySelector(`.custom-rss-widget[data-widget-id="${CSS.escape(groupEntry.representative.id)}"]`);
           if (el) updateRssBarDom(el, groupEntry);
         }
       }).catch(() => {});
@@ -82,6 +82,12 @@ export function groupRssFeedWidgets(widgets = []) {
   }));
 }
 
+function safeCodePoint(codePoint) {
+  return Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10FFFF
+    ? String.fromCodePoint(codePoint)
+    : "";
+}
+
 function decodeXmlEntities(str) {
   if (typeof str !== "string" || !str) return "";
   return str
@@ -91,8 +97,8 @@ function decodeXmlEntities(str) {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, n) => safeCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => safeCodePoint(parseInt(hex, 16)))
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -780,7 +786,7 @@ export function syncCustomRssWidgetElements(customWidgets = []) {
   const elements = {};
   for (const groupEntry of groups) {
     const rep = groupEntry.representative;
-    let el = document.querySelector(`.custom-rss-widget[data-widget-id="${rep.id}"]`);
+    let el = document.querySelector(`.custom-rss-widget[data-widget-id="${CSS.escape(rep.id)}"]`);
     if (!el) {
       el = document.createElement("button");
       el.type = "button";
@@ -871,7 +877,7 @@ export async function pollAllRssFeedWidgets({ force = false, customWidgets = nul
   if (anyUpdated) {
     await persistRssCache();
     for (const groupEntry of groupRssFeedWidgets(widgets)) {
-      const el = document.querySelector(`.custom-rss-widget[data-widget-id="${groupEntry.representative.id}"]`);
+      const el = document.querySelector(`.custom-rss-widget[data-widget-id="${CSS.escape(groupEntry.representative.id)}"]`);
       if (el) updateRssBarDom(el, groupEntry);
     }
   }

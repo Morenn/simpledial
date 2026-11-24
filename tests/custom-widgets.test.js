@@ -990,6 +990,13 @@ test("parseFeedResponse parses RSS 2.0, Atom, JSON Feed, and rejects unsafe link
   assert.equal(rssParsed.items[0].title, "Hello World & Friends");
   assert.equal(rssParsed.items[0].link, "https://news.example/post-1");
 
+  const outOfRangeXml = `<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0"><channel><title>Test</title>
+      <item><title>Code &#99999999; and &#x110000; ok &#65;</title><link>https://news.example/2</link></item>
+    </channel></rss>`;
+  const outOfRangeParsed = parseFeedResponse(outOfRangeXml, "https://news.example/rss.xml");
+  assert.equal(outOfRangeParsed.items[0].title, "Code and ok A");
+
   const atomXml = `<?xml version="1.0" encoding="utf-8"?>
     <feed xmlns="http://www.w3.org/2005/Atom">
       <title>Atom Updates</title>

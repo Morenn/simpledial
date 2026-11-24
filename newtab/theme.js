@@ -1,7 +1,7 @@
 import { THEME_KEY } from "./state.js";
 import { loadConfig, saveConfig } from "./config.js";
 import { t } from "./i18n.js";
-import { isAllowedThemeUrl } from "./color-utils.js";
+import { isAllowedThemeUrl, sanitizeSvgDataUrl } from "./color-utils.js";
 import {
   VALID_WIDGET_SPACES,
   normalizeWidgetOrder
@@ -239,7 +239,8 @@ export async function downscaleBackgroundImage(blob, maxBytes = MAX_BACKGROUND_I
     if (blob.size > maxBytes) {
       throw new Error(`Image file is too large (max ${maxMbLabel}MB)`);
     }
-    return blobToDataUrl(blob);
+    const rawDataUrl = await blobToDataUrl(blob);
+    return sanitizeSvgDataUrl(rawDataUrl);
   }
 
   try {
