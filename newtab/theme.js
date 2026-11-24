@@ -1,7 +1,7 @@
 import { THEME_KEY } from "./state.js";
 import { loadConfig, saveConfig } from "./config.js";
 import { t } from "./i18n.js";
-import { isAllowedThemeUrl, sanitizeSvgDataUrl } from "./color-utils.js";
+import { isAllowedThemeUrl, isSafeDataImageUrl, sanitizeSvgDataUrl, blobToDataUrl } from "./color-utils.js";
 import {
   VALID_WIDGET_SPACES,
   normalizeWidgetOrder
@@ -115,7 +115,7 @@ function isAllowedBackgroundImage(bgImage) {
     const baseHref = typeof window !== "undefined" && window.location?.href ? window.location.href : "https://localhost/";
     const parsed = new URL(trimmed, baseHref);
     if (parsed.protocol !== "data:") return false;
-    return /^data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon|svg\+xml)(?:;[^,]*)?,/i.test(trimmed);
+    return isSafeDataImageUrl(trimmed);
   } catch {
     return false;
   }
@@ -131,7 +131,7 @@ export function sanitizeCustomCss(cssText) {
       const target = String(dq ?? sq ?? uq ?? "").trim();
       if (!target) return "none";
       if (target.startsWith("#")) return full;
-      if (/^data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon|svg\+xml)(?:;[^,]*)?,/i.test(target)) {
+      if (isSafeDataImageUrl(target)) {
         return full;
       }
       return "none";
@@ -195,15 +195,6 @@ export async function fetchAndCacheThemeUrl(rawUrl, { saveCache = true } = {}) {
     await saveCustomThemeUrlCache(parsed.href, cssText);
   }
   return { url: parsed.href, css: cssText };
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Failed to read image data"));
-    reader.readAsDataURL(blob);
-  });
 }
 
 function estimateDataUrlBytes(dataUrl) {

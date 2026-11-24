@@ -2,6 +2,10 @@
 
 const URL_SCHEME_REGEX = /^(https?:|data:|blob:|chrome-extension:|moz-extension:|\/)/i;
 const SAFE_DATA_IMAGE_URL_REGEX = /^data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|x-icon|vnd\.microsoft\.icon|svg\+xml)(?:;[^,]*)?,/i;
+
+export function isSafeDataImageUrl(url) {
+  return typeof url === "string" && SAFE_DATA_IMAGE_URL_REGEX.test(url.trim());
+}
 const DOMAIN_OR_FILE_REGEX = /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i;
 const HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/i;
 
