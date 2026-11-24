@@ -139,82 +139,91 @@ groupModal?.addEventListener("keydown", e => {
 
   if (e.key === "Enter" && (e.target === grpName || e.target === grpEmoji || e.target === grpIcon)) {
     e.preventDefault();
-    grpSave?.click();
+    if (!isSavingGroup) grpSave?.click();
   }
 });
 
+let isSavingGroup = false;
 grpSave?.addEventListener("click", async () => {
-  const name = grpName?.value.trim() || "";
-  if (!name) return;
+  if (isSavingGroup) return;
+  isSavingGroup = true;
+  grpSave.disabled = true;
+  try {
+    const name = grpName?.value.trim() || "";
+    if (!name) return;
 
-  const rawEmoji = grpEmoji?.value.trim() || "";
-  const iconEmoji = rawEmoji || null;
+    const rawEmoji = grpEmoji?.value.trim() || "";
+    const iconEmoji = rawEmoji || null;
 
-  const rawIconUrl = grpIcon?.value.trim() || "";
-  let customIcon = null;
-  if (rawIconUrl) {
-    customIcon = normalizeCustomIconValue(rawIconUrl, { allowEmoji: false });
-    if (!customIcon) {
-      alert(t("invalidIconUrl"));
-      return;
+    const rawIconUrl = grpIcon?.value.trim() || "";
+    let customIcon = null;
+    if (rawIconUrl) {
+      customIcon = normalizeCustomIconValue(rawIconUrl, { allowEmoji: false });
+      if (!customIcon) {
+        alert(t("invalidIconUrl"));
+        return;
+      }
     }
+
+    const wantColorFromIcon = !!grpColorFromIcon?.checked;
+    const wantCustomColor = !!grpColorCustom?.checked;
+    const pickedColor = grpColor?.value || "#4a6bff";
+
+    let colorFromIcon = false;
+    let tileColor = null;
+
+    if (wantColorFromIcon && (customIcon || iconEmoji)) {
+      colorFromIcon = true;
+      if (customIcon) {
+        await ensureHostPermission();
+        tileColor = await extractDominantColorFromImageSource(customIcon);
+      }
+      if (!tileColor && iconEmoji) {
+        tileColor = extractDominantColorFromEmoji(iconEmoji);
+      }
+    } else if (wantCustomColor) {
+      colorFromIcon = false;
+      tileColor = pickedColor;
+    }
+
+    if (editingGroupId) {
+      // Look up group by ID so background sync refreshes cannot leave a stale object reference.
+      const currentGroup = state.groups.find(g => g.id === editingGroupId);
+      if (currentGroup) {
+        currentGroup.name = name;
+        currentGroup.iconEmoji = iconEmoji;
+        currentGroup.customIcon = customIcon;
+        currentGroup.tileColor = tileColor;
+        currentGroup.colorFromIcon = colorFromIcon;
+        currentGroup.updatedAt = Date.now();
+      }
+    } else {
+      const g = {
+        id: generateId("g"),
+        name,
+        iconEmoji,
+        customIcon,
+        tileColor,
+        colorFromIcon,
+        items: [],
+        updatedAt: Date.now(),
+        deleted: false,
+        deletedAt: null
+      };
+
+      state.groups.push(g);
+      window.activeGroupId = g.id;
+      await saveActiveGroupId(g.id);
+    }
+
+    closeGroupModal();
+    await saveState();
+    await syncWrite();
+    render();
+  } finally {
+    isSavingGroup = false;
+    grpSave.disabled = false;
   }
-
-  const wantColorFromIcon = !!grpColorFromIcon?.checked;
-  const wantCustomColor = !!grpColorCustom?.checked;
-  const pickedColor = grpColor?.value || "#4a6bff";
-
-  let colorFromIcon = false;
-  let tileColor = null;
-
-  if (wantColorFromIcon && (customIcon || iconEmoji)) {
-    colorFromIcon = true;
-    if (customIcon) {
-      await ensureHostPermission();
-      tileColor = await extractDominantColorFromImageSource(customIcon);
-    }
-    if (!tileColor && iconEmoji) {
-      tileColor = extractDominantColorFromEmoji(iconEmoji);
-    }
-  } else if (wantCustomColor) {
-    colorFromIcon = false;
-    tileColor = pickedColor;
-  }
-
-  if (editingGroupId) {
-    // Look up group by ID so background sync refreshes cannot leave a stale object reference.
-    const currentGroup = state.groups.find(g => g.id === editingGroupId);
-    if (currentGroup) {
-      currentGroup.name = name;
-      currentGroup.iconEmoji = iconEmoji;
-      currentGroup.customIcon = customIcon;
-      currentGroup.tileColor = tileColor;
-      currentGroup.colorFromIcon = colorFromIcon;
-      currentGroup.updatedAt = Date.now();
-    }
-  } else {
-    const g = {
-      id: generateId("g"),
-      name,
-      iconEmoji,
-      customIcon,
-      tileColor,
-      colorFromIcon,
-      items: [],
-      updatedAt: Date.now(),
-      deleted: false,
-      deletedAt: null
-    };
-
-    state.groups.push(g);
-    window.activeGroupId = g.id;
-    await saveActiveGroupId(g.id);
-  }
-
-  closeGroupModal();
-  await saveState();
-  await syncWrite();
-  render();
 });
 
 // ---------- Render groups ----------

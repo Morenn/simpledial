@@ -1798,45 +1798,50 @@ modal.addEventListener("keydown", e => {
 
   if (e.key === "Enter" && (e.target === bmTitle || e.target === bmUrl || e.target === bmIcon)) {
     e.preventDefault();
-    bmSave.click();
+    if (!isSavingBookmark) bmSave.click();
   }
 });
 
 // ---------- Save bookmark ----------
+let isSavingBookmark = false;
 bmSave.addEventListener("click", async () => {
-  const title = bmTitle.value.trim();
-  const rawUrl = bmUrl.value.trim();
-  const icon = bmIcon.value.trim();
-  const notes = bmNotes.value.trim();
-  const url = normalizeBookmarkUrl(rawUrl);
+  if (isSavingBookmark) return;
+  isSavingBookmark = true;
+  bmSave.disabled = true;
+  try {
+    const title = bmTitle.value.trim();
+    const rawUrl = bmUrl.value.trim();
+    const icon = bmIcon.value.trim();
+    const notes = bmNotes.value.trim();
+    const url = normalizeBookmarkUrl(rawUrl);
 
-  if (!url) {
-    alert("Musíš zadať URL.");
-    return;
-  }
+    if (!url) {
+      alert("Musíš zadať URL.");
+      return;
+    }
 
-  const initialGroupId = window.activeGroupId;
-  if (!state.groups.some(g => g.id === initialGroupId)) return;
+    const initialGroupId = window.activeGroupId;
+    if (!state.groups.some(g => g.id === initialGroupId)) return;
 
-  const wantColorFromIcon = !!bmColorFromIcon?.checked;
-  const wantCustomColor = !!bmColorCustom?.checked;
-  const pickedColor = bmColor?.value || "#4a6bff";
-  const needsExperimental =
-    document.getElementById("enable-experimental-favicon-fetch-link")?.checked ||
-    document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked;
+    const wantColorFromIcon = !!bmColorFromIcon?.checked;
+    const wantCustomColor = !!bmColorCustom?.checked;
+    const pickedColor = bmColor?.value || "#4a6bff";
+    const needsExperimental =
+      document.getElementById("enable-experimental-favicon-fetch-link")?.checked ||
+      document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked;
 
-  // Request optional host permission upfront while user gesture is still active.
-  if (wantColorFromIcon || icon || needsExperimental) {
-    await ensureHostPermission();
-  }
+    // Request optional host permission upfront while user gesture is still active.
+    if (wantColorFromIcon || icon || needsExperimental) {
+      await ensureHostPermission();
+    }
 
-  // Re-resolve group after await in case background sync replaced state.groups.
-  const group = state.groups.find(g => g.id === (window.activeGroupId || initialGroupId));
-  if (!group) return;
+    // Re-resolve group after await in case background sync replaced state.groups.
+    const group = state.groups.find(g => g.id === (window.activeGroupId || initialGroupId));
+    if (!group) return;
 
-  let targetBookmark = null;
-  let iconChanged = false;
-  let isNewBookmark = false;
+    let targetBookmark = null;
+    let iconChanged = false;
+    let isNewBookmark = false;
 
   // Commit any pending tag edit or typed tag name if the user clicked Save
   if (editingTagId || (bmNewTagName && bmNewTagName.value.trim())) {
@@ -1962,6 +1967,10 @@ bmSave.addEventListener("click", async () => {
     } catch (e) {
       console.error('Link validation failed:', e);
     }
+  }
+  } finally {
+    isSavingBookmark = false;
+    bmSave.disabled = false;
   }
 });
 
