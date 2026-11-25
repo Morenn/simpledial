@@ -1,5 +1,5 @@
 import { state, saveState, isStackItem } from "./state.js";
-import { loadConfig, saveConfig, parseJsonSafely, sanitizeParsedJson } from "./config.js";
+import { loadConfig, saveConfig, defaultConfig, parseJsonSafely, sanitizeParsedJson } from "./config.js";
 import { render } from "./render.js";
 import { withSyncLock, clearLocalTombstoneState } from "./sync.js";
 
@@ -82,6 +82,43 @@ function getAddonVersion() {
   }
 }
 
+function isDeepEqualJson(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    return a.length === b.length && a.every((v, i) => isDeepEqualJson(v, b[i]));
+  }
+  const keysA = Object.keys(a).filter(k => a[k] !== undefined);
+  const keysB = Object.keys(b).filter(k => b[k] !== undefined);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every(k => Object.prototype.hasOwnProperty.call(b, k) && isDeepEqualJson(a[k], b[k]));
+}
+
+function buildConfigBackupAppearance(appearance = {}) {
+  const {
+    backgroundImage: _omitBackgroundImage,
+    ...appearanceToBackup
+  } = appearance || {};
+  if (Array.isArray(appearanceToBackup.customWidgets)) {
+    appearanceToBackup.customWidgets = appearanceToBackup.customWidgets.map(w => {
+      if (!w || typeof w !== "object") return w;
+      const hasAuthSecret = Boolean(
+        (typeof w.authHeaderValue === "string" && w.authHeaderValue !== "") ||
+        (typeof w.authHeaderName === "string" && w.authHeaderName.trim() !== "")
+      );
+      const hasApiKey = typeof w.apiKey === "string" && w.apiKey !== "";
+      if (!("authHeaderValue" in w) && !hasAuthSecret && !("apiKey" in w) && !hasApiKey) return w;
+      const copy = { ...w };
+      if ("authHeaderValue" in w || hasAuthSecret) copy.authHeaderValue = "";
+      if ("apiKey" in w || hasApiKey) copy.apiKey = "";
+      if (hasAuthSecret || hasApiKey) copy.hadSecret = true;
+      return copy;
+    });
+  }
+  return appearanceToBackup;
+}
+
 async function buildBackupSnapshot(resolvedType) {
   const addonVersion = getAddonVersion();
   let payload;
@@ -89,32 +126,15 @@ async function buildBackupSnapshot(resolvedType) {
 
   if (resolvedType === "config") {
     const config = await loadConfig();
-    const {
-      backgroundImage: _omitBackgroundImage,
-      ...appearanceToBackup
-    } = config.appearance || {};
-    if (Array.isArray(appearanceToBackup.customWidgets)) {
-      appearanceToBackup.customWidgets = appearanceToBackup.customWidgets.map(w => {
-        if (!w || typeof w !== "object") return w;
-        const hasAuthSecret = Boolean(
-          (typeof w.authHeaderValue === "string" && w.authHeaderValue !== "") ||
-          (typeof w.authHeaderName === "string" && w.authHeaderName.trim() !== "")
-        );
-        const hasApiKey = typeof w.apiKey === "string" && w.apiKey !== "";
-        if (!("authHeaderValue" in w) && !hasAuthSecret && !("apiKey" in w) && !hasApiKey) return w;
-        const copy = { ...w };
-        if ("authHeaderValue" in w || hasAuthSecret) copy.authHeaderValue = "";
-        if ("apiKey" in w || hasApiKey) copy.apiKey = "";
-        if (hasAuthSecret || hasApiKey) copy.hadSecret = true;
-        return copy;
-      });
-    }
+    const appearanceToBackup = buildConfigBackupAppearance(config.appearance || {});
+    const isDefault = isDeepEqualJson(appearanceToBackup, buildConfigBackupAppearance(defaultConfig.appearance));
     payload = { ...(addonVersion ? { addonVersion } : {}), appearance: appearanceToBackup };
     metadata = {
       ...(addonVersion ? { addonVersion } : {}),
       theme: appearanceToBackup.theme || "default",
       settingCount: Object.keys(appearanceToBackup).length,
-      customWidgetCount: Array.isArray(appearanceToBackup.customWidgets) ? appearanceToBackup.customWidgets.length : 0
+      customWidgetCount: Array.isArray(appearanceToBackup.customWidgets) ? appearanceToBackup.customWidgets.length : 0,
+      isDefault
     };
   } else {
     const groups = Array.isArray(state.groups) ? state.groups : [];
@@ -370,6 +390,13 @@ async function maybeCreateAutomaticBackup() {
     }
 
     const snapshot = await buildBackupSnapshot(backupType);
+    if (
+      (backupType === "bookmarks" && !(snapshot.metadata?.bookmarkCount > 0)) ||
+      (backupType === "config" && snapshot.metadata?.isDefault)
+    ) {
+      await cleanupOldBackupsLocked(retentionDays, backupType);
+      continue;
+    }
     if (backups[0]?.data !== snapshot.json) {
       await createBackupLocked(backupType, snapshot);
     }

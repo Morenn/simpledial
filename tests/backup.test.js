@@ -196,7 +196,15 @@ test("config backup stores appearance (including customWidgets, excluding backgr
 
 test("automatic backup creates bookmarks and config on init, skips unchanged within interval, and cleans up expired entries", async () => {
   resetStore();
+  // With 0 bookmarks and default config, automatic backups are skipped
+  await runBackupInitCheck();
+  assert.equal((await listBackups("bookmarks")).length, 0);
+  assert.equal((await listBackups("config")).length, 0);
+
+  resetStore();
+  state.groups = [{ id: "g-init", name: "Init", items: [{ id: "b-init", title: "Home", url: "https://example.com" }] }];
   const cfg = structuredClone(defaultConfig);
+  cfg.appearance.theme = "spring";
   cfg.backups.frequencyHours = 24;
   cfg.backups.retentionDays = 14;
   await saveConfig(cfg);
@@ -230,7 +238,7 @@ test("automatic backup creates bookmarks and config on init, skips unchanged wit
   assert.equal((await listBackups("config")).length, 1);
 
   // Mutating bookmarks & config after interval should create new backups only for changed types
-  state.groups = [{ id: "g-changed", name: "Changed", items: [] }];
+  state.groups = [{ id: "g-changed", name: "Changed", items: [{ id: "b-changed", title: "Docs", url: "https://docs.example.com" }] }];
   const cfgMutated = await loadConfig();
   cfgMutated.appearance.theme = "summer";
   cfgMutated.backups.lastAutoBackup = expiredLastAuto;
