@@ -58,6 +58,7 @@ const groupCountToggle = document.getElementById("group-count-toggle");
 const advFaviconDebugLogging = document.getElementById("enable-favicon-debug-logging");
 const advDeadLinkDebugLogging = document.getElementById("enable-dead-link-debug-logging");
 const advSyncDebugLogging = document.getElementById("enable-sync-debug-logging");
+const advWebdavDebugLogging = document.getElementById("enable-webdav-debug-logging");
 const advStartupTimingDebugLogging = document.getElementById("enable-startup-timing-debug-logging");
 const advI18nHotReload = document.getElementById("enable-i18n-hot-reload");
 const advExperimentalFaviconFetchLink = document.getElementById("enable-experimental-favicon-fetch-link");
@@ -76,6 +77,9 @@ function applyAdvancedSettingsToControls(advancedConfig = {}) {
   }
   if (advSyncDebugLogging) {
     advSyncDebugLogging.checked = advancedConfig.syncDebugLogging ?? false;
+  }
+  if (advWebdavDebugLogging) {
+    advWebdavDebugLogging.checked = advancedConfig.webdavDebugLogging ?? false;
   }
   if (advStartupTimingDebugLogging) {
     advStartupTimingDebugLogging.checked = advancedConfig.startupTimingDebugLogging ?? false;
@@ -152,6 +156,7 @@ async function persistSettings(closeAfterSave = false) {
   config.advanced.faviconDebugLogging = !!advFaviconDebugLogging?.checked;
   config.advanced.deadLinkDebugLogging = !!advDeadLinkDebugLogging?.checked;
   config.advanced.syncDebugLogging = !!advSyncDebugLogging?.checked;
+  config.advanced.webdavDebugLogging = !!advWebdavDebugLogging?.checked;
   config.advanced.startupTimingDebugLogging = !!advStartupTimingDebugLogging?.checked;
   updateDebugLoggingFlags(config.advanced);
   config.advanced.i18nHotReload = !!advI18nHotReload?.checked;

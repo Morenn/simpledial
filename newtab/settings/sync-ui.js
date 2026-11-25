@@ -505,6 +505,7 @@ function applyServerUrlChange(config, rawNextUrl) {
   config.sync.remoteChangeHeaderType = null;
   config.sync.lastMarkerCheckUrl = "";
   config.sync.lastSyncedExtraHashes = {};
+  config.sync.lastSeenExtraUpdatedAt = {};
   config.sync.webdavExtraConflicts = {};
   config.sync.lastFolderExtrasSync = 0;
   if (syncEnable) syncEnable.checked = false;

@@ -57,7 +57,11 @@ const {
   pruneNotesStorageForWidgets,
   mapWmoWeatherCode,
   formatTemperature,
-  pruneWeatherStorageForWidgets
+  pruneWeatherStorageForWidgets,
+  normalizeWidgetOrder,
+  moveWidgetGroupInOrder,
+  getWidgetGroupMemberIds,
+  resolveGroupedWidgetMapValue
 } = await import("../newtab/custom-widgets.js");
 
 test("simple mode replaces multiple placeholders and encodes values", () => {
@@ -1261,4 +1265,63 @@ test("markRssItemRead and markRssItemUnread toggle single RSS article read state
   } finally {
     globalThis.chrome = prevChrome;
   }
+});
+
+test("normalizeWidgetOrder keeps all group members contiguous at canonical anchor slot regardless of disabled state", () => {
+  const widgets = [
+    { id: "rest-1", type: "rest-status", groupName: "Infra", endpointUrl: "https://a.example/health", disabled: true },
+    { id: "rest-2", type: "rest-status", groupName: "Infra", endpointUrl: "https://b.example/health", disabled: false },
+    { id: "rest-3", type: "rest-status", groupName: "Infra", endpointUrl: "https://c.example/health", disabled: true }
+  ];
+  const rawOrder = ["groups", "rest-1", "search", "bookmarks", "rest-2", "dateTime", "rest-3"];
+  const normalized = normalizeWidgetOrder(rawOrder, widgets);
+
+  const idxSearch = normalized.indexOf("search");
+  const idxR1 = normalized.indexOf("rest-1");
+  const idxR2 = normalized.indexOf("rest-2");
+  const idxR3 = normalized.indexOf("rest-3");
+  assert.ok(idxR1 < idxSearch);
+  assert.ok(idxR2 < idxSearch);
+  assert.ok(idxR3 < idxSearch);
+  assert.deepEqual(normalized.slice(idxR1, idxR1 + 3), ["rest-1", "rest-2", "rest-3"]);
+});
+
+test("moveWidgetGroupInOrder moves entire group block when triggered from non-anchor active member", () => {
+  const widgets = [
+    { id: "rest-1", type: "rest-status", groupName: "Infra", endpointUrl: "https://a.example/health", disabled: true },
+    { id: "rest-2", type: "rest-status", groupName: "Infra", endpointUrl: "https://b.example/health", disabled: false },
+    { id: "rss-1", type: "rss-feed", groupName: "News", feedUrl: "https://news.example/rss" },
+    { id: "rss-2", type: "rss-feed", groupName: "News", feedUrl: "https://tech.example/rss" }
+  ];
+  const startOrder = ["groups", "rest-1", "rest-2", "search", "rss-1", "rss-2"];
+
+  // Move Infra group (via active representative rest-2) down past "search"
+  const afterDown = moveWidgetGroupInOrder(startOrder, "rest-2", "search", widgets);
+  assert.deepEqual(afterDown.slice(0, 4), ["groups", "search", "rest-1", "rest-2"]);
+
+  // Move Infra group down past News group (via rss-1)
+  const afterDownGroup = moveWidgetGroupInOrder(afterDown, "rest-2", "rss-1", widgets);
+  assert.deepEqual(afterDownGroup.slice(0, 6), ["groups", "search", "rss-1", "rss-2", "rest-1", "rest-2"]);
+
+  // Move Infra group back up before News group
+  const afterUp = moveWidgetGroupInOrder(afterDownGroup, "rest-2", "rss-1", widgets);
+  assert.deepEqual(afterUp.slice(0, 6), ["groups", "search", "rest-1", "rest-2", "rss-1", "rss-2"]);
+});
+
+test("getWidgetGroupMemberIds and resolveGroupedWidgetMapValue resolve across disabled members", () => {
+  const widgets = [
+    { id: "s1", type: "custom-search", groupName: "Web", urlTemplate: "https://a.example/?q={query}", disabled: true, isDefault: true },
+    { id: "s2", type: "custom-search", groupName: "Web", urlTemplate: "https://b.example/?q={query}", disabled: false },
+    { id: "solo", type: "weather", locationName: "Berlin" }
+  ];
+  assert.deepEqual(getWidgetGroupMemberIds("s2", widgets), ["s1", "s2"]);
+  assert.deepEqual(getWidgetGroupMemberIds("solo", widgets), ["solo"]);
+
+  const alignMap = { s1: "center", solo: "left" };
+  assert.equal(resolveGroupedWidgetMapValue(alignMap, "s2", widgets), "center");
+  assert.equal(resolveGroupedWidgetMapValue(alignMap, "solo", widgets), "left");
+
+  const newRowMap = { s1: true };
+  assert.equal(resolveGroupedWidgetMapValue(newRowMap, "s2", widgets), true);
+  assert.equal(resolveGroupedWidgetMapValue(newRowMap, "solo", widgets), undefined);
 });

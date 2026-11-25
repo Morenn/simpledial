@@ -6,6 +6,7 @@ import { batchStorageGet } from './storage-cache.js';
 
 const deadLinkDebugLog = (...args) => logDebug("deadLink", ...args);
 const syncDebugLog = (...args) => logDebug("sync", ...args);
+const webdavDebugLog = (...args) => logDebug("webdav", ...args);
 
 function ensureNoTrailingSlash(url) {
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -179,7 +180,11 @@ function extractRemoteMarkerFromHeaders(headers, preferredType = null) {
   for (const type of typesToTry) {
     const raw = headers.get(REMOTE_MARKER_HEADERS[type]);
     if (isValidRemoteMarker(type, raw)) {
-      return { type, value: raw.trim() };
+      let value = raw.trim();
+      if (type === 'etag') {
+        value = value.replace(/-gzip("?)$/i, '$1');
+      }
+      return { type, value };
     }
   }
   return null;
@@ -681,6 +686,7 @@ async function initializeRemote(url, headers = {}) {
 async function initializeRemoteDetailed(url, headers = {}) {
   const defaultData = { groups: [], dbuid: generateDbUid() };
 
+  let remoteEtag = '';
   try {
     const res = await fetchWithTimeout(url, {
       method: "PUT",
@@ -695,6 +701,7 @@ async function initializeRemoteDetailed(url, headers = {}) {
       }
       return { ok: false, reason: 'http-error', status: res.status };
     }
+    remoteEtag = res.headers?.get?.('etag') || res.headers?.get?.('ETag') || '';
   } catch (e) {
     console.log("initializeRemote failed", e);
     if (e.name === 'AbortError') {
@@ -706,6 +713,7 @@ async function initializeRemoteDetailed(url, headers = {}) {
   return {
     ok: true,
     reason: 'initialized-remote',
+    remoteEtag,
     data: { ...defaultData, tags: [], tombstones: {}, tombstonePrunedBefore: 0 }
   };
 }
@@ -822,7 +830,7 @@ async function syncReadDetailed(cfg = null, options = {}) {
 
     const res = await fetchWithTimeout(fetchUrl, {
       method: "GET",
-      cache: "no-cache",
+      cache: resolvedCfg.type === 'webdav' ? "no-store" : "no-cache",
       headers
     });
 
@@ -887,9 +895,19 @@ async function syncReadDetailed(cfg = null, options = {}) {
       return { ok: false, reason: 'invalid-json', status: res.status };
     }
 
+    const remoteEtag = res.headers?.get?.('etag') || res.headers?.get?.('ETag') || '';
+    if (resolvedCfg.type === 'webdav') {
+      webdavDebugLog('bookmarks-db GET', {
+        url: fetchUrl,
+        status: res.status,
+        etag: remoteEtag || null
+      });
+    }
+
     return {
       ok: true,
       reason: 'ok',
+      remoteEtag,
       remoteMarker: extractRemoteMarkerFromHeaders(res.headers, resolvedCfg?.remoteChangeHeaderType || null),
       data: {
         groups: Array.isArray(parsed.groups) ? parsed.groups : [],
@@ -991,6 +1009,12 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
     if (credPass) {
       headers['Authorization'] = safeBasicAuthHeader(credUser, credPass);
     }
+    const normalizedIfMatch = (resolvedCfg.type === 'webdav' && !options?.skipIfMatch)
+      ? normalizeWebdavEtagForIfMatch(options?.expectedRemoteEtag)
+      : '';
+    if (normalizedIfMatch) {
+      headers['If-Match'] = normalizedIfMatch;
+    }
 
     let res = null;
     for (let attempt = 0; attempt <= lockRetryDelays.length; attempt++) {
@@ -999,6 +1023,15 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
         headers,
         body: writeBody
       });
+
+      if (resolvedCfg.type === 'webdav') {
+        webdavDebugLog('bookmarks-db PUT', {
+          url: fetchUrl,
+          status: res.status,
+          ifMatch: normalizedIfMatch || null,
+          etag: res.headers?.get?.('etag') || res.headers?.get?.('ETag') || null
+        });
+      }
 
       const redirectInfo = getAuthRedirectInfo(fetchUrl, res);
       if (redirectInfo) {
@@ -1012,6 +1045,10 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
           reason: 'ok',
           remoteMarker: extractRemoteMarkerFromHeaders(res.headers, resolvedCfg?.remoteChangeHeaderType || null)
         };
+      }
+
+      if (res.status === 412) {
+        return { ok: false, reason: 'webdav-precondition-failed', status: 412 };
       }
 
       if (res.status === 423 && attempt < lockRetryDelays.length) {
@@ -2261,6 +2298,8 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
         dbuid: nextDbuid,
         tombstones: nextTombstonesObj,
         tombstonePrunedBefore: nextPrunedBefore,
+        expectedRemoteEtag: options?.remoteEtag || '',
+        skipIfMatch: !!options?.force,
         credentials: options?.credentials
       }
     );
@@ -2270,8 +2309,13 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
       state.groups = previousGroups;
       state.tags = previousTags;
 
-      if (writeResult.reason === 'browser-sync-conflict' && browserConflictRetries > 0) {
-        const latestRemote = await syncReadDetailed();
+      if ((writeResult.reason === 'browser-sync-conflict' || writeResult.reason === 'webdav-precondition-failed') && browserConflictRetries > 0) {
+        if (writeResult.reason === 'webdav-precondition-failed') {
+          webdavDebugLog('bookmarks-db 412 precondition failed; re-reading and re-merging', {
+            retriesLeft: browserConflictRetries - 1
+          });
+        }
+        const latestRemote = await syncReadDetailed(null, { credentials: options?.credentials });
         if (!latestRemote.ok) {
           return latestRemote;
         }
@@ -2284,6 +2328,7 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
           extraPurgedIds,
           {
             ...options,
+            remoteEtag: latestRemote.remoteEtag || '',
             cloudDbuid: latestRemote.data.dbuid,
             cloudTombstones: latestRemote.data.tombstones,
             cloudTombstonePrunedBefore: latestRemote.data.tombstonePrunedBefore
@@ -2446,32 +2491,62 @@ async function webdavGetJsonFile(fileUrl, headers) {
   try {
     const res = await fetchWithTimeout(fileUrl, {
       method: "GET",
-      cache: "no-cache",
+      cache: "no-store",
       headers
     });
+    const etag = res.headers?.get?.("etag") || res.headers?.get?.("ETag") || "";
     if (res.status === 404) {
-      return { ok: true, notFound: true, data: null };
+      webdavDebugLog("GET", { url: fileUrl, status: 404, notFound: true });
+      return { ok: true, notFound: true, data: null, etag: "" };
     }
     if (!res.ok) {
-      return { ok: false, status: res.status };
+      webdavDebugLog("GET failed", { url: fileUrl, status: res.status });
+      return { ok: false, status: res.status, etag };
     }
     const text = await res.text();
     const data = text.trim() ? parseJsonSafely(text) : null;
-    return { ok: true, notFound: false, data };
+    webdavDebugLog("GET", { url: fileUrl, status: res.status, etag: etag || null, updatedAt: data?.updatedAt ?? null });
+    return { ok: true, notFound: false, data, etag };
   } catch (err) {
+    webdavDebugLog("GET error", { url: fileUrl, error: err?.message || String(err) });
     return { ok: false, error: err };
   }
 }
 
-async function webdavPutJsonFile(fileUrl, headers, payload) {
+function normalizeWebdavEtagForIfMatch(etag) {
+  if (typeof etag !== "string") return "";
+  const trimmed = etag.trim();
+  if (!trimmed) return "";
+  // Strip weak ETag prefix and Apache/Nginx mod_deflate "-gzip" suffix inside quotes
+  return trimmed.replace(/^W\//i, "").replace(/-gzip("?)$/i, "$1");
+}
+
+async function webdavPutJsonFile(fileUrl, headers, payload, options = {}) {
   try {
+    const putHeaders = { "Content-Type": "application/json", ...headers };
+    const normalizedIfMatch = normalizeWebdavEtagForIfMatch(options.ifMatch);
+    if (normalizedIfMatch) {
+      putHeaders["If-Match"] = normalizedIfMatch;
+    } else if (options.ifNoneMatch) {
+      putHeaders["If-None-Match"] = options.ifNoneMatch;
+    }
     const res = await fetchWithTimeout(fileUrl, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", ...headers },
+      headers: putHeaders,
       body: JSON.stringify(payload)
     });
-    return { ok: res.ok, status: res.status };
+    const etag = res.headers?.get?.("etag") || res.headers?.get?.("ETag") || "";
+    webdavDebugLog("PUT", {
+      url: fileUrl,
+      status: res.status,
+      ifMatch: normalizedIfMatch || null,
+      ifNoneMatch: options.ifNoneMatch || null,
+      etag: etag || null,
+      updatedAt: payload?.updatedAt ?? null
+    });
+    return { ok: res.ok, status: res.status, preconditionFailed: res.status === 412, etag };
   } catch (err) {
+    webdavDebugLog("PUT error", { url: fileUrl, error: err?.message || String(err) });
     return { ok: false, error: err };
   }
 }
@@ -2618,10 +2693,10 @@ const WEBDAV_EXTRA_SECTION_SPECS = {
           nextRemote.customWidgets = nextRemote.customWidgets.map(w => {
             if (!w || typeof w !== "object") return w;
             const { disabled: _remoteDisabled, ...restWidget } = w;
-            const nextWidget = {
-              ...restWidget,
-              authHeaderValue: w.id && localById.has(w.id) ? localById.get(w.id) : ""
-            };
+            const nextWidget = { ...restWidget };
+            if ("authHeaderValue" in w || (w.id && localById.has(w.id))) {
+              nextWidget.authHeaderValue = w.id && localById.has(w.id) ? localById.get(w.id) : "";
+            }
             if ("apiKey" in w || (w.id && localApiKeyById.has(w.id))) {
               nextWidget.apiKey = w.id && localApiKeyById.has(w.id) ? localApiKeyById.get(w.id) : "";
             }
@@ -2653,70 +2728,127 @@ function isDefaultExtraPayload(key, localPayload) {
   return stableSerialize(localPayload) === stableSerialize(defaultPayload);
 }
 
-async function syncExtraJsonSection({ key, fileUrl, headers, buildPayload, lastHashes, applyRemote, remoteRes: preloadedRemoteRes = null }) {
-  const localPayload = buildPayload();
-  const localHash = await hashExtraPayload(localPayload);
-  const remoteRes = preloadedRemoteRes || await webdavGetJsonFile(fileUrl, headers);
-  if (!remoteRes.ok) return { changed: false, conflict: false };
+async function syncExtraJsonSection({ key, fileUrl, headers, buildPayload, lastHashes, lastUpdatedAts = {}, applyRemote, remoteRes: preloadedRemoteRes = null }) {
+  const maxAttempts = 2;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const localPayload = buildPayload();
+    const localHash = await hashExtraPayload(localPayload);
+    const remoteRes = (attempt === 0 && preloadedRemoteRes) ? preloadedRemoteRes : await webdavGetJsonFile(fileUrl, headers);
+    if (!remoteRes.ok) return { changed: false, conflict: false };
 
-  if (remoteRes.notFound) {
-    const putRes = await webdavPutJsonFile(fileUrl, headers, {
-      updatedAt: Date.now(),
-      data: localPayload
+    const prevUpdatedAt = Number(lastUpdatedAts[key] || 0) || 0;
+
+    if (remoteRes.notFound) {
+      const now = Date.now();
+      const putRes = await webdavPutJsonFile(fileUrl, headers, {
+        updatedAt: now,
+        data: localPayload
+      }, { ifNoneMatch: "*" });
+      if (putRes.preconditionFailed && attempt + 1 < maxAttempts) {
+        webdavDebugLog("412 precondition failed on create; retrying", { key, attempt: attempt + 1 });
+        continue;
+      }
+      if (putRes.ok) {
+        lastHashes[key] = localHash;
+        lastUpdatedAts[key] = Math.max(prevUpdatedAt, now);
+      }
+      return { changed: false, conflict: false };
+    }
+
+    const r = remoteRes.data;
+    const remoteHash = r && r.data !== undefined ? await hashExtraPayload(r.data) : "";
+    const remoteUpdatedAt = Number(r?.updatedAt || 0) || 0;
+
+    if (remoteHash === localHash) {
+      lastHashes[key] = localHash;
+      if (remoteUpdatedAt > prevUpdatedAt) {
+        lastUpdatedAts[key] = remoteUpdatedAt;
+      }
+      return { changed: false, conflict: false };
+    }
+
+    if (prevUpdatedAt > 0 && remoteUpdatedAt > 0 && remoteUpdatedAt < prevUpdatedAt) {
+      webdavDebugLog("stale/rolled-back remote version detected", {
+        key,
+        remoteUpdatedAt,
+        prevUpdatedAt,
+        remoteHash,
+        localHash
+      });
+      return {
+        changed: false,
+        conflict: true,
+        remoteUpdatedAt,
+        localHash,
+        remoteHash,
+        reason: "stale-remote-version"
+      };
+    }
+
+    const lastHash = lastHashes[key] || "";
+    const remoteChanged = !!r && r.data !== undefined && remoteHash !== lastHash;
+    const localChanged = localHash !== lastHash;
+
+    webdavDebugLog("extra section check", {
+      key,
+      attempt: attempt + 1,
+      localHash,
+      remoteHash,
+      lastHash,
+      localChanged,
+      remoteChanged,
+      remoteUpdatedAt,
+      prevUpdatedAt,
+      etag: remoteRes.etag || null
     });
-    if (putRes.ok) {
+
+    if (!lastHash && r && r.data !== undefined && !isDefaultExtraPayload(key, localPayload)) {
+      return {
+        changed: false,
+        conflict: true,
+        remoteUpdatedAt: remoteUpdatedAt || null,
+        localHash,
+        remoteHash
+      };
+    }
+
+    if (lastHash && remoteChanged && localChanged) {
+      return {
+        changed: false,
+        conflict: true,
+        remoteUpdatedAt: remoteUpdatedAt || null,
+        localHash,
+        remoteHash
+      };
+    }
+
+    if (remoteChanged && (!localChanged || !lastHash)) {
+      applyRemote(r.data);
+      lastHashes[key] = await hashExtraPayload(buildPayload());
+      if (remoteUpdatedAt > 0) {
+        lastUpdatedAts[key] = Math.max(prevUpdatedAt, remoteUpdatedAt);
+      }
+      return { changed: true, conflict: false };
+    }
+
+    if (localChanged || localHash !== remoteHash) {
+      const now = Math.max(Date.now(), prevUpdatedAt + 1);
+      const putRes = await webdavPutJsonFile(fileUrl, headers, {
+        updatedAt: now,
+        data: localPayload
+      }, { ifMatch: remoteRes.etag || "" });
+      if (putRes.preconditionFailed && attempt + 1 < maxAttempts) {
+        webdavDebugLog("412 precondition failed on update; retrying", { key, attempt: attempt + 1 });
+        continue;
+      }
+      if (putRes.ok) {
+        lastHashes[key] = localHash;
+        lastUpdatedAts[key] = Math.max(prevUpdatedAt, now);
+      }
+    } else {
       lastHashes[key] = localHash;
     }
     return { changed: false, conflict: false };
-  }
-
-  const r = remoteRes.data;
-  const remoteHash = r && r.data !== undefined ? await hashExtraPayload(r.data) : "";
-  if (remoteHash === localHash) {
-    lastHashes[key] = localHash;
-    return { changed: false, conflict: false };
-  }
-
-  const lastHash = lastHashes[key] || "";
-  const remoteChanged = !!r && r.data !== undefined && remoteHash !== lastHash;
-  const localChanged = localHash !== lastHash;
-
-  if (!lastHash && r && r.data !== undefined && !isDefaultExtraPayload(key, localPayload)) {
-    return {
-      changed: false,
-      conflict: true,
-      remoteUpdatedAt: Number(r.updatedAt || 0) || null,
-      localHash,
-      remoteHash
-    };
-  }
-
-  if (lastHash && remoteChanged && localChanged) {
-    return {
-      changed: false,
-      conflict: true,
-      remoteUpdatedAt: Number(r?.updatedAt || 0) || null,
-      localHash,
-      remoteHash
-    };
-  }
-
-  if (remoteChanged && (!localChanged || !lastHash)) {
-    applyRemote(r.data);
-    lastHashes[key] = await hashExtraPayload(buildPayload());
-    return { changed: true, conflict: false };
-  }
-
-  if (localChanged || localHash !== remoteHash) {
-    const putRes = await webdavPutJsonFile(fileUrl, headers, {
-      updatedAt: Date.now(),
-      data: localPayload
-    });
-    if (putRes.ok) {
-      lastHashes[key] = localHash;
-    }
-  } else {
-    lastHashes[key] = localHash;
   }
   return { changed: false, conflict: false };
 }
@@ -2821,10 +2953,14 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
   if (!currentConfig.sync.lastSyncedExtraHashes || typeof currentConfig.sync.lastSyncedExtraHashes !== "object") {
     currentConfig.sync.lastSyncedExtraHashes = {};
   }
+  if (!currentConfig.sync.lastSeenExtraUpdatedAt || typeof currentConfig.sync.lastSeenExtraUpdatedAt !== "object") {
+    currentConfig.sync.lastSeenExtraUpdatedAt = {};
+  }
   if (!currentConfig.sync.webdavExtraConflicts || typeof currentConfig.sync.webdavExtraConflicts !== "object") {
     currentConfig.sync.webdavExtraConflicts = {};
   }
   const lastHashes = currentConfig.sync.lastSyncedExtraHashes;
+  const lastUpdatedAts = currentConfig.sync.lastSeenExtraUpdatedAt;
   const extraEnabledMap = {
     config: syncConfigEnabled,
     widgets: syncWidgetsEnabled,
@@ -2848,6 +2984,7 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
       remoteRes,
       buildPayload: () => spec.buildPayload(currentConfig),
       lastHashes,
+      lastUpdatedAts,
       applyRemote: (remoteData) => spec.applyRemote(currentConfig, remoteData)
     });
     if (res.changed) configChanged = true;
@@ -2980,10 +3117,37 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
           }
 
           if (remoteIndexRes.notFound || stableSerialize(nextIndex) !== stableSerialize(remoteIndex)) {
-            await webdavPutJsonFile(indexUrl, headers, {
-              updatedAt: Date.now(),
+            const putIndexOpts = remoteIndexRes.notFound
+              ? { ifNoneMatch: "*" }
+              : { ifMatch: remoteIndexRes.etag || "" };
+            const indexNow = Math.max(Date.now(), Number(lastUpdatedAts.backupsIndex || 0) + 1);
+            let putIndexRes = await webdavPutJsonFile(indexUrl, headers, {
+              updatedAt: indexNow,
               data: nextIndex
-            });
+            }, putIndexOpts);
+            if (putIndexRes.preconditionFailed) {
+              webdavDebugLog("backups/index.json 412 precondition failed; re-fetching and re-merging");
+              const retryRemoteRes = await webdavGetJsonFile(indexUrl, headers);
+              if (retryRemoteRes.ok) {
+                const retryRemoteIndex = retryRemoteRes.data?.data || {};
+                const retryIndex = {};
+                for (const type of backupTypes) {
+                  const localMeta = nextLocalBackups[type].filter(e => typeof e.data === "string").map(stripData);
+                  const retryRemoteMeta = Array.isArray(retryRemoteIndex[type]) ? retryRemoteIndex[type] : [];
+                  retryIndex[type] = mergeBackupArrays(localMeta, retryRemoteMeta, retentionDays);
+                }
+                const retryNow = Math.max(Date.now(), Number(retryRemoteRes.data?.updatedAt || 0) + 1);
+                putIndexRes = await webdavPutJsonFile(indexUrl, headers, {
+                  updatedAt: retryNow,
+                  data: retryIndex
+                }, retryRemoteRes.notFound ? { ifNoneMatch: "*" } : { ifMatch: retryRemoteRes.etag || "" });
+                if (putIndexRes.ok) {
+                  lastUpdatedAts.backupsIndex = retryNow;
+                }
+              }
+            } else if (putIndexRes.ok) {
+              lastUpdatedAts.backupsIndex = indexNow;
+            }
           }
         }
       });
@@ -3019,6 +3183,9 @@ export async function resolveWebdavExtraConflict(key, resolution) {
     if (!config.sync.lastSyncedExtraHashes || typeof config.sync.lastSyncedExtraHashes !== "object") {
       config.sync.lastSyncedExtraHashes = {};
     }
+    if (!config.sync.lastSeenExtraUpdatedAt || typeof config.sync.lastSeenExtraUpdatedAt !== "object") {
+      config.sync.lastSeenExtraUpdatedAt = {};
+    }
     if (!config.sync.webdavExtraConflicts || typeof config.sync.webdavExtraConflicts !== "object") {
       config.sync.webdavExtraConflicts = {};
     }
@@ -3041,6 +3208,7 @@ export async function resolveWebdavExtraConflict(key, resolution) {
       }
       spec.applyRemote(config, remoteRes.data.data);
       config.sync.lastSyncedExtraHashes[key] = await hashExtraPayload(spec.buildPayload(config));
+      config.sync.lastSeenExtraUpdatedAt[key] = Number(remoteRes.data.updatedAt || 0) || 0;
       config.sync[spec.syncFlag] = true;
       delete config.sync.webdavExtraConflicts[key];
       config.sync.lastFolderExtrasSync = Date.now();
@@ -3054,14 +3222,17 @@ export async function resolveWebdavExtraConflict(key, resolution) {
 
     if (resolution === "local") {
       const localPayload = spec.buildPayload(config);
+      const prevUpdatedAt = Number(config.sync.lastSeenExtraUpdatedAt[key] || 0) || 0;
+      const now = Math.max(Date.now(), prevUpdatedAt + 1);
       const putRes = await webdavPutJsonFile(fileUrl, headers, {
-        updatedAt: Date.now(),
+        updatedAt: now,
         data: localPayload
       });
       if (!putRes.ok) {
         return { ok: false, reason: "http-error", status: putRes.status };
       }
       config.sync.lastSyncedExtraHashes[key] = await hashExtraPayload(localPayload);
+      config.sync.lastSeenExtraUpdatedAt[key] = now;
       config.sync[spec.syncFlag] = true;
       delete config.sync.webdavExtraConflicts[key];
       config.sync.lastFolderExtrasSync = Date.now();
@@ -3280,6 +3451,7 @@ export async function syncNow(options = {}) {
     const mergeResult = await mergeAndWriteAtomically(config, readResult.data.groups, 2, readResult.data.tags, [], {
       force: !!options?.force,
       initializedRemote: readResult.reason === "initialized-remote",
+      remoteEtag: readResult.remoteEtag || '',
       cloudDbuid: readResult.data.dbuid,
       cloudTombstones: readResult.data.tombstones,
       cloudTombstonePrunedBefore: readResult.data.tombstonePrunedBefore,

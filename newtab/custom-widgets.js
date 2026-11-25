@@ -7,7 +7,12 @@ import {
   resolveCustomWidgetIcon,
   createCustomWidgetIconElement,
   createCustomSearchIconContent,
-  normalizeWidgetOrder
+  getWidgetGroupKey,
+  buildWidgetGroupMeta,
+  getWidgetGroupMemberIds,
+  resolveGroupedWidgetMapValue,
+  normalizeWidgetOrder,
+  moveWidgetGroupInOrder
 } from "./widgets/shared.js";
 import {
   isValidCustomSearchUrlTemplate,
@@ -97,7 +102,12 @@ export {
   resolveCustomWidgetIcon,
   createCustomWidgetIconElement,
   createCustomSearchIconContent,
+  getWidgetGroupKey,
+  buildWidgetGroupMeta,
+  getWidgetGroupMemberIds,
+  resolveGroupedWidgetMapValue,
   normalizeWidgetOrder,
+  moveWidgetGroupInOrder,
   isValidCustomSearchUrlTemplate,
   isValidCustomSearchJsonTemplate,
   buildCustomSearchTargetUrl,

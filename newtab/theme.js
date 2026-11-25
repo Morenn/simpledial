@@ -5,7 +5,8 @@ import { t } from "./i18n.js";
 import { isAllowedThemeUrl, isSafeDataImageUrl, sanitizeSvgDataUrl, blobToDataUrl } from "./color-utils.js";
 import {
   VALID_WIDGET_SPACES,
-  normalizeWidgetOrder
+  normalizeWidgetOrder,
+  resolveGroupedWidgetMapValue
 } from "./widgets/shared.js";
 
 const widgetModuleCache = new Map();
@@ -886,7 +887,8 @@ export async function applySideSpaces(config = null) {
       el.style.display = "inline-flex";
     }
 
-    const align = widgetAlign[key];
+    const align = resolveGroupedWidgetMapValue(widgetAlign, key, customWidgets);
+    const isNewRow = !!resolveGroupedWidgetMapValue(widgetNewRow, key, customWidgets);
     if (VALID_ALIGNS.has(align)) {
       el.dataset.widgetAlign = align;
     } else {
@@ -895,7 +897,7 @@ export async function applySideSpaces(config = null) {
 
     if (space === "header") {
       if (topBar) {
-        if (widgetNewRow[key] && hasVisibleHeaderWidget) {
+        if (isNewRow && hasVisibleHeaderWidget) {
           const br = document.createElement("div");
           br.className = "widget-row-break";
           topBar.appendChild(br);
@@ -906,7 +908,7 @@ export async function applySideSpaces(config = null) {
     } else if (space === "center") {
       const targetCenter = idx > bookmarksIndex && centerBottomWidgets ? centerBottomWidgets : centerWidgets;
       if (targetCenter) {
-        if (widgetNewRow[key] && targetCenter.children.length > 0) {
+        if (isNewRow && targetCenter.children.length > 0) {
           const br = document.createElement("div");
           br.className = "widget-row-break";
           targetCenter.appendChild(br);
@@ -915,7 +917,7 @@ export async function applySideSpaces(config = null) {
       }
     } else if (spaceContainers[space]) {
       const targetContainer = spaceContainers[space];
-      if (space === "footer" && widgetNewRow[key] && targetContainer.children.length > 0) {
+      if (space === "footer" && isNewRow && targetContainer.children.length > 0) {
         const br = document.createElement("div");
         br.className = "widget-row-break";
         targetContainer.appendChild(br);

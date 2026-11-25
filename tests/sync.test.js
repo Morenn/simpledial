@@ -1953,3 +1953,225 @@ test("WebDAV extra part conflict pauses conflicting part and resolves via remote
   assert.equal(afterWidgetsResolve.sync.webdavExtraConflicts.widgets, undefined);
   assert.equal(afterWidgetsResolve.appearance.customWidgets[0].id, "w_local");
 });
+
+test("WebDAV folder sync sends If-Match ETag, retries on 412, and detects updatedAt rollback", async () => {
+  const { syncWebdavFolderExtras } = await import("../newtab/sync.js");
+  const { saveConfig } = await import("../newtab/config.js");
+
+  const widgetsUrl = "https://cloud.example/dav/SimpleDial/widgets.json";
+  const initialRemote = {
+    updatedAt: 2000,
+    data: {
+      customWidgets: [{ id: "w_1", type: "custom-search", name: "One" }],
+      customSearchAutoRouteDefaults: {},
+      customSearchAutoRouteIcons: {},
+      widgetOrder: ["groups", "manage", "search", "bookmarks", "syncStatus", "dateTime", "bookmarksCount", "shortcutPalette", "storageUsage", "w_1"],
+      widgetAlign: {},
+      widgetNewRow: {}
+    }
+  };
+  const concurrentRemote = {
+    updatedAt: 3000,
+    data: {
+      ...initialRemote.data,
+      customWidgets: [{ id: "w_1", type: "custom-search", name: "Concurrent" }]
+    }
+  };
+
+  let currentEtag = '"etag-1-gzip"';
+  let currentWidgetsBody = JSON.stringify(initialRemote);
+  let simulateConcurrent412 = true;
+  const observedIfMatch = [];
+
+  fetchRemote = async (url, options = {}) => {
+    const method = String(options.method || "GET").toUpperCase();
+    const makeRes = (status, body = "", etag = "") => ({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: "",
+      redirected: false,
+      url,
+      headers: new Map([
+        ["content-type", "application/json"],
+        ...(etag ? [["ETag", etag]] : [])
+      ]),
+      text: async () => body
+    });
+    if (url !== widgetsUrl) {
+      return method === "PUT" ? makeRes(201) : makeRes(404);
+    }
+    if (method === "GET") {
+      return makeRes(200, currentWidgetsBody, currentEtag);
+    }
+    if (method === "PUT") {
+      observedIfMatch.push(options.headers?.["If-Match"] || "");
+      if (simulateConcurrent412) {
+        simulateConcurrent412 = false;
+        currentEtag = '"etag-2"';
+        currentWidgetsBody = JSON.stringify(concurrentRemote);
+        return makeRes(412, "", currentEtag);
+      }
+      currentEtag = '"etag-3"';
+      currentWidgetsBody = options.body || "";
+      return makeRes(200, "", currentEtag);
+    }
+    return makeRes(405);
+  };
+
+  // First sync downloads initialRemote and records lastSyncedExtraHashes + lastSeenExtraUpdatedAt
+  const baseCfg = {
+    sync: {
+      enabled: true,
+      type: "webdav",
+      webdavMode: "folder",
+      webdavFolderPath: "SimpleDial",
+      serverUrl: "https://cloud.example/dav",
+      authMode: "basic",
+      username: "alice",
+      password: "secret",
+      intervalMode: "immediate",
+      webdavSyncConfig: false,
+      webdavSyncWidgets: true,
+      webdavSyncBackground: false,
+      webdavSyncBackups: false,
+      lastSyncedExtraHashes: {},
+      lastSeenExtraUpdatedAt: {},
+      webdavExtraConflicts: {}
+    },
+    appearance: {}
+  };
+  setClient([], baseCfg, []);
+  await syncWebdavFolderExtras();
+
+  // Local edit triggers PUT with If-Match: "etag-1"; server returns 412 with concurrentRemote -> pauses with conflict instead of overwriting
+  const syncedCfg = readStoredConfig();
+  assert.equal(syncedCfg.sync.lastSeenExtraUpdatedAt.widgets, 2000);
+  syncedCfg.appearance.customWidgets = [{ id: "w_1", type: "custom-search", name: "LocalEdit" }];
+  await saveConfig(syncedCfg);
+
+  const res412 = await syncWebdavFolderExtras();
+  assert.equal(res412.ok, true);
+  assert.equal(observedIfMatch[0], '"etag-1"');
+  const after412 = readStoredConfig();
+  assert.equal(after412.sync.webdavSyncWidgets, false);
+  assert.ok(after412.sync.webdavExtraConflicts.widgets);
+  assert.equal(JSON.parse(currentWidgetsBody).data.customWidgets[0].name, "Concurrent");
+
+  // Re-enable widgets sync with higher lastSeenExtraUpdatedAt; server serves stale updatedAt (1500 < 5000) -> flagged as conflict
+  after412.sync.webdavSyncWidgets = true;
+  after412.sync.webdavExtraConflicts = {};
+  after412.sync.lastSeenExtraUpdatedAt.widgets = 5000;
+  await saveConfig(after412);
+  currentWidgetsBody = JSON.stringify({ ...initialRemote, updatedAt: 1500 });
+
+  const resRollback = await syncWebdavFolderExtras();
+  assert.equal(resRollback.ok, true);
+  const afterRollback = readStoredConfig();
+  assert.equal(afterRollback.sync.webdavSyncWidgets, false);
+  assert.ok(afterRollback.sync.webdavExtraConflicts.widgets);
+});
+
+test("WebDAV bookmarks-db sends normalized If-Match ETag, re-merges on 412, and normalizes -gzip HEAD/GET markers", async () => {
+  const { syncForceUpload } = await import("../newtab/sync.js");
+  const bookmarksDbUrl = "https://cloud.example/dav/SimpleDial/bookmarks-db.json";
+  const itemA = item("b_local", "Local Bookmark", "https://local.example", 2000);
+  const itemConcurrent = item("b_concurrent", "Concurrent Bookmark", "https://concurrent.example", 2500);
+  const initialDb = {
+    groups: [group([item("b_base", "Base Bookmark", "https://base.example", 1000)], "g_main", "Main", 1000)],
+    tags: []
+  };
+  const concurrentDb = {
+    groups: [group([item("b_base", "Base Bookmark", "https://base.example", 1000), itemConcurrent], "g_main", "Main", 2500)],
+    tags: []
+  };
+
+  let dbEtag = '"db-etag-1"';
+  let dbBody = JSON.stringify(initialDb);
+  let simulateConcurrentPut = true;
+  const putIfMatchHeaders = [];
+
+  fetchRemote = async (url, options = {}) => {
+    const method = String(options.method || "GET").toUpperCase();
+    const makeRes = (status, body = "", etag = "") => ({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: "",
+      redirected: false,
+      url,
+      headers: new Map([
+        ["content-type", "application/json"],
+        ...(etag ? [["ETag", etag]] : [])
+      ]),
+      text: async () => body
+    });
+    if (url !== bookmarksDbUrl) {
+      return method === "PUT" ? makeRes(201) : makeRes(404);
+    }
+    if (method === "HEAD") {
+      // Simulate HEAD returning ETag without -gzip
+      return makeRes(200, "", dbEtag);
+    }
+    if (method === "GET") {
+      // Simulate GET returning ETag with -gzip
+      return makeRes(200, dbBody, dbEtag.replace(/"$/, '-gzip"'));
+    }
+    if (method === "PUT") {
+      putIfMatchHeaders.push(options.headers?.["If-Match"] ?? null);
+      if (simulateConcurrentPut) {
+        simulateConcurrentPut = false;
+        dbEtag = '"db-etag-2"';
+        dbBody = JSON.stringify(concurrentDb);
+        return makeRes(412, "", dbEtag);
+      }
+      dbEtag = '"db-etag-3"';
+      dbBody = options.body || "";
+      return makeRes(204, "", dbEtag);
+    }
+    return makeRes(405);
+  };
+
+  setClient(
+    [group([item("b_base", "Base Bookmark", "https://base.example", 1000), itemA], "g_main", "Main", 2000)],
+    {
+      sync: {
+        enabled: true,
+        type: "webdav",
+        webdavMode: "folder",
+        webdavFolderPath: "SimpleDial",
+        serverUrl: "https://cloud.example/dav",
+        authMode: "basic",
+        username: "alice",
+        password: "secret",
+        intervalMode: "immediate",
+        webdavSyncConfig: false,
+        webdavSyncWidgets: false,
+        webdavSyncBackground: false,
+        webdavSyncBackups: false,
+        remoteChangeHeaderType: "etag",
+        lastSeenRemoteMarker: '"db-etag-1"',
+        lastMarkerCheckUrl: "webdav::folder::SimpleDial::https://cloud.example/dav"
+      },
+      appearance: {}
+    },
+    []
+  );
+
+  // First syncNow: HEAD returns "db-etag-1", local has pending itemA -> GET returns "db-etag-1-gzip",
+  // first PUT sends If-Match: "db-etag-1" -> 412 -> re-reads "db-etag-2-gzip", re-merges, second PUT sends If-Match: "db-etag-2" -> 204
+  const res1 = await syncNow();
+  assert.equal(res1.ok, true);
+  assert.deepEqual(putIfMatchHeaders, ['"db-etag-1"', '"db-etag-2"']);
+  const mergedIds = state.groups[0].items.map(i => i.id).sort();
+  assert.deepEqual(mergedIds, ["b_base", "b_concurrent", "b_local"]);
+  assert.equal(readStoredConfig().sync.lastSeenRemoteMarker, '"db-etag-3"');
+
+  // Second syncNow with no local changes: HEAD returns "db-etag-3", matches normalized marker -> skips GET
+  const res2 = await syncNow();
+  assert.equal(res2.ok, true);
+  assert.equal(res2.reason, "remote-marker-unchanged");
+
+  // Force upload must NOT send If-Match
+  const forceRes = await syncForceUpload();
+  assert.equal(forceRes.ok, true);
+  assert.equal(putIfMatchHeaders[2], null);
+});

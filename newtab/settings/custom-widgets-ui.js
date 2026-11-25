@@ -5,7 +5,10 @@ import { applySideSpaces, applyTileSize } from "../theme.js";
 import { formatBackupTimestamp } from "../backup.js";
 import {
   normalizeWidgetOrder,
-  groupCustomSearchWidgets,
+  moveWidgetGroupInOrder,
+  buildWidgetGroupMeta,
+  getWidgetGroupMemberIds,
+  resolveGroupedWidgetMapValue,
   isValidCustomSearchUrlTemplate,
   isValidCustomSearchJsonTemplate,
   isValidTimeZone,
@@ -27,8 +30,6 @@ import {
   fetchAndEvaluateRestWidget,
   requestRestEndpointPermission,
   pollAllRestStatusWidgets,
-  groupRestStatusWidgets,
-  groupRssFeedWidgets,
   isValidRssFeedUrl,
   normalizeRssRefreshMinutes,
   normalizeRssMaxItems,
@@ -205,16 +206,32 @@ export function initCustomWidgetsSettings() {
     const resolvedAppearance = appearance || settingsState.appearanceDraft || {};
     const customWidgets = Array.isArray(resolvedAppearance.customWidgets) ? resolvedAppearance.customWidgets : [];
     const customWidgetMap = new Map(customWidgets.filter(w => w?.id).map(w => [w.id, w]));
-    const customGroups = [
-      ...groupCustomSearchWidgets(customWidgets),
-      ...groupRestStatusWidgets(customWidgets),
-      ...groupRssFeedWidgets(customWidgets)
-    ];
-    const customGroupByRepId = new Map(customGroups.map(g => [g.representative.id, g]));
+    const { membersByGroupKey, groupKeyById, anchorByGroupKey } = buildWidgetGroupMeta(customWidgets);
+    const customGroupByRepId = new Map();
+    const groupSpaceByKey = new Map();
     const secondaryCustomIds = new Set();
-    for (const g of customGroups) {
-      for (const m of g.members) {
-        if (m.id !== g.representative.id) secondaryCustomIds.add(m.id);
+    for (const [gKey, members] of membersByGroupKey.entries()) {
+      const displayRep =
+        members.find(m => !m.disabled && m.isDefault) ||
+        members.find(m => !m.disabled) ||
+        anchorByGroupKey.get(gKey) ||
+        members[0];
+      if (!displayRep) continue;
+      const gName = typeof displayRep.groupName === "string" && displayRep.groupName.trim()
+        ? displayRep.groupName.trim()
+        : (members[0].groupName || "").trim();
+      customGroupByRepId.set(displayRep.id, {
+        groupName: gName,
+        members,
+        representative: displayRep
+      });
+      const spaceDonor = members.find(m => m.isDefault) || members[0];
+      const resolvedGroupSpace = ["disabled", "header", "left", "center", "right", "footer"].includes(spaceDonor?.space)
+        ? spaceDonor.space
+        : "header";
+      groupSpaceByKey.set(gKey, resolvedGroupSpace);
+      for (const m of members) {
+        if (m.id !== displayRep.id) secondaryCustomIds.add(m.id);
       }
     }
     const order = normalizeWidgetOrder(resolvedAppearance.widgetOrder, customWidgets);
@@ -273,6 +290,10 @@ export function initCustomWidgetsSettings() {
       const builtInDef = WIDGET_REGISTRY[key];
       const customDef = customWidgetMap.get(key);
       if (customDef) {
+        const gKey = groupKeyById.get(key);
+        if (gKey && groupSpaceByKey.has(gKey)) {
+          return groupSpaceByKey.get(gKey);
+        }
         return ["disabled", "header", "left", "center", "right", "footer"].includes(customDef.space)
           ? customDef.space
           : "header";
@@ -316,7 +337,7 @@ export function initCustomWidgetsSettings() {
         fixedSpace: false
       };
       const currentSpace = isCustom
-        ? (customDef.space || "right")
+        ? getWidgetSpaceForKey(key)
         : (key === "dateTime"
           ? dateTimeSpace
           : (def.field ? (resolvedAppearance[def.field] || def.defaultSpace) : def.defaultSpace));
@@ -363,7 +384,7 @@ export function initCustomWidgetsSettings() {
           markSettingsDirty();
           const draft = await ensureAppearanceDraft();
           if (isCustom) {
-            const memberIds = customGroup ? new Set(customGroup.members.map(m => m.id)) : new Set([key]);
+            const memberIds = new Set(getWidgetGroupMemberIds(key, draft.customWidgets));
             draft.customWidgets = (draft.customWidgets || []).map(w => {
               if (!memberIds.has(w.id)) return w;
               const prevActive = (w.space && w.space !== "disabled") ? w.space : (w.lastActiveSpace || "right");
@@ -398,11 +419,16 @@ export function initCustomWidgetsSettings() {
           opt.textContent = alignLabels[alignVal] || alignVal;
           alignControl.appendChild(opt);
         });
-        alignControl.value = alignKeyMap[widgetAlign[key]] ? widgetAlign[key] : "auto";
+        const resolvedAlign = resolveGroupedWidgetMapValue(widgetAlign, key, customWidgets);
+        alignControl.value = alignKeyMap[resolvedAlign] ? resolvedAlign : "auto";
         alignControl.addEventListener("change", async () => {
           markSettingsDirty();
           const draft = await ensureAppearanceDraft();
-          draft.widgetAlign = { ...(draft.widgetAlign || {}), [key]: alignControl.value };
+          const nextAlign = { ...(draft.widgetAlign || {}) };
+          for (const memberId of getWidgetGroupMemberIds(key, draft.customWidgets)) {
+            nextAlign[memberId] = alignControl.value;
+          }
+          draft.widgetAlign = nextAlign;
           renderWidgetOrderList(draft);
           renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
@@ -417,7 +443,7 @@ export function initCustomWidgetsSettings() {
       if (!def.fixedSpace) {
         const newRowBtn = document.createElement("button");
         newRowBtn.type = "button";
-        const isNewRow = !!widgetNewRow[key];
+        const isNewRow = !!resolveGroupedWidgetMapValue(widgetNewRow, key, customWidgets);
         newRowBtn.className = `widget-order-btn widget-newrow-btn${isNewRow ? " active" : ""}`;
         newRowBtn.textContent = "↵";
         newRowBtn.title = t("widgetNewRowTitle") || "Start on new row";
@@ -425,8 +451,12 @@ export function initCustomWidgetsSettings() {
         newRowBtn.addEventListener("click", async () => {
           markSettingsDirty();
           const draft = await ensureAppearanceDraft();
-          const nextVal = !(draft.widgetNewRow && draft.widgetNewRow[key]);
-          draft.widgetNewRow = { ...(draft.widgetNewRow || {}), [key]: nextVal };
+          const nextVal = !resolveGroupedWidgetMapValue(draft.widgetNewRow, key, draft.customWidgets);
+          const nextNewRow = { ...(draft.widgetNewRow || {}) };
+          for (const memberId of getWidgetGroupMemberIds(key, draft.customWidgets)) {
+            nextNewRow[memberId] = nextVal;
+          }
+          draft.widgetNewRow = nextNewRow;
           renderWidgetOrderList(draft);
           renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
@@ -445,13 +475,12 @@ export function initCustomWidgetsSettings() {
         if (spaceIdx === -1 || targetIdx < 0 || targetIdx >= sameSpaceKeys.length) return;
         markSettingsDirty();
         const draft = await ensureAppearanceDraft();
-        const nextOrder = normalizeWidgetOrder(draft.widgetOrder, draft.customWidgets);
-        const targetKey = sameSpaceKeys[targetIdx];
-        const curPos = nextOrder.indexOf(key);
-        const targetPos = nextOrder.indexOf(targetKey);
-        if (curPos === -1 || targetPos === -1) return;
-        [nextOrder[targetPos], nextOrder[curPos]] = [nextOrder[curPos], nextOrder[targetPos]];
-        draft.widgetOrder = nextOrder;
+        draft.widgetOrder = moveWidgetGroupInOrder(
+          draft.widgetOrder,
+          key,
+          sameSpaceKeys[targetIdx],
+          draft.customWidgets
+        );
         renderWidgetOrderList(draft);
         await applySideSpaces({ appearance: draft });
         await render();

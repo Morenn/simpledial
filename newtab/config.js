@@ -37,6 +37,7 @@ export const defaultConfig = {
     lastSync: 0,
     lastSyncedLocalHash: "",
     lastSyncedExtraHashes: {},
+    lastSeenExtraUpdatedAt: {},
     webdavExtraConflicts: {},
     remoteChangeHeaderType: null, // null=unknown, false=unsupported, or 'sha256'|'etag'|'last-modified'
     lastSeenRemoteMarker: "",
@@ -105,6 +106,7 @@ export const defaultConfig = {
     faviconDebugLogging: false,
     deadLinkDebugLogging: false,
     syncDebugLogging: false,
+    webdavDebugLogging: false,
     startupTimingDebugLogging: false,
     i18nHotReload: false,
     faviconFetchLink: false,
@@ -119,6 +121,7 @@ const debugFlags = {
   favicon: false,
   deadLink: false,
   sync: false,
+  webdav: false,
   startupTiming: false
 };
 let debugModulePromise = null;
@@ -134,8 +137,9 @@ export function updateDebugLoggingFlags(advanced = {}) {
   debugFlags.favicon = Boolean(advanced?.faviconDebugLogging ?? advanced?.enableDebugLogging);
   debugFlags.deadLink = Boolean(advanced?.deadLinkDebugLogging ?? advanced?.enableDeadLinkDebugLogging);
   debugFlags.sync = Boolean(advanced?.syncDebugLogging);
+  debugFlags.webdav = Boolean(advanced?.webdavDebugLogging);
   debugFlags.startupTiming = Boolean(advanced?.startupTimingDebugLogging);
-  if (debugFlags.favicon || debugFlags.deadLink || debugFlags.sync || debugFlags.startupTiming) {
+  if (debugFlags.favicon || debugFlags.deadLink || debugFlags.sync || debugFlags.webdav || debugFlags.startupTiming) {
     void getDebugModule().then(mod => mod?.setDebugLoggingFlags?.(debugFlags));
   } else if (debugModulePromise) {
     void debugModulePromise.then(mod => mod?.setDebugLoggingFlags?.(debugFlags));
@@ -150,7 +154,9 @@ export function logDebug(channel, ...args) {
       ? "enable-dead-link-debug-logging"
       : flagKey === "startupTiming"
         ? "enable-startup-timing-debug-logging"
-        : "enable-sync-debug-logging";
+        : flagKey === "webdav"
+          ? "enable-webdav-debug-logging"
+          : "enable-sync-debug-logging";
   const checkboxChecked = typeof document !== "undefined" && !!document.getElementById(checkboxId)?.checked;
   if (!debugFlags[flagKey] && !checkboxChecked) return;
   void getDebugModule().then(mod => {
@@ -160,6 +166,9 @@ export function logDebug(channel, ...args) {
       mod.deadLinkDebugLog(...args);
     } else if (channel === "startupTiming") {
       mod.startupTimingDebugLog?.(...args);
+    } else if (channel === "webdav") {
+      mod.setWebdavDebugLoggingEnabled?.(true);
+      mod.webdavDebugLog?.(...args);
     } else if (channel === "syncMergeDiff") {
       mod.setSyncDebugLoggingEnabled?.(true);
       mod.syncMergeDiffDebugLog(...args);

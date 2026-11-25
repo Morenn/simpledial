@@ -623,6 +623,9 @@
   "syncDebugLogging": {
     "message": "Enable sync debug logging"
   },
+  "webdavDebugLogging": {
+    "message": "Enable WebDAV debug logging"
+  },
   "i18nHotReload": {
     "message": "Reload language files on page refresh (debug)"
   },

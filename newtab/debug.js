@@ -6,11 +6,13 @@
 let cachedDeadLinkDebugEnabled = false;
 let cachedFaviconDebugEnabled = false;
 let cachedSyncDebugEnabled = false;
+let cachedWebdavDebugEnabled = false;
 
 export function setDebugLoggingFlags(flags = {}) {
   if ("favicon" in flags) cachedFaviconDebugEnabled = !!flags.favicon;
   if ("deadLink" in flags) cachedDeadLinkDebugEnabled = !!flags.deadLink;
   if ("sync" in flags) cachedSyncDebugEnabled = !!flags.sync;
+  if ("webdav" in flags) cachedWebdavDebugEnabled = !!flags.webdav;
 }
 
 export function isDeadLinkDebugEnabled() {
@@ -35,6 +37,16 @@ export function isSyncDebugEnabled() {
   return cachedSyncDebugEnabled;
 }
 
+export function setWebdavDebugLoggingEnabled(enabled) {
+  cachedWebdavDebugEnabled = !!enabled;
+}
+
+export function isWebdavDebugEnabled() {
+  const checkbox = typeof document !== "undefined" ? document.getElementById("enable-webdav-debug-logging") : null;
+  if (checkbox?.checked) return true;
+  return cachedWebdavDebugEnabled;
+}
+
 export function deadLinkDebugLog(...args) {
   if (isDeadLinkDebugEnabled()) {
     console.log('%c[dead-link]', 'color: #f44336; font-weight: bold', ...args);
@@ -50,6 +62,12 @@ export function faviconDebugLog(...args) {
 export function syncDebugLog(...args) {
   if (isSyncDebugEnabled()) {
     console.log('%c[sync]', 'color: #4caf50; font-weight: bold', ...args);
+  }
+}
+
+export function webdavDebugLog(...args) {
+  if (isWebdavDebugEnabled()) {
+    console.log('%c[webdav]', 'color: #00bcd4; font-weight: bold', ...args);
   }
 }
 
