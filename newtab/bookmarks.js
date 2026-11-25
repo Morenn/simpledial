@@ -2053,8 +2053,8 @@ export async function handleBookmarkContext(action, el) {
     group.updatedAt = now;
 
     await saveState();
-    await syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
     render();
+    void syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
     return;
   }
 
@@ -2073,8 +2073,8 @@ export async function handleBookmarkContext(action, el) {
     }
 
     await saveState();
-    await syncWrite(state, { purgedIds: [item.id] });
     render();
+    void syncWrite(state, { purgedIds: [item.id] });
     return;
   }
 
@@ -2086,8 +2086,8 @@ export async function handleBookmarkContext(action, el) {
     if (parentStack) parentStack.updatedAt = now;
 
     await saveState();
-    await syncWrite();
     render();
+    void syncWrite();
     return;
   }
 
@@ -2105,8 +2105,8 @@ export async function handleBookmarkContext(action, el) {
     }
 
     await saveState();
-    await syncWrite();
     render();
+    void syncWrite();
     return;
   }
 
@@ -2222,6 +2222,6 @@ export async function moveBookmarkToGroup(bookmarkId, targetGroupId) {
   targetGroup.updatedAt = now;
 
   await saveState();
-  await syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
   render();
+  void syncWrite(state, purgedIds.length > 0 ? { purgedIds } : undefined);
 }

@@ -220,8 +220,8 @@ grpSave?.addEventListener("click", async () => {
 
     closeGroupModal();
     await saveState();
-    await syncWrite();
     render();
+    void syncWrite();
   } finally {
     isSavingGroup = false;
     grpSave.disabled = false;
@@ -481,9 +481,9 @@ function showGroupContextMenu(e, group, optionElement) {
     }
 
     await saveState();
-    await syncWrite();
     render();
     closeMenu();
+    void syncWrite();
   });
 
   const restoreBtn = document.createElement("div");
@@ -492,9 +492,9 @@ function showGroupContextMenu(e, group, optionElement) {
     restoreSoftDeletedGroupRecords(group);
 
     await saveState();
-    await syncWrite();
     render();
     closeMenu();
+    void syncWrite();
   });
 
   const deletePermanentBtn = document.createElement("div");
@@ -513,9 +513,9 @@ function showGroupContextMenu(e, group, optionElement) {
     await saveActiveGroupId(window.activeGroupId);
 
     await saveState();
-    await syncWrite(state, { purgedIds });
     render();
     closeMenu();
+    void syncWrite(state, { purgedIds });
   });
 
   // Show/hide buttons based on deleted status
@@ -739,16 +739,16 @@ export async function handleGroupContext(action, el) {
     }
 
     await saveState();
-    await syncWrite();
     render();
+    void syncWrite();
   }
 
   if (action === "restore") {
     restoreSoftDeletedGroupRecords(group);
 
     await saveState();
-    await syncWrite();
     render();
+    void syncWrite();
   }
 
   if (action === "delete-permanent") {
@@ -765,7 +765,7 @@ export async function handleGroupContext(action, el) {
     await saveActiveGroupId(window.activeGroupId);
 
     await saveState();
-    await syncWrite(state, { purgedIds });
     render();
+    void syncWrite(state, { purgedIds });
   }
 }
