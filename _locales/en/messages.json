@@ -1763,26 +1763,66 @@
   "securityForceChangeDesc": {
     "message": "Your vault password has expired. Set a new password to continue."
   },
-  "syncPausedStatus": { "message": "Sync paused due to issue" },
-  "syncStaleConflictLabel": { "message": "Sync paused: device out of date" },
-  "syncDbuidMismatchLabel": { "message": "Sync paused: different bookmark database detected" },
-  "syncDbuidMismatchTitle": { "message": "DBUID mismatch" },
-  "syncDbuidLocalLabel": { "message": "Local" },
-  "syncDbuidRemoteLabel": { "message": "Remote" },
-  "syncStaleClickToResolve": { "message": "Click to resolve" },
-  "syncMergeWizardTitle": { "message": "Sync Merge Wizard" },
-  "syncMergeWizardBtn": { "message": "Merge Wizard" },
-  "syncMergeWizardDesc": { "message": "This device has been offline longer than the deletion history window. Choose how to reconcile local-only items missing from remote." },
-  "syncMergeWizardLastSync": { "message": "This device last synced" },
-  "syncMergeWizardCutoff": { "message": "Remote deletion history cutoff" },
-  "syncMergeWizardSmart": { "message": "Smart Merge (Recommended)" },
-  "syncMergeWizardReview": { "message": "Review Ambiguous Items" },
-  "syncMergeWizardForceDownload": { "message": "Use Remote Copy" },
-  "syncMergeWizardForceUpload": { "message": "Use This Device's Copy" },
-  "syncMergeWizardApplySelected": { "message": "Apply Selected" },
-  "syncMergeWizardNoAmbiguous": { "message": "No ambiguous local-only items found." },
-  "selectAll": { "message": "Select All" },
-  "deselectAll": { "message": "Deselect All" },
+  "syncPausedStatus": {
+    "message": "Sync paused due to issue"
+  },
+  "syncStaleConflictLabel": {
+    "message": "Sync paused: device out of date"
+  },
+  "syncDbuidMismatchLabel": {
+    "message": "Sync paused: different bookmark database detected"
+  },
+  "syncDbuidMismatchTitle": {
+    "message": "DBUID mismatch"
+  },
+  "syncDbuidLocalLabel": {
+    "message": "Local"
+  },
+  "syncDbuidRemoteLabel": {
+    "message": "Remote"
+  },
+  "syncStaleClickToResolve": {
+    "message": "Click to resolve"
+  },
+  "syncMergeWizardTitle": {
+    "message": "Sync Merge Wizard"
+  },
+  "syncMergeWizardBtn": {
+    "message": "Merge Wizard"
+  },
+  "syncMergeWizardDesc": {
+    "message": "This device has been offline longer than the deletion history window. Choose how to reconcile local-only items missing from remote."
+  },
+  "syncMergeWizardLastSync": {
+    "message": "This device last synced"
+  },
+  "syncMergeWizardCutoff": {
+    "message": "Remote deletion history cutoff"
+  },
+  "syncMergeWizardSmart": {
+    "message": "Smart Merge (Recommended)"
+  },
+  "syncMergeWizardReview": {
+    "message": "Review Ambiguous Items"
+  },
+  "syncMergeWizardForceDownload": {
+    "message": "Use Remote Copy"
+  },
+  "syncMergeWizardForceUpload": {
+    "message": "Use This Device's Copy"
+  },
+  "syncMergeWizardApplySelected": {
+    "message": "Apply Selected"
+  },
+  "syncMergeWizardNoAmbiguous": {
+    "message": "No ambiguous local-only items found."
+  },
+  "selectAll": {
+    "message": "Select All"
+  },
+  "deselectAll": {
+    "message": "Deselect All"
+  },
   "securityPostponeBtn": {
     "message": "Postpone"
   },
@@ -2124,5 +2164,62 @@
   },
   "syncForceDownloadConfirm": {
     "message": "Overwrite & Download"
+  },
+  "backupDevice": {
+    "message": "Device"
+  },
+  "backupThisDevice": {
+    "message": "This device"
+  },
+  "syncWebdavDeviceNameLabel": {
+    "message": "Device name (for synced backups):"
+  },
+  "syncWebdavDeviceNamePlaceholder": {
+    "message": "e.g. Work Laptop"
+  },
+  "deleteRemoteBackup": {
+    "message": "Delete"
+  },
+  "backupNotFoundOnRemoteIndexUpdated": {
+    "message": "Backup not found on remote; index file updated."
+  },
+  "fetchRemoteBackups": {
+    "message": "☁️ Fetch remote backups"
+  },
+  "fetchingRemoteBackups": {
+    "message": "Fetching remote backups..."
+  },
+  "fetchRemoteBackupsDone": {
+    "message": "Remote backups updated."
+  },
+  "fetchRemoteBackupsFailed": {
+    "message": "Failed to fetch remote backups."
+  },
+  "backupLocationLocal": {
+    "message": "Local"
+  },
+  "backupLocationRemote": {
+    "message": "Remote (WebDAV)"
+  },
+  "backupsRemoteRetentionDays": {
+    "message": "Remote retention period (days):"
+  },
+  "syncWebdavResolveConflictBtn": {
+    "message": "⚠️ Resolve"
+  },
+  "syncWebdavExtraConflictTitle": {
+    "message": "⚠️ Resolve Sync Conflict"
+  },
+  "syncWebdavExtraConflictDesc": {
+    "message": "Both local and remote versions differ for {part}. Sync for this part was paused automatically."
+  },
+  "syncWebdavExtraUseRemote": {
+    "message": "⬇️ Use Remote"
+  },
+  "syncWebdavExtraUseLocal": {
+    "message": "⬆️ Use Local"
+  },
+  "syncWebdavExtraKeepDisabled": {
+    "message": "⏸️ Keep Disabled"
   }
 }

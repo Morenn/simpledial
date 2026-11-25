@@ -1751,26 +1751,66 @@
   "securityForceChangeDesc": {
     "message": "Holvisi salasana on vanhentunut. Aseta uusi salasana jatkaaksesi."
   },
-  "syncPausedStatus": { "message": "Synkronointi keskeytetty ongelman vuoksi" },
-  "syncStaleConflictLabel": { "message": "Synkronointi keskeytetty: laite vanhentunut" },
-  "syncDbuidMismatchLabel": { "message": "Synkronointi keskeytetty: eri kirjanmerkkitietokanta havaittu" },
-  "syncDbuidMismatchTitle": { "message": "DBUID-ristiriita" },
-  "syncDbuidLocalLabel": { "message": "Paikallinen" },
-  "syncDbuidRemoteLabel": { "message": "Etä" },
-  "syncStaleClickToResolve": { "message": "Ratkaise napsauttamalla" },
-  "syncMergeWizardTitle": { "message": "Synkronoinnin yhdistämistoiminto" },
-  "syncMergeWizardBtn": { "message": "Yhdistämistoiminto" },
-  "syncMergeWizardDesc": { "message": "Tämä laite on ollut offline-tilassa poistohistoriaa pidempään. Valitse, miten vain paikalliset kohteet käsitellään." },
-  "syncMergeWizardLastSync": { "message": "Tämän laitteen viimeisin synkronointi" },
-  "syncMergeWizardCutoff": { "message": "Etäpoistohistorian raja" },
-  "syncMergeWizardSmart": { "message": "Älykäs yhdistäminen (Suositeltu)" },
-  "syncMergeWizardReview": { "message": "Tarkista epäselvät kohteet" },
-  "syncMergeWizardForceDownload": { "message": "Käytä etäkopiota" },
-  "syncMergeWizardForceUpload": { "message": "Käytä tämän laitteen kopiota" },
-  "syncMergeWizardApplySelected": { "message": "Käytä valittuja" },
-  "syncMergeWizardNoAmbiguous": { "message": "Epäselviä paikallisia kohteita ei löytynyt." },
-  "selectAll": { "message": "Valitse kaikki" },
-  "deselectAll": { "message": "Poista valinnat" },
+  "syncPausedStatus": {
+    "message": "Synkronointi keskeytetty ongelman vuoksi"
+  },
+  "syncStaleConflictLabel": {
+    "message": "Synkronointi keskeytetty: laite vanhentunut"
+  },
+  "syncDbuidMismatchLabel": {
+    "message": "Synkronointi keskeytetty: eri kirjanmerkkitietokanta havaittu"
+  },
+  "syncDbuidMismatchTitle": {
+    "message": "DBUID-ristiriita"
+  },
+  "syncDbuidLocalLabel": {
+    "message": "Paikallinen"
+  },
+  "syncDbuidRemoteLabel": {
+    "message": "Etä"
+  },
+  "syncStaleClickToResolve": {
+    "message": "Ratkaise napsauttamalla"
+  },
+  "syncMergeWizardTitle": {
+    "message": "Synkronoinnin yhdistämistoiminto"
+  },
+  "syncMergeWizardBtn": {
+    "message": "Yhdistämistoiminto"
+  },
+  "syncMergeWizardDesc": {
+    "message": "Tämä laite on ollut offline-tilassa poistohistoriaa pidempään. Valitse, miten vain paikalliset kohteet käsitellään."
+  },
+  "syncMergeWizardLastSync": {
+    "message": "Tämän laitteen viimeisin synkronointi"
+  },
+  "syncMergeWizardCutoff": {
+    "message": "Etäpoistohistorian raja"
+  },
+  "syncMergeWizardSmart": {
+    "message": "Älykäs yhdistäminen (Suositeltu)"
+  },
+  "syncMergeWizardReview": {
+    "message": "Tarkista epäselvät kohteet"
+  },
+  "syncMergeWizardForceDownload": {
+    "message": "Käytä etäkopiota"
+  },
+  "syncMergeWizardForceUpload": {
+    "message": "Käytä tämän laitteen kopiota"
+  },
+  "syncMergeWizardApplySelected": {
+    "message": "Käytä valittuja"
+  },
+  "syncMergeWizardNoAmbiguous": {
+    "message": "Epäselviä paikallisia kohteita ei löytynyt."
+  },
+  "selectAll": {
+    "message": "Valitse kaikki"
+  },
+  "deselectAll": {
+    "message": "Poista valinnat"
+  },
   "securityPostponeBtn": {
     "message": "Lykkää"
   },
@@ -2118,5 +2158,62 @@
   },
   "syncForceDownloadConfirm": {
     "message": "Korvaa ja lataa"
+  },
+  "backupDevice": {
+    "message": "Laite"
+  },
+  "backupThisDevice": {
+    "message": "Tämä laite"
+  },
+  "syncWebdavDeviceNameLabel": {
+    "message": "Laitteen nimi (synkronoiduille varmuuskopioille):"
+  },
+  "syncWebdavDeviceNamePlaceholder": {
+    "message": "esim. Työläppäri"
+  },
+  "deleteRemoteBackup": {
+    "message": "Poista"
+  },
+  "backupNotFoundOnRemoteIndexUpdated": {
+    "message": "Varmuuskopiota ei löytynyt etäpalvelimelta; indeksitiedosto päivitettiin."
+  },
+  "fetchRemoteBackups": {
+    "message": "☁️ Hae etävarmuuskopiot"
+  },
+  "fetchingRemoteBackups": {
+    "message": "Haetaan etävarmuuskopioita..."
+  },
+  "fetchRemoteBackupsDone": {
+    "message": "Etävarmuuskopiot päivitetty."
+  },
+  "fetchRemoteBackupsFailed": {
+    "message": "Etävarmuuskopioiden haku epäonnistui."
+  },
+  "backupLocationLocal": {
+    "message": "Paikallinen"
+  },
+  "backupLocationRemote": {
+    "message": "Etä (WebDAV)"
+  },
+  "backupsRemoteRetentionDays": {
+    "message": "Etäsäilytysaika (päivää):"
+  },
+  "syncWebdavResolveConflictBtn": {
+    "message": "⚠️ Ratkaise"
+  },
+  "syncWebdavExtraConflictTitle": {
+    "message": "⚠️ Ratkaise synkronointiristiriita"
+  },
+  "syncWebdavExtraConflictDesc": {
+    "message": "Paikallinen ja etäversio osalle {part} eroavat toisistaan. Tämän osan synkronointi keskeytettiin automaattisesti."
+  },
+  "syncWebdavExtraUseRemote": {
+    "message": "⬇️ Käytä etäversiota"
+  },
+  "syncWebdavExtraUseLocal": {
+    "message": "⬆️ Käytä paikallista"
+  },
+  "syncWebdavExtraKeepDisabled": {
+    "message": "⏸️ Pidä pois käytöstä"
   }
 }

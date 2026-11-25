@@ -375,6 +375,7 @@
                   <input type="checkbox" id="sync-webdav-widgets" checked>
                   <span data-i18n="syncWebdavWidgetsFile">Custom Widgets (widgets.json)</span>
                 </label>
+                <button type="button" id="sync-webdav-widgets-conflict-btn" class="icon-btn danger hidden" data-i18n="syncWebdavResolveConflictBtn">⚠️ Resolve</button>
                 <select id="sync-webdav-widgets-mode" class="sync-webdav-part-mode" aria-label="Custom Widgets sync mode">
                   <option value="auto" data-i18n="syncWebdavPartAuto">Auto</option>
                   <option value="manual" data-i18n="syncWebdavPartManual">Manual</option>
@@ -385,6 +386,7 @@
                   <input type="checkbox" id="sync-webdav-config" checked>
                   <span data-i18n="syncWebdavConfigFile">Settings (config.json)</span>
                 </label>
+                <button type="button" id="sync-webdav-config-conflict-btn" class="icon-btn danger hidden" data-i18n="syncWebdavResolveConflictBtn">⚠️ Resolve</button>
                 <select id="sync-webdav-config-mode" class="sync-webdav-part-mode" aria-label="Settings sync mode">
                   <option value="auto" data-i18n="syncWebdavPartAuto">Auto</option>
                   <option value="manual" data-i18n="syncWebdavPartManual">Manual</option>
@@ -405,11 +407,16 @@
                   <input type="checkbox" id="sync-webdav-background">
                   <span data-i18n="syncWebdavBackgroundFile">Background (background.json)</span>
                 </label>
+                <button type="button" id="sync-webdav-background-conflict-btn" class="icon-btn danger hidden" data-i18n="syncWebdavResolveConflictBtn">⚠️ Resolve</button>
                 <select id="sync-webdav-background-mode" class="sync-webdav-part-mode" aria-label="Background sync mode">
                   <option value="auto" data-i18n="syncWebdavPartAuto">Auto</option>
                   <option value="manual" data-i18n="syncWebdavPartManual">Manual</option>
                 </select>
               </div>
+              <label for="sync-webdav-device-name" style="margin-top: 8px;">
+                <span data-i18n="syncWebdavDeviceNameLabel">Device name (for synced backups):</span>
+                <input type="text" id="sync-webdav-device-name" maxlength="64" placeholder="e.g. Work Laptop" data-i18n-placeholder="syncWebdavDeviceNamePlaceholder" autocomplete="off">
+              </label>
             </div>
             <div class="appearance-card-footer">
               <div class="sync-webdav-manual-actions">
@@ -434,6 +441,10 @@
               <label for="backup-retention-days" data-i18n="backupsRetentionDays">Retention period (days):</label>
               <input type="number" id="backup-retention-days" class="appearance-number-input" min="1" max="365" value="14">
             </div>
+            <div class="appearance-slider-row hidden" id="backup-remote-retention-row">
+              <label for="backup-remote-retention-days" data-i18n="backupsRemoteRetentionDays">Remote retention period (days):</label>
+              <input type="number" id="backup-remote-retention-days" class="appearance-number-input" min="1" max="365" value="14">
+            </div>
             <div class="appearance-slider-row">
               <label for="backup-frequency-hours" data-i18n="backupsFrequency">Backup frequency (hours):</label>
               <input type="number" id="backup-frequency-hours" class="appearance-number-input" min="1" max="720" value="24">
@@ -444,6 +455,7 @@
             <div class="tile-mass-color-actions">
               <button type="button" id="backup-create-now" class="icon-btn primary" data-i18n="createBackupNow">💾 Create backup now</button>
               <button type="button" id="backup-upload-restore-btn" class="icon-btn" data-i18n="uploadRestoreBackup">📤 Upload &amp; Restore</button>
+              <button type="button" id="backup-fetch-remote-btn" class="icon-btn hidden" data-i18n="fetchRemoteBackups">☁️ Fetch remote backups</button>
               <input type="file" id="backup-upload-restore-file" accept=".json,application/json" style="display: none;">
             </div>
             <div id="backup-status" class="status"></div>
@@ -463,6 +475,7 @@
                 <th data-i18n="backupAddonVersion">Version</th>
                 <th data-i18n="backupFileSize">File size</th>
                 <th data-i18n="backupContentSummary">Content</th>
+                <th id="backups-device-col-header" class="hidden" data-i18n="backupDevice">Device</th>
                 <th data-i18n="backupActions">Actions</th>
               </tr>
             </thead>
@@ -1257,6 +1270,23 @@
       </div>
       <div class="modal-buttons">
         <button type="button" id="sync-merge-wizard-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WebDAV Extra Part Conflict Modal -->
+  <div id="sync-webdav-extra-conflict-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sync-webdav-extra-conflict-title">
+    <div class="modal-content sync-merge-wizard-modal-content">
+      <h2 id="sync-webdav-extra-conflict-title" data-i18n="syncWebdavExtraConflictTitle">⚠️ Resolve Sync Conflict</h2>
+      <p id="sync-webdav-extra-conflict-desc" class="appearance-card-desc"></p>
+      <div id="sync-webdav-extra-conflict-status" class="status"></div>
+      <div class="sync-merge-wizard-actions">
+        <button type="button" id="sync-webdav-extra-use-remote" class="icon-btn primary" data-i18n="syncWebdavExtraUseRemote">⬇️ Use Remote</button>
+        <button type="button" id="sync-webdav-extra-use-local" class="icon-btn danger" data-i18n="syncWebdavExtraUseLocal">⬆️ Use Local</button>
+        <button type="button" id="sync-webdav-extra-keep-disabled" class="icon-btn" data-i18n="syncWebdavExtraKeepDisabled">⏸️ Keep Disabled</button>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" id="sync-webdav-extra-cancel" class="icon-btn" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>

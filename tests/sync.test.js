@@ -841,6 +841,7 @@ test("WebDAV folder sync tests permissions and syncs bookmarks, config, widgets,
       return makeRes(200, method === "HEAD" ? "" : files.get(url));
     }
     if (method === "DELETE") {
+      if (!files.has(url)) return makeRes(404);
       files.delete(url);
       return makeRes(204);
     }
@@ -930,6 +931,67 @@ test("WebDAV folder sync tests permissions and syncs bookmarks, config, widgets,
   assert.equal(savedBg.data.backgroundImage, "data:image/png;base64,AAAA");
   const savedIndex = JSON.parse(files.get("https://cloud.example/dav/SimpleDial/backups/index.json"));
   assert.deepEqual(savedIndex.data.bookmarks.map(b => b.filename), ["bm-new.json"]);
+
+  // Remote-only backup in index.json is indexed locally without downloading payload until requested
+  files.set(
+    "https://cloud.example/dav/SimpleDial/backups/bookmarks/bm-remote.json",
+    JSON.stringify({ groups: [group([item("b_rem", "Remote", 300)], "g_rem", 300)], tags: [] })
+  );
+  files.set(
+    "https://cloud.example/dav/SimpleDial/backups/index.json",
+    JSON.stringify({
+      updatedAt: nowMs + 1000,
+      data: {
+        bookmarks: [
+          ...savedIndex.data.bookmarks,
+          { filename: "bm-remote.json", timestamp: nowMs + 500, sizeBytes: 120, deviceId: "dev-2", deviceName: "Other PC" }
+        ],
+        config: []
+      }
+    })
+  );
+  await syncWebdavFolderExtras(null, { includeManual: true });
+  const localIndex = localStorage.get("myspeeddial-backups") || [];
+  const remoteIndexed = localIndex.find(b => b.filename === "bm-remote.json");
+  assert.ok(remoteIndexed, "remote backup should be indexed locally");
+  assert.equal(remoteIndexed.remoteOnly, true);
+  assert.equal("data" in remoteIndexed, false);
+  const { fetchRemoteWebdavBackupData, deleteRemoteWebdavBackup } = await import("../newtab/sync.js");
+  const downloadedData = await fetchRemoteWebdavBackupData("bookmarks", "bm-remote.json");
+  assert.ok(downloadedData.includes("b_rem"));
+
+  // Deleting an existing remote backup removes file and updates index.json
+  const delExisting = await deleteRemoteWebdavBackup("bookmarks", "bm-remote.json");
+  assert.equal(delExisting.ok, true);
+  assert.equal(delExisting.notFoundOnRemote, false);
+  assert.equal(files.has("https://cloud.example/dav/SimpleDial/backups/bookmarks/bm-remote.json"), false);
+  const indexAfterDel = JSON.parse(files.get("https://cloud.example/dav/SimpleDial/backups/index.json"));
+  assert.equal(indexAfterDel.data.bookmarks.some(b => b.filename === "bm-remote.json"), false);
+
+  // Deleting a remote backup that is already missing (404) still updates index.json and flags notFoundOnRemote
+  files.set(
+    "https://cloud.example/dav/SimpleDial/backups/index.json",
+    JSON.stringify({
+      updatedAt: nowMs + 2000,
+      data: {
+        bookmarks: [
+          ...indexAfterDel.data.bookmarks,
+          { filename: "bm-gone.json", timestamp: nowMs + 600, sizeBytes: 50, deviceId: "dev-2", deviceName: "Other PC" }
+        ],
+        config: []
+      }
+    })
+  );
+  const delMissing = await deleteRemoteWebdavBackup("bookmarks", "bm-gone.json");
+  assert.equal(delMissing.ok, true);
+  assert.equal(delMissing.notFoundOnRemote, true);
+  const indexAfterMissing = JSON.parse(files.get("https://cloud.example/dav/SimpleDial/backups/index.json"));
+  assert.equal(indexAfterMissing.data.bookmarks.some(b => b.filename === "bm-gone.json"), false);
+
+  // Next sync prunes remoteOnly local index entries that are no longer in remote index.json
+  await syncWebdavFolderExtras(null, { includeManual: true });
+  const localAfterPrune = localStorage.get("myspeeddial-backups") || [];
+  assert.equal(localAfterPrune.some(b => b.filename === "bm-remote.json"), false);
 
   // Nested folder path with 409 on leaf MKCOL falls back to segment-by-segment MKCOL
   const createdDirs = new Set();
@@ -1804,4 +1866,90 @@ test("selective stale resolution keeps parent group and parent stack when only c
   assert.equal(keptGroup.items.length, 1);
   assert.equal(keptGroup.items[0].id, "stack_local");
   assert.deepEqual(keptGroup.items[0].children.map(c => c.id), ["b_child"]);
+});
+
+test("WebDAV extra part conflict pauses conflicting part and resolves via remote, local, or keep-disabled", async () => {
+  const { resolveWebdavExtraConflict } = await import("../newtab/sync.js");
+  const files = new Map();
+  files.set("https://cloud.example/dav/SimpleDial/bookmarks-db.json", JSON.stringify({ groups: [], tags: [] }));
+  files.set("https://cloud.example/dav/SimpleDial/config.json", JSON.stringify({
+    updatedAt: 5000,
+    data: { appearance: { theme: "spring" }, housekeeper: {}, backups: {} }
+  }));
+  files.set("https://cloud.example/dav/SimpleDial/widgets.json", JSON.stringify({
+    updatedAt: 5000,
+    data: { customWidgets: [{ id: "w_remote", type: "custom-search", name: "Remote" }] }
+  }));
+
+  fetchRemote = async (url, options = {}) => {
+    const method = (options.method || "GET").toUpperCase();
+    const makeRes = (status, body = "") => ({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: "",
+      redirected: false,
+      url,
+      headers: new Map([["content-type", "application/json"]]),
+      text: async () => body
+    });
+    if (method === "GET" || method === "HEAD") {
+      return files.has(url) ? makeRes(200, method === "HEAD" ? "" : files.get(url)) : makeRes(404);
+    }
+    if (method === "PUT") {
+      files.set(url, options.body || "");
+      return makeRes(201);
+    }
+    return makeRes(405);
+  };
+
+  const folderCfg = {
+    sync: {
+      enabled: true,
+      type: "webdav",
+      webdavMode: "folder",
+      webdavFolderPath: "SimpleDial",
+      serverUrl: "https://cloud.example/dav",
+      authMode: "basic",
+      username: "alice",
+      password: "secret",
+      intervalMode: "immediate",
+      webdavSyncConfig: true,
+      webdavSyncWidgets: true,
+      webdavSyncBackground: false,
+      webdavSyncBackups: false,
+      lastSyncedExtraHashes: {},
+      webdavExtraConflicts: {}
+    },
+    appearance: {
+      theme: "winter",
+      customWidgets: [{ id: "w_local", type: "custom-search", name: "Local" }]
+    }
+  };
+  setClient([], folderCfg, []);
+
+  const syncRes = await syncNow();
+  assert.equal(syncRes.ok, true);
+
+  const afterConflict = readStoredConfig();
+  assert.equal(afterConflict.sync.webdavSyncConfig, false);
+  assert.equal(afterConflict.sync.webdavSyncWidgets, false);
+  assert.ok(afterConflict.sync.webdavExtraConflicts.config);
+  assert.ok(afterConflict.sync.webdavExtraConflicts.widgets);
+  assert.equal(afterConflict.appearance.theme, "winter");
+
+  // Resolve config with remote -> applies remote theme and re-enables webdavSyncConfig
+  const resConfig = await resolveWebdavExtraConflict("config", "remote");
+  assert.equal(resConfig.ok, true);
+  const afterConfigResolve = readStoredConfig();
+  assert.equal(afterConfigResolve.appearance.theme, "spring");
+  assert.equal(afterConfigResolve.sync.webdavSyncConfig, true);
+  assert.equal(afterConfigResolve.sync.webdavExtraConflicts.config, undefined);
+
+  // Resolve widgets with keep-disabled -> clears conflict and keeps webdavSyncWidgets disabled
+  const resWidgets = await resolveWebdavExtraConflict("widgets", "keep-disabled");
+  assert.equal(resWidgets.ok, true);
+  const afterWidgetsResolve = readStoredConfig();
+  assert.equal(afterWidgetsResolve.sync.webdavSyncWidgets, false);
+  assert.equal(afterWidgetsResolve.sync.webdavExtraConflicts.widgets, undefined);
+  assert.equal(afterWidgetsResolve.appearance.customWidgets[0].id, "w_local");
 });

@@ -1751,26 +1751,66 @@
   "securityForceChangeDesc": {
     "message": "Термін дії пароля сховища минув. Встановіть новий пароль, щоб продовжити."
   },
-  "syncPausedStatus": { "message": "Синхронізацію призупинено через проблему" },
-  "syncStaleConflictLabel": { "message": "Синхронізацію призупинено: пристрій застарів" },
-  "syncDbuidMismatchLabel": { "message": "Синхронізацію призупинено: виявлено іншу базу закладок" },
-  "syncDbuidMismatchTitle": { "message": "Невідповідність DBUID" },
-  "syncDbuidLocalLabel": { "message": "Локальний" },
-  "syncDbuidRemoteLabel": { "message": "Віддалений" },
-  "syncStaleClickToResolve": { "message": "Натисніть, щоб вирішити" },
-  "syncMergeWizardTitle": { "message": "Майстер об'єднання синхронізації" },
-  "syncMergeWizardBtn": { "message": "Майстер об'єднання" },
-  "syncMergeWizardDesc": { "message": "Цей пристрій був офлайн довше за вікно історії видалень. Оберіть, як узгодити локальні елементи, відсутні на сервері." },
-  "syncMergeWizardLastSync": { "message": "Остання синхронізація пристрою" },
-  "syncMergeWizardCutoff": { "message": "Межа віддаленої історії видалень" },
-  "syncMergeWizardSmart": { "message": "Розумне об'єднання (Рекомендовано)" },
-  "syncMergeWizardReview": { "message": "Переглянути неоднозначні елементи" },
-  "syncMergeWizardForceDownload": { "message": "Використати віддалену копію" },
-  "syncMergeWizardForceUpload": { "message": "Використати копію цього пристрою" },
-  "syncMergeWizardApplySelected": { "message": "Застосувати вибране" },
-  "syncMergeWizardNoAmbiguous": { "message": "Неоднозначних локальних елементів не знайдено." },
-  "selectAll": { "message": "Вибрати все" },
-  "deselectAll": { "message": "Зняти виділення" },
+  "syncPausedStatus": {
+    "message": "Синхронізацію призупинено через проблему"
+  },
+  "syncStaleConflictLabel": {
+    "message": "Синхронізацію призупинено: пристрій застарів"
+  },
+  "syncDbuidMismatchLabel": {
+    "message": "Синхронізацію призупинено: виявлено іншу базу закладок"
+  },
+  "syncDbuidMismatchTitle": {
+    "message": "Невідповідність DBUID"
+  },
+  "syncDbuidLocalLabel": {
+    "message": "Локальний"
+  },
+  "syncDbuidRemoteLabel": {
+    "message": "Віддалений"
+  },
+  "syncStaleClickToResolve": {
+    "message": "Натисніть, щоб вирішити"
+  },
+  "syncMergeWizardTitle": {
+    "message": "Майстер об'єднання синхронізації"
+  },
+  "syncMergeWizardBtn": {
+    "message": "Майстер об'єднання"
+  },
+  "syncMergeWizardDesc": {
+    "message": "Цей пристрій був офлайн довше за вікно історії видалень. Оберіть, як узгодити локальні елементи, відсутні на сервері."
+  },
+  "syncMergeWizardLastSync": {
+    "message": "Остання синхронізація пристрою"
+  },
+  "syncMergeWizardCutoff": {
+    "message": "Межа віддаленої історії видалень"
+  },
+  "syncMergeWizardSmart": {
+    "message": "Розумне об'єднання (Рекомендовано)"
+  },
+  "syncMergeWizardReview": {
+    "message": "Переглянути неоднозначні елементи"
+  },
+  "syncMergeWizardForceDownload": {
+    "message": "Використати віддалену копію"
+  },
+  "syncMergeWizardForceUpload": {
+    "message": "Використати копію цього пристрою"
+  },
+  "syncMergeWizardApplySelected": {
+    "message": "Застосувати вибране"
+  },
+  "syncMergeWizardNoAmbiguous": {
+    "message": "Неоднозначних локальних елементів не знайдено."
+  },
+  "selectAll": {
+    "message": "Вибрати все"
+  },
+  "deselectAll": {
+    "message": "Зняти виділення"
+  },
   "securityPostponeBtn": {
     "message": "Відкласти"
   },
@@ -2118,5 +2158,62 @@
   },
   "syncForceDownloadConfirm": {
     "message": "Перезаписати і завантажити"
+  },
+  "backupDevice": {
+    "message": "Пристрій"
+  },
+  "backupThisDevice": {
+    "message": "Цей пристрій"
+  },
+  "syncWebdavDeviceNameLabel": {
+    "message": "Назва пристрою (для синхронізованих резервних копій):"
+  },
+  "syncWebdavDeviceNamePlaceholder": {
+    "message": "напр. Робочий ноутбук"
+  },
+  "deleteRemoteBackup": {
+    "message": "Видалити"
+  },
+  "backupNotFoundOnRemoteIndexUpdated": {
+    "message": "Резервну копію не знайдено на сервері; файл індексу оновлено."
+  },
+  "fetchRemoteBackups": {
+    "message": "☁️ Отримати віддалені копії"
+  },
+  "fetchingRemoteBackups": {
+    "message": "Отримання віддалених резервних копій..."
+  },
+  "fetchRemoteBackupsDone": {
+    "message": "Віддалені резервні копії оновлено."
+  },
+  "fetchRemoteBackupsFailed": {
+    "message": "Не вдалося отримати віддалені резервні копії."
+  },
+  "backupLocationLocal": {
+    "message": "Локальна"
+  },
+  "backupLocationRemote": {
+    "message": "Віддалена (WebDAV)"
+  },
+  "backupsRemoteRetentionDays": {
+    "message": "Віддалений термін зберігання (днів):"
+  },
+  "syncWebdavResolveConflictBtn": {
+    "message": "⚠️ Вирішити"
+  },
+  "syncWebdavExtraConflictTitle": {
+    "message": "⚠️ Вирішити конфлікт синхронізації"
+  },
+  "syncWebdavExtraConflictDesc": {
+    "message": "Локальна та віддалена версії для {part} відрізняються. Синхронізацію цієї частини автоматично призупинено."
+  },
+  "syncWebdavExtraUseRemote": {
+    "message": "⬇️ Використати віддалену"
+  },
+  "syncWebdavExtraUseLocal": {
+    "message": "⬆️ Використати локальну"
+  },
+  "syncWebdavExtraKeepDisabled": {
+    "message": "⏸️ Залишити вимкненою"
   }
 }

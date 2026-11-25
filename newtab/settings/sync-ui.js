@@ -1,6 +1,7 @@
 import { state, saveState } from "../state.js";
 import { loadConfig, saveConfig, logDebug } from "../config.js";
-import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount, getStaleDeviceConflictDetails, resolveStaleDeviceConflict, clearSyncPauseState, getLocalDbUid } from "../sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount, getStaleDeviceConflictDetails, resolveStaleDeviceConflict, clearSyncPauseState, getLocalDbUid, resolveWebdavExtraConflict } from "../sync.js";
+import { getDeviceInfo, saveDeviceName } from "../backup.js";
 import { t } from "../i18n.js";
 import {
   importRawKey,
@@ -42,13 +43,27 @@ const syncWebdavBackupsMode = document.getElementById("sync-webdav-backups-mode"
 const syncWebdavBackgroundMode = document.getElementById("sync-webdav-background-mode");
 const syncWebdavManualBtn = document.getElementById("sync-webdav-manual-btn");
 const syncWebdavManualStatus = document.getElementById("sync-webdav-manual-status");
+const syncWebdavDeviceName = document.getElementById("sync-webdav-device-name");
 
 const WEBDAV_EXTRA_PARTS = [
-  { checkbox: syncWebdavWidgets, modeSelect: syncWebdavWidgetsMode, syncField: "webdavSyncWidgets", modeField: "webdavWidgetsMode" },
-  { checkbox: syncWebdavConfig, modeSelect: syncWebdavConfigMode, syncField: "webdavSyncConfig", modeField: "webdavConfigMode" },
-  { checkbox: syncWebdavBackups, modeSelect: syncWebdavBackupsMode, syncField: "webdavSyncBackups", modeField: "webdavBackupsMode" },
-  { checkbox: syncWebdavBackground, modeSelect: syncWebdavBackgroundMode, syncField: "webdavSyncBackground", modeField: "webdavBackgroundMode" }
+  { key: "widgets", checkbox: syncWebdavWidgets, modeSelect: syncWebdavWidgetsMode, syncField: "webdavSyncWidgets", modeField: "webdavWidgetsMode", conflictBtn: document.getElementById("sync-webdav-widgets-conflict-btn"), labelKey: "syncWebdavWidgetsFile", fallbackLabel: "Custom Widgets (widgets.json)" },
+  { key: "config", checkbox: syncWebdavConfig, modeSelect: syncWebdavConfigMode, syncField: "webdavSyncConfig", modeField: "webdavConfigMode", conflictBtn: document.getElementById("sync-webdav-config-conflict-btn"), labelKey: "syncWebdavConfigFile", fallbackLabel: "Settings (config.json)" },
+  { key: "backups", checkbox: syncWebdavBackups, modeSelect: syncWebdavBackupsMode, syncField: "webdavSyncBackups", modeField: "webdavBackupsMode" },
+  { key: "background", checkbox: syncWebdavBackground, modeSelect: syncWebdavBackgroundMode, syncField: "webdavSyncBackground", modeField: "webdavBackgroundMode", conflictBtn: document.getElementById("sync-webdav-background-conflict-btn"), labelKey: "syncWebdavBackgroundFile", fallbackLabel: "Background (background.json)" }
 ];
+
+function updateWebdavExtraConflictButtons(config) {
+  const conflicts = config?.sync?.webdavExtraConflicts || {};
+  for (const part of WEBDAV_EXTRA_PARTS) {
+    if (!part.conflictBtn || !part.key) continue;
+    const hasConflict = Boolean(conflicts[part.key]);
+    part.conflictBtn.classList.toggle("hidden", !hasConflict);
+    if (part.checkbox && hasConflict) {
+      part.checkbox.checked = !!config?.sync?.[part.syncField];
+    }
+  }
+  updateWebdavPartModeStates();
+}
 
 function updateWebdavPartModeStates() {
   let hasManualPart = false;
@@ -412,6 +427,12 @@ export async function populateSyncSettings(config) {
     }
   }
   updateWebdavPartModeStates();
+  updateWebdavExtraConflictButtons(config);
+  if (syncWebdavDeviceName) {
+    getDeviceInfo().then(info => {
+      syncWebdavDeviceName.value = info.deviceName || "";
+    }).catch(() => {});
+  }
   if (syncAuthMode) syncAuthMode.value = config.sync.authMode || (config.sync.password ? "basic" : "none");
   syncRadioGroupFromModel(syncType, syncTypeChoices);
   syncRadioGroupFromModel(syncWebdavMode, syncWebdavModeChoices);
@@ -483,9 +504,13 @@ function applyServerUrlChange(config, rawNextUrl) {
   config.sync.lastSeenRemoteMarker = "";
   config.sync.remoteChangeHeaderType = null;
   config.sync.lastMarkerCheckUrl = "";
+  config.sync.lastSyncedExtraHashes = {};
+  config.sync.webdavExtraConflicts = {};
+  config.sync.lastFolderExtrasSync = 0;
   if (syncEnable) syncEnable.checked = false;
   updateSyncNowButtonDisabledState();
   updateManualSyncButtonVisibility(config);
+  updateWebdavExtraConflictButtons(config);
   return true;
 }
 
@@ -552,6 +577,13 @@ export function initSyncSettings({ persistSettings }) {
   if (syncWebdavMode) {
     syncWebdavMode.addEventListener("change", updateSyncFields);
   }
+  if (syncWebdavDeviceName) {
+    syncWebdavDeviceName.addEventListener("change", () => {
+      saveDeviceName(syncWebdavDeviceName.value).then(info => {
+        syncWebdavDeviceName.value = info.deviceName || "";
+      }).catch(() => {});
+    });
+  }
 
   if (syncImmediate) {
     syncImmediate.addEventListener("change", updateChoiceOptionStates);
@@ -571,6 +603,11 @@ export function initSyncSettings({ persistSettings }) {
   for (const part of WEBDAV_EXTRA_PARTS) {
     part.checkbox?.addEventListener("change", updateWebdavPartModeStates);
     part.modeSelect?.addEventListener("change", updateWebdavPartModeStates);
+    if (part.conflictBtn && part.key) {
+      part.conflictBtn.addEventListener("click", () => {
+        void openWebdavExtraConflictModal(part.key);
+      });
+    }
   }
   if (syncUsername) syncUsername.addEventListener("input", markCredentialsTouched);
   if (syncPassword) syncPassword.addEventListener("input", markCredentialsTouched);
@@ -878,7 +915,10 @@ export function initSyncSettings({ persistSettings }) {
 
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
     window.addEventListener("speeddial:sync-status-changed", () => {
-      void loadConfig().then(cfg => updateLastSyncInfo(cfg)).catch(() => {});
+      void loadConfig().then(cfg => {
+        updateLastSyncInfo(cfg);
+        updateWebdavExtraConflictButtons(cfg);
+      }).catch(() => {});
     });
   }
 
@@ -1096,4 +1136,57 @@ export async function openSyncMergeWizard() {
   if (cancelBtn) {
     cancelBtn.onclick = () => modal.classList.add("hidden");
   }
+}
+
+async function openWebdavExtraConflictModal(key) {
+  const part = WEBDAV_EXTRA_PARTS.find(p => p.key === key);
+  const modal = document.getElementById("sync-webdav-extra-conflict-modal");
+  const descEl = document.getElementById("sync-webdav-extra-conflict-desc");
+  const statusEl = document.getElementById("sync-webdav-extra-conflict-status");
+  const useRemoteBtn = document.getElementById("sync-webdav-extra-use-remote");
+  const useLocalBtn = document.getElementById("sync-webdav-extra-use-local");
+  const keepDisabledBtn = document.getElementById("sync-webdav-extra-keep-disabled");
+  const cancelBtn = document.getElementById("sync-webdav-extra-cancel");
+  if (!modal || !part) return;
+
+  const config = await loadConfig();
+  const conflict = config?.sync?.webdavExtraConflicts?.[key] || {};
+  const partLabel = t(part.labelKey) || part.fallbackLabel;
+  const remoteTime = conflict.remoteUpdatedAt ? new Date(conflict.remoteUpdatedAt).toLocaleString() : "-";
+  if (descEl) {
+    const baseDesc = t("syncWebdavExtraConflictDesc") || "Both local and remote versions differ for {part}. Sync for this part was paused automatically.";
+    descEl.textContent = `${baseDesc.replace("{part}", partLabel)} (Remote: ${remoteTime})`;
+  }
+  if (statusEl) statusEl.textContent = "";
+  modal.classList.remove("hidden");
+
+  const setDisabled = (disabled) => {
+    for (const btn of [useRemoteBtn, useLocalBtn, keepDisabledBtn]) {
+      if (btn) btn.disabled = disabled;
+    }
+  };
+  setDisabled(false);
+
+  const runChoice = async (resolution) => {
+    setDisabled(true);
+    if (statusEl) statusEl.textContent = "⏳ " + (t("syncing") || "Syncing...");
+    const res = await resolveWebdavExtraConflict(key, resolution);
+    if (res?.ok) {
+      modal.classList.add("hidden");
+      const latest = await loadConfig();
+      if (part.checkbox) part.checkbox.checked = !!latest?.sync?.[part.syncField];
+      updateWebdavExtraConflictButtons(latest);
+      if (res.configChanged) {
+        render();
+      }
+    } else {
+      if (statusEl) statusEl.textContent = "❌ " + getSyncFailureMessage(res);
+      setDisabled(false);
+    }
+  };
+
+  if (useRemoteBtn) useRemoteBtn.onclick = () => void runChoice("remote");
+  if (useLocalBtn) useLocalBtn.onclick = () => void runChoice("local");
+  if (keepDisabledBtn) keepDisabledBtn.onclick = () => void runChoice("keep-disabled");
+  if (cancelBtn) cancelBtn.onclick = () => modal.classList.add("hidden");
 }

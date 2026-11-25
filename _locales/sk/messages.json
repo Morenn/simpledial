@@ -1751,26 +1751,66 @@
   "securityForceChangeDesc": {
     "message": "Platnosť hesla k trezoru vypršala. Pre pokračovanie nastavte nové heslo."
   },
-  "syncPausedStatus": { "message": "Synchronizácia pozastavená kvôli problému" },
-  "syncStaleConflictLabel": { "message": "Synchronizácia pozastavená: zariadenie je zastarané" },
-  "syncDbuidMismatchLabel": { "message": "Synchronizácia pozastavená: zistená iná databáza záložiek" },
-  "syncDbuidMismatchTitle": { "message": "Nezhoda DBUID" },
-  "syncDbuidLocalLabel": { "message": "Lokálne" },
-  "syncDbuidRemoteLabel": { "message": "Vzdialené" },
-  "syncStaleClickToResolve": { "message": "Kliknutím vyriešite" },
-  "syncMergeWizardTitle": { "message": "Sprievodca zlúčením synchronizácie" },
-  "syncMergeWizardBtn": { "message": "Sprievodca zlúčením" },
-  "syncMergeWizardDesc": { "message": "Toto zariadenie bolo offline dlhšie než okno histórie mazania. Vyberte, ako vyriešiť lokálne položky chýbajúce na serveri." },
-  "syncMergeWizardLastSync": { "message": "Posledná synchronizácia zariadenia" },
-  "syncMergeWizardCutoff": { "message": "Hranica vzdialenej histórie mazania" },
-  "syncMergeWizardSmart": { "message": "Inteligentné zlúčenie (Odporúčané)" },
-  "syncMergeWizardReview": { "message": "Skontrolovať nejasné položky" },
-  "syncMergeWizardForceDownload": { "message": "Použiť vzdialenú kópiu" },
-  "syncMergeWizardForceUpload": { "message": "Použiť kópiu tohto zariadenia" },
-  "syncMergeWizardApplySelected": { "message": "Použiť vybrané" },
-  "syncMergeWizardNoAmbiguous": { "message": "Nenašli sa žiadne nejasné lokálne položky." },
-  "selectAll": { "message": "Vybrať všetko" },
-  "deselectAll": { "message": "Zrušiť výber" },
+  "syncPausedStatus": {
+    "message": "Synchronizácia pozastavená kvôli problému"
+  },
+  "syncStaleConflictLabel": {
+    "message": "Synchronizácia pozastavená: zariadenie je zastarané"
+  },
+  "syncDbuidMismatchLabel": {
+    "message": "Synchronizácia pozastavená: zistená iná databáza záložiek"
+  },
+  "syncDbuidMismatchTitle": {
+    "message": "Nezhoda DBUID"
+  },
+  "syncDbuidLocalLabel": {
+    "message": "Lokálne"
+  },
+  "syncDbuidRemoteLabel": {
+    "message": "Vzdialené"
+  },
+  "syncStaleClickToResolve": {
+    "message": "Kliknutím vyriešite"
+  },
+  "syncMergeWizardTitle": {
+    "message": "Sprievodca zlúčením synchronizácie"
+  },
+  "syncMergeWizardBtn": {
+    "message": "Sprievodca zlúčením"
+  },
+  "syncMergeWizardDesc": {
+    "message": "Toto zariadenie bolo offline dlhšie než okno histórie mazania. Vyberte, ako vyriešiť lokálne položky chýbajúce na serveri."
+  },
+  "syncMergeWizardLastSync": {
+    "message": "Posledná synchronizácia zariadenia"
+  },
+  "syncMergeWizardCutoff": {
+    "message": "Hranica vzdialenej histórie mazania"
+  },
+  "syncMergeWizardSmart": {
+    "message": "Inteligentné zlúčenie (Odporúčané)"
+  },
+  "syncMergeWizardReview": {
+    "message": "Skontrolovať nejasné položky"
+  },
+  "syncMergeWizardForceDownload": {
+    "message": "Použiť vzdialenú kópiu"
+  },
+  "syncMergeWizardForceUpload": {
+    "message": "Použiť kópiu tohto zariadenia"
+  },
+  "syncMergeWizardApplySelected": {
+    "message": "Použiť vybrané"
+  },
+  "syncMergeWizardNoAmbiguous": {
+    "message": "Nenašli sa žiadne nejasné lokálne položky."
+  },
+  "selectAll": {
+    "message": "Vybrať všetko"
+  },
+  "deselectAll": {
+    "message": "Zrušiť výber"
+  },
   "securityPostponeBtn": {
     "message": "Odložiť"
   },
@@ -2118,5 +2158,62 @@
   },
   "syncForceDownloadConfirm": {
     "message": "Prepísať a stiahnuť"
+  },
+  "backupDevice": {
+    "message": "Zariadenie"
+  },
+  "backupThisDevice": {
+    "message": "Toto zariadenie"
+  },
+  "syncWebdavDeviceNameLabel": {
+    "message": "Názov zariadenia (pre synchronizované zálohy):"
+  },
+  "syncWebdavDeviceNamePlaceholder": {
+    "message": "napr. Pracovný notebook"
+  },
+  "deleteRemoteBackup": {
+    "message": "Zmazať"
+  },
+  "backupNotFoundOnRemoteIndexUpdated": {
+    "message": "Záloha sa na vzdialenom úložisku nenašla; súbor indexu bol aktualizovaný."
+  },
+  "fetchRemoteBackups": {
+    "message": "☁️ Načítať vzdialené zálohy"
+  },
+  "fetchingRemoteBackups": {
+    "message": "Načítavajú sa vzdialené zálohy..."
+  },
+  "fetchRemoteBackupsDone": {
+    "message": "Vzdialené zálohy aktualizované."
+  },
+  "fetchRemoteBackupsFailed": {
+    "message": "Nepodarilo sa načítať vzdialené zálohy."
+  },
+  "backupLocationLocal": {
+    "message": "Lokálne"
+  },
+  "backupLocationRemote": {
+    "message": "Vzdialené (WebDAV)"
+  },
+  "backupsRemoteRetentionDays": {
+    "message": "Vzdialená doba uchovania (dni):"
+  },
+  "syncWebdavResolveConflictBtn": {
+    "message": "⚠️ Vyriešiť"
+  },
+  "syncWebdavExtraConflictTitle": {
+    "message": "⚠️ Vyriešiť konflikt synchronizácie"
+  },
+  "syncWebdavExtraConflictDesc": {
+    "message": "Lokálna a vzdialená verzia pre {part} sa líšia. Synchronizácia tejto časti bola automaticky pozastavená."
+  },
+  "syncWebdavExtraUseRemote": {
+    "message": "⬇️ Použiť vzdialenú"
+  },
+  "syncWebdavExtraUseLocal": {
+    "message": "⬆️ Použiť lokálnu"
+  },
+  "syncWebdavExtraKeepDisabled": {
+    "message": "⏸️ Ponechať vypnuté"
   }
 }

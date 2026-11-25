@@ -35,6 +35,7 @@ export const defaultConfig = {
     lastSync: 0,
     lastSyncedLocalHash: "",
     lastSyncedExtraHashes: {},
+    webdavExtraConflicts: {},
     remoteChangeHeaderType: null, // null=unknown, false=unsupported, or 'sha256'|'etag'|'last-modified'
     lastSeenRemoteMarker: "",
     lastRemoteMarkerCheck: 0,
@@ -55,6 +56,7 @@ export const defaultConfig = {
   },
   backups: {
     retentionDays: 14,
+    remoteRetentionDays: 14,
     frequencyHours: 24,
     lastAutoBackup: 0
   },

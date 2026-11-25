@@ -1751,26 +1751,66 @@
   "securityForceChangeDesc": {
     "message": "Platnosť hesla k trezoru vypršela. Pro pokračování nastavte nové heslo."
   },
-  "syncPausedStatus": { "message": "Synchronizace pozastavena kvůli problému" },
-  "syncStaleConflictLabel": { "message": "Synchronizace pozastavena: zařízení je zastaralé" },
-  "syncDbuidMismatchLabel": { "message": "Synchronizace pozastavena: zjištěna jiná databáze záložek" },
-  "syncDbuidMismatchTitle": { "message": "Neshoda DBUID" },
-  "syncDbuidLocalLabel": { "message": "Místní" },
-  "syncDbuidRemoteLabel": { "message": "Vzdálené" },
-  "syncStaleClickToResolve": { "message": "Kliknutím vyřešíte" },
-  "syncMergeWizardTitle": { "message": "Průvodce sloučením synchronizace" },
-  "syncMergeWizardBtn": { "message": "Průvodce sloučením" },
-  "syncMergeWizardDesc": { "message": "Toto zařízení bylo offline déle než okno historie mazání. Vyberte, jak vyřešit místní položky chybějící na serveru." },
-  "syncMergeWizardLastSync": { "message": "Poslední synchronizace zařízení" },
-  "syncMergeWizardCutoff": { "message": "Hranice vzdálené historie mazání" },
-  "syncMergeWizardSmart": { "message": "Chytré sloučení (Doporučeno)" },
-  "syncMergeWizardReview": { "message": "Zkontrolovat nejasné položky" },
-  "syncMergeWizardForceDownload": { "message": "Použít vzdálenou kopii" },
-  "syncMergeWizardForceUpload": { "message": "Použít kopii tohoto zařízení" },
-  "syncMergeWizardApplySelected": { "message": "Použít vybrané" },
-  "syncMergeWizardNoAmbiguous": { "message": "Nebyly nalezeny žádné nejasné místní položky." },
-  "selectAll": { "message": "Vybrat vše" },
-  "deselectAll": { "message": "Zrušit výběr" },
+  "syncPausedStatus": {
+    "message": "Synchronizace pozastavena kvůli problému"
+  },
+  "syncStaleConflictLabel": {
+    "message": "Synchronizace pozastavena: zařízení je zastaralé"
+  },
+  "syncDbuidMismatchLabel": {
+    "message": "Synchronizace pozastavena: zjištěna jiná databáze záložek"
+  },
+  "syncDbuidMismatchTitle": {
+    "message": "Neshoda DBUID"
+  },
+  "syncDbuidLocalLabel": {
+    "message": "Místní"
+  },
+  "syncDbuidRemoteLabel": {
+    "message": "Vzdálené"
+  },
+  "syncStaleClickToResolve": {
+    "message": "Kliknutím vyřešíte"
+  },
+  "syncMergeWizardTitle": {
+    "message": "Průvodce sloučením synchronizace"
+  },
+  "syncMergeWizardBtn": {
+    "message": "Průvodce sloučením"
+  },
+  "syncMergeWizardDesc": {
+    "message": "Toto zařízení bylo offline déle než okno historie mazání. Vyberte, jak vyřešit místní položky chybějící na serveru."
+  },
+  "syncMergeWizardLastSync": {
+    "message": "Poslední synchronizace zařízení"
+  },
+  "syncMergeWizardCutoff": {
+    "message": "Hranice vzdálené historie mazání"
+  },
+  "syncMergeWizardSmart": {
+    "message": "Chytré sloučení (Doporučeno)"
+  },
+  "syncMergeWizardReview": {
+    "message": "Zkontrolovat nejasné položky"
+  },
+  "syncMergeWizardForceDownload": {
+    "message": "Použít vzdálenou kopii"
+  },
+  "syncMergeWizardForceUpload": {
+    "message": "Použít kopii tohoto zařízení"
+  },
+  "syncMergeWizardApplySelected": {
+    "message": "Použít vybrané"
+  },
+  "syncMergeWizardNoAmbiguous": {
+    "message": "Nebyly nalezeny žádné nejasné místní položky."
+  },
+  "selectAll": {
+    "message": "Vybrat vše"
+  },
+  "deselectAll": {
+    "message": "Zrušit výběr"
+  },
   "securityPostponeBtn": {
     "message": "Odložit"
   },
@@ -2118,5 +2158,62 @@
   },
   "syncForceDownloadConfirm": {
     "message": "Přepsat a stáhnout"
+  },
+  "backupDevice": {
+    "message": "Zařízení"
+  },
+  "backupThisDevice": {
+    "message": "Toto zařízení"
+  },
+  "syncWebdavDeviceNameLabel": {
+    "message": "Název zařízení (pro synchronizované zálohy):"
+  },
+  "syncWebdavDeviceNamePlaceholder": {
+    "message": "např. Pracovní notebook"
+  },
+  "deleteRemoteBackup": {
+    "message": "Smazat"
+  },
+  "backupNotFoundOnRemoteIndexUpdated": {
+    "message": "Záloha nebyla na vzdáleném úložišti nalezena; soubor indexu byl aktualizován."
+  },
+  "fetchRemoteBackups": {
+    "message": "☁️ Načíst vzdálené zálohy"
+  },
+  "fetchingRemoteBackups": {
+    "message": "Načítání vzdálených záloh..."
+  },
+  "fetchRemoteBackupsDone": {
+    "message": "Vzdálené zálohy aktualizovány."
+  },
+  "fetchRemoteBackupsFailed": {
+    "message": "Nepodařilo se načíst vzdálené zálohy."
+  },
+  "backupLocationLocal": {
+    "message": "Místní"
+  },
+  "backupLocationRemote": {
+    "message": "Vzdálené (WebDAV)"
+  },
+  "backupsRemoteRetentionDays": {
+    "message": "Vzdálená doba uchování (dny):"
+  },
+  "syncWebdavResolveConflictBtn": {
+    "message": "⚠️ Vyřešit"
+  },
+  "syncWebdavExtraConflictTitle": {
+    "message": "⚠️ Vyřešit konflikt synchronizace"
+  },
+  "syncWebdavExtraConflictDesc": {
+    "message": "Místní a vzdálená verze pro {part} se liší. Synchronizace této části byla automaticky pozastavena."
+  },
+  "syncWebdavExtraUseRemote": {
+    "message": "⬇️ Použít vzdálenou"
+  },
+  "syncWebdavExtraUseLocal": {
+    "message": "⬆️ Použít místní"
+  },
+  "syncWebdavExtraKeepDisabled": {
+    "message": "⏸️ Ponechat vypnuté"
   }
 }

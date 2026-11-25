@@ -415,3 +415,25 @@ test("restoreBackupFromJson serializes with in-flight syncNow so restored data a
     globalThis.fetch = originalFetch;
   }
 });
+
+test("device info persists locally and attaches deviceId and deviceName to backups", async () => {
+  resetStore();
+  const { getDeviceInfo, saveDeviceName } = await import("../newtab/backup.js");
+
+  const initial = await getDeviceInfo();
+  assert.ok(initial.deviceId);
+  assert.ok(initial.deviceName);
+
+  const updated = await saveDeviceName("Work Laptop");
+  assert.equal(updated.deviceId, initial.deviceId);
+  assert.equal(updated.deviceName, "Work Laptop");
+
+  state.groups = [{ id: "g1", name: "Main", items: [{ id: "b1", title: "One", url: "https://one.example" }] }];
+  const entry = await createBackup("bookmarks");
+  assert.equal(entry.deviceId, initial.deviceId);
+  assert.equal(entry.deviceName, "Work Laptop");
+
+  const listed = await listBackups("bookmarks");
+  assert.equal(listed[0].deviceId, initial.deviceId);
+  assert.equal(listed[0].deviceName, "Work Laptop");
+});

@@ -1751,26 +1751,66 @@
   "securityForceChangeDesc": {
     "message": "Ihr Tresor-Passwort ist abgelaufen. Legen Sie ein neues Passwort fest, um fortzufahren."
   },
-  "syncPausedStatus": { "message": "Synchronisierung wegen Problem pausiert" },
-  "syncStaleConflictLabel": { "message": "Synchronisierung pausiert: Gerät veraltet" },
-  "syncDbuidMismatchLabel": { "message": "Synchronisierung pausiert: andere Lesezeichen-Datenbank erkannt" },
-  "syncDbuidMismatchTitle": { "message": "DBUID-Konflikt" },
-  "syncDbuidLocalLabel": { "message": "Lokal" },
-  "syncDbuidRemoteLabel": { "message": "Remote" },
-  "syncStaleClickToResolve": { "message": "Zum Beheben klicken" },
-  "syncMergeWizardTitle": { "message": "Sync-Zusammenführungsassistent" },
-  "syncMergeWizardBtn": { "message": "Zusammenführungsassistent" },
-  "syncMergeWizardDesc": { "message": "Dieses Gerät war länger offline als das Löschverlaufsfenster. Wählen Sie, wie nur lokal vorhandene Elemente abgeglichen werden." },
-  "syncMergeWizardLastSync": { "message": "Letzte Synchronisierung dieses Geräts" },
-  "syncMergeWizardCutoff": { "message": "Grenze des Remote-Löschverlaufs" },
-  "syncMergeWizardSmart": { "message": "Intelligentes Zusammenführen (Empfohlen)" },
-  "syncMergeWizardReview": { "message": "Unklare Elemente prüfen" },
-  "syncMergeWizardForceDownload": { "message": "Remote-Kopie verwenden" },
-  "syncMergeWizardForceUpload": { "message": "Kopie dieses Geräts verwenden" },
-  "syncMergeWizardApplySelected": { "message": "Auswahl anwenden" },
-  "syncMergeWizardNoAmbiguous": { "message": "Keine unklaren lokalen Elemente gefunden." },
-  "selectAll": { "message": "Alle auswählen" },
-  "deselectAll": { "message": "Alle abwählen" },
+  "syncPausedStatus": {
+    "message": "Synchronisierung wegen Problem pausiert"
+  },
+  "syncStaleConflictLabel": {
+    "message": "Synchronisierung pausiert: Gerät veraltet"
+  },
+  "syncDbuidMismatchLabel": {
+    "message": "Synchronisierung pausiert: andere Lesezeichen-Datenbank erkannt"
+  },
+  "syncDbuidMismatchTitle": {
+    "message": "DBUID-Konflikt"
+  },
+  "syncDbuidLocalLabel": {
+    "message": "Lokal"
+  },
+  "syncDbuidRemoteLabel": {
+    "message": "Remote"
+  },
+  "syncStaleClickToResolve": {
+    "message": "Zum Beheben klicken"
+  },
+  "syncMergeWizardTitle": {
+    "message": "Sync-Zusammenführungsassistent"
+  },
+  "syncMergeWizardBtn": {
+    "message": "Zusammenführungsassistent"
+  },
+  "syncMergeWizardDesc": {
+    "message": "Dieses Gerät war länger offline als das Löschverlaufsfenster. Wählen Sie, wie nur lokal vorhandene Elemente abgeglichen werden."
+  },
+  "syncMergeWizardLastSync": {
+    "message": "Letzte Synchronisierung dieses Geräts"
+  },
+  "syncMergeWizardCutoff": {
+    "message": "Grenze des Remote-Löschverlaufs"
+  },
+  "syncMergeWizardSmart": {
+    "message": "Intelligentes Zusammenführen (Empfohlen)"
+  },
+  "syncMergeWizardReview": {
+    "message": "Unklare Elemente prüfen"
+  },
+  "syncMergeWizardForceDownload": {
+    "message": "Remote-Kopie verwenden"
+  },
+  "syncMergeWizardForceUpload": {
+    "message": "Kopie dieses Geräts verwenden"
+  },
+  "syncMergeWizardApplySelected": {
+    "message": "Auswahl anwenden"
+  },
+  "syncMergeWizardNoAmbiguous": {
+    "message": "Keine unklaren lokalen Elemente gefunden."
+  },
+  "selectAll": {
+    "message": "Alle auswählen"
+  },
+  "deselectAll": {
+    "message": "Alle abwählen"
+  },
   "securityPostponeBtn": {
     "message": "Verschieben"
   },
@@ -2118,5 +2158,62 @@
   },
   "syncForceDownloadConfirm": {
     "message": "Überschreiben & Herunterladen"
+  },
+  "backupDevice": {
+    "message": "Gerät"
+  },
+  "backupThisDevice": {
+    "message": "Dieses Gerät"
+  },
+  "syncWebdavDeviceNameLabel": {
+    "message": "Gerätename (für synchronisierte Backups):"
+  },
+  "syncWebdavDeviceNamePlaceholder": {
+    "message": "z. B. Arbeits-Laptop"
+  },
+  "deleteRemoteBackup": {
+    "message": "Löschen"
+  },
+  "backupNotFoundOnRemoteIndexUpdated": {
+    "message": "Backup wurde auf dem Server nicht gefunden; Indexdatei wurde aktualisiert."
+  },
+  "fetchRemoteBackups": {
+    "message": "☁️ Remote-Backups abrufen"
+  },
+  "fetchingRemoteBackups": {
+    "message": "Remote-Backups werden abgerufen..."
+  },
+  "fetchRemoteBackupsDone": {
+    "message": "Remote-Backups aktualisiert."
+  },
+  "fetchRemoteBackupsFailed": {
+    "message": "Abrufen der Remote-Backups fehlgeschlagen."
+  },
+  "backupLocationLocal": {
+    "message": "Lokal"
+  },
+  "backupLocationRemote": {
+    "message": "Remote (WebDAV)"
+  },
+  "backupsRemoteRetentionDays": {
+    "message": "Remote-Aufbewahrungsdauer (Tage):"
+  },
+  "syncWebdavResolveConflictBtn": {
+    "message": "⚠️ Lösen"
+  },
+  "syncWebdavExtraConflictTitle": {
+    "message": "⚠️ Sync-Konflikt lösen"
+  },
+  "syncWebdavExtraConflictDesc": {
+    "message": "Lokale und Remote-Version für {part} unterscheiden sich. Die Synchronisierung dieses Teils wurde automatisch pausiert."
+  },
+  "syncWebdavExtraUseRemote": {
+    "message": "⬇️ Remote verwenden"
+  },
+  "syncWebdavExtraUseLocal": {
+    "message": "⬆️ Lokal verwenden"
+  },
+  "syncWebdavExtraKeepDisabled": {
+    "message": "⏸️ Deaktiviert lassen"
   }
 }

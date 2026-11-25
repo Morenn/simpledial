@@ -360,6 +360,7 @@ document.addEventListener("keydown", e => {
       "custom-widget-trust-modal": "custom-widget-trust-cancel",
       "sync-force-overwrite-modal": "sync-force-overwrite-cancel",
       "sync-merge-wizard-modal": "sync-merge-wizard-cancel",
+      "sync-webdav-extra-conflict-modal": "sync-webdav-extra-cancel",
       "vault-unlock-modal": "vault-unlock-modal-cancel",
       "failed-icons-modal": "failed-icons-close"
     };
@@ -368,6 +369,7 @@ document.addEventListener("keydown", e => {
       "custom-widget-trust-modal",
       "sync-force-overwrite-modal",
       "sync-merge-wizard-modal",
+      "sync-webdav-extra-conflict-modal",
       "vault-unlock-modal",
       "vault-force-change-modal",
       "browser-bookmarks-overwrite-modal",
@@ -513,3 +515,21 @@ if (document.readyState === "loading") {
 } else {
   setTimeout(initializeTopBarSettingsState, 0);
 }
+
+window.addEventListener("simpledial:config-synced", async () => {
+  if (!settingsModal || settingsModal.classList.contains("hidden")) return;
+  settingsState.isInitializingSettingsForm = true;
+  try {
+    const cfg = await loadConfig();
+    await populateSyncSettings(cfg);
+    populateAppearanceSettings(cfg);
+    populateBackupSettings(cfg);
+    updateHouseKeeperInfo(cfg);
+    await refreshBackupsTable();
+    setSettingsDirty(false);
+  } catch (err) {
+    console.warn("Failed to refresh open settings after config sync", err);
+  } finally {
+    settingsState.isInitializingSettingsForm = false;
+  }
+});

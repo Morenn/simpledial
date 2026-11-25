@@ -3,16 +3,20 @@ import { loadConfig, saveConfig } from "../config.js";
 import { t } from "../i18n.js";
 import { findOrCreateSimpleDialFolder, getBookmarkChildren } from "../bookmarks-api.js";
 import { render, calculateGridLayout } from "../render.js";
-import { createBackup, listBackups, restoreBackup, restoreBackupFromJson, deleteBackup, cleanupOldBackups, getBackup, formatBackupTimestamp as formatFilenameTimestamp } from "../backup.js";
+import { createBackup, listBackups, restoreBackup, restoreBackupFromJson, deleteBackup, cleanupOldBackups, getBackup, getDeviceInfo, formatBackupTimestamp as formatFilenameTimestamp } from "../backup.js";
+import { syncWebdavFolderExtras } from "../sync.js";
 import { syncBrowserBookmarks } from "../browser-bookmarks-sync.js";
 import { settingsState, setSettingsDirty } from "./context.js";
 import { initImportWizard } from "./importwizard-ui.js";
 
 const settingsModal = document.getElementById("settings-modal");
 const backupRetentionDays = document.getElementById("backup-retention-days");
+const backupRemoteRetentionRow = document.getElementById("backup-remote-retention-row");
+const backupRemoteRetentionDays = document.getElementById("backup-remote-retention-days");
 const backupFrequencyHours = document.getElementById("backup-frequency-hours");
 const backupCreateNowBtn = document.getElementById("backup-create-now");
 const backupUploadRestoreBtn = document.getElementById("backup-upload-restore-btn");
+const backupFetchRemoteBtn = document.getElementById("backup-fetch-remote-btn");
 const backupUploadRestoreFile = document.getElementById("backup-upload-restore-file");
 const backupStatus = document.getElementById("backup-status");
 const backupsTableBody = document.getElementById("backups-table-body");
@@ -264,24 +268,50 @@ function formatBackupSummary(backup, type) {
         customWidgetCount = 0;
       }
     }
-    const widgetsLabel = t("customWidgetsTab") || "Custom Widgets";
-    return `${t("themeSelect")} ${themeLabel} (${settingCount}) • ${widgetsLabel}: ${customWidgetCount ?? 0}`;
+    const widgetsTabLabel = t("customWidgetsTab") || "Custom Widgets";
+    const widgetCount = customWidgetCount ?? 0;
+    return {
+      text: `T:${settingCount} W:${widgetCount}`,
+      tooltip: `${t("themeSelect") || "Theme:"} ${themeLabel} (${settingCount})\n${widgetsTabLabel}: ${widgetCount}`
+    };
   }
   const stats = getBackupStats(backup);
-  return `G:${stats.groupCount} B:${stats.bookmarkCount}`;
+  return {
+    text: `G:${stats.groupCount} B:${stats.bookmarkCount}`,
+    tooltip: `${t("groups") || "Groups"}: ${stats.groupCount}\n${t("bookmarks") || "Bookmarks"}: ${stats.bookmarkCount}`
+  };
 }
 
 export async function refreshBackupsTable() {
   if (!backupsTableBody) return;
 
   const activeType = currentBackupTabType;
-  const backups = await listBackups(activeType);
+  const [backups, config, deviceInfo] = await Promise.all([
+    listBackups(activeType),
+    loadConfig(),
+    getDeviceInfo()
+  ]);
+  const showDeviceCol = config?.sync?.type === "webdav" && config?.sync?.webdavMode === "folder";
+  if (backupRemoteRetentionRow) {
+    backupRemoteRetentionRow.classList.toggle("hidden", !showDeviceCol);
+  }
+  if (backupFetchRemoteBtn) {
+    backupFetchRemoteBtn.classList.toggle("hidden", !showDeviceCol);
+  }
+  const deviceColHeader = document.getElementById("backups-device-col-header");
+  if (deviceColHeader) {
+    deviceColHeader.classList.toggle("hidden", !showDeviceCol);
+  }
   backupsTableBody.innerHTML = "";
 
-  if (!backups.length) {
+  const displayBackups = showDeviceCol
+    ? backups
+    : backups.filter(b => !(b.remoteOnly === true || typeof b.data !== "string"));
+
+  if (!displayBackups.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 5;
+    cell.colSpan = showDeviceCol ? 6 : 5;
     cell.className = "backups-empty";
     cell.textContent = t("noBackupsYet");
     row.appendChild(cell);
@@ -296,7 +326,7 @@ export async function refreshBackupsTable() {
     currentAddonVersion = null;
   }
 
-  backups.forEach(backup => {
+  displayBackups.forEach(backup => {
     const row = document.createElement("tr");
 
     const timestampCell = document.createElement("td");
@@ -325,7 +355,40 @@ export async function refreshBackupsTable() {
     sizeCell.textContent = formatBytes(backup.sizeBytes);
 
     const statsCell = document.createElement("td");
-    statsCell.textContent = formatBackupSummary(backup, activeType);
+    const summary = formatBackupSummary(backup, activeType);
+    statsCell.textContent = summary.text;
+    if (summary.tooltip) {
+      statsCell.title = summary.tooltip;
+    }
+
+    const hasLocal = typeof backup.data === "string";
+    const hasRemote = backup.remoteOnly === true || backup.syncedToRemote === true;
+    const isRemoteOnly = !hasLocal && hasRemote;
+    let deviceCell = null;
+    if (showDeviceCol) {
+      deviceCell = document.createElement("td");
+      if (hasLocal) {
+        const localBadge = document.createElement("span");
+        localBadge.className = "backup-location-badge is-local";
+        localBadge.textContent = "L";
+        localBadge.title = t("backupLocationLocal") || "Local";
+        deviceCell.appendChild(localBadge);
+      }
+      if (hasRemote) {
+        const remoteBadge = document.createElement("span");
+        remoteBadge.className = "backup-location-badge is-remote";
+        remoteBadge.textContent = "R";
+        remoteBadge.title = t("backupLocationRemote") || "Remote (WebDAV)";
+        deviceCell.appendChild(remoteBadge);
+      }
+      const name = typeof backup.deviceName === "string" && backup.deviceName.trim() ? backup.deviceName.trim() : "—";
+      const isThisDevice = Boolean(deviceInfo?.deviceId && backup.deviceId && backup.deviceId === deviceInfo.deviceId);
+      const text = document.createElement("span");
+      text.textContent = isThisDevice
+        ? `${name} (${t("backupThisDevice") || "This device"})`
+        : name;
+      deviceCell.appendChild(text);
+    }
 
     const actionsCell = document.createElement("td");
 
@@ -338,7 +401,9 @@ export async function refreshBackupsTable() {
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "icon-btn danger";
-    deleteBtn.textContent = t("deleteBackup");
+    deleteBtn.textContent = isRemoteOnly
+      ? (t("deleteRemoteBackup") || "Delete")
+      : t("deleteBackup");
     deleteBtn.dataset.backupFileDelete = backup.filename;
     deleteBtn.type = "button";
     deleteBtn.style.marginLeft = "0.5rem";
@@ -356,6 +421,9 @@ export async function refreshBackupsTable() {
     row.appendChild(versionCell);
     row.appendChild(sizeCell);
     row.appendChild(statsCell);
+    if (deviceCell) {
+      row.appendChild(deviceCell);
+    }
     row.appendChild(actionsCell);
     backupsTableBody.appendChild(row);
   });
@@ -368,6 +436,13 @@ export function populateBackupSettings(config) {
   if (backupRetentionDays) {
     backupRetentionDays.value = config.backups?.retentionDays || 14;
   }
+  if (backupRemoteRetentionRow) {
+    const isWebdavFolder = config?.sync?.type === "webdav" && config?.sync?.webdavMode === "folder";
+    backupRemoteRetentionRow.classList.toggle("hidden", !isWebdavFolder);
+  }
+  if (backupRemoteRetentionDays) {
+    backupRemoteRetentionDays.value = config.backups?.remoteRetentionDays ?? config.backups?.retentionDays ?? 14;
+  }
   if (backupFrequencyHours) {
     backupFrequencyHours.value = config.backups?.frequencyHours || 24;
   }
@@ -376,6 +451,7 @@ export function populateBackupSettings(config) {
 export function applyBackupToConfig(config) {
   config.browserBookmarksAutoSync = !!browserBookmarksAutoSync?.checked;
   config.backups.retentionDays = Math.max(1, parseInt(backupRetentionDays?.value, 10) || 14);
+  config.backups.remoteRetentionDays = Math.max(1, parseInt(backupRemoteRetentionDays?.value, 10) || config.backups.retentionDays || 14);
   config.backups.frequencyHours = Math.max(1, parseInt(backupFrequencyHours?.value, 10) || 24);
 }
 
@@ -725,6 +801,43 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
     }
   };
 
+  if (backupFetchRemoteBtn) {
+    backupFetchRemoteBtn.addEventListener("click", async () => {
+      if (backupFetchRemoteBtn.dataset.fetching === "true") return;
+      backupFetchRemoteBtn.dataset.fetching = "true";
+      backupFetchRemoteBtn.disabled = true;
+      if (backupStatus) {
+        backupStatus.textContent = "⏳ " + (t("fetchingRemoteBackups") || "Fetching remote backups...");
+        backupStatus.style.color = "";
+      }
+      try {
+        const res = await syncWebdavFolderExtras(null, { includeManual: true, backupsOnly: true });
+        await refreshBackupsTable();
+        if (backupStatus) {
+          if (res?.inProgress) {
+            backupStatus.textContent = "⏳ " + (t("syncing") || "Sync already in progress...");
+            backupStatus.style.color = "";
+          } else if (res?.ok && !res?.skipped) {
+            backupStatus.textContent = "✅ " + (t("fetchRemoteBackupsDone") || "Remote backups updated.");
+            backupStatus.style.color = "";
+          } else {
+            backupStatus.textContent = "❌ " + (t("fetchRemoteBackupsFailed") || "Failed to fetch remote backups.");
+            backupStatus.style.color = "#f44336";
+          }
+        }
+      } catch (error) {
+        if (backupStatus) {
+          backupStatus.textContent = "❌ " + (t("fetchRemoteBackupsFailed") || "Failed to fetch remote backups.");
+          backupStatus.style.color = "#f44336";
+        }
+        console.error("fetchRemoteBackups failed", error);
+      } finally {
+        delete backupFetchRemoteBtn.dataset.fetching;
+        backupFetchRemoteBtn.disabled = false;
+      }
+    });
+  }
+
   if (backupUploadRestoreBtn && backupUploadRestoreFile) {
     backupUploadRestoreBtn.addEventListener("click", () => {
       backupUploadRestoreFile.click();
@@ -823,18 +936,37 @@ export function initBackupSettings({ setSyncStatusMessage, revertAppearancePrevi
       }
 
       if (deleteFile) {
+        if (backupsTableBody?.dataset.deleting === "true") return;
+
         const confirmedDelete = confirm(t("confirmDeleteBackup"));
         if (!confirmedDelete) return;
 
+        backupsTableBody.dataset.deleting = "true";
+        const deleteButtons = backupsTableBody.querySelectorAll("button[data-backup-file-delete]");
+        deleteButtons.forEach(btn => { btn.disabled = true; });
         try {
-          await deleteBackup(deleteFile, currentBackupTabType);
+          const delRes = await deleteBackup(deleteFile, currentBackupTabType);
           await refreshBackupsTable();
           if (backupStatus) {
-            backupStatus.textContent = "✅ " + t("backupDeleted");
+            if (delRes?.notFoundOnRemote) {
+              backupStatus.textContent = "⚠️ " + (t("backupNotFoundOnRemoteIndexUpdated") || "Backup not found on remote; index file updated.");
+              backupStatus.style.color = "#f59e0b";
+            } else {
+              backupStatus.textContent = "✅ " + t("backupDeleted");
+              backupStatus.style.color = "";
+            }
           }
         } catch (error) {
-          if (backupStatus) backupStatus.textContent = "❌ " + t("backupDeleteFailed");
+          if (backupStatus) {
+            backupStatus.textContent = "❌ " + t("backupDeleteFailed");
+            backupStatus.style.color = "#f44336";
+          }
           console.error("deleteBackup failed", error);
+        } finally {
+          delete backupsTableBody.dataset.deleting;
+          backupsTableBody.querySelectorAll("button[data-backup-file-delete]").forEach(btn => {
+            btn.disabled = false;
+          });
         }
       }
     });

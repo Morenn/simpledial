@@ -1911,6 +1911,30 @@ body.theme-dark .bookmark-title:hover {
   font-size: 0.8rem;
 }
 
+.backup-location-badge {
+  display: inline-block;
+  min-width: 1.25rem;
+  margin-right: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.backup-location-badge.is-local {
+  background: rgba(76, 175, 80, 0.18);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.45);
+}
+
+.backup-location-badge.is-remote {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+}
+
 /* ─────────────────────────────────────────────
    Maximize Settings Modal Button
 ───────────────────────────────────────────── */

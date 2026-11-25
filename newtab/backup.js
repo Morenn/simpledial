@@ -1,7 +1,7 @@
 import { state, saveState, isStackItem } from "./state.js";
 import { loadConfig, saveConfig, defaultConfig, parseJsonSafely, sanitizeParsedJson } from "./config.js";
 import { render } from "./render.js";
-import { withSyncLock, clearLocalTombstoneState } from "./sync.js";
+import { withSyncLock, clearLocalTombstoneState, fetchRemoteWebdavBackupData, deleteRemoteWebdavBackup } from "./sync.js";
 
 const BACKUP_TYPE_META = {
   bookmarks: {
@@ -16,6 +16,72 @@ const BACKUP_TYPE_META = {
 
 const ALL_BACKUP_TYPES = Object.keys(BACKUP_TYPE_META);
 const MIN_AUTO_BACKUP_INTERVAL_MS = 60 * 60 * 1000; // Never more than once per hour
+const DEVICE_INFO_STORAGE_KEY = "myspeeddial-device-info";
+
+function getDefaultDeviceName() {
+  const ua = typeof navigator !== "undefined" ? String(navigator.userAgent || "") : "";
+  let os = "";
+  if (/Windows/i.test(ua)) os = "Windows";
+  else if (/Mac OS X|Macintosh/i.test(ua)) os = "macOS";
+  else if (/Android/i.test(ua)) os = "Android";
+  else if (/Linux/i.test(ua)) os = "Linux";
+
+  let browser = "";
+  if (/Edg\//i.test(ua)) browser = "Edge";
+  else if (/Firefox\//i.test(ua)) browser = "Firefox";
+  else if (/OPR\//i.test(ua)) browser = "Opera";
+  else if (/Chrome\//i.test(ua)) browser = "Chrome";
+  else if (/Safari\//i.test(ua)) browser = "Safari";
+
+  if (os && browser) return `${os} · ${browser}`;
+  return os || browser || "Unknown device";
+}
+
+function generateDeviceId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `dev_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export async function getDeviceInfo() {
+  const fallbackName = getDefaultDeviceName();
+  if (typeof chrome === "undefined" || !chrome?.storage?.local?.get) {
+    return { deviceId: "", deviceName: fallbackName };
+  }
+  try {
+    const res = await chrome.storage.local.get(DEVICE_INFO_STORAGE_KEY);
+    const stored = res?.[DEVICE_INFO_STORAGE_KEY];
+    const existingId = typeof stored?.deviceId === "string" ? stored.deviceId.trim() : "";
+    const existingName = typeof stored?.deviceName === "string" ? stored.deviceName.trim() : "";
+    if (existingId && existingName) {
+      return { deviceId: existingId, deviceName: existingName };
+    }
+    const next = {
+      deviceId: existingId || generateDeviceId(),
+      deviceName: existingName || fallbackName
+    };
+    if (typeof chrome.storage.local.set === "function") {
+      await chrome.storage.local.set({ [DEVICE_INFO_STORAGE_KEY]: next });
+    }
+    return next;
+  } catch {
+    return { deviceId: "", deviceName: fallbackName };
+  }
+}
+
+export async function saveDeviceName(name) {
+  const current = await getDeviceInfo();
+  const trimmed = typeof name === "string" ? name.trim().slice(0, 64) : "";
+  const next = {
+    deviceId: current.deviceId || generateDeviceId(),
+    deviceName: trimmed || getDefaultDeviceName()
+  };
+  if (typeof chrome !== "undefined" && chrome?.storage?.local?.set) {
+    await chrome.storage.local.set({ [DEVICE_INFO_STORAGE_KEY]: next });
+  }
+  return next;
+}
 
 function normalizeBackupType(type) {
   return BACKUP_TYPE_META[type] ? type : "bookmarks";
@@ -163,7 +229,10 @@ async function buildBackupSnapshot(resolvedType) {
 async function createBackupLocked(type = "bookmarks", prebuiltSnapshot = null) {
   const resolvedType = normalizeBackupType(type);
   const timestamp = Date.now();
-  const { json, sizeBytes, metadata } = prebuiltSnapshot || await buildBackupSnapshot(resolvedType);
+  const [{ json, sizeBytes, metadata }, deviceInfo] = await Promise.all([
+    prebuiltSnapshot ? Promise.resolve(prebuiltSnapshot) : buildBackupSnapshot(resolvedType),
+    getDeviceInfo()
+  ]);
 
   const entries = await readBackupEntries(resolvedType);
   entries.push({
@@ -171,6 +240,8 @@ async function createBackupLocked(type = "bookmarks", prebuiltSnapshot = null) {
     filename: createBackupFilename(timestamp, resolvedType, entries),
     timestamp,
     sizeBytes,
+    ...(deviceInfo.deviceId ? { deviceId: deviceInfo.deviceId } : {}),
+    ...(deviceInfo.deviceName ? { deviceName: deviceInfo.deviceName } : {}),
     ...metadata,
     data: json
   });
@@ -191,7 +262,7 @@ export async function listBackups(type = "bookmarks") {
     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 }
 
-async function deleteBackupLocked(file, type = "bookmarks") {
+async function deleteBackupLocked(file, type = "bookmarks", options = {}) {
   const resolvedType = normalizeBackupType(type);
   const parsed = parseBackupInput(file);
   if (!parsed) {
@@ -199,21 +270,51 @@ async function deleteBackupLocked(file, type = "bookmarks") {
   }
 
   const entries = await readBackupEntries(resolvedType);
-  const remaining = entries.filter(entry => entry.filename !== parsed.filename);
-
-  if (remaining.length === entries.length) {
+  const target = entries.find(entry => entry.filename === parsed.filename);
+  if (!target) {
     throw new Error("backup-not-found");
+  }
+
+  const targetIsRemoteOnly = target.remoteOnly === true || typeof target.data !== "string";
+  const deleteRemote = options?.location === "remote" || targetIsRemoteOnly;
+
+  let remoteDeleted = false;
+  let notFoundOnRemote = false;
+  if (deleteRemote) {
+    const remoteRes = await deleteRemoteWebdavBackup(resolvedType, target.filename);
+    if (!remoteRes?.ok) {
+      throw new Error(remoteRes?.inProgress ? "delete-in-progress" : "remote-delete-failed");
+    }
+    remoteDeleted = true;
+    notFoundOnRemote = !!remoteRes.notFoundOnRemote;
+  }
+
+  let remaining;
+  if (deleteRemote && !targetIsRemoteOnly) {
+    // Keep local copy, clear syncedToRemote flag
+    remaining = entries.map(entry => (entry.filename === parsed.filename ? { ...entry, syncedToRemote: false } : entry));
+  } else if (!deleteRemote && !targetIsRemoteOnly && target.syncedToRemote) {
+    // Convert synced local backup into remote-only index entry
+    remaining = entries.map(entry => {
+      if (entry.filename !== parsed.filename) return entry;
+      const { data: _d, syncedToRemote: _s, ...meta } = entry;
+      return { ...meta, remoteOnly: true };
+    });
+  } else {
+    remaining = entries.filter(entry => entry.filename !== parsed.filename);
   }
 
   await writeBackupEntries(remaining, resolvedType);
   return {
     ok: true,
-    filename: parsed.filename
+    filename: parsed.filename,
+    remoteDeleted,
+    notFoundOnRemote
   };
 }
 
-export async function deleteBackup(file, type = "bookmarks") {
-  return await withAutoBackupLock(() => deleteBackupLocked(file, type));
+export async function deleteBackup(file, type = "bookmarks", options = {}) {
+  return await withAutoBackupLock(() => deleteBackupLocked(file, type, options));
 }
 
 async function restoreParsedBackupData(parsedData, resolvedType, filename = "backup.json") {
@@ -307,7 +408,14 @@ export async function restoreBackupFromJson(jsonText, type = "auto", filename = 
   return restoreParsedBackupData(parsedData, resolvedType, filename);
 }
 
-export async function restoreBackup(file, type = "bookmarks") {
+async function resolveBackupEntryData(entry, resolvedType, options = {}) {
+  if (options?.location !== "remote" && typeof entry?.data === "string") {
+    return entry.data;
+  }
+  return await fetchRemoteWebdavBackupData(resolvedType, entry.filename);
+}
+
+export async function restoreBackup(file, type = "bookmarks", options = {}) {
   const resolvedType = normalizeBackupType(type);
   const parsed = parseBackupInput(file);
   if (!parsed) {
@@ -320,9 +428,10 @@ export async function restoreBackup(file, type = "bookmarks") {
     throw new Error("backup-not-found");
   }
 
+  const rawJson = await resolveBackupEntryData(target, resolvedType, options);
   let parsedData = null;
   try {
-    parsedData = parseJsonSafely(target.data);
+    parsedData = parseJsonSafely(rawJson);
   } catch (error) {
     throw new Error("invalid-backup-json");
   }
@@ -333,6 +442,9 @@ export async function restoreBackup(file, type = "bookmarks") {
 async function cleanupOldBackupsLocked(retentionDays, type = null) {
   const days = Math.max(1, Number(retentionDays) || 14);
   const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+  const config = await loadConfig().catch(() => null);
+  const remoteDays = Math.max(1, Number(config?.backups?.remoteRetentionDays ?? days) || days);
+  const remoteCutoff = Date.now() - (remoteDays * 24 * 60 * 60 * 1000);
   const typesToClean = type ? [normalizeBackupType(type)] : ALL_BACKUP_TYPES;
   let totalRemoved = 0;
 
@@ -340,20 +452,47 @@ async function cleanupOldBackupsLocked(retentionDays, type = null) {
     const entries = await readBackupEntries(backupType);
     if (entries.length <= 1) continue;
 
-    // Always preserve at least the single newest backup even if it is older than retentionDays.
-    let newestEntry = entries[0];
+    // Always preserve at least the single newest local backup (with data) even if older than retentionDays,
+    // or the newest overall entry if no local backup with data exists.
+    let newestEntry = null;
     for (const entry of entries) {
-      if ((entry.timestamp || 0) > (newestEntry.timestamp || 0)) {
+      if (typeof entry.data === "string" && (!newestEntry || (entry.timestamp || 0) > (newestEntry.timestamp || 0))) {
         newestEntry = entry;
       }
     }
+    if (!newestEntry) {
+      newestEntry = entries.reduce((best, entry) => ((entry.timestamp || 0) > (best.timestamp || 0) ? entry : best), entries[0]);
+    }
 
-    const remaining = entries.filter(entry => entry === newestEntry || (entry.timestamp || 0) >= cutoff);
-    const removed = entries.length - remaining.length;
+    let changed = false;
+    const remaining = [];
+    for (const entry of entries) {
+      const ts = entry.timestamp || 0;
+      if (entry === newestEntry) {
+        remaining.push(entry);
+        continue;
+      }
+      if (typeof entry.data === "string") {
+        if (ts >= cutoff) {
+          remaining.push(entry);
+        } else if (entry.syncedToRemote && ts >= remoteCutoff) {
+          const { data: _d, syncedToRemote: _s, ...meta } = entry;
+          remaining.push({ ...meta, remoteOnly: true });
+          changed = true;
+        } else {
+          totalRemoved++;
+          changed = true;
+        }
+      } else if (ts >= remoteCutoff) {
+        remaining.push(entry);
+      } else {
+        totalRemoved++;
+        changed = true;
+      }
+    }
 
-    if (removed > 0) {
+    if (changed) {
       await writeBackupEntries(remaining, backupType);
-      totalRemoved += removed;
     }
   }
 
@@ -397,7 +536,8 @@ async function maybeCreateAutomaticBackup() {
       await cleanupOldBackupsLocked(retentionDays, backupType);
       continue;
     }
-    if (backups[0]?.data !== snapshot.json) {
+    const latestLocalWithData = backups.find(b => typeof b?.data === "string");
+    if (latestLocalWithData?.data !== snapshot.json) {
       await createBackupLocked(backupType, snapshot);
     }
     await cleanupOldBackupsLocked(retentionDays, backupType);
@@ -440,7 +580,7 @@ export async function runBackupInitCheck() {
   });
 }
 
-export async function getBackup(file, type = "bookmarks") {
+export async function getBackup(file, type = "bookmarks", options = {}) {
   const resolvedType = normalizeBackupType(type);
   const parsed = parseBackupInput(file);
   if (!parsed) {
@@ -453,5 +593,9 @@ export async function getBackup(file, type = "bookmarks") {
     throw new Error("backup-not-found");
   }
 
-  return target;
+  if (options?.location !== "remote" && typeof target.data === "string") {
+    return target;
+  }
+  const data = await resolveBackupEntryData(target, resolvedType, options);
+  return { ...target, data };
 }
