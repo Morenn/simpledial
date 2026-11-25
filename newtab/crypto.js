@@ -385,6 +385,11 @@ export async function unlockVault(password, header, { autoLockMinutes = 0, store
 
 export async function tryAutoUnlockVault(header, { autoLockMinutes = 0 } = {}) {
   if (vaultDek) {
+    const rec = await readSessionRecord();
+    if (rec && rec.exp > 0 && Date.now() >= rec.exp) {
+      await lockVault();
+      return false;
+    }
     if (await checkVaultAutoLock(autoLockMinutes)) return false;
     return true;
   }
@@ -418,7 +423,7 @@ export async function changeVaultPassword(oldPassword, newPassword, header, { kd
   }
   const existingRec = autoLockMinutes === undefined ? await readSessionRecord() : null;
   await unlockVault(oldPassword, header, { autoLockMinutes: autoLockMinutes ?? 0 });
-  if (autoLockMinutes === undefined && existingRec?.exp > 0 && ext?.storage?.session?.set) {
+  if (autoLockMinutes === undefined && existingRec?.exp > Date.now() && ext?.storage?.session?.set) {
     const recAfterUnlock = await readSessionRecord();
     if (recAfterUnlock?.k && vaultDek) {
       try {

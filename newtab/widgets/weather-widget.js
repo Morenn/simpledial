@@ -595,9 +595,10 @@ function openWeatherModal(el, widget) {
       await requestWeatherPermission(widget.provider);
       const res = await fetchWeatherWidget(widget);
       const prev = weatherCacheByWidget[widget.id] || {};
+      const locKey = getWeatherLocKey(widget);
       weatherCacheByWidget[widget.id] = res.ok
-        ? { fetchedAt: Date.now(), current: res.current, daily: res.daily, hourly: res.hourly, error: null }
-        : { ...prev, fetchedAt: Date.now(), error: res.error };
+        ? { fetchedAt: Date.now(), locKey, current: res.current, daily: res.daily, hourly: res.hourly, error: null, vaultLocked: false }
+        : { ...prev, fetchedAt: Date.now(), locKey, error: res.error, vaultLocked: Boolean(res.vaultLocked) };
       await persistWeatherCache();
       renderWeatherBarDom(el, widget);
       renderBody();
@@ -670,21 +671,30 @@ export async function pollAllWeatherWidgets({ force = false } = {}) {
     if (active.length === 0) return;
 
     const now = Date.now();
-    let changed = false;
-    for (const w of active) {
-      const cache = weatherCacheByWidget[w.id];
-      const locKey = getWeatherLocKey(w);
-      const refreshMs = normalizeWeatherRefreshMinutes(w.refreshMinutes) * 60 * 1000;
-      if (!force && cache?.fetchedAt && cache?.locKey === locKey && !(cache.vaultLocked && isVaultUnlocked()) && (now - cache.fetchedAt) < refreshMs) continue;
+    const staleEntries = active
+      .map(w => ({ w, locKey: getWeatherLocKey(w), cache: weatherCacheByWidget[w.id] }))
+      .filter(({ w, locKey, cache }) => {
+        const refreshMs = normalizeWeatherRefreshMinutes(w.refreshMinutes) * 60 * 1000;
+        return force || !cache?.fetchedAt || cache?.locKey !== locKey || (cache.vaultLocked && isVaultUnlocked()) || (now - cache.fetchedAt) >= refreshMs;
+      });
 
-      const res = await fetchWeatherWidget(w);
-      weatherCacheByWidget[w.id] = res.ok
-        ? { fetchedAt: now, locKey, current: res.current, daily: res.daily, hourly: res.hourly, error: null, vaultLocked: false }
-        : { ...(cache || {}), fetchedAt: now, locKey, error: res.error, vaultLocked: Boolean(res.vaultLocked) };
-      changed = true;
-      const el = document.querySelector(`.custom-weather-widget[data-widget-id="${CSS.escape(w.id)}"]`);
-      if (el) renderWeatherBarDom(el, w);
-    }
+    let changed = false;
+    const WEATHER_FETCH_CONCURRENCY = 4;
+    let nextIdx = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(WEATHER_FETCH_CONCURRENCY, staleEntries.length) }, async () => {
+        while (nextIdx < staleEntries.length) {
+          const { w, locKey, cache } = staleEntries[nextIdx++];
+          const res = await fetchWeatherWidget(w);
+          weatherCacheByWidget[w.id] = res.ok
+            ? { fetchedAt: now, locKey, current: res.current, daily: res.daily, hourly: res.hourly, error: null, vaultLocked: false }
+            : { ...(cache || {}), fetchedAt: now, locKey, error: res.error, vaultLocked: Boolean(res.vaultLocked) };
+          changed = true;
+          const el = document.querySelector(`.custom-weather-widget[data-widget-id="${CSS.escape(w.id)}"]`);
+          if (el) renderWeatherBarDom(el, w);
+        }
+      })
+    );
 
     if (changed) {
       await persistWeatherCache();

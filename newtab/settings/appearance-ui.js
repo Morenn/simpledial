@@ -14,6 +14,8 @@ import {
   fetchBackgroundImageFromUrl,
   downscaleBackgroundImage,
   isAllowedThemeUrl,
+  isAllowedBackgroundImage,
+  escapeCssUrl,
   getCustomThemeUrlCache
 } from "../theme.js";
 import { normalizeWidgetOrder } from "../custom-widgets.js";
@@ -113,14 +115,19 @@ async function createDownscaledPreviewUrl(dataUrl, maxWidth = 240, maxHeight = 1
 export function setBgPreviewImage(dataUrl) {
   if (!bgPreview) return;
   const gen = ++bgPreviewGeneration;
-  if (!dataUrl) {
+  if (!dataUrl || !isAllowedBackgroundImage(dataUrl)) {
     bgPreview.style.backgroundImage = "";
     bgPreview.style.display = "none";
     return;
   }
   void createDownscaledPreviewUrl(dataUrl).then(previewUrl => {
     if (gen !== bgPreviewGeneration || !bgPreview) return;
-    bgPreview.style.backgroundImage = `url('${previewUrl}')`;
+    if (!isAllowedBackgroundImage(previewUrl)) {
+      bgPreview.style.backgroundImage = "";
+      bgPreview.style.display = "none";
+      return;
+    }
+    bgPreview.style.backgroundImage = `url('${escapeCssUrl(previewUrl)}')`;
     bgPreview.style.display = "block";
   });
 }
@@ -420,8 +427,6 @@ export function populateAppearanceSettings(config) {
 
   if (showDeletedToggle) {
     showDeletedToggle.checked = config.appearance?.showDeleted ?? false;
-    showDeletedToggle.dispatchEvent(new Event("change"));
-    updateShowDeletedButtonAppearance();
   }
 
   settingsState.appearanceDraft = createAppearanceDraftFromConfig(config);
@@ -935,33 +940,64 @@ export function initAppearanceSettings() {
   }
 
   if (tileSizeSlider) {
+    let tileSizeRaf = 0;
+    const scheduleTileSizeLayout = () => {
+      if (tileSizeRaf) return;
+      tileSizeRaf = requestAnimationFrame(() => {
+        tileSizeRaf = 0;
+        calculateGridLayout();
+      });
+    };
     tileSizeSlider.addEventListener("input", (e) => {
       const value = e.target.value;
       if (tileSizeValue) tileSizeValue.textContent = `${value}%`;
       const sizeValue = value / 100;
       document.body.style.setProperty("--tile-scale", sizeValue);
-      calculateGridLayout();
+      scheduleTileSizeLayout();
 
       if (settingsState.appearanceDraft) {
         settingsState.appearanceDraft.tileSize = sizeValue;
       }
       markSettingsDirty();
     });
+    tileSizeSlider.addEventListener("change", () => {
+      if (tileSizeRaf) {
+        cancelAnimationFrame(tileSizeRaf);
+        tileSizeRaf = 0;
+      }
+      calculateGridLayout();
+    });
   }
 
   if (groupTileSizeSlider) {
+    let groupTileSizeRaf = 0;
+    const scheduleGroupTileLayout = () => {
+      if (groupTileSizeRaf) return;
+      groupTileSizeRaf = requestAnimationFrame(() => {
+        groupTileSizeRaf = 0;
+        renderGroups(true);
+        calculateGridLayout();
+      });
+    };
     groupTileSizeSlider.addEventListener("input", (e) => {
       const value = e.target.value;
       if (groupTileSizeValue) groupTileSizeValue.textContent = `${value}%`;
       const sizeValue = value / 100;
       document.body.style.setProperty("--group-tile-scale", sizeValue);
-      renderGroups(true);
-      calculateGridLayout();
+      scheduleGroupTileLayout();
 
       if (settingsState.appearanceDraft) {
         settingsState.appearanceDraft.groupTileSize = sizeValue;
       }
       markSettingsDirty();
+    });
+    groupTileSizeSlider.addEventListener("change", () => {
+      if (groupTileSizeRaf) {
+        cancelAnimationFrame(groupTileSizeRaf);
+        groupTileSizeRaf = 0;
+      }
+      renderGroups(true);
+      calculateGridLayout();
     });
   }
 

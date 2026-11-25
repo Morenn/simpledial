@@ -254,7 +254,7 @@ let restStatusPollingIntervalId = null;
 
 export function groupRestStatusWidgets(customWidgets = []) {
   const validList = Array.isArray(customWidgets)
-    ? customWidgets.filter(w => w && w.id && w.type === "rest-status" && isValidRestEndpointUrl(w.endpointUrl))
+    ? customWidgets.filter(w => w && w.id && !w.disabled && w.type === "rest-status" && isValidRestEndpointUrl(w.endpointUrl))
     : [];
 
   const groups = [];
@@ -379,8 +379,13 @@ export async function fetchAndEvaluateRestWidget(widget) {
   }
 }
 
-function applyRestStatusToElement(el, widget, result) {
+function applyRestStatusToElement(el, widget, result, renderedTimestamp = null) {
   if (!el || !result) return;
+  if (renderedTimestamp != null) {
+    el.dataset.lastRenderedAt = String(renderedTimestamp);
+  } else {
+    delete el.dataset.lastRenderedAt;
+  }
   const dot = el.querySelector(".rest-status-dot");
   const valueEl = el.querySelector(".rest-status-value");
   if (dot) {
@@ -417,7 +422,9 @@ export async function pollRestStatusWidget(widget, { force = false } = {}) {
   const cached = customRestStatusResultCache.get(widget.id);
   const refreshMs = normalizeRestRefreshSeconds(widget.refreshSeconds) * 1000;
   if (!force && cached && !(cached.result?.vaultLocked && isVaultUnlocked()) && (Date.now() - cached.timestamp) < refreshMs) {
-    if (el) applyRestStatusToElement(el, widget, cached.result);
+    if (el && el.dataset.lastRenderedAt !== String(cached.timestamp)) {
+      applyRestStatusToElement(el, widget, cached.result, cached.timestamp);
+    }
     return cached.result;
   }
 
@@ -428,9 +435,10 @@ export async function pollRestStatusWidget(widget, { force = false } = {}) {
     return permResult;
   }
 
+  const now = Date.now();
   const result = await fetchAndEvaluateRestWidget(widget);
-  customRestStatusResultCache.set(widget.id, { timestamp: Date.now(), result });
-  if (el) applyRestStatusToElement(el, widget, result);
+  customRestStatusResultCache.set(widget.id, { timestamp: now, result });
+  if (el) applyRestStatusToElement(el, widget, result, now);
   return result;
 }
 
@@ -570,6 +578,10 @@ export function syncCustomRestStatusWidgetElements(customWidgets = []) {
   const elementMap = {};
   for (const grp of groups) {
     const rep = grp.representative;
+    const configSig = JSON.stringify({
+      groupName: grp.groupName || "",
+      members: grp.members
+    });
 
     if (grp.members.length === 1) {
       const existingGroupEl = customRestStatusGroupCache.get(rep.id);
@@ -578,11 +590,16 @@ export function syncCustomRestStatusWidgetElements(customWidgets = []) {
         customRestStatusGroupCache.delete(rep.id);
       }
       const prevEl = customRestStatusElementCache.get(rep.id);
+      if (prevEl && !prevEl.classList.contains("rest-status-badge-item") && prevEl.dataset.configSig === configSig) {
+        elementMap[rep.id] = prevEl;
+        continue;
+      }
       if (prevEl && prevEl.classList.contains("rest-status-badge-item")) {
         prevEl.remove();
         customRestStatusElementCache.delete(rep.id);
       }
       const singleEl = createRestStatusItemElement(rep, { isGroupedItem: false });
+      singleEl.dataset.configSig = configSig;
       singleEl.appendChild(createRefreshButton(async (e) => {
         e.stopPropagation();
         const ok = await requestRestEndpointPermission(rep.endpointUrl);
@@ -593,12 +610,17 @@ export function syncCustomRestStatusWidgetElements(customWidgets = []) {
     }
 
     let container = customRestStatusGroupCache.get(rep.id);
+    if (container && container.dataset.configSig === configSig) {
+      elementMap[rep.id] = container;
+      continue;
+    }
     if (!container) {
       container = document.createElement("div");
       container.className = "custom-rest-status-widget is-grouped";
       container.dataset.widgetId = rep.id;
       customRestStatusGroupCache.set(rep.id, container);
     }
+    container.dataset.configSig = configSig;
     container.innerHTML = "";
 
     const hideGroupName = grp.members.some(m => !!m.hideGroupName);

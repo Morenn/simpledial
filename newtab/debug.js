@@ -3,15 +3,27 @@
 //  SHARED DEBUG LOGGING
 // ─────────────────────────────────────────────────────────────
 
+let cachedDeadLinkDebugEnabled = false;
+let cachedFaviconDebugEnabled = false;
+let cachedSyncDebugEnabled = false;
+
+export function setDebugLoggingFlags(flags = {}) {
+  if ("favicon" in flags) cachedFaviconDebugEnabled = !!flags.favicon;
+  if ("deadLink" in flags) cachedDeadLinkDebugEnabled = !!flags.deadLink;
+  if ("sync" in flags) cachedSyncDebugEnabled = !!flags.sync;
+}
+
 export function isDeadLinkDebugEnabled() {
-  return document.getElementById("enable-dead-link-debug-logging")?.checked ?? false;
+  const checkbox = typeof document !== "undefined" ? document.getElementById("enable-dead-link-debug-logging") : null;
+  if (checkbox?.checked) return true;
+  return cachedDeadLinkDebugEnabled;
 }
 
 export function isFaviconDebugEnabled() {
-  return document.getElementById("enable-favicon-debug-logging")?.checked ?? false;
+  const checkbox = typeof document !== "undefined" ? document.getElementById("enable-favicon-debug-logging") : null;
+  if (checkbox?.checked) return true;
+  return cachedFaviconDebugEnabled;
 }
-
-let cachedSyncDebugEnabled = false;
 
 export function setSyncDebugLoggingEnabled(enabled) {
   cachedSyncDebugEnabled = !!enabled;

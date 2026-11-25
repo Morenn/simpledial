@@ -1367,6 +1367,10 @@ body.theme-dark .bookmark-title:hover {
   z-index: 99999;
 }
 
+#settings-modal {
+  z-index: 99998;
+}
+
 .modal.hidden {
   display: none;
 }
@@ -5630,7 +5634,7 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   padding: 0.35rem 0.65rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg2) calc(var(--bar-opacity, 1) * 100%), transparent);
+  background: var(--bg3);
   color: var(--text);
   font-size: 0.82rem;
   cursor: pointer;

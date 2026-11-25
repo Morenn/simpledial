@@ -428,7 +428,6 @@ export function initCustomWidgetsSettings() {
           const nextVal = !(draft.widgetNewRow && draft.widgetNewRow[key]);
           draft.widgetNewRow = { ...(draft.widgetNewRow || {}), [key]: nextVal };
           renderWidgetOrderList(draft);
-          renderWidgetOrderList(draft);
           renderCustomWidgetsList(draft);
           await applySideSpaces({ appearance: draft });
           await render();
@@ -594,8 +593,13 @@ export function initCustomWidgetsSettings() {
   };
 
   if (customWidgetsFilterInput) {
+    let customWidgetsFilterTimer = 0;
     customWidgetsFilterInput.addEventListener("input", () => {
-      renderCustomWidgetsList(settingsState.appearanceDraft);
+      clearTimeout(customWidgetsFilterTimer);
+      customWidgetsFilterTimer = setTimeout(() => {
+        customWidgetsFilterTimer = 0;
+        renderCustomWidgetsList(settingsState.appearanceDraft);
+      }, 120);
     });
   }
   if (customWidgetsTypeFilter) {
@@ -675,8 +679,46 @@ export function initCustomWidgetsSettings() {
       return dot;
     };
 
-    const buildCustomWidgetLibraryRow = (customDef, effectiveSpace = customDef?.space, { insideGroup = false } = {}) => {
-      const isDisabled = effectiveSpace === "disabled";
+    const getGroupRepId = (members) => {
+      const enabledMembers = (members || []).filter(m => !m?.disabled);
+      const pool = enabledMembers.length > 0 ? enabledMembers : (members || []);
+      const first = pool[0];
+      if (!first) return null;
+      if (!first.type || first.type === "custom-search") {
+        return (pool.find(m => m?.isDefault) || first).id;
+      }
+      return first.id;
+    };
+
+    const transferGroupRepPlacement = (draft, oldRepId, newRepId) => {
+      if (!oldRepId || !newRepId || oldRepId === newRepId) return;
+      if (Array.isArray(draft.widgetOrder)) {
+        const oldOrderIdx = draft.widgetOrder.indexOf(oldRepId);
+        if (oldOrderIdx !== -1) {
+          const nextOrder = draft.widgetOrder.filter(id => id !== newRepId);
+          const replacedIdx = nextOrder.indexOf(oldRepId);
+          if (replacedIdx !== -1) {
+            nextOrder[replacedIdx] = newRepId;
+          }
+          draft.widgetOrder = nextOrder;
+        }
+      }
+      if (draft.widgetAlign && Object.prototype.hasOwnProperty.call(draft.widgetAlign, oldRepId)) {
+        draft.widgetAlign = { ...draft.widgetAlign, [newRepId]: draft.widgetAlign[oldRepId] };
+        delete draft.widgetAlign[oldRepId];
+      }
+      if (draft.widgetNewRow && Object.prototype.hasOwnProperty.call(draft.widgetNewRow, oldRepId)) {
+        draft.widgetNewRow = { ...draft.widgetNewRow, [newRepId]: draft.widgetNewRow[oldRepId] };
+        delete draft.widgetNewRow[oldRepId];
+      }
+    };
+
+    const buildCustomWidgetLibraryRow = (
+      customDef,
+      effectiveSpace = customDef?.space,
+      { insideGroup = false, groupMembers = null, memberIndex = -1 } = {}
+    ) => {
+      const isDisabled = effectiveSpace === "disabled" || !!customDef?.disabled;
       const row = document.createElement("div");
       row.className = `widget-order-item custom-widget-library-item${isDisabled ? " is-disabled" : ""}`;
 
@@ -813,6 +855,97 @@ export function initCustomWidgetsSettings() {
           calculateGridLayout();
         });
         actions.appendChild(defaultBtn);
+      }
+
+      if (insideGroup && Array.isArray(groupMembers)) {
+        const toggleDisabledBtn = document.createElement("button");
+        toggleDisabledBtn.type = "button";
+        toggleDisabledBtn.className = `widget-order-btn${customDef.disabled ? " active" : ""}`;
+        toggleDisabledBtn.textContent = customDef.disabled ? "🚫" : "👁️";
+        toggleDisabledBtn.title = customDef.disabled
+          ? (t("enableWidget") || "Enable widget")
+          : (t("disableWidget") || "Disable widget");
+        toggleDisabledBtn.setAttribute("aria-pressed", String(!!customDef.disabled));
+        toggleDisabledBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          const oldRepId = getGroupRepId(groupMembers);
+          const groupSpace = effectiveSpace || (groupMembers.find(m => m?.isDefault) || groupMembers[0])?.space;
+          const nextDisabled = !customDef.disabled;
+          draft.customWidgets = (draft.customWidgets || []).map(w =>
+            w?.id === customDef.id
+              ? { ...w, disabled: nextDisabled, ...(groupSpace ? { space: groupSpace } : {}) }
+              : w
+          );
+          const nextGroupMembers = groupMembers.map(m =>
+            m?.id === customDef.id ? { ...m, disabled: nextDisabled } : m
+          );
+          const newRepId = getGroupRepId(nextGroupMembers);
+          transferGroupRepPlacement(draft, oldRepId, newRepId);
+          renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        });
+        actions.appendChild(toggleDisabledBtn);
+      }
+
+      if (insideGroup && Array.isArray(groupMembers) && groupMembers.length > 1 && memberIndex !== -1) {
+        const moveInGroup = async (delta) => {
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          const list = Array.isArray(draft.customWidgets) ? [...draft.customWidgets] : [];
+          const memberIds = groupMembers.map(m => m.id);
+          const posInGroup = memberIds.indexOf(customDef.id);
+          const targetPosInGroup = posInGroup + delta;
+          if (posInGroup < 0 || targetPosInGroup < 0 || targetPosInGroup >= memberIds.length) return;
+          const sourceIdx = list.findIndex(w => w?.id === customDef.id);
+          const targetIdx = list.findIndex(w => w?.id === memberIds[targetPosInGroup]);
+          if (sourceIdx === -1 || targetIdx === -1) return;
+
+          const oldRepId = getGroupRepId(groupMembers);
+          [list[sourceIdx], list[targetIdx]] = [list[targetIdx], list[sourceIdx]];
+          const nextGroupMembers = [...groupMembers];
+          [nextGroupMembers[posInGroup], nextGroupMembers[targetPosInGroup]] = [
+            nextGroupMembers[targetPosInGroup],
+            nextGroupMembers[posInGroup]
+          ];
+          const newRepId = getGroupRepId(nextGroupMembers);
+          transferGroupRepPlacement(draft, oldRepId, newRepId);
+
+          draft.customWidgets = list;
+          renderWidgetOrderList(draft);
+          renderCustomWidgetsList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        };
+
+        const moveUpBtn = document.createElement("button");
+        moveUpBtn.type = "button";
+        moveUpBtn.className = "widget-order-btn";
+        moveUpBtn.textContent = "↑";
+        moveUpBtn.title = t("moveUp") || "Move up";
+        moveUpBtn.disabled = memberIndex === 0;
+        moveUpBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          void moveInGroup(-1);
+        });
+
+        const moveDownBtn = document.createElement("button");
+        moveDownBtn.type = "button";
+        moveDownBtn.className = "widget-order-btn";
+        moveDownBtn.textContent = "↓";
+        moveDownBtn.title = t("moveDown") || "Move down";
+        moveDownBtn.disabled = memberIndex === groupMembers.length - 1;
+        moveDownBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          void moveInGroup(1);
+        });
+
+        actions.append(moveUpBtn, moveDownBtn);
       }
 
       if (!(typeof customDef.groupName === "string" && customDef.groupName.trim())) {
@@ -1227,9 +1360,13 @@ export function initCustomWidgetsSettings() {
 
       const membersWrap = document.createElement("div");
       membersWrap.className = "custom-widget-group-members";
-      for (const member of entry.members) {
-        membersWrap.appendChild(buildCustomWidgetLibraryRow(member, groupRep?.space, { insideGroup: true }));
-      }
+      entry.members.forEach((member, idx) => {
+        membersWrap.appendChild(buildCustomWidgetLibraryRow(member, groupRep?.space, {
+          insideGroup: true,
+          groupMembers: entry.members,
+          memberIndex: idx
+        }));
+      });
 
       groupCard.appendChild(groupHeader);
       if (autoRouteIconEditor) {

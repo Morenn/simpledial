@@ -16,8 +16,11 @@ import {
   deleteTagFromState,
   updateTagInState
 } from "./state.js";
-import { render } from "./render.js";
-import { syncWrite, validateSingleLink } from "./sync.js";
+import { render, isShowDeletedEnabled } from "./render.js";
+import { loadSyncModule } from "./lazy-modules.js";
+
+const syncWrite = (...args) => loadSyncModule().then(m => m.syncWrite(...args));
+const validateSingleLink = (...args) => loadSyncModule().then(m => m.validateSingleLink(...args));
 import { t } from "./i18n.js";
 import { loadConfig, logDebug } from "./config.js";
 import { normalizeBookmarkUrl } from "./bookmarks-api.js";
@@ -312,11 +315,26 @@ export function getFailedIconRefreshBookmarks() {
     });
   }
 
+  const itemsById = new Map();
+  for (const group of (state.groups || [])) {
+    if (!group || group.deleted) continue;
+    for (const item of (group.items || [])) {
+      if (!item || item.deleted) continue;
+      if (item.id) itemsById.set(item.id, item);
+      if (isStackItem(item)) {
+        for (const child of (item.children || [])) {
+          if (child && !child.deleted && child.id) {
+            itemsById.set(child.id, child);
+          }
+        }
+      }
+    }
+  }
+
   const results = [];
   for (const id of seenIds) {
-    const loc = findBookmarkLocation(id);
-    const item = loc?.item;
-    if (!item || item.deleted || loc?.group?.deleted || loc?.parentStack?.deleted) continue;
+    const item = itemsById.get(id);
+    if (!item) continue;
     results.push({
       id: item.id,
       category: "bookmark",
@@ -511,7 +529,7 @@ function findBookmarkInState(bookmarkId) {
   return findBookmarkLocation(bookmarkId)?.item || null;
 }
 
-function getActiveTagMap() {
+export function getActiveTagMap() {
   const map = new Map();
   for (const tag of SYSTEM_TAGS) {
     map.set(tag.id, tag);
@@ -524,10 +542,10 @@ function getActiveTagMap() {
   return map;
 }
 
-function createTagBadgeElements(tagIds, maxVisible = 3) {
+function createTagBadgeElements(tagIds, maxVisible = 3, precomputedTagMap = null) {
   if (!Array.isArray(tagIds) || tagIds.length === 0) return null;
 
-  const tagMap = getActiveTagMap();
+  const tagMap = precomputedTagMap || getActiveTagMap();
   const resolved = tagIds.map(id => tagMap.get(id)).filter(Boolean);
   if (resolved.length === 0) return null;
 
@@ -574,7 +592,7 @@ async function syncBookmarkColorFromIcon(item, tile, iconSrc) {
 }
 
 // ---------- Create bookmark tile ----------
-export function createBookmarkTile(item, config = null) {
+export function createBookmarkTile(item, config = null, renderContext = null) {
   const tile = document.createElement("div");
   tile.className = "bookmark-tile";
   tile.tabIndex = 0;
@@ -592,10 +610,10 @@ export function createBookmarkTile(item, config = null) {
   icon.loading = "lazy";
   icon.decoding = "async";
 
-  if (config?.appearance && "defaultBookmarkIcon" in config.appearance) {
+  if (!renderContext?.fallbackIconUrl && config?.appearance && "defaultBookmarkIcon" in config.appearance) {
     setCustomFallbackBookmarkIcon(config.appearance.defaultBookmarkIcon);
   }
-  const fallbackIconUrl = getFallbackBookmarkIconUrl(config);
+  const fallbackIconUrl = renderContext?.fallbackIconUrl || getFallbackBookmarkIconUrl(config);
 
   if (item.colorFromIcon && !effectiveColor) {
     if (cachedEntry.dataUrl) {
@@ -673,7 +691,7 @@ export function createBookmarkTile(item, config = null) {
     ...getBookmarkSystemTagIds(item.id),
     ...(Array.isArray(item.tags) ? item.tags : [])
   ];
-  const tagsEl = createTagBadgeElements(combinedTagIds);
+  const tagsEl = createTagBadgeElements(combinedTagIds, 3, renderContext?.tagMap || null);
   if (tagsEl) {
     body.appendChild(tagsEl);
   }
@@ -686,7 +704,7 @@ export function createBookmarkTile(item, config = null) {
 
 // ---------- Create stack tile ("siblings") ----------
 export function createStackTile(stackItem, config = null) {
-  const showDeleted = !!document.getElementById("show-deleted-toggle")?.checked;
+  const showDeleted = isShowDeletedEnabled();
   const visibleChildren = (stackItem.children || []).filter(c => showDeleted || !c.deleted);
   const stackTitleText = stackItem.title || t("defaultStackName") || "Stack";
 
@@ -810,7 +828,7 @@ function populateStackPopover(stackItem, config = null) {
   const grid = document.getElementById("stack-popover-grid");
   if (!grid || !stackItem) return;
 
-  const showDeleted = !!document.getElementById("show-deleted-toggle")?.checked;
+  const showDeleted = isShowDeletedEnabled();
   const visibleChildren = (stackItem.children || []).filter(c => showDeleted || !c.deleted);
 
   if (titleInput) {
@@ -1163,6 +1181,26 @@ async function getFaviconFromManifest(doc, origin) {
   return resolved;
 }
 
+async function getExperimentalFaviconFlags() {
+  const linkEl = typeof document !== "undefined"
+    ? document.getElementById("enable-experimental-favicon-fetch-link")
+    : null;
+  const manifestEl = typeof document !== "undefined"
+    ? document.getElementById("enable-experimental-favicon-fetch-manifest")
+    : null;
+  if (linkEl && manifestEl) {
+    return {
+      fetchLink: Boolean(linkEl.checked),
+      fetchManifest: Boolean(manifestEl.checked)
+    };
+  }
+  const cfg = await loadConfig();
+  return {
+    fetchLink: Boolean(linkEl ? linkEl.checked : cfg?.advanced?.faviconFetchLink),
+    fetchManifest: Boolean(manifestEl ? manifestEl.checked : cfg?.advanced?.faviconFetchManifest)
+  };
+}
+
 async function getBestFaviconUrl(item) {
   if (item.customIcon) {
     return item.customIcon;
@@ -1171,7 +1209,8 @@ async function getBestFaviconUrl(item) {
   // Experimental lookups, only if enabled and permission already granted.
   // Never requests the permission here — that only happens from a click
   // handler (ensureHostPermission), never automatically.
-  const needsPageFetch = document.getElementById("enable-experimental-favicon-fetch-link")?.checked || document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked;
+  const { fetchLink, fetchManifest } = await getExperimentalFaviconFlags();
+  const needsPageFetch = fetchLink || fetchManifest;
 
   if (needsPageFetch && (await hasHostPermission())) {
     let pageDoc = null;
@@ -1185,7 +1224,7 @@ async function getBestFaviconUrl(item) {
       faviconDebugLog("page fetch failed", err);
     }
 
-    if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked && pageDoc) {
+    if (fetchLink && pageDoc) {
       try {
         const linkIcon = getFaviconFromPageLinks(pageDoc, pageOrigin);
         if (linkIcon) return linkIcon;
@@ -1194,7 +1233,7 @@ async function getBestFaviconUrl(item) {
       }
     }
 
-    if (document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked && pageDoc) {
+    if (fetchManifest && pageDoc) {
       try {
         const manifestIcon = await getFaviconFromManifest(pageDoc, pageOrigin);
         if (manifestIcon) return manifestIcon;
@@ -1855,9 +1894,8 @@ bmSave.addEventListener("click", async () => {
     const wantColorFromIcon = !!bmColorFromIcon?.checked;
     const wantCustomColor = !!bmColorCustom?.checked;
     const pickedColor = bmColor?.value || "#4a6bff";
-    const needsExperimental =
-      document.getElementById("enable-experimental-favicon-fetch-link")?.checked ||
-      document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked;
+    const { fetchLink, fetchManifest } = await getExperimentalFaviconFlags();
+    const needsExperimental = fetchLink || fetchManifest;
 
     // Request optional host permission upfront while user gesture is still active.
     if (wantColorFromIcon || icon || needsExperimental) {
@@ -2122,7 +2160,8 @@ export async function handleBookmarkContext(action, el) {
     clearFaviconCacheEntry(item);
 
     // Only prompt for the host permission if an experimental lookup needs it (must stay in user gesture).
-    if (document.getElementById("enable-experimental-favicon-fetch-link")?.checked || document.getElementById("enable-experimental-favicon-fetch-manifest")?.checked) {
+    const { fetchLink, fetchManifest } = await getExperimentalFaviconFlags();
+    if (fetchLink || fetchManifest) {
       await ensureHostPermission();
     }
 

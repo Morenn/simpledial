@@ -193,6 +193,7 @@ export function groupCustomSearchWidgets(customWidgets = []) {
     ? customWidgets.filter(w =>
         w &&
         w.id &&
+        !w.disabled &&
         w.type === "custom-search" &&
         isValidCustomSearchUrlTemplate(w.urlTemplate) &&
         (w.mode !== "json" || isValidCustomSearchJsonTemplate(w.jsonTemplate))

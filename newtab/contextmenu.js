@@ -188,6 +188,7 @@ function updateContextMenuForGroup(groupTab) {
   const restoreBtn = contextMenu.querySelector('[data-action="restore"]');
   const deletePermanentBtn = contextMenu.querySelector('[data-action="delete-permanent"]');
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
+  const toggleExcludeIconBtn = contextMenu.querySelector('[data-action="toggle-exclude-icon"]');
   const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
   const removeFromStackBtn = contextMenu.querySelector('[data-action="remove-from-stack"]');
   const unstackBtn = contextMenu.querySelector('[data-action="unstack"]');
@@ -198,6 +199,7 @@ function updateContextMenuForGroup(groupTab) {
   if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
   if (removeFromStackBtn) removeFromStackBtn.classList.add("hidden");
   if (unstackBtn) unstackBtn.classList.add("hidden");
+  if (toggleExcludeIconBtn) toggleExcludeIconBtn.classList.add("hidden");
 
   // Show/hide based on deleted status
   if (group.deleted) {

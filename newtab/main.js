@@ -1,11 +1,11 @@
-import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, SYSTEM_TAGS_KEY, applyStateFromStorageChange, applySystemTagsFromStorageChange } from "./state.js";
-import { loadTheme, applySideSpaces } from "./theme.js";
-import { render, updateFooter, getSyncErrorLabel } from "./render.js";
+import { state, saveState, generateId, loadState, STORAGE_KEY, THEME_KEY, ACTIVE_GROUP_KEY, SYSTEM_TAGS_KEY, applyStateFromStorageChange, applySystemTagsFromStorageChange } from "./state.js";
+import { loadTheme, applySideSpaces, BACKGROUND_IMAGE_CACHE_KEY, CUSTOM_THEME_CSS_CACHE_KEY, CUSTOM_THEME_URL_CACHE_KEY } from "./theme.js";
+import { render, updateFooter, getSyncErrorLabel, isShowDeletedEnabled, bindShowDeletedToggleListener } from "./render.js";
 import { refreshBookmarkIconsIfNeeded } from "./bookmarks.js";
-import { loadConfig, updateDebugLoggingFlags, logDebug, shouldSync } from "./config.js";
-import { syncNow, syncWrite, startSyncLoop, cleanupDeletedItems, clearLastSyncErrorReason } from "./sync.js";
+import { loadConfig, updateDebugLoggingFlags, logDebug, shouldSync, CONFIG_STORAGE_KEY } from "./config.js";
 import { initLanguage, setLanguage, getCurrentLanguage, t, getAvailableLanguages } from "./i18n.js";
-import { touchVaultActivity, checkVaultAutoLock, isVaultUnlocked } from "./crypto.js";
+import { prefetchStartupStorage, clearStartupStorageCache } from "./storage-cache.js";
+import { loadSyncModule, getLoadedSyncModule, loadCryptoModule, getLoadedCryptoModule } from "./lazy-modules.js";
 
 let tzWidgetMod = null;
 let restWidgetMod = null;
@@ -61,10 +61,65 @@ function startActiveCustomWidgets(config) {
 // Make t global for modules that don't import it
 window.t = t;
 
+let settingsModalsLoadPromise = null;
+async function ensureSettingsModalsLoaded() {
+  if (document.getElementById("settings-modal") && document.getElementById("custom-widget-editor-modal")) {
+    return;
+  }
+  if (!settingsModalsLoadPromise) {
+    settingsModalsLoadPromise = (async () => {
+      const runtimeApi = typeof browser !== "undefined" ? browser.runtime : chrome.runtime;
+      const url = runtimeApi.getURL("newtab/settings-modals.html");
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to load settings-modals.html (${response.status})`);
+      }
+      const html = await response.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const settingsAnchor = document.getElementById("custom-widget-trust-modal");
+      const editorAnchor = document.getElementById("custom-widget-new-group-modal");
+      for (const child of Array.from(doc.body.children)) {
+        if (child.id && document.getElementById(child.id)) continue;
+        const imported = document.importNode(child, true);
+        if (imported.id === "settings-modal" && settingsAnchor?.parentNode === document.body) {
+          document.body.insertBefore(imported, settingsAnchor);
+        } else if (imported.id === "custom-widget-editor-modal" && editorAnchor?.parentNode === document.body) {
+          document.body.insertBefore(imported, editorAnchor);
+        } else {
+          document.body.appendChild(imported);
+        }
+      }
+      const showDeletedToggle = document.getElementById("show-deleted-toggle");
+      if (showDeletedToggle) {
+        showDeletedToggle.checked = document.body?.dataset?.showDeleted === "true";
+        if (!showDeletedToggle.dataset.appearanceBound) {
+          showDeletedToggle.dataset.appearanceBound = "true";
+          showDeletedToggle.addEventListener("change", () => {
+            updateShowDeletedButtonAppearance();
+          });
+        }
+        bindShowDeletedToggleListener();
+      }
+      setupLanguageSelector();
+      updateSettingsModalText("#settings-modal, #custom-widget-editor-modal");
+    })().catch(err => {
+      settingsModalsLoadPromise = null;
+      throw err;
+    });
+  }
+  return settingsModalsLoadPromise;
+}
+
 let settingsUiLoadPromise = null;
 async function ensureSettingsUiLoaded() {
   if (!settingsUiLoadPromise) {
-    settingsUiLoadPromise = import("./settings-ui.js");
+    settingsUiLoadPromise = (async () => {
+      await ensureSettingsModalsLoaded();
+      return await import("./settings-ui.js");
+    })().catch(err => {
+      settingsUiLoadPromise = null;
+      throw err;
+    });
   }
   return settingsUiLoadPromise;
 }
@@ -81,6 +136,11 @@ window.promptUnlockVault = lazyPromptUnlockVault;
 window.openSyncSettings = async () => {
   const mod = await ensureSettingsUiLoaded();
   await mod.openSettingsModal("sync");
+};
+
+window.openInfoSettings = async () => {
+  const mod = await ensureSettingsUiLoaded();
+  await mod.openSettingsModal("info");
 };
 
 window.openSyncMergeWizard = async () => {
@@ -110,8 +170,9 @@ if (headerManualSyncBtn) {
     headerManualSyncBtn.textContent = "⬆️";
     headerManualSyncBtn.style.opacity = "0.5";
     try {
+      const { syncNow } = await loadSyncModule();
       const result = await syncNow({ includeManualExtras: true, force: true });
-      void updateFooter();
+      void updateFooter(null, { allowLazyLoad: true });
       if (result.ok) {
         if (result.changed) {
           render();
@@ -283,9 +344,8 @@ function startIconRefreshLoop() {
 
 export function updateShowDeletedButtonAppearance() {
   const showDeletedBtn = document.getElementById("show-deleted-btn");
-  const showDeletedToggle = document.getElementById("show-deleted-toggle");
-  if (!showDeletedBtn || !showDeletedToggle) return;
-  if (showDeletedToggle.checked) {
+  if (!showDeletedBtn) return;
+  if (isShowDeletedEnabled()) {
     showDeletedBtn.style.opacity = "1";
     showDeletedBtn.style.transform = "scale(1.1)";
   } else {
@@ -303,7 +363,17 @@ export function updateShowDeletedButtonAppearance() {
     return { res, ms: Math.round(perfNow() - start) };
   };
 
-  // 1-3) Load language, bookmark state, and config in parallel
+  // 1-3) Prefetch startup storage keys in one batch, then load language, bookmark state, and config in parallel
+  await prefetchStartupStorage([
+    CONFIG_STORAGE_KEY,
+    STORAGE_KEY,
+    SYSTEM_TAGS_KEY,
+    ACTIVE_GROUP_KEY,
+    THEME_KEY,
+    BACKGROUND_IMAGE_CACHE_KEY,
+    CUSTOM_THEME_CSS_CACHE_KEY,
+    CUSTOM_THEME_URL_CACHE_KEY
+  ]);
   const [langRes, stateRes, configRes] = await Promise.all([
     timeStep(() => initLanguage()),
     timeStep(() => loadState()),
@@ -315,16 +385,29 @@ export function updateShowDeletedButtonAppearance() {
   // 4) Load and apply theme using already-loaded config
   updateDebugLoggingFlags(config.advanced);
   await loadTheme(config);
+  clearStartupStorageCache();
   const tAfterTheme = perfNow();
   updateDateTimeEnabledFromConfig(config);
 
+  if (document.body) {
+    document.body.dataset.showDeleted = config.appearance?.showDeleted ? "true" : "false";
+  }
   const showDeletedBtn = document.getElementById("show-deleted-btn");
   const showDeletedToggle = document.getElementById("show-deleted-toggle");
-  if (showDeletedBtn && showDeletedToggle && !showDeletedBtn.dataset.bound) {
+  if (showDeletedBtn && !showDeletedBtn.dataset.bound) {
     showDeletedBtn.dataset.bound = "true";
     showDeletedBtn.addEventListener("click", () => {
-      showDeletedToggle.checked = !showDeletedToggle.checked;
-      showDeletedToggle.dispatchEvent(new Event("change"));
+      const nextValue = !isShowDeletedEnabled();
+      if (document.body) {
+        document.body.dataset.showDeleted = nextValue ? "true" : "false";
+      }
+      const currentToggle = document.getElementById("show-deleted-toggle");
+      if (currentToggle) {
+        currentToggle.checked = nextValue;
+        currentToggle.dispatchEvent(new Event("change"));
+      } else {
+        render();
+      }
       updateShowDeletedButtonAppearance();
     });
   }
@@ -336,14 +419,14 @@ export function updateShowDeletedButtonAppearance() {
       });
     }
     showDeletedToggle.checked = !!config.appearance?.showDeleted;
-    updateShowDeletedButtonAppearance();
   }
+  updateShowDeletedButtonAppearance();
 
   // 7) Setup language selector
   setupLanguageSelector();
 
-  // 8) Update initial UI text
-  updateUIText();
+  // 8) Update initial visible UI text before first render; defer hidden modals until after paint
+  updateUIText({ includeModals: false });
 
   // 9) Render UI immediately with local data — does not wait for network
   await render(config);
@@ -387,29 +470,54 @@ export function updateShowDeletedButtonAppearance() {
 
   // Vault idle auto-lock monitoring (when vaultAutoLockMinutes > 0)
   let lastVaultActivityCheckMs = 0;
+  const getCryptoModuleForAutoLock = async latestCfg => {
+    const loaded = getLoadedCryptoModule();
+    if (loaded) return loaded;
+    if (latestCfg?.vaultHeader && latestCfg?.vaultAutoLockMinutes > 0) {
+      return await loadCryptoModule();
+    }
+    return null;
+  };
   const onVaultActivity = async () => {
-    if (!isVaultUnlocked()) return;
+    const preloadedCrypto = getLoadedCryptoModule();
+    if (preloadedCrypto && !preloadedCrypto.isVaultUnlocked()) return;
     const now = Date.now();
     if (now - lastVaultActivityCheckMs < 15000) return;
     lastVaultActivityCheckMs = now;
     const latestCfg = await loadConfig();
-    if (latestCfg?.vaultAutoLockMinutes > 0) {
-      void touchVaultActivity(latestCfg.vaultAutoLockMinutes);
+    if (!(latestCfg?.vaultAutoLockMinutes > 0)) return;
+    const cryptoMod = await getCryptoModuleForAutoLock(latestCfg);
+    if (cryptoMod?.isVaultUnlocked()) {
+      void cryptoMod.touchVaultActivity(latestCfg.vaultAutoLockMinutes);
     }
   };
   document.addEventListener("pointerdown", () => { void onVaultActivity(); }, { passive: true });
   document.addEventListener("keydown", () => { void onVaultActivity(); }, { passive: true });
-  setInterval(async () => {
-    if (!isVaultUnlocked()) return;
+  const runVaultAutoLockCheck = async () => {
+    const preloadedCrypto = getLoadedCryptoModule();
+    if (preloadedCrypto && !preloadedCrypto.isVaultUnlocked()) return;
     const latestCfg = await loadConfig();
-    if (await checkVaultAutoLock(latestCfg?.vaultAutoLockMinutes || 0)) {
-      void updateFooter(latestCfg);
+    const cryptoMod = await getCryptoModuleForAutoLock(latestCfg);
+    if (!cryptoMod?.isVaultUnlocked()) return;
+    if (await cryptoMod.checkVaultAutoLock(latestCfg?.vaultAutoLockMinutes || 0)) {
+      void updateFooter(latestCfg, { allowLazyLoad: true });
       void restWidgetMod?.pollAllRestStatusWidgets?.({ force: true });
     }
+  };
+  setInterval(() => {
+    if (document.visibilityState === "hidden") return;
+    void runVaultAutoLockCheck();
   }, 30000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void runVaultAutoLockCheck();
+    }
+  });
 
   // Defer background startup work until after the first paint completes.
   scheduleAfterFirstPaint(() => {
+    updateSettingsModalText();
+    void updateFooter(null, { allowLazyLoad: true });
     setTimeout(() => {
       const hasBookmarks = Array.isArray(state.groups) && state.groups.some(
         g => !g?.deleted && Array.isArray(g.items) && g.items.some(i => !i?.deleted)
@@ -425,8 +533,9 @@ export function updateShowDeletedButtonAppearance() {
       initialSyncInProgress = true;
       setTimeout(() => {
         (async () => {
+          const { syncNow } = await loadSyncModule();
           const result = await syncNow();
-          void updateFooter();
+          void updateFooter(null, { allowLazyLoad: true });
 
           if (!result.ok) {
             console.warn("Sync failed:", result.reason || "unknown", result);
@@ -450,10 +559,12 @@ export function updateShowDeletedButtonAppearance() {
     }
 
     // 5) Start sync loop
-    startSyncLoop({
-      initialDelayMs: 6000,
-      shouldSkip: () => initialSyncInProgress
-    });
+    void loadSyncModule()
+      .then(({ startSyncLoop }) => startSyncLoop({
+        initialDelayMs: 6000,
+        shouldSkip: () => initialSyncInProgress
+      }))
+      .catch(err => console.warn("Sync loop init failed", err));
 
     // 5b) Backup check & browser bookmarks sync (deferred in background, non-blocking)
     setTimeout(() => {
@@ -466,7 +577,9 @@ export function updateShowDeletedButtonAppearance() {
 
     // 6) Housekeeping cleanup (in background, non-blocking)
     if (startupHousekeeperCleanup > 0) {
-      cleanupDeletedItems(startupHousekeeperCleanup).catch(err => console.error("Housekeeping cleanup failed", err));
+      loadSyncModule()
+        .then(({ cleanupDeletedItems }) => cleanupDeletedItems(startupHousekeeperCleanup))
+        .catch(err => console.error("Housekeeping cleanup failed", err));
     }
 
     // 11) Refresh bookmark icons (in background, non-blocking)
@@ -507,12 +620,16 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   updateDebugLoggingFlags(configChange.newValue.advanced);
   updateDateTimeEnabledFromConfig(configChange.newValue);
   updateHeaderManualSyncButton(configChange.newValue);
-  void loadTheme(configChange.newValue).then(() => {
-    startActiveCustomWidgets(configChange.newValue);
-    render(configChange.newValue);
-  });
+  const appearanceChanged = themeChange ||
+    JSON.stringify(configChange.oldValue?.appearance ?? null) !== JSON.stringify(configChange.newValue?.appearance ?? null);
+  if (appearanceChanged) {
+    void loadTheme(configChange.newValue).then(() => {
+      startActiveCustomWidgets(configChange.newValue);
+      render(configChange.newValue);
+    });
+  }
   updateClock();
-  void updateFooter(configChange.newValue);
+  void updateFooter(configChange.newValue, { allowLazyLoad: true });
 });
 
 const addSectionBtn = document.getElementById("add-section-btn");
@@ -538,6 +655,7 @@ if (addSectionBtn) {
     group.updatedAt = now;
 
     await saveState();
+    const { syncWrite } = await loadSyncModule();
     await syncWrite();
     render();
   });
@@ -566,16 +684,19 @@ export function setupLanguageSelector() {
     langSelect.value = getCurrentLanguage();
 
     // Handle language change (preview until saved in settings)
-    langSelect.addEventListener("change", async (e) => {
+    if (!langSelect.dataset.bound) {
+      langSelect.dataset.bound = "true";
+      langSelect.addEventListener("change", async (e) => {
       const newLang = e.target.value;
-      if (await setLanguage(newLang, { persist: false })) {
-        // Re-render UI with new language
-        render();
-        // Update all UI text
-        updateUIText();
-        updateClock();
-      }
-    });
+        if (await setLanguage(newLang, { persist: false })) {
+          // Re-render UI with new language
+          render();
+          // Update all UI text
+          updateUIText();
+          updateClock();
+        }
+      });
+    }
   }
 }
 
@@ -630,7 +751,7 @@ export function updateClock() {
 }
 
 // Update all UI text elements
-export function updateUIText() {
+export function updateUIText({ includeModals = true } = {}) {
   window._updateShortcutPaletteButton?.();
   // Search box & search controls
   const searchBox = document.getElementById("search-box");
@@ -743,8 +864,12 @@ export function updateUIText() {
     if (grpCancelBtn) grpCancelBtn.textContent = t("cancel");
   }
 
-  // Update settings modal text
-  updateSettingsModalText();
+  // Update settings modal text (and other hidden modals) when requested
+  if (includeModals) {
+    updateSettingsModalText();
+  } else {
+    updateSettingsModalText("#top-bar, #workspace-main, footer");
+  }
 }
 
 function getLeadingIconPrefix(text) {
@@ -753,9 +878,14 @@ function getLeadingIconPrefix(text) {
 }
 
 // Update settings modal text based on language
-function updateSettingsModalText() {
+function updateSettingsModalText(rootSelector = null) {
+  const roots = rootSelector
+    ? Array.from(document.querySelectorAll(rootSelector))
+    : [document];
+  const queryAllInRoots = (selector) => roots.flatMap(r => Array.from(r.querySelectorAll(selector)));
+
   // Single pass over all [data-i18n] elements (covers p, button, label, span, etc.)
-  document.querySelectorAll('[data-i18n]').forEach(el => {
+  queryAllInRoots('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     const text = t(key);
 
@@ -773,7 +903,7 @@ function updateSettingsModalText() {
   });
 
   // Update inputs with data-i18n-placeholder
-  const placeholderEls = document.querySelectorAll('[data-i18n-placeholder]');
+  const placeholderEls = queryAllInRoots('[data-i18n-placeholder]');
   placeholderEls.forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder');
     if (key) el.placeholder = t(key);
@@ -786,7 +916,7 @@ function updateSettingsModalText() {
   ];
 
   attributeMappings.forEach(({ selector, attr, keyAttr }) => {
-    const nodes = document.querySelectorAll(selector);
+    const nodes = queryAllInRoots(selector);
     nodes.forEach(node => {
       const storedKey = node.getAttribute(keyAttr);
       const currentValue = node.getAttribute(attr);
@@ -835,8 +965,8 @@ function showSyncUnavailableNotification(result = null) {
     notification.addEventListener("click", async () => {
       notification.remove();
       if (typeof window.promptUnlockVault === "function" && await window.promptUnlockVault()) {
-        clearLastSyncErrorReason();
-        void updateFooter();
+        getLoadedSyncModule()?.clearLastSyncErrorReason();
+        void updateFooter(null, { allowLazyLoad: true });
       }
     });
   } else if (reason === "stale-device-conflict" || reason === "dbuid-mismatch") {

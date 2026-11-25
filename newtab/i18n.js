@@ -53,7 +53,7 @@ async function loadLanguageFile(code) {
       for (const key of Object.keys(json)) {
         const item = json[key];
         if (item && typeof item.message === 'string') {
-          texts[key] = item.message;
+          texts[key] = normalizeMessageText(item.message);
         }
       }
 
@@ -84,10 +84,10 @@ export function t(key) {
   }
 
   const lang = languages[currentLanguage];
-  if (lang?.texts?.[key]) return normalizeMessageText(lang.texts[key]);
+  if (lang?.texts?.[key]) return lang.texts[key];
 
   const english = languages.en;
-  if (english?.texts?.[key]) return normalizeMessageText(english.texts[key]);
+  if (english?.texts?.[key]) return english.texts[key];
 
   return key;
 }

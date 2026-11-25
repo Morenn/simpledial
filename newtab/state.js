@@ -1,3 +1,5 @@
+import { getStorageValue } from "./storage-cache.js";
+
 export const STORAGE_KEY = "myspeeddial-data";
 export const THEME_KEY = "myspeeddial-theme";
 export const ACTIVE_GROUP_KEY = "myspeeddial-active-group";
@@ -174,8 +176,8 @@ export async function saveActiveGroupId(groupId) {
 
 export async function loadActiveGroupId() {
   try {
-    const res = await chrome.storage.local.get(ACTIVE_GROUP_KEY);
-    return res?.[ACTIVE_GROUP_KEY] || null;
+    const activeGroupId = await getStorageValue(ACTIVE_GROUP_KEY);
+    return activeGroupId || null;
   } catch (err) {
     console.warn("Failed to load active group id", err);
     return null;
@@ -362,8 +364,8 @@ function sanitizeSystemTagsMap(raw) {
 
 export async function loadSystemTags() {
   try {
-    const res = await chrome.storage.local.get(SYSTEM_TAGS_KEY);
-    systemBookmarkTags = sanitizeSystemTagsMap(res?.[SYSTEM_TAGS_KEY]);
+    const raw = await getStorageValue(SYSTEM_TAGS_KEY);
+    systemBookmarkTags = sanitizeSystemTagsMap(raw);
   } catch (err) {
     console.warn("Failed to load system tags", err);
     systemBookmarkTags = {};
@@ -484,8 +486,7 @@ export function applyStateFromStorageChange(stored) {
 
 export async function loadState() {
   await loadSystemTags();
-  const res = await chrome.storage.local.get(STORAGE_KEY);
-  const stored = res[STORAGE_KEY];
+  const stored = await getStorageValue(STORAGE_KEY);
 
   if (stored) {
     applyStoredState(stored);

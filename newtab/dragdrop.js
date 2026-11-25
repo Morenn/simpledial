@@ -7,7 +7,9 @@ import {
   cleanupStackIfNeeded
 } from "./state.js";
 import { render } from "./render.js";
-import { syncWrite } from "./sync.js";
+import { loadSyncModule } from "./lazy-modules.js";
+
+const syncWrite = (...args) => loadSyncModule().then(m => m.syncWrite(...args));
 import { moveBookmarkToGroup } from "./bookmarks.js";
 import { t } from "./i18n.js";
 
@@ -18,8 +20,10 @@ import { t } from "./i18n.js";
 const EMPTY_DRAG_IMAGE = new Image();
 let dragListenersInitialized = false;
 let dragSession = null;
-let autoScrollInterval = null;
+let autoScrollRafId = 0;
 let lastAutoScrollClientY = 0;
+let dragOverRafId = 0;
+let pendingDragOverArgs = null;
 
 function toElement(node) {
   if (!node) return null;
@@ -32,7 +36,7 @@ function getWorkspaceScrollContainer() {
 
 function startAutoScroll(clientY) {
   lastAutoScrollClientY = clientY;
-  if (autoScrollInterval) return;
+  if (autoScrollRafId) return;
 
   const main = getWorkspaceScrollContainer();
   if (!main) return;
@@ -40,7 +44,11 @@ function startAutoScroll(clientY) {
   const SCROLL_THRESHOLD = 80;
   const SCROLL_SPEED = 6;
 
-  autoScrollInterval = setInterval(() => {
+  const step = () => {
+    if (!dragSession || dragSession.cancelled) {
+      autoScrollRafId = 0;
+      return;
+    }
     const mainRect = main.getBoundingClientRect();
     const distanceFromBottom = mainRect.bottom - lastAutoScrollClientY;
     const distanceFromTop = lastAutoScrollClientY - mainRect.top;
@@ -50,13 +58,15 @@ function startAutoScroll(clientY) {
     } else if (distanceFromTop < SCROLL_THRESHOLD && main.scrollTop > 0) {
       main.scrollBy(0, -SCROLL_SPEED);
     }
-  }, 16);
+    autoScrollRafId = requestAnimationFrame(step);
+  };
+  autoScrollRafId = requestAnimationFrame(step);
 }
 
 function stopAutoScroll() {
-  if (autoScrollInterval) {
-    clearInterval(autoScrollInterval);
-    autoScrollInterval = null;
+  if (autoScrollRafId) {
+    cancelAnimationFrame(autoScrollRafId);
+    autoScrollRafId = 0;
   }
 }
 
@@ -123,6 +133,11 @@ function removeDragPlaceholder() {
 }
 
 function resetDragVisuals() {
+  if (dragOverRafId) {
+    cancelAnimationFrame(dragOverRafId);
+    dragOverRafId = 0;
+  }
+  pendingDragOverArgs = null;
   stopAutoScroll();
   clearStackDropTarget();
   clearContainerHighlights();
@@ -302,10 +317,27 @@ function isPointInElement(el, clientX, clientY) {
 
 function handleDragOverDocument(e) {
   if (!dragSession || dragSession.cancelled) return;
+  // Must stay synchronous so browser allows drop target
   e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
 
   const targetEl = toElement(e.target);
   if (!targetEl) return;
+
+  pendingDragOverArgs = { targetEl, clientX: e.clientX, clientY: e.clientY };
+  if (dragOverRafId) return;
+  dragOverRafId = requestAnimationFrame(() => {
+    dragOverRafId = 0;
+    const pending = pendingDragOverArgs;
+    pendingDragOverArgs = null;
+    if (!pending || !dragSession || dragSession.cancelled) return;
+    processDragOverFrame(pending.targetEl, pending.clientX, pending.clientY);
+  });
+}
+
+function processDragOverFrame(targetEl, clientX, clientY) {
+  if (!dragSession || dragSession.cancelled) return;
+  const e = { clientX, clientY, dataTransfer: null };
 
   // Allow dragging a child bookmark outside of an open Stack popover
   const stackPopover = document.getElementById("stack-popover");
@@ -328,6 +360,7 @@ function handleDragOverDocument(e) {
   // 1) Dropping onto another Group tab in top bar
   const groupTab = targetEl.closest(".group-tab:not(.add-group)");
   if (groupTab && groupTab.dataset.groupId && groupTab.dataset.groupId !== window.activeGroupId) {
+    stopAutoScroll();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     clearStackDropTarget();
     clearContainerHighlights();
@@ -367,7 +400,10 @@ function handleDragOverDocument(e) {
 
   // 3) Reordering / Stacking / Moving between Sections and Unsectioned Grid
   const containerGrid = resolveWorkspaceTargetGrid(targetEl, e.clientX, e.clientY);
-  if (!containerGrid) return;
+  if (!containerGrid) {
+    stopAutoScroll();
+    return;
+  }
 
   if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
   startAutoScroll(e.clientY);
@@ -535,6 +571,12 @@ async function commitActiveDragSession() {
     }
 
     // 3b) Reordering / Moving across sections or dragging OUT of a Stack
+    if (document.getElementById("search-box")?.value.trim()) {
+      resetDragVisuals();
+      dragSession = null;
+      return;
+    }
+
     const targetSectionId = targetGrid.classList.contains("section-grid")
       ? (targetGrid.dataset.sectionId || null)
       : null;
@@ -570,9 +612,10 @@ async function commitActiveDragSession() {
     movedItem.sectionId = targetSectionId;
     movedItem.updatedAt = now;
 
+    const orderIndexById = new Map(orderedIds.map((id, idx) => [id, idx]));
     group.items.sort((a, b) => {
-      const idxA = orderedIds.indexOf(a.id);
-      const idxB = orderedIds.indexOf(b.id);
+      const idxA = orderIndexById.get(a.id) ?? -1;
+      const idxB = orderIndexById.get(b.id) ?? -1;
       if (idxA === -1) return 1;
       if (idxB === -1) return -1;
       return idxA - idxB;
@@ -589,6 +632,18 @@ async function commitActiveDragSession() {
   dragSession = null;
 }
 
+function flushPendingDragOver() {
+  if (dragOverRafId) {
+    cancelAnimationFrame(dragOverRafId);
+    dragOverRafId = 0;
+  }
+  const pending = pendingDragOverArgs;
+  pendingDragOverArgs = null;
+  if (pending && dragSession && !dragSession.cancelled) {
+    processDragOverFrame(pending.targetEl, pending.clientX, pending.clientY);
+  }
+}
+
 async function handleDropDocument(e) {
   if (!dragSession) return;
   if (dragSession.cancelled) {
@@ -597,6 +652,7 @@ async function handleDropDocument(e) {
     return;
   }
   e.preventDefault();
+  flushPendingDragOver();
   await commitActiveDragSession();
 }
 
@@ -674,6 +730,9 @@ function initializeGlobalDragListeners() {
   document.addEventListener("dragend", e => {
     if (!dragSession) return;
     const wasCancelled = dragSession.cancelled || e.dataTransfer?.dropEffect === "none";
+    if (!wasCancelled) {
+      flushPendingDragOver();
+    }
     if (
       !wasCancelled &&
       !dragSession.dropHandled &&

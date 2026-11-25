@@ -1,6 +1,8 @@
 import { state, saveState, isStackItem, getAllGroupBookmarks, cleanupStackIfNeeded, SYSTEM_TAG_DEAD_LINK_ID, getBookmarkSystemTagIds, setBookmarkSystemTag, saveSystemTags } from "./state.js";
 import { loadConfig, saveConfig, defaultConfig, shouldSync, updateLastSyncTime, logDebug, DEFAULT_SYNC_INTERVAL, parseJsonSafely } from "./config.js";
 import { importRawKey, decryptWithKey, getSecret } from './crypto.js';
+import { withAutoBackupLock } from './backup-lock.js';
+import { batchStorageGet } from './storage-cache.js';
 
 const deadLinkDebugLog = (...args) => logDebug("deadLink", ...args);
 const syncDebugLog = (...args) => logDebug("sync", ...args);
@@ -234,7 +236,9 @@ async function getRemoteChangeMarker(cfg, options = {}) {
   }
 
   const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type, resolvedCfg);
-  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
+  const credentials = options?.credentials?.ok
+    ? options.credentials
+    : await resolveSyncCredentials(resolvedCfg, 'syncRead');
   if (!credentials.ok) {
     return null;
   }
@@ -301,14 +305,16 @@ async function getRemoteChangeMarker(cfg, options = {}) {
 
 // Checks all marker header types at once (used by the settings "read test"
 // button so the user can see which headers the backend actually exposes).
-export async function probeSupportedRemoteMarkers(cfg = null) {
+export async function probeSupportedRemoteMarkers(cfg = null, options = {}) {
   const resolvedCfg = cfg || await loadSyncConfig();
   if (!resolvedCfg || resolvedCfg.type === 'browser') {
     return null;
   }
 
   const url = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type, resolvedCfg);
-  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
+  const credentials = options?.credentials?.ok
+    ? options.credentials
+    : await resolveSyncCredentials(resolvedCfg, 'syncRead');
   if (!credentials.ok) {
     return null;
   }
@@ -551,6 +557,15 @@ async function testWebdavFolderPermissions(folderBaseUrl, headers, serverUrl = "
   return { ok: true, reason: 'folder-ready', folderUrl: folderBaseUrl, deleteSupported };
 }
 
+function isValidHttpSyncUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export async function testSyncConnection(url, username = '', password = '', type = 'direct', options = {}) {
   const webdavMode = options?.webdavMode === 'folder' ? 'folder' : 'file';
   const webdavFolderPath = options?.webdavFolderPath || '';
@@ -559,10 +574,8 @@ export async function testSyncConnection(url, username = '', password = '', type
   try {
     const endpoint = getSyncFetchUrl(url, type, cfgObj);
 
-    // Validate URL format
-    try {
-      new URL(endpoint);
-    } catch (e) {
+    // Validate URL format and restrict to http/https
+    if (!isValidHttpSyncUrl(endpoint)) {
       return { ok: false, reason: 'invalid-url' };
     }
 
@@ -611,6 +624,9 @@ export async function testSyncConnection(url, username = '', password = '', type
     // If fetch is blocked by CORS before redirect info is exposed, open endpoint
     // directly so the user can authenticate in a regular tab.
     const endpoint = getSyncFetchUrl(url, type, cfgObj);
+    if (!isValidHttpSyncUrl(endpoint)) {
+      return { ok: false, reason: 'invalid-url' };
+    }
     const opened = await maybeOpenAuthRedirectTab(endpoint);
     if (opened) {
       return { ok: false, reason: 'auth-redirect', redirectUrl: endpoint };
@@ -784,13 +800,13 @@ async function syncReadDetailed(cfg = null, options = {}) {
   const url = resolvedCfg.url;
   const fetchUrl = getSyncFetchUrl(url, resolvedCfg.type, resolvedCfg);
 
-  try {
-    new URL(fetchUrl);
-  } catch (e) {
+  if (!isValidHttpSyncUrl(fetchUrl)) {
     return { ok: false, reason: 'invalid-url' };
   }
 
-  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncRead');
+  const credentials = options?.credentials?.ok
+    ? options.credentials
+    : await resolveSyncCredentials(resolvedCfg, 'syncRead');
   if (!credentials.ok) {
     return credentials;
   }
@@ -934,13 +950,13 @@ async function syncWriteDetailed(cfg = null, sourceGroups = null, sourceTags = n
 
   const fetchUrl = getSyncFetchUrl(resolvedCfg.url, resolvedCfg.type, resolvedCfg);
 
-  try {
-    new URL(fetchUrl);
-  } catch (e) {
+  if (!isValidHttpSyncUrl(fetchUrl)) {
     return { ok: false, reason: 'invalid-url' };
   }
 
-  const credentials = await resolveSyncCredentials(resolvedCfg, 'syncWrite');
+  const credentials = options?.credentials?.ok
+    ? options.credentials
+    : await resolveSyncCredentials(resolvedCfg, 'syncWrite');
   if (!credentials.ok) {
     return credentials;
   }
@@ -1586,7 +1602,27 @@ export async function syncReadTest() {
 }
 
 export async function syncWriteTest() {
-  return await syncWriteDetailed();
+  return await withSyncLock(async () => {
+    const config = await loadConfig();
+    const syncConfig = buildSyncConfigFromConfig(config);
+    const tombstoneState = await loadLocalTombstoneState();
+    return await syncWriteDetailed(syncConfig, state.groups, state.tags, {
+      dbuid: tombstoneState.dbuid,
+      tombstones: tombstoneState.tombstones,
+      tombstonePrunedBefore: tombstoneState.tombstonePrunedBefore
+    });
+  });
+}
+
+function pickNewerGroupMeta(localGroup, cloudGroup) {
+  const localTimestamp = localGroup.deleted ? (localGroup.deletedAt || 0) : (localGroup.updatedAt || 0);
+  const cloudTimestamp = cloudGroup.deleted ? (cloudGroup.deletedAt || 0) : (cloudGroup.updatedAt || 0);
+  if (localTimestamp !== cloudTimestamp) {
+    return localTimestamp > cloudTimestamp ? localGroup : cloudGroup;
+  }
+  const { items: _li, sections: _ls, ...localMeta } = localGroup;
+  const { items: _ci, sections: _cs, ...cloudMeta } = cloudGroup;
+  return stableSerialize(localMeta) > stableSerialize(cloudMeta) ? localGroup : cloudGroup;
 }
 
 function pickNewerRecord(localRecord, cloudRecord) {
@@ -1768,7 +1804,7 @@ function mergeGroups(localGroups, cloudGroups, options = {}) {
       continue;
     }
 
-    const winningMeta = pickNewerRecord(localGroup, cloudGroup);
+    const winningMeta = pickNewerGroupMeta(localGroup, cloudGroup);
     const preferCloud = winningMeta === cloudGroup;
     preferCloudItemOrderByGroupId.set(id, preferCloud);
     const nextGroup = { ...winningMeta, items: [] };
@@ -2193,11 +2229,13 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
       await saveLocalTombstoneState({ dbuid: nextDbuid, tombstones: mergedTombstonesMap, tombstonePrunedBefore: nextPrunedBefore });
     }
     if (config.sync) config.sync.pendingPurgedIds = [];
-    config.sync.lastSyncedLocalHash = await getGroupsHash(state.groups, state.tags, {
-      dbuid: nextDbuid,
-      tombstones: mergedTombstonesMap,
-      tombstonePrunedBefore: nextPrunedBefore
-    });
+    config.sync.lastSyncedLocalHash = (!changed && !tombstonesChangedLocally && options?.precomputedLocalHash)
+      ? options.precomputedLocalHash
+      : await getGroupsHash(state.groups, state.tags, {
+        dbuid: nextDbuid,
+        tombstones: mergedTombstonesMap,
+        tombstonePrunedBefore: nextPrunedBefore
+      });
     await updateLastSyncTime(config);
     return { ok: true, reason: 'no-changes', changed: forceSaveLocal };
   }
@@ -2222,7 +2260,8 @@ async function mergeAndWriteAtomically(config, cloudGroups, browserConflictRetri
       {
         dbuid: nextDbuid,
         tombstones: nextTombstonesObj,
-        tombstonePrunedBefore: nextPrunedBefore
+        tombstonePrunedBefore: nextPrunedBefore,
+        credentials: options?.credentials
       }
     );
 
@@ -2358,13 +2397,17 @@ export function startSyncLoop(options = {}) {
 
 // Shared by syncNow() and the initial startup sync so both paths skip work
 // when the backend proves nothing changed, not just the periodic loop.
-export async function checkRemoteMarkerUnchanged(config) {
+export async function checkRemoteMarkerUnchanged(config, options = {}) {
   if (!config || config.sync.type === 'browser') return false;
 
   resetRemoteMarkerStateIfUrlChanged(config);
   const preferredType = config.sync.remoteChangeHeaderType || null;
-  const resolvedSyncCfg = buildSyncConfigFromConfig(config);
-  const marker = await getRemoteChangeMarker(resolvedSyncCfg, { allowFallback: true, preferredType });
+  const resolvedSyncCfg = options?.syncCfg || buildSyncConfigFromConfig(config);
+  const marker = await getRemoteChangeMarker(resolvedSyncCfg, {
+    allowFallback: true,
+    preferredType,
+    credentials: options?.credentials
+  });
 
   if (!marker) {
     logRemoteMarkerCapabilityChange(config, false);
@@ -2372,7 +2415,9 @@ export async function checkRemoteMarkerUnchanged(config) {
     config.sync.remoteChangeHeaderType = false;
     config.sync.lastSeenRemoteMarker = '';
     config.sync.lastRemoteMarkerCheck = Date.now();
-    await saveConfig(config);
+    if (!options?.deferSave) {
+      await saveConfig(config);
+    }
     return false;
   }
 
@@ -2466,10 +2511,11 @@ function buildWidgetsExtraPayload(config) {
     customWidgets: Array.isArray(a.customWidgets)
       ? a.customWidgets.map(w => {
           if (!w || typeof w !== "object") return w;
-          if (!("authHeaderValue" in w) && !("apiKey" in w)) return w;
+          if (!("authHeaderValue" in w) && !("apiKey" in w) && !("disabled" in w)) return w;
           const sanitized = { ...w };
           if ("authHeaderValue" in sanitized) sanitized.authHeaderValue = "";
           if ("apiKey" in sanitized) sanitized.apiKey = "";
+          if ("disabled" in sanitized) delete sanitized.disabled;
           return sanitized;
         })
       : [],
@@ -2491,10 +2537,19 @@ function buildBackgroundExtraPayload(config) {
   };
 }
 
+function isSafeBackupFilename(filename) {
+  if (typeof filename !== "string") return false;
+  const trimmed = filename.trim();
+  if (!trimmed || trimmed.length > 255) return false;
+  if (trimmed === "." || trimmed === ".." || trimmed.includes("..")) return false;
+  if (/[\\/\x00-\x1f\x7f%]/.test(trimmed)) return false;
+  return true;
+}
+
 function mergeBackupArrays(localList = [], remoteList = [], retentionDays = 14, now = Date.now()) {
   const byFilename = new Map();
   for (const entry of [...(Array.isArray(localList) ? localList : []), ...(Array.isArray(remoteList) ? remoteList : [])]) {
-    if (!entry || typeof entry.filename !== "string") continue;
+    if (!entry || !isSafeBackupFilename(entry.filename)) continue;
     const prev = byFilename.get(entry.filename);
     if (!prev || Number(entry.timestamp || 0) >= Number(prev.timestamp || 0)) {
       byFilename.set(entry.filename, entry);
@@ -2553,16 +2608,25 @@ const WEBDAV_EXTRA_SECTION_SPECS = {
             .filter(w => w?.id && w?.apiKey)
             .map(w => [w.id, w.apiKey])
         );
+        const localDisabledIds = new Set(
+          (cfg.appearance?.customWidgets || [])
+            .filter(w => w?.id && w?.disabled)
+            .map(w => w.id)
+        );
         const nextRemote = { ...remoteData };
         if (Array.isArray(nextRemote.customWidgets)) {
           nextRemote.customWidgets = nextRemote.customWidgets.map(w => {
             if (!w || typeof w !== "object") return w;
+            const { disabled: _remoteDisabled, ...restWidget } = w;
             const nextWidget = {
-              ...w,
+              ...restWidget,
               authHeaderValue: w.id && localById.has(w.id) ? localById.get(w.id) : ""
             };
             if ("apiKey" in w || (w.id && localApiKeyById.has(w.id))) {
               nextWidget.apiKey = w.id && localApiKeyById.has(w.id) ? localApiKeyById.get(w.id) : "";
+            }
+            if (w.id && localDisabledIds.has(w.id)) {
+              nextWidget.disabled = true;
             }
             return nextWidget;
           });
@@ -2589,10 +2653,10 @@ function isDefaultExtraPayload(key, localPayload) {
   return stableSerialize(localPayload) === stableSerialize(defaultPayload);
 }
 
-async function syncExtraJsonSection({ key, fileUrl, headers, buildPayload, lastHashes, applyRemote }) {
+async function syncExtraJsonSection({ key, fileUrl, headers, buildPayload, lastHashes, applyRemote, remoteRes: preloadedRemoteRes = null }) {
   const localPayload = buildPayload();
   const localHash = await hashExtraPayload(localPayload);
-  const remoteRes = await webdavGetJsonFile(fileUrl, headers);
+  const remoteRes = preloadedRemoteRes || await webdavGetJsonFile(fileUrl, headers);
   if (!remoteRes.ok) return { changed: false, conflict: false };
 
   if (remoteRes.notFound) {
@@ -2664,19 +2728,55 @@ function shouldSyncExtraPart(enabled, mode, { includeManual = false, manualOnly 
   return isManual ? includeManual : true;
 }
 
-async function ensureWebdavBackupDirs(backupsRootUrl, backupTypes, headers) {
-  const dirUrls = [`${backupsRootUrl}/`, ...backupTypes.map(t => `${backupsRootUrl}/${t}/`)];
-  for (const dirUrl of dirUrls) {
+const ensuredWebdavDirs = new Set();
+
+async function runWithConcurrency(items, limit, worker) {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) return [];
+  const workerCount = Math.min(Math.max(1, limit), list.length);
+  let nextIndex = 0;
+  const results = new Array(list.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < list.length) {
+        const idx = nextIndex++;
+        results[idx] = await worker(list[idx], idx);
+      }
+    })
+  );
+  return results;
+}
+
+async function ensureWebdavBackupDirs(backupsRootUrl, backupTypes, headers, { forceCheck = false } = {}) {
+  const ensureSingleDir = async (dirUrl) => {
     try {
       const checkRes = await fetchWithTimeout(dirUrl, {
         method: "PROPFIND",
         headers: { Depth: "0", ...headers }
       });
       if (checkRes.status === 404 || checkRes.status === 405 || checkRes.status === 501) {
-        await fetchWithTimeout(dirUrl, { method: "MKCOL", headers });
+        const mkRes = await fetchWithTimeout(dirUrl, { method: "MKCOL", headers });
+        if (mkRes.ok || mkRes.status === 405) {
+          ensuredWebdavDirs.add(dirUrl);
+        }
+      } else if (checkRes.ok || checkRes.status === 207) {
+        ensuredWebdavDirs.add(dirUrl);
       }
     } catch {}
+  };
+
+  const parentUrl = `${backupsRootUrl}/`;
+  if (forceCheck || !ensuredWebdavDirs.has(parentUrl)) {
+    await ensureSingleDir(parentUrl);
   }
+
+  const childUrls = backupTypes.map(t => `${backupsRootUrl}/${t}/`);
+  const pendingChildren = forceCheck
+    ? childUrls
+    : childUrls.filter(dirUrl => !ensuredWebdavDirs.has(dirUrl));
+  if (pendingChildren.length === 0) return;
+
+  await runWithConcurrency(pendingChildren, 3, ensureSingleDir);
 }
 
 function emitSyncStatusChanged() {
@@ -2705,7 +2805,9 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
   }
 
   const resolvedCfg = buildSyncConfigFromConfig(currentConfig);
-  const credentials = await resolveSyncCredentials(resolvedCfg, "syncWebdavFolderExtras");
+  const credentials = options?.credentials?.ok
+    ? options.credentials
+    : await resolveSyncCredentials(resolvedCfg, "syncWebdavFolderExtras");
   if (!credentials.ok) return credentials;
 
   const headers = {};
@@ -2729,12 +2831,21 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
     background: syncBackgroundEnabled
   };
 
-  for (const [key, spec] of Object.entries(WEBDAV_EXTRA_SECTION_SPECS)) {
-    if (!extraEnabledMap[key]) continue;
+  const enabledSpecs = Object.entries(WEBDAV_EXTRA_SECTION_SPECS).filter(([key]) => extraEnabledMap[key]);
+  const prefetchedSections = await Promise.all(
+    enabledSpecs.map(async ([key, spec]) => {
+      const fileUrl = `${folderBase}/${spec.filename}`;
+      const remoteRes = await webdavGetJsonFile(fileUrl, headers);
+      return [key, { spec, fileUrl, remoteRes }];
+    })
+  );
+
+  for (const [key, { spec, fileUrl, remoteRes }] of prefetchedSections) {
     const res = await syncExtraJsonSection({
       key,
-      fileUrl: `${folderBase}/${spec.filename}`,
+      fileUrl,
       headers,
+      remoteRes,
       buildPayload: () => spec.buildPayload(currentConfig),
       lastHashes,
       applyRemote: (remoteData) => spec.applyRemote(currentConfig, remoteData)
@@ -2755,55 +2866,57 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
   // 4. backups/ (<folder>/backups/<type>/<filename> + <folder>/backups/index.json)
   if (syncBackupsEnabled) {
     try {
-      const retentionDays = Math.max(1, Number(currentConfig.backups?.remoteRetentionDays ?? currentConfig.backups?.retentionDays) || 14);
-      const backupsRootUrl = `${folderBase}/backups`;
-      const backupTypes = Object.keys(WEBDAV_BACKUP_STORAGE_KEYS);
+      await withAutoBackupLock(async () => {
+        const retentionDays = Math.max(1, Number(currentConfig.backups?.remoteRetentionDays ?? currentConfig.backups?.retentionDays) || 14);
+        const backupsRootUrl = `${folderBase}/backups`;
+        const backupTypes = Object.keys(WEBDAV_BACKUP_STORAGE_KEYS);
 
-      const [bmStored, cfgStored] = await Promise.all([
-        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.bookmarks),
-        chrome.storage.local.get(WEBDAV_BACKUP_STORAGE_KEYS.config)
-      ]);
-      const localBackups = {
-        bookmarks: Array.isArray(bmStored[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]) ? bmStored[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks] : [],
-        config: Array.isArray(cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config]) ? cfgStored[WEBDAV_BACKUP_STORAGE_KEYS.config] : []
-      };
-
-      const indexUrl = `${backupsRootUrl}/index.json`;
-      const remoteIndexRes = await webdavGetJsonFile(indexUrl, headers);
-      if (remoteIndexRes.ok && remoteIndexRes.notFound) {
-        await ensureWebdavBackupDirs(backupsRootUrl, backupTypes, headers);
-      }
-      if (remoteIndexRes.ok) {
-        const remoteIndex = remoteIndexRes.data?.data || {};
-        const nextLocalBackups = {};
-        const nextIndex = {};
-        let localChanged = false;
-
-        const stripData = (entry) => {
-          const { data: _d, ...meta } = entry;
-          return meta;
+        const backupStorage = await batchStorageGet([
+          WEBDAV_BACKUP_STORAGE_KEYS.bookmarks,
+          WEBDAV_BACKUP_STORAGE_KEYS.config
+        ]);
+        const localBackups = {
+          bookmarks: Array.isArray(backupStorage[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]) ? backupStorage[WEBDAV_BACKUP_STORAGE_KEYS.bookmarks] : [],
+          config: Array.isArray(backupStorage[WEBDAV_BACKUP_STORAGE_KEYS.config]) ? backupStorage[WEBDAV_BACKUP_STORAGE_KEYS.config] : []
         };
 
-        for (const type of backupTypes) {
-          const localList = localBackups[type];
-          const remoteMetaList = Array.isArray(remoteIndex[type]) ? remoteIndex[type] : [];
-          const filteredLocalList = localList.filter(e => typeof e.data === "string" || remoteMetaList.some(r => r.filename === e.filename));
-          const localByName = new Map(filteredLocalList.map(e => [e.filename, e]));
-          const remoteByName = new Map(remoteMetaList.map(e => [e.filename, e]));
+        const indexUrl = `${backupsRootUrl}/index.json`;
+        const remoteIndexRes = await webdavGetJsonFile(indexUrl, headers);
+        if (remoteIndexRes.ok && remoteIndexRes.notFound) {
+          await ensureWebdavBackupDirs(backupsRootUrl, backupTypes, headers);
+        }
+        if (remoteIndexRes.ok) {
+          const remoteIndex = remoteIndexRes.data?.data || {};
+          const nextLocalBackups = {};
+          const nextIndex = {};
+          let localChanged = false;
 
-          const mergedMeta = mergeBackupArrays(
-            filteredLocalList.map(stripData),
-            remoteMetaList,
-            retentionDays
-          );
-          const keptNames = new Set(mergedMeta.map(e => e.filename));
+          const stripData = (entry) => {
+            const { data: _d, ...meta } = entry;
+            return meta;
+          };
 
-          // Upload new local backups not yet on remote
-          const failedUploadNames = new Set();
-          for (const meta of mergedMeta) {
-            const localEntry = localByName.get(meta.filename);
-            if (!remoteByName.has(meta.filename) && localEntry && typeof localEntry.data === "string") {
-              const entry = localEntry;
+          for (const type of backupTypes) {
+            const localList = localBackups[type];
+            const remoteMetaList = Array.isArray(remoteIndex[type]) ? remoteIndex[type] : [];
+            const filteredLocalList = localList.filter(e => typeof e.data === "string" || remoteMetaList.some(r => r.filename === e.filename));
+            const localByName = new Map(filteredLocalList.map(e => [e.filename, e]));
+            const remoteByName = new Map(remoteMetaList.map(e => [e.filename, e]));
+
+            const mergedMeta = mergeBackupArrays(
+              filteredLocalList.map(stripData),
+              remoteMetaList,
+              retentionDays
+            );
+            const keptNames = new Set(mergedMeta.map(e => e.filename));
+
+            // Upload new local backups not yet on remote (bounded concurrency)
+            const failedUploadNames = new Set();
+            const uploadTargets = mergedMeta
+              .map(meta => ({ meta, localEntry: localByName.get(meta.filename) }))
+              .filter(({ meta, localEntry }) => !remoteByName.has(meta.filename) && localEntry && typeof localEntry.data === "string");
+
+            await runWithConcurrency(uploadTargets, 4, async ({ meta, localEntry: entry }) => {
               const fileUrl = `${backupsRootUrl}/${type}/${encodeURIComponent(entry.filename)}`;
               try {
                 const putOptions = {
@@ -2813,7 +2926,8 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
                 };
                 let putRes = await fetchWithTimeout(fileUrl, putOptions);
                 if (putRes.status === 404 || putRes.status === 409) {
-                  await ensureWebdavBackupDirs(backupsRootUrl, [type], headers);
+                  ensuredWebdavDirs.delete(`${backupsRootUrl}/${type}/`);
+                  await ensureWebdavBackupDirs(backupsRootUrl, [type], headers, { forceCheck: true });
                   putRes = await fetchWithTimeout(fileUrl, putOptions);
                 }
                 if (!putRes.ok) {
@@ -2824,56 +2938,55 @@ async function syncWebdavFolderExtrasLocked(config = null, options = {}) {
                 console.warn(`syncWebdavFolderExtras: backup upload failed for ${entry.filename}`, err);
                 failedUploadNames.add(meta.filename);
               }
-            }
-          }
+            });
 
-          // Delete expired remote backups that were pruned by retentionDays
-          for (const rMeta of remoteMetaList) {
-            if (!keptNames.has(rMeta.filename)) {
+            // Delete expired remote backups that were pruned by retentionDays (bounded concurrency)
+            const deleteTargets = remoteMetaList.filter(rMeta => !keptNames.has(rMeta.filename) && isSafeBackupFilename(rMeta.filename));
+            await runWithConcurrency(deleteTargets, 4, async (rMeta) => {
               const fileUrl = `${backupsRootUrl}/${type}/${encodeURIComponent(rMeta.filename)}`;
               try {
                 await fetchWithTimeout(fileUrl, { method: "DELETE", headers });
               } catch {}
-            }
-          }
+            });
 
-          // Reconstruct local list: keep local backups with data (marking syncedToRemote) and index remote-only entries
-          const finalLocalList = [];
-          for (const meta of mergedMeta) {
-            if (localByName.has(meta.filename)) {
-              const localEntry = localByName.get(meta.filename);
-              if (typeof localEntry.data === "string") {
-                const isOnRemote = !failedUploadNames.has(meta.filename);
-                finalLocalList.push({ ...localEntry, syncedToRemote: isOnRemote });
+            // Reconstruct local list: keep local backups with data (marking syncedToRemote) and index remote-only entries
+            const finalLocalList = [];
+            for (const meta of mergedMeta) {
+              if (localByName.has(meta.filename)) {
+                const localEntry = localByName.get(meta.filename);
+                if (typeof localEntry.data === "string") {
+                  const isOnRemote = !failedUploadNames.has(meta.filename);
+                  finalLocalList.push({ ...localEntry, syncedToRemote: isOnRemote });
+                } else {
+                  finalLocalList.push(localEntry);
+                }
               } else {
-                finalLocalList.push(localEntry);
+                finalLocalList.push({ ...meta, remoteOnly: true });
               }
-            } else {
-              finalLocalList.push({ ...meta, remoteOnly: true });
             }
+
+            if (stableSerialize(finalLocalList.map(stripData)) !== stableSerialize(localList.map(stripData))) {
+              localChanged = true;
+            }
+            nextLocalBackups[type] = finalLocalList;
+            nextIndex[type] = mergedMeta.filter(meta => !failedUploadNames.has(meta.filename));
           }
 
-          if (stableSerialize(finalLocalList.map(stripData)) !== stableSerialize(localList.map(stripData))) {
-            localChanged = true;
+          if (localChanged) {
+            await chrome.storage.local.set({
+              [WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]: nextLocalBackups.bookmarks,
+              [WEBDAV_BACKUP_STORAGE_KEYS.config]: nextLocalBackups.config
+            });
           }
-          nextLocalBackups[type] = finalLocalList;
-          nextIndex[type] = mergedMeta.filter(meta => !failedUploadNames.has(meta.filename));
-        }
 
-        if (localChanged) {
-          await chrome.storage.local.set({
-            [WEBDAV_BACKUP_STORAGE_KEYS.bookmarks]: nextLocalBackups.bookmarks,
-            [WEBDAV_BACKUP_STORAGE_KEYS.config]: nextLocalBackups.config
-          });
+          if (remoteIndexRes.notFound || stableSerialize(nextIndex) !== stableSerialize(remoteIndex)) {
+            await webdavPutJsonFile(indexUrl, headers, {
+              updatedAt: Date.now(),
+              data: nextIndex
+            });
+          }
         }
-
-        if (remoteIndexRes.notFound || stableSerialize(nextIndex) !== stableSerialize(remoteIndex)) {
-          await webdavPutJsonFile(indexUrl, headers, {
-            updatedAt: Date.now(),
-            data: nextIndex
-          });
-        }
-      }
+      });
     } catch (err) {
       console.warn("syncWebdavFolderExtras: backups sync failed", err);
     }
@@ -2984,6 +3097,9 @@ async function buildWebdavFolderRequestContext(operationName) {
 }
 
 export async function fetchRemoteWebdavBackupData(type, filename) {
+  if (!isSafeBackupFilename(filename)) {
+    throw new Error("Invalid backup filename");
+  }
   const { folderBase, headers } = await buildWebdavFolderRequestContext("fetchRemoteWebdavBackupData");
   const safeType = encodeURIComponent(String(type || "bookmarks"));
   const safeFilename = encodeURIComponent(String(filename || ""));
@@ -2997,13 +3113,16 @@ export async function fetchRemoteWebdavBackupData(type, filename) {
 
 let remoteBackupDeleteInFlight = false;
 
-export async function deleteRemoteWebdavBackup(type, filename) {
+export async function deleteRemoteWebdavBackup(type, filename, options = {}) {
+  if (!isSafeBackupFilename(filename)) {
+    return { ok: false, filename, reason: "invalid-filename" };
+  }
   if (remoteBackupDeleteInFlight) {
     return { ok: false, filename, inProgress: true };
   }
   remoteBackupDeleteInFlight = true;
   try {
-    return await withSyncLock(async () => {
+    const run = async () => {
       const resolvedType = String(type || "bookmarks");
       const { folderBase, headers } = await buildWebdavFolderRequestContext("deleteRemoteWebdavBackup");
       const safeType = encodeURIComponent(resolvedType);
@@ -3033,7 +3152,8 @@ export async function deleteRemoteWebdavBackup(type, filename) {
       }
 
       return { ok: true, filename, notFoundOnRemote };
-    });
+    };
+    return options?.skipSyncLock ? await run() : await withSyncLock(run);
   } finally {
     remoteBackupDeleteInFlight = false;
   }
@@ -3099,9 +3219,23 @@ export async function syncNow(options = {}) {
     const hasPendingLocalChanges = !lastSyncedLocalHash
       || lastSyncedLocalHash !== localHash
       || hasPendingPurges;
+    const syncCfg = buildSyncConfigFromConfig(config);
+    const credentials = config.sync.type === 'browser'
+      ? { ok: true, username: '', password: '' }
+      : await resolveSyncCredentials(syncCfg, 'syncNow');
+    if (!credentials.ok) {
+      lastSyncErrorReason = credentials.reason || 'sync-failed';
+      await recordSyncResultForPause(config, credentials);
+      return credentials;
+    }
+
     const previousRemoteMarker = config.sync.lastSeenRemoteMarker || "";
     const previousMarkerType = config.sync.remoteChangeHeaderType ?? null;
-    const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config);
+    const remoteMarkerUnchanged = await checkRemoteMarkerUnchanged(config, {
+      syncCfg,
+      credentials,
+      deferSave: true
+    });
     const currentRemoteMarker = config.sync.lastSeenRemoteMarker || "";
     const markerIsReliableForSkip = config.sync.remoteChangeHeaderType === 'sha256'
       || (config.sync.remoteChangeHeaderType === 'etag'
@@ -3125,14 +3259,14 @@ export async function syncNow(options = {}) {
     if (willSkipGet) {
       lastSyncErrorReason = null;
       if (config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
-        await syncWebdavFolderExtrasLocked(config, { includeManual });
+        await syncWebdavFolderExtrasLocked(config, { includeManual, credentials });
       }
       await recordSyncResultForPause(config, { ok: true });
       await updateLastSyncTime(config);
       return { ok: true, reason: 'remote-marker-unchanged', changed: false };
     }
 
-    const readResult = await syncReadDetailed(buildSyncConfigFromConfig(config));
+    const readResult = await syncReadDetailed(syncCfg, { credentials });
     if (!readResult.ok) {
       console.warn("Failed to read from sync server");
       lastSyncErrorReason = readResult.reason || 'sync-failed';
@@ -3150,7 +3284,9 @@ export async function syncNow(options = {}) {
       cloudTombstones: readResult.data.tombstones,
       cloudTombstonePrunedBefore: readResult.data.tombstonePrunedBefore,
       staleResolution: options?.staleResolution || null,
-      keepIds: options?.keepIds || []
+      keepIds: options?.keepIds || [],
+      credentials,
+      precomputedLocalHash: !hasPendingPurges ? localHash : ""
     });
     if (!mergeResult.ok) {
       config.sync.lastSeenRemoteMarker = previousRemoteMarker;
@@ -3159,7 +3295,7 @@ export async function syncNow(options = {}) {
     lastSyncErrorReason = mergeResult.ok ? null : (mergeResult.reason || 'sync-failed');
     await recordSyncResultForPause(config, mergeResult);
     if (mergeResult.ok && config.sync.type === 'webdav' && config.sync.webdavMode === 'folder') {
-      await syncWebdavFolderExtrasLocked(config, { includeManual });
+      await syncWebdavFolderExtrasLocked(config, { includeManual, credentials });
     }
     return mergeResult;
   }, { ifAvailable: !!options?.ifAvailable });
@@ -3357,12 +3493,14 @@ export async function cleanupDeletedItems(retentionDays) {
         return true;
       });
 
+      let stackCleanupChanged = false;
       for (const item of [...group.items]) {
         if (isStackItem(item)) {
           const res = cleanupStackIfNeeded(group, item);
           if (res === "removed" || res === "unwrapped") {
             if (item.id) purgedIds.push(item.id);
             groupChanged = true;
+            stackCleanupChanged = true;
           }
         }
       }
@@ -3398,7 +3536,7 @@ export async function cleanupDeletedItems(retentionDays) {
       });
     }
 
-    if (deletedCount > 0) {
+    if (deletedCount > 0 || purgedIds.length > 0) {
       const config = await loadConfig();
       if (config.sync?.enabled && persistPendingPurgedIdsInConfig(config, purgedIds)) {
         await saveConfig(config);

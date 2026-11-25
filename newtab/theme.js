@@ -1,5 +1,6 @@
 import { THEME_KEY } from "./state.js";
 import { loadConfig, saveConfig } from "./config.js";
+import { getStorageValue } from "./storage-cache.js";
 import { t } from "./i18n.js";
 import { isAllowedThemeUrl, isSafeDataImageUrl, sanitizeSvgDataUrl, blobToDataUrl } from "./color-utils.js";
 import {
@@ -10,7 +11,7 @@ import {
 const widgetModuleCache = new Map();
 
 async function getWidgetModuleIfActive(type, customWidgets) {
-  const hasActive = customWidgets.some(w => w?.type === type && w?.space !== "disabled");
+  const hasActive = customWidgets.some(w => w?.type === type && !w?.disabled && w?.space !== "disabled");
   if (!hasActive && !widgetModuleCache.has(type)) {
     return null;
   }
@@ -38,13 +39,13 @@ async function getWidgetModuleIfActive(type, customWidgets) {
 
 export { isAllowedThemeUrl };
 
-const BACKGROUND_IMAGE_CACHE_KEY = "myspeeddial-background-image-cache";
+export const BACKGROUND_IMAGE_CACHE_KEY = "myspeeddial-background-image-cache";
 export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
 const MAX_BACKGROUND_IMAGE_FETCH_BYTES = 25 * 1024 * 1024; // 25 MB raw fetch safety cap before downscale
 const MAX_BACKGROUND_WIDTH = 1920;
 const MAX_BACKGROUND_HEIGHT = 1080;
-const CUSTOM_THEME_CSS_CACHE_KEY = "myspeeddial-custom-theme-css-cache";
-const CUSTOM_THEME_URL_CACHE_KEY = "myspeeddial-custom-theme-url-cache";
+export const CUSTOM_THEME_CSS_CACHE_KEY = "myspeeddial-custom-theme-css-cache";
+export const CUSTOM_THEME_URL_CACHE_KEY = "myspeeddial-custom-theme-url-cache";
 const THEME_OVERRIDE_LINK_ID = "theme-override-stylesheet";
 const THEME_CUSTOM_STYLE_ID = "theme-custom-style";
 
@@ -56,8 +57,7 @@ export const BUILTIN_THEME_FILES = {
 };
 
 export async function getBackgroundImageFromCache() {
-  const res = await chrome.storage.local.get(BACKGROUND_IMAGE_CACHE_KEY);
-  const cached = res && res[BACKGROUND_IMAGE_CACHE_KEY];
+  const cached = await getStorageValue(BACKGROUND_IMAGE_CACHE_KEY);
   return typeof cached === "string" && cached.trim() ? cached : null;
 }
 
@@ -71,8 +71,7 @@ export async function saveBackgroundImageToCache(bgImage) {
 }
 
 export async function getCustomThemeCssFromCache() {
-  const res = await chrome.storage.local.get(CUSTOM_THEME_CSS_CACHE_KEY);
-  const cached = res && res[CUSTOM_THEME_CSS_CACHE_KEY];
+  const cached = await getStorageValue(CUSTOM_THEME_CSS_CACHE_KEY);
   return typeof cached === "string" && cached.trim() ? cached : "";
 }
 
@@ -86,8 +85,7 @@ export async function saveCustomThemeCssToCache(cssText) {
 }
 
 export async function getCustomThemeUrlCache() {
-  const res = await chrome.storage.local.get(CUSTOM_THEME_URL_CACHE_KEY);
-  const cached = res && res[CUSTOM_THEME_URL_CACHE_KEY];
+  const cached = await getStorageValue(CUSTOM_THEME_URL_CACHE_KEY);
   if (cached && typeof cached.url === "string" && typeof cached.css === "string") {
     return cached;
   }
@@ -121,21 +119,50 @@ function isAllowedBackgroundImage(bgImage) {
   }
 }
 
+function normalizeCssEscapesAndComments(cssText) {
+  // Strip CSS comments first so split tokens like @import/*x*/ or u/*x*/rl(...) cannot bypass checks
+  const withoutComments = cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+  // Decode CSS hex escapes (\69 -> i) and simple backslash escapes (\u -> u)
+  return withoutComments
+    .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) => {
+      const code = Number.parseInt(hex, 16);
+      if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff) return "";
+      try {
+        return String.fromCodePoint(code);
+      } catch {
+        return "";
+      }
+    })
+    .replace(/\\([^\r\n\f0-9a-fA-F])/g, "$1");
+}
+
+function sanitizeCssUrlFunctionTarget(target) {
+  const trimmed = String(target || "").trim();
+  if (!trimmed) return "none";
+  if (trimmed.startsWith("#")) {
+    return `url("${trimmed.replace(/["\\\r\n]/g, "")}")`;
+  }
+  if (!isSafeDataImageUrl(trimmed)) {
+    return "none";
+  }
+  if (/^data:image\/svg\+xml/i.test(trimmed)) {
+    const safeSvg = sanitizeSvgDataUrl(trimmed);
+    return safeSvg ? `url("${safeSvg}")` : "none";
+  }
+  return `url("${trimmed.replace(/["\\\r\n]/g, "")}")`;
+}
+
 export function sanitizeCustomCss(cssText) {
   if (!cssText || typeof cssText !== "string") return "";
-  return cssText
+  return normalizeCssEscapesAndComments(cssText)
     // Strip @import rules so external stylesheets cannot be loaded
     .replace(/@import\s+(?:url\([^)]*\)|"[^"]*"|'[^']*'|[^;\r\n]+)\s*(?:;|$)/gim, "")
-    // Strip external or scriptable url(...) references; allow safe inline data:image/* and #fragment
-    .replace(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s"']*))\s*\)/gi, (full, dq, sq, uq) => {
-      const target = String(dq ?? sq ?? uq ?? "").trim();
-      if (!target) return "none";
-      if (target.startsWith("#")) return full;
-      if (isSafeDataImageUrl(target)) {
-        return full;
-      }
-      return "none";
+    // Strip external or scriptable url(...) / src(...) references; allow safe inline data:image/* (with sanitized SVG) and #fragment
+    .replace(/(?:url|src)\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s"']*))\s*\)/gi, (_, dq, sq, uq) => {
+      return sanitizeCssUrlFunctionTarget(dq ?? sq ?? uq ?? "");
     })
+    // Strip image-set(...) / -webkit-image-set(...) bare string URLs
+    .replace(/(?:-webkit-)?image-set\(([^)]*)\)/gi, "none")
     // Strip legacy script-execution CSS constructs
     .replace(/expression\s*\(/gi, "/* blocked */(")
     .replace(/-moz-binding\s*:/gi, "/* blocked */:")
@@ -455,12 +482,11 @@ export async function applyThemeStyle(config = null, options = {}) {
 
 // ---------- Load theme ----------
 export async function loadTheme(preloadedConfig = null) {
-  const [res, config, cachedBackground] = await Promise.all([
-    chrome.storage.local.get(THEME_KEY),
+  const [saved, config, cachedBackground] = await Promise.all([
+    getStorageValue(THEME_KEY),
     preloadedConfig ? Promise.resolve(preloadedConfig) : loadConfig(),
     getBackgroundImageFromCache()
   ]);
-  const saved = res && res[THEME_KEY];
 
   const modeClass = saved === "theme-light" ? "theme-light" : "theme-dark";
   document.body.classList.remove("theme-light", "theme-dark");
@@ -473,19 +499,30 @@ export async function loadTheme(preloadedConfig = null) {
   // Apply selected theme override CSS (default, summer, autumn, winter, custom file/URL)
   await applyThemeStyle(config);
 
-  // Load background image (avoid redundant storage write when cache already matches)
-  await applyBackground(config, { cachedBackground });
-
-  // Load background dim overlay, opacities, sizes, and side spaces
-  await applyBgDim(config);
-  await applyTileOpacity(config);
-  await applyBarOpacity(config);
-  await applyTileSize(config);
-  await applyGroupTileSize(config);
-  await applySideSpaces(config);
+  // Load background image, dim overlay, opacities, sizes, and side spaces concurrently
+  await Promise.all([
+    applyBackground(config, { cachedBackground }),
+    applyBgDim(config),
+    applyTileOpacity(config),
+    applyBarOpacity(config),
+    applyTileSize(config),
+    applyGroupTileSize(config),
+    applySideSpaces(config)
+  ]);
 }
 
 // ---------- Apply background ----------
+export { isAllowedBackgroundImage };
+
+export function escapeCssUrl(rawUrl) {
+  return String(rawUrl || "")
+    .trim()
+    .replace(/[\r\n]/g, "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\)/g, "\\)");
+}
+
 export async function applyBackground(config = null, options = {}) {
   if (!config) {
     config = await loadConfig();
@@ -536,12 +573,7 @@ export async function applyBackground(config = null, options = {}) {
     await saveBackgroundImageToCache(bgImage);
   }
   // Set base background image (escape CSS url(...) delimiters)
-  const safeBgUrl = bgImage
-    .trim()
-    .replace(/[\r\n]/g, "")
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'")
-    .replace(/\)/g, "\\)");
+  const safeBgUrl = escapeCssUrl(bgImage);
   body.style.backgroundImage = `url('${safeBgUrl}')`;
   body.style.backgroundAttachment = "fixed";
 
@@ -795,9 +827,23 @@ export async function applySideSpaces(config = null) {
   };
   const customAlignMap = {};
   const customNewRowMap = {};
+  const groupSpaceByKey = new Map();
   for (const cw of customWidgets) {
     if (!cw?.id) continue;
-    widgetSpaces[cw.id] = cw.space === "disabled" ? "disabled" : normalizeWidgetSpace(cw.space, "right");
+    const gName = typeof cw.groupName === "string" ? cw.groupName.trim() : "";
+    if (!gName) continue;
+    const gKey = `${cw.type || "custom-search"}:${gName.toLowerCase()}`;
+    if (!groupSpaceByKey.has(gKey) || cw.isDefault) {
+      groupSpaceByKey.set(gKey, cw.space === "disabled" ? "disabled" : normalizeWidgetSpace(cw.space, "right"));
+    }
+  }
+  for (const cw of customWidgets) {
+    if (!cw?.id) continue;
+    const gName = typeof cw.groupName === "string" ? cw.groupName.trim() : "";
+    const gKey = gName ? `${cw.type || "custom-search"}:${gName.toLowerCase()}` : "";
+    widgetSpaces[cw.id] = gKey && groupSpaceByKey.has(gKey)
+      ? groupSpaceByKey.get(gKey)
+      : (cw.space === "disabled" ? "disabled" : normalizeWidgetSpace(cw.space, "right"));
     if (cw.align) customAlignMap[cw.id] = cw.align;
     if (cw.newRow) customNewRowMap[cw.id] = true;
   }
@@ -898,10 +944,11 @@ export async function applySideSpaces(config = null) {
     if (!footerStorageUsage.dataset.bound) {
       footerStorageUsage.dataset.bound = "true";
       footerStorageUsage.addEventListener("click", () => {
-        document.getElementById("settings-btn")?.click();
-        setTimeout(() => {
-          document.querySelector('.settings-tab-btn[data-tab="info"]')?.click();
-        }, 50);
+        if (typeof window !== "undefined" && typeof window.openInfoSettings === "function") {
+          void window.openInfoSettings();
+        } else {
+          document.getElementById("settings-btn")?.click();
+        }
       });
     }
     void import("./storage-stats.js").then(m => m.updateStorageUsageWidget(footerStorageUsage));

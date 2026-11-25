@@ -349,6 +349,7 @@ export async function openSettingsModal(initialTab = null) {
 if (settingsCancelBtn) {
   settingsCancelBtn.addEventListener("click", () => {
     settingsModal?.classList.add("hidden");
+    setSettingsDirty(false);
     void revertAppearancePreviewToSaved();
   });
 }
@@ -399,6 +400,7 @@ document.addEventListener("keydown", e => {
     }
     if (settingsModal && !settingsModal.classList.contains("hidden")) {
       settingsModal.classList.add("hidden");
+      setSettingsDirty(false);
       void revertAppearancePreviewToSaved();
     }
   }
@@ -524,6 +526,8 @@ window.addEventListener("simpledial:config-synced", async () => {
     await populateSyncSettings(cfg);
     populateAppearanceSettings(cfg);
     populateBackupSettings(cfg);
+    applyAdvancedSettingsToControls(cfg.advanced || {});
+    populateSecuritySettings(cfg);
     updateHouseKeeperInfo(cfg);
     await refreshBackupsTable();
     setSettingsDirty(false);

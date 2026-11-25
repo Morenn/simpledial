@@ -1,6 +1,8 @@
 import { state, saveState, generateId, saveActiveGroupId, getAllGroupBookmarks } from "./state.js";
-import { render, clearBookmarkSearch } from "./render.js";
-import { syncWrite } from "./sync.js";
+import { render, clearBookmarkSearch, isShowDeletedEnabled } from "./render.js";
+import { loadSyncModule } from "./lazy-modules.js";
+
+const syncWrite = (...args) => loadSyncModule().then(m => m.syncWrite(...args));
 import { t } from "./i18n.js";
 import { ensureHostPermission } from "./bookmarks.js";
 import {
@@ -241,8 +243,7 @@ export function renderGroups(show = true, config = null) {
   groupsHeader.innerHTML = "";
 
   // Get visible groups count
-  const showDeletedToggle = document.getElementById("show-deleted-toggle");
-  const showDeleted = showDeletedToggle ? showDeletedToggle.checked : false;
+  const showDeleted = isShowDeletedEnabled();
   const visibleGroups = state.groups.filter(g => !(g.deleted && !showDeleted));
   const showGroupCount = getEffectiveShowGroupCount(config);
   
@@ -655,6 +656,10 @@ function setupGroupDrag() {
     tab.addEventListener("dragend", async e => {
       document.body?.classList.remove("is-dragging-group");
       if (!draggedGroupTab) return;
+      const draggedGroupId = draggedGroupTab.dataset.groupId;
+      if (e.dataTransfer?.dropEffect !== "none") {
+        groupsHeader._flushPendingGroupDrag?.();
+      }
       draggedGroupTab.classList.remove("dragging");
       draggedGroupTab = null;
 
@@ -674,6 +679,11 @@ function setupGroupDrag() {
       const hiddenGroups = state.groups.filter(g => !orderMap.has(g.id));
       state.groups = [...visibleReordered, ...hiddenGroups];
 
+      const movedGroup = state.groups.find(g => g.id === draggedGroupId);
+      if (movedGroup) {
+        movedGroup.updatedAt = Date.now();
+      }
+
       await saveState();
       await syncWrite();
       render();
@@ -682,12 +692,15 @@ function setupGroupDrag() {
 
   if (groupsHeader.dataset.groupDragBound !== "true") {
     groupsHeader.dataset.groupDragBound = "true";
-    groupsHeader.addEventListener("dragover", e => {
-      if (!draggedGroupTab) return;
-      e.preventDefault();
+    let groupDragOverRaf = 0;
+    let pendingGroupDragCoords = null;
+    const applyPendingGroupDrag = () => {
+      const coords = pendingGroupDragCoords;
+      pendingGroupDragCoords = null;
+      if (!draggedGroupTab || !coords) return;
 
       const isVertical = !!groupsHeader.closest("#left-space, #right-space");
-      const after = getAfterGroupTab(groupsHeader, e.clientX, e.clientY, isVertical);
+      const after = getAfterGroupTab(groupsHeader, coords.clientX, coords.clientY, isVertical);
       const addBtn = groupsHeader.querySelector(".add-group");
 
       if (!after) {
@@ -695,6 +708,30 @@ function setupGroupDrag() {
       } else {
         groupsHeader.insertBefore(draggedGroupTab, after);
       }
+    };
+    groupsHeader._flushPendingGroupDrag = () => {
+      if (groupDragOverRaf) {
+        cancelAnimationFrame(groupDragOverRaf);
+        groupDragOverRaf = 0;
+      }
+      applyPendingGroupDrag();
+    };
+    groupsHeader.addEventListener("dragover", e => {
+      if (!draggedGroupTab) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      pendingGroupDragCoords = { clientX: e.clientX, clientY: e.clientY };
+      if (groupDragOverRaf) return;
+      groupDragOverRaf = requestAnimationFrame(() => {
+        groupDragOverRaf = 0;
+        applyPendingGroupDrag();
+      });
+    });
+    groupsHeader.addEventListener("drop", e => {
+      if (!draggedGroupTab) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      groupsHeader._flushPendingGroupDrag?.();
     });
   }
 }

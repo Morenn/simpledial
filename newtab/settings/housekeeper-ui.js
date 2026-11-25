@@ -889,7 +889,14 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
   };
 
   if (failedIconsFilterInput) {
-    failedIconsFilterInput.addEventListener("input", () => { void renderFailedIconsTable(); });
+    let failedIconsFilterTimer = 0;
+    failedIconsFilterInput.addEventListener("input", () => {
+      clearTimeout(failedIconsFilterTimer);
+      failedIconsFilterTimer = setTimeout(() => {
+        failedIconsFilterTimer = 0;
+        void renderFailedIconsTable();
+      }, 120);
+    });
   }
   if (hkShowFailedIcons && failedIconsModal) {
     hkShowFailedIcons.addEventListener("click", async () => {

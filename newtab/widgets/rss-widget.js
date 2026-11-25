@@ -61,7 +61,7 @@ export function normalizeRssMaxItems(value) {
 }
 
 export function groupRssFeedWidgets(widgets = []) {
-  const rssWidgets = (Array.isArray(widgets) ? widgets : []).filter(w => w?.type === "rss-feed");
+  const rssWidgets = (Array.isArray(widgets) ? widgets : []).filter(w => w?.type === "rss-feed" && !w.disabled);
   const groupOrder = [];
   const groupsMap = new Map();
 
@@ -326,47 +326,68 @@ async function refreshRssReadFromStorage({ includeCache = false } = {}) {
   }
 }
 
-export async function markRssItemRead(widgetId, itemId) {
-  if (!widgetId || !itemId) return;
-  await ensureRssCacheLoaded();
-  await refreshRssReadFromStorage();
-  const prev = Array.isArray(rssReadByWidget[widgetId]) ? rssReadByWidget[widgetId] : [];
-  if (prev.includes(itemId)) return;
-  const next = [itemId, ...prev].slice(0, RSS_MAX_STORED_READ_IDS);
-  rssReadByWidget[widgetId] = next;
-  await persistRssReadState();
+let rssReadQueue = Promise.resolve();
+let rssCacheQueue = Promise.resolve();
+
+function enqueueRssReadTask(fn) {
+  const task = rssReadQueue.then(fn, fn);
+  rssReadQueue = task.catch(() => {});
+  return task;
 }
 
-export async function markRssItemUnread(widgetId, itemId) {
-  if (!widgetId || !itemId) return;
-  await ensureRssCacheLoaded();
-  await refreshRssReadFromStorage();
-  const prev = Array.isArray(rssReadByWidget[widgetId]) ? rssReadByWidget[widgetId] : [];
-  if (!prev.includes(itemId)) return;
-  rssReadByWidget[widgetId] = prev.filter(id => id !== itemId);
-  await persistRssReadState();
+function enqueueRssCacheTask(fn) {
+  const task = rssCacheQueue.then(fn, fn);
+  rssCacheQueue = task.catch(() => {});
+  return task;
 }
 
-export async function markAllRssItemsRead(widgets = []) {
-  await ensureRssCacheLoaded();
-  const missingCache = widgets.some(w => w?.id && !rssCacheByWidget[w.id]);
-  await refreshRssReadFromStorage({ includeCache: missingCache });
-  let changed = false;
-  for (const w of widgets) {
-    const cache = rssCacheByWidget[w.id];
-    const items = Array.isArray(cache?.items) ? cache.items : [];
-    if (items.length === 0) continue;
-    const prev = Array.isArray(rssReadByWidget[w.id]) ? rssReadByWidget[w.id] : [];
-    const prevSet = new Set(prev);
-    const hasNew = items.some(i => i?.id && !prevSet.has(i.id));
-    if (!hasNew) continue;
-    const merged = [...new Set([...items.map(i => i.id), ...prev])].slice(0, RSS_MAX_STORED_READ_IDS);
-    rssReadByWidget[w.id] = merged;
-    changed = true;
-  }
-  if (changed) {
+export function markRssItemRead(widgetId, itemId) {
+  if (!widgetId || !itemId) return Promise.resolve();
+  return enqueueRssReadTask(async () => {
+    await ensureRssCacheLoaded();
+    await refreshRssReadFromStorage();
+    const prev = Array.isArray(rssReadByWidget[widgetId]) ? rssReadByWidget[widgetId] : [];
+    if (prev.includes(itemId)) return;
+    const next = [itemId, ...prev].slice(0, RSS_MAX_STORED_READ_IDS);
+    rssReadByWidget[widgetId] = next;
     await persistRssReadState();
-  }
+  });
+}
+
+export function markRssItemUnread(widgetId, itemId) {
+  if (!widgetId || !itemId) return Promise.resolve();
+  return enqueueRssReadTask(async () => {
+    await ensureRssCacheLoaded();
+    await refreshRssReadFromStorage();
+    const prev = Array.isArray(rssReadByWidget[widgetId]) ? rssReadByWidget[widgetId] : [];
+    if (!prev.includes(itemId)) return;
+    rssReadByWidget[widgetId] = prev.filter(id => id !== itemId);
+    await persistRssReadState();
+  });
+}
+
+export function markAllRssItemsRead(widgets = []) {
+  return enqueueRssReadTask(async () => {
+    await ensureRssCacheLoaded();
+    const missingCache = widgets.some(w => w?.id && !rssCacheByWidget[w.id]);
+    await refreshRssReadFromStorage({ includeCache: missingCache });
+    let changed = false;
+    for (const w of widgets) {
+      const cache = rssCacheByWidget[w.id];
+      const items = Array.isArray(cache?.items) ? cache.items : [];
+      if (items.length === 0) continue;
+      const prev = Array.isArray(rssReadByWidget[w.id]) ? rssReadByWidget[w.id] : [];
+      const prevSet = new Set(prev);
+      const hasNew = items.some(i => i?.id && !prevSet.has(i.id));
+      if (!hasNew) continue;
+      const merged = [...new Set([...items.map(i => i.id), ...prev])].slice(0, RSS_MAX_STORED_READ_IDS);
+      rssReadByWidget[w.id] = merged;
+      changed = true;
+    }
+    if (changed) {
+      await persistRssReadState();
+    }
+  });
 }
 
 export async function pruneRssStorageForWidgets(activeWidgets = []) {
@@ -746,17 +767,19 @@ export async function openRssFeedModal(groupEntry, barEl = null) {
     if (refreshBtn) refreshBtn.disabled = true;
     if (triggerBtn && triggerBtn !== refreshBtn) triggerBtn.disabled = true;
     try {
-      for (const w of groupEntry.members) {
-        await requestRssFeedPermission(w.feedUrl);
-        const res = await fetchRssFeedWidget(w);
-        rssCacheByWidget[w.id] = {
-          fetchedAt: Date.now(),
-          feedTitle: res.feedTitle || "",
-          items: res.ok ? res.items : (rssCacheByWidget[w.id]?.items || []),
-          error: res.ok ? null : res.error
-        };
-      }
-      await persistRssCache();
+      await enqueueRssCacheTask(async () => {
+        for (const w of groupEntry.members) {
+          await requestRssFeedPermission(w.feedUrl);
+          const res = await fetchRssFeedWidget(w);
+          rssCacheByWidget[w.id] = {
+            fetchedAt: Date.now(),
+            feedTitle: res.feedTitle || "",
+            items: res.ok ? res.items : (rssCacheByWidget[w.id]?.items || []),
+            error: res.ok ? null : res.error
+          };
+        }
+        await persistRssCache();
+      });
       updateRssBarDom(barEl, groupEntry);
       renderModalBody();
     } finally {
@@ -838,49 +861,59 @@ export function syncCustomRssWidgetElements(customWidgets = []) {
   return elements;
 }
 
-export async function pollAllRssFeedWidgets({ force = false, customWidgets = null } = {}) {
-  await ensureRssCacheLoaded();
-  let widgets = customWidgets;
-  if (!Array.isArray(widgets)) {
-    try {
-      const { loadConfig } = await import("../config.js");
-      widgets = (await loadConfig())?.appearance?.customWidgets || [];
-    } catch {
-      widgets = [];
+export function pollAllRssFeedWidgets({ force = false, customWidgets = null } = {}) {
+  return enqueueRssCacheTask(async () => {
+    await ensureRssCacheLoaded();
+    let widgets = customWidgets;
+    if (!Array.isArray(widgets)) {
+      try {
+        const { loadConfig } = await import("../config.js");
+        widgets = (await loadConfig())?.appearance?.customWidgets || [];
+      } catch {
+        widgets = [];
+      }
     }
-  }
 
-  await pruneRssStorageForWidgets(widgets);
+    await pruneRssStorageForWidgets(widgets);
 
-  const rssWidgets = widgets.filter(w => w?.type === "rss-feed" && isValidRssFeedUrl(w.feedUrl));
-  if (rssWidgets.length === 0) return;
+    const rssWidgets = widgets.filter(w => w?.type === "rss-feed" && !w.disabled && w.space !== "disabled" && isValidRssFeedUrl(w.feedUrl));
+    if (rssWidgets.length === 0) return;
 
-  const now = Date.now();
-  let anyUpdated = false;
+    const now = Date.now();
+    const staleWidgets = rssWidgets.filter(w => {
+      const cache = rssCacheByWidget[w.id];
+      const refreshMs = normalizeRssRefreshMinutes(w.refreshMinutes) * 60 * 1000;
+      return force || !cache?.fetchedAt || (now - cache.fetchedAt) >= refreshMs;
+    });
 
-  for (const w of rssWidgets) {
-    const cache = rssCacheByWidget[w.id];
-    const refreshMs = normalizeRssRefreshMinutes(w.refreshMinutes) * 60 * 1000;
-    if (!force && cache?.fetchedAt && (now - cache.fetchedAt) < refreshMs) {
-      continue;
+    let anyUpdated = false;
+    const RSS_FETCH_CONCURRENCY = 4;
+    let nextIdx = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(RSS_FETCH_CONCURRENCY, staleWidgets.length) }, async () => {
+        while (nextIdx < staleWidgets.length) {
+          const w = staleWidgets[nextIdx++];
+          const cache = rssCacheByWidget[w.id];
+          const res = await fetchRssFeedWidget(w);
+          rssCacheByWidget[w.id] = {
+            fetchedAt: Date.now(),
+            feedTitle: res.feedTitle || "",
+            items: res.ok ? res.items : (cache?.items || []),
+            error: res.ok ? null : res.error
+          };
+          anyUpdated = true;
+        }
+      })
+    );
+
+    if (anyUpdated) {
+      await persistRssCache();
+      for (const groupEntry of groupRssFeedWidgets(widgets)) {
+        const el = document.querySelector(`.custom-rss-widget[data-widget-id="${CSS.escape(groupEntry.representative.id)}"]`);
+        if (el) updateRssBarDom(el, groupEntry);
+      }
     }
-    const res = await fetchRssFeedWidget(w);
-    rssCacheByWidget[w.id] = {
-      fetchedAt: Date.now(),
-      feedTitle: res.feedTitle || "",
-      items: res.ok ? res.items : (cache?.items || []),
-      error: res.ok ? null : res.error
-    };
-    anyUpdated = true;
-  }
-
-  if (anyUpdated) {
-    await persistRssCache();
-    for (const groupEntry of groupRssFeedWidgets(widgets)) {
-      const el = document.querySelector(`.custom-rss-widget[data-widget-id="${CSS.escape(groupEntry.representative.id)}"]`);
-      if (el) updateRssBarDom(el, groupEntry);
-    }
-  }
+  });
 }
 
 export function startRssFeedPolling() {

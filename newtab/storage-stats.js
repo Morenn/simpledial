@@ -11,11 +11,13 @@ export function formatStorageBytes(bytes) {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+const textEncoder = typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
+
 function measureJsonByteSize(value) {
   try {
     const str = JSON.stringify(value);
-    if (typeof TextEncoder !== "undefined") {
-      return new TextEncoder().encode(str).length;
+    if (textEncoder) {
+      return textEncoder.encode(str).length;
     }
     return str.length;
   } catch {
@@ -48,7 +50,7 @@ async function getAreaBytesInUse(area) {
   return null;
 }
 
-export async function measureAddonStorageUsage() {
+export async function measureAddonStorageUsage({ includeCategories = true } = {}) {
   const categories = {
     bookmarks: 0,
     config: 0,
@@ -63,19 +65,23 @@ export async function measureAddonStorageUsage() {
 
   let localTotalBytes = 0;
   if (typeof chrome !== "undefined" && chrome.storage?.local) {
-    try {
-      const allLocal = await chrome.storage.local.get(null);
-      for (const [key, val] of Object.entries(allLocal || {})) {
-        const size = measureJsonByteSize(key) + measureJsonByteSize(val);
-        categories[categorizeLocalStorageKey(key)] += size;
-        localTotalBytes += size;
-      }
-    } catch {
-      // ignore
-    }
     const exactLocal = await getAreaBytesInUse(chrome.storage.local);
-    if (exactLocal !== null) {
+    if (!includeCategories && exactLocal !== null) {
       localTotalBytes = exactLocal;
+    } else {
+      try {
+        const allLocal = await chrome.storage.local.get(null);
+        for (const [key, val] of Object.entries(allLocal || {})) {
+          const size = measureJsonByteSize(key) + measureJsonByteSize(val);
+          categories[categorizeLocalStorageKey(key)] += size;
+          localTotalBytes += size;
+        }
+      } catch {
+        // ignore
+      }
+      if (exactLocal !== null) {
+        localTotalBytes = exactLocal;
+      }
     }
   }
 
@@ -124,7 +130,7 @@ export async function measureAddonStorageUsage() {
 export async function updateStorageUsageWidget(el = null) {
   const target = el || (typeof document !== "undefined" ? document.getElementById("footer-storage-usage") : null);
   if (!target) return;
-  const stats = await measureAddonStorageUsage();
+  const stats = await measureAddonStorageUsage({ includeCategories: false });
   const pct = Math.min(100, Math.round((stats.localBytes / stats.localLimitBytes) * 100));
   target.textContent = `💾 ${formatStorageBytes(stats.localBytes)} (${pct}%)`;
   target.title = `Extension storage: ${formatStorageBytes(stats.localBytes)} / ${formatStorageBytes(stats.localLimitBytes)} • Icon cache: ${formatStorageBytes(stats.localStorageBytes)}`;

@@ -2,9 +2,11 @@
 // CONFIGURATION MANAGEMENT
 // ======================================================
 
+import { getStorageValue } from "./storage-cache.js";
+
 export const DEFAULT_SYNC_INTERVAL = 60000; // 1 minute in milliseconds
 
-const CONFIG_STORAGE_KEY = "myspeeddial-config";
+export const CONFIG_STORAGE_KEY = "myspeeddial-config";
 
 export const defaultConfig = {
   browserBookmarksAutoSync: false,
@@ -134,9 +136,9 @@ export function updateDebugLoggingFlags(advanced = {}) {
   debugFlags.sync = Boolean(advanced?.syncDebugLogging);
   debugFlags.startupTiming = Boolean(advanced?.startupTimingDebugLogging);
   if (debugFlags.favicon || debugFlags.deadLink || debugFlags.sync || debugFlags.startupTiming) {
-    void getDebugModule().then(mod => mod?.setSyncDebugLoggingEnabled?.(debugFlags.sync));
+    void getDebugModule().then(mod => mod?.setDebugLoggingFlags?.(debugFlags));
   } else if (debugModulePromise) {
-    void debugModulePromise.then(mod => mod?.setSyncDebugLoggingEnabled?.(false));
+    void debugModulePromise.then(mod => mod?.setDebugLoggingFlags?.(debugFlags));
   }
 }
 
@@ -233,7 +235,8 @@ export function invalidateConfigCache() {
 if (typeof chrome !== "undefined" && chrome?.storage?.onChanged?.addListener) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && Object.prototype.hasOwnProperty.call(changes, CONFIG_STORAGE_KEY)) {
-      cachedConfig = null;
+      const nextVal = changes[CONFIG_STORAGE_KEY]?.newValue;
+      cachedConfig = nextVal ? mergeConfigWithDefaults(nextVal) : null;
     }
   });
 }
@@ -242,9 +245,11 @@ function cloneConfig(cfg) {
   if (!cfg || typeof cfg !== "object") return cfg;
   const bgImage = cfg.appearance?.backgroundImage;
   const customCss = cfg.appearance?.customThemeCss;
+  const defaultIcon = cfg.appearance?.defaultBookmarkIcon;
   if (cfg.appearance) {
     cfg.appearance.backgroundImage = null;
     cfg.appearance.customThemeCss = "";
+    cfg.appearance.defaultBookmarkIcon = null;
   }
   let cloned;
   try {
@@ -253,11 +258,13 @@ function cloneConfig(cfg) {
     if (cfg.appearance) {
       cfg.appearance.backgroundImage = bgImage;
       cfg.appearance.customThemeCss = customCss;
+      cfg.appearance.defaultBookmarkIcon = defaultIcon;
     }
   }
   if (cloned.appearance) {
     cloned.appearance.backgroundImage = bgImage;
     cloned.appearance.customThemeCss = customCss;
+    cloned.appearance.defaultBookmarkIcon = defaultIcon;
   }
   return cloned;
 }
@@ -277,8 +284,8 @@ export async function loadConfig() {
 
   const loadGeneration = configSaveGeneration;
   inFlightConfigLoad = (async () => {
-    const res = await chrome.storage.local.get(CONFIG_STORAGE_KEY);
-    const merged = mergeConfigWithDefaults(res?.[CONFIG_STORAGE_KEY]);
+    const rawConfig = await getStorageValue(CONFIG_STORAGE_KEY);
+    const merged = mergeConfigWithDefaults(rawConfig);
     updateDebugLoggingFlags(merged.advanced);
     if (canUseLongLivedCache && loadGeneration === configSaveGeneration) {
       cachedConfig = merged;

@@ -111,17 +111,28 @@ export function formatTimeForTimeZone(date, timeZone, { showSeconds = false, use
   }
 }
 
+const zonePartsFormatterCache = new Map();
+
 function getZoneParts(date, timeZone) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timeZone.trim(),
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  }).formatToParts(date);
+  const tz = resolveTimeZoneAlias(timeZone);
+  if (!isValidTimeZone(tz)) {
+    throw new RangeError(`Invalid timeZone: ${timeZone}`);
+  }
+  let fmt = zonePartsFormatterCache.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
+    zonePartsFormatterCache.set(tz, fmt);
+  }
+  const parts = fmt.formatToParts(date);
   const map = {};
   for (const p of parts) {
     if (p.type !== "literal") map[p.type] = Number(p.value);

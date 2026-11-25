@@ -156,15 +156,15 @@ test("loadConfig merges defaults, caches reads, and invalidates on cache reset o
   assert.equal(fromCache.housekeeper.autoCleanupEnabled, true);
   assert.equal(fromCache.housekeeper.iconAutoRefreshMode, "missing");
   assert.equal(fromCache.vaultAutoLockMinutes, 15);
-  assert.equal(storageGetCalls, 2);
+  assert.equal(storageGetCalls, 1);
 
-  // External storage change invalidates cache
+  // External storage change updates cache directly
   await chrome.storage.local.set({
     "myspeeddial-config": { advanced: { syncDebugLogging: true } }
   });
   const reloaded = await loadConfig();
   assert.equal(reloaded.advanced.syncDebugLogging, true);
-  assert.equal(storageGetCalls, 3);
+  assert.equal(storageGetCalls, 1);
 });
 
 test("updateDebugLoggingFlags and logDebug gate output per debug channel", async () => {

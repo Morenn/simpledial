@@ -7,11 +7,17 @@ import {
   refreshOpenStackPopover,
   closeStackPopover,
   resetIconHydrationQueue,
-  startIconHydrationAfterPaint
+  startIconHydrationAfterPaint,
+  getActiveTagMap,
+  getFallbackBookmarkIconUrl
 } from "./bookmarks.js";
 import { loadConfig } from "./config.js";
-import { syncWrite, syncNow, getLastSyncErrorReason, clearLastSyncErrorReason } from "./sync.js";
-import { isVaultUnlocked, tryAutoUnlockVault } from "./crypto.js";
+import {
+  loadSyncModule,
+  getLoadedSyncModule,
+  loadCryptoModule,
+  getLoadedCryptoModule
+} from "./lazy-modules.js";
 import { t } from "./i18n.js";
 
 // ======================================================
@@ -152,7 +158,7 @@ export function getSyncErrorLabel(reason) {
   }
 }
 
-export async function updateFooter(providedConfig = null) {
+export async function updateFooter(providedConfig = null, options = {}) {
   const footerSyncStatus = document.getElementById("footer-sync-status");
   const footerSyncDot = document.getElementById("footer-sync-dot");
   const footerSyncText = document.getElementById("footer-sync-text");
@@ -160,16 +166,28 @@ export async function updateFooter(providedConfig = null) {
 
   if (!footerSyncDot && !footerSyncText && !footerBookmarksTotal) return;
 
+  const allowLazyLoad = Boolean(options?.allowLazyLoad);
   const config = providedConfig || await loadConfig();
   const syncEnabled = !!config?.sync?.enabled;
 
   const usingBasic = syncEnabled && config?.sync?.type !== "browser" && config?.sync?.authMode === "basic";
-  if (usingBasic && config?.sync?.encryptionMode === "vault" && config?.sync?.enc && !isVaultUnlocked()) {
-    await tryAutoUnlockVault(config.vaultHeader);
+  const hasVaultBasicCreds = usingBasic && config?.sync?.encryptionMode === "vault" && !!config?.sync?.enc;
+  let cryptoMod = getLoadedCryptoModule();
+  if (hasVaultBasicCreds) {
+    if (!cryptoMod && allowLazyLoad) {
+      cryptoMod = await loadCryptoModule();
+    }
+    if (cryptoMod && !cryptoMod.isVaultUnlocked()) {
+      await cryptoMod.tryAutoUnlockVault(config.vaultHeader);
+    }
   }
-  const isVaultCredsLocked = usingBasic && config?.sync?.encryptionMode === "vault" && !!config?.sync?.enc && !isVaultUnlocked();
+  const isVaultCredsLocked = hasVaultBasicCreds && Boolean(cryptoMod) && !cryptoMod.isVaultUnlocked();
   const pausedReason = syncEnabled ? (config?.sync?.pausedReason || null) : null;
-  const errorReason = syncEnabled ? (pausedReason || getLastSyncErrorReason()) : null;
+  let syncMod = getLoadedSyncModule();
+  if (syncEnabled && !pausedReason && !syncMod && allowLazyLoad) {
+    syncMod = await loadSyncModule();
+  }
+  const errorReason = syncEnabled ? (pausedReason || syncMod?.getLastSyncErrorReason?.() || null) : null;
   const isLocked = isVaultCredsLocked || errorReason === "credentials-locked";
 
   if (footerSyncDot) {
@@ -211,8 +229,9 @@ export async function updateFooter(providedConfig = null) {
       footerSyncStatus.title = t("vaultLockedClickToUnlock") || "Vault locked — click badge to unlock";
       footerSyncStatus.onclick = async () => {
         if (await window.promptUnlockVault()) {
-          clearLastSyncErrorReason();
-          await updateFooter();
+          const loadedSyncMod = getLoadedSyncModule() || await loadSyncModule();
+          loadedSyncMod.clearLastSyncErrorReason();
+          await updateFooter(null, { allowLazyLoad: true });
         }
       };
     } else if (pausedReason && typeof window !== "undefined" && (typeof window.openSyncMergeWizard === "function" || typeof window.openSyncSettings === "function")) {
@@ -249,12 +268,14 @@ export async function updateFooter(providedConfig = null) {
 
 let activeRenderSeq = 0;
 
-export async function render(providedConfig = null) {
+export async function render(providedConfig = null, options = {}) {
   const seq = ++activeRenderSeq;
   const config = providedConfig || await loadConfig();
   if (seq !== activeRenderSeq) return;
   resetIconHydrationQueue();
-  renderGroups(true, config);
+  if (!options?.skipGroups) {
+    renderGroups(true, config);
+  }
   await renderBookmarks(config);
   if (seq !== activeRenderSeq) return;
 
@@ -269,15 +290,15 @@ export async function render(providedConfig = null) {
 // ======================================================
 // SECTION RENDERING HELPER
 // ======================================================
-function renderTileForEntry(item, config) {
+function renderTileForEntry(item, config, renderContext = null) {
   const tile = isStackItem(item)
     ? createStackTile(item, config)
-    : createBookmarkTile(item, config);
+    : createBookmarkTile(item, config, renderContext);
   if (item.deleted) tile.classList.add("deleted");
   return tile;
 }
 
-function buildSectionCard(group, section, sectionItems, config) {
+function buildSectionCard(group, section, sectionItems, config, renderContext = null) {
   const sectionEl = document.createElement("section");
   sectionEl.className = "bookmark-section";
   sectionEl.dataset.sectionId = section.id;
@@ -306,6 +327,7 @@ function buildSectionCard(group, section, sectionItems, config) {
     section.updatedAt = now;
     group.updatedAt = now;
     await saveState();
+    const { syncWrite } = await loadSyncModule();
     await syncWrite();
     render();
   };
@@ -357,6 +379,7 @@ function buildSectionCard(group, section, sectionItems, config) {
     group.updatedAt = now;
 
     await saveState();
+    const { syncWrite } = await loadSyncModule();
     await syncWrite();
     render();
   });
@@ -372,9 +395,11 @@ function buildSectionCard(group, section, sectionItems, config) {
   sectionGrid.className = "section-grid";
   sectionGrid.dataset.sectionId = section.id;
 
+  const sectionFrag = document.createDocumentFragment();
   sectionItems.forEach(item => {
-    sectionGrid.appendChild(renderTileForEntry(item, config));
+    sectionFrag.appendChild(renderTileForEntry(item, config, renderContext));
   });
+  sectionGrid.appendChild(sectionFrag);
 
   sectionEl.appendChild(header);
   sectionEl.appendChild(sectionGrid);
@@ -399,8 +424,12 @@ async function renderBookmarks(providedConfig = null) {
     centerSpaceWidgets &&
     Array.from(centerSpaceWidgets.children).some(el => !el.classList.contains("side-space-placeholder") && el.style.display !== "none")
   );
-  const showDeleted = !!document.getElementById("show-deleted-toggle")?.checked;
+  const showDeleted = isShowDeletedEnabled();
   const searchText = document.getElementById("search-box")?.value.trim().toLowerCase() || "";
+  const renderContext = {
+    tagMap: getActiveTagMap(),
+    fallbackIconUrl: getFallbackBookmarkIconUrl(config)
+  };
 
   // ============================================
   // 1) Global search across all groups (including stack children & tags)
@@ -483,10 +512,12 @@ async function renderBookmarks(providedConfig = null) {
       );
     });
 
+    const searchFrag = document.createDocumentFragment();
     filtered.forEach(item => {
-      const tile = createBookmarkTile(item, config);
+      const tile = createBookmarkTile(item, config, renderContext);
       if (item.deleted) tile.classList.add("deleted");
       tile.classList.add("search-result");
+      tile.draggable = false;
 
       const locationParts = [item._groupName, item._sectionName, item._stackTitle].filter(Boolean);
       const locationLabel = locationParts.join(" / ");
@@ -540,8 +571,9 @@ async function renderBookmarks(providedConfig = null) {
         tile.appendChild(jumpBtn);
       }
 
-      grid.appendChild(tile);
+      searchFrag.appendChild(tile);
     });
+    grid.appendChild(searchFrag);
     return;
   }
 
@@ -575,19 +607,23 @@ async function renderBookmarks(providedConfig = null) {
   if (sectionsContainer) {
     if (activeSections.length > 0) {
       sectionsContainer.classList.remove("hidden");
+      const sectionsFrag = document.createDocumentFragment();
       activeSections.forEach(section => {
         const sectionItems = visibleItems.filter(i => i.sectionId === section.id);
-        sectionsContainer.appendChild(buildSectionCard(group, section, sectionItems, config));
+        sectionsFrag.appendChild(buildSectionCard(group, section, sectionItems, config, renderContext));
       });
+      sectionsContainer.appendChild(sectionsFrag);
     } else {
       sectionsContainer.classList.add("hidden");
     }
   }
 
   const unsectionedItems = visibleItems.filter(i => !i.sectionId || !activeSectionIds.has(i.sectionId));
+  const gridFrag = document.createDocumentFragment();
   unsectionedItems.forEach(item => {
-    grid.appendChild(renderTileForEntry(item, config));
+    gridFrag.appendChild(renderTileForEntry(item, config, renderContext));
   });
+  grid.appendChild(gridFrag);
 
   const addTile = document.createElement("div");
   addTile.className = "bookmark-tile add-bookmark";
@@ -611,9 +647,24 @@ async function renderBookmarks(providedConfig = null) {
 // REACTION TO SHOW DELETED TOGGLE CHANGE
 // ======================================================
 
-document.getElementById("show-deleted-toggle").addEventListener("change", () => {
-  render();
-});
+export function isShowDeletedEnabled() {
+  const toggle = document.getElementById("show-deleted-toggle");
+  return toggle ? !!toggle.checked : document.body?.dataset?.showDeleted === "true";
+}
+
+export function bindShowDeletedToggleListener() {
+  const toggle = document.getElementById("show-deleted-toggle");
+  if (!toggle || toggle.dataset.renderBound) return;
+  toggle.dataset.renderBound = "true";
+  toggle.addEventListener("change", () => {
+    if (document.body) {
+      document.body.dataset.showDeleted = toggle.checked ? "true" : "false";
+    }
+    render();
+  });
+}
+
+bindShowDeletedToggleListener();
 
 // ======================================================
 // SEARCH INPUT, EXPAND TOGGLE, CLEAR BUTTON & ESCAPE
@@ -631,11 +682,17 @@ const searchWidget = document.getElementById("search-widget");
 const searchToggleBtn = document.getElementById("search-toggle-btn");
 const searchClearBtn = document.getElementById("search-clear-btn");
 
+let searchInputDebounceTimer = 0;
+
 if (searchInput) {
   updateSearchClearButton();
   searchInput.addEventListener("input", () => {
     updateSearchClearButton();
-    render();
+    clearTimeout(searchInputDebounceTimer);
+    searchInputDebounceTimer = setTimeout(() => {
+      searchInputDebounceTimer = 0;
+      void render(null, { skipGroups: true });
+    }, 120);
   });
 }
 
@@ -643,16 +700,20 @@ export function searchByBookmarkTag(tagName) {
   if (!searchInput || typeof tagName !== "string") return;
   const trimmed = tagName.trim();
   if (!trimmed) return;
+  clearTimeout(searchInputDebounceTimer);
+  searchInputDebounceTimer = 0;
   if (searchWidget && !searchWidget.classList.contains("expanded")) {
     searchWidget.classList.add("expanded");
   }
   searchInput.value = trimmed;
   updateSearchClearButton();
-  render();
+  void render(null, { skipGroups: true });
 }
 window.searchByBookmarkTag = searchByBookmarkTag;
 
 export function clearBookmarkSearch({ focus = false, collapse = true, rerender = true } = {}) {
+  clearTimeout(searchInputDebounceTimer);
+  searchInputDebounceTimer = 0;
   if (!searchInput) return;
   const hadFilter = searchInput.value.trim() !== "";
   const hadValue = searchInput.value !== "";

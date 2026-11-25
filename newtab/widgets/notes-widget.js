@@ -200,24 +200,29 @@ async function persistNotesStore() {
   }
 }
 
-export async function pruneNotesStorageForWidgets(activeWidgets = []) {
-  await ensureNotesStoreLoaded();
-  const activeIds = new Set(
-    (Array.isArray(activeWidgets) ? activeWidgets : [])
-      .filter(w => w?.type === "notes" && typeof w.id === "string" && w.id)
-      .map(w => w.id)
-  );
-  let changed = false;
-  for (const id of Array.from(notesDataCache.keys())) {
-    if (!activeIds.has(id)) {
-      notesDataCache.delete(id);
-      changed = true;
+export function pruneNotesStorageForWidgets(activeWidgets = []) {
+  const run = async () => {
+    await ensureNotesStoreLoaded();
+    const activeIds = new Set(
+      (Array.isArray(activeWidgets) ? activeWidgets : [])
+        .filter(w => w?.type === "notes" && typeof w.id === "string" && w.id)
+        .map(w => w.id)
+    );
+    let changed = false;
+    for (const id of Array.from(notesDataCache.keys())) {
+      if (!activeIds.has(id)) {
+        notesDataCache.delete(id);
+        changed = true;
+      }
     }
-  }
-  if (changed) {
-    await persistNotesStore();
-  }
-  return changed;
+    if (changed) {
+      await persistNotesStore();
+    }
+    return changed;
+  };
+  const task = notesWriteQueue.then(run, run);
+  notesWriteQueue = task.catch(() => {});
+  return task;
 }
 
 function getNotesDataSync(widgetId) {
@@ -369,20 +374,38 @@ export function checkDueNoteReminders() {
   return task;
 }
 
+function hasAnyActiveNotesReminders() {
+  for (const w of activeNotesWidgets) {
+    const data = getNotesDataSync(w.id);
+    for (const entry of (data?.entries || [])) {
+      for (const todo of (entry?.todos || [])) {
+        if (todo && !todo.done && todo.remindAt) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 export function startNotesReminderPolling() {
   if (notesReminderIntervalId || typeof setInterval === "undefined") return;
   void ensureNotesStoreLoaded().then(() => {
     for (const w of activeNotesWidgets) refreshNotesWidgetDom(w.id);
-    return checkDueNoteReminders();
+    if (hasAnyActiveNotesReminders()) {
+      return checkDueNoteReminders();
+    }
   });
   notesReminderIntervalId = setInterval(() => {
     if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    if (!hasAnyActiveNotesReminders()) return;
     for (const w of activeNotesWidgets) refreshNotesWidgetDom(w.id);
     void checkDueNoteReminders();
   }, 10000);
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
+        if (!hasAnyActiveNotesReminders()) return;
         for (const w of activeNotesWidgets) refreshNotesWidgetDom(w.id);
         void checkDueNoteReminders();
       }
