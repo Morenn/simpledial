@@ -1,6 +1,6 @@
 import { state, saveState } from "../state.js";
 import { loadConfig, saveConfig, logDebug } from "../config.js";
-import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount, getStaleDeviceConflictDetails, resolveStaleDeviceConflict, clearSyncPauseState } from "../sync.js";
+import { testSyncConnection, requestHostPermission, syncNow, syncForceUpload, syncForceDownload, syncReadTest, syncWriteTest, syncWebdavFolderExtras, resetLogonCount, getStaleDeviceConflictDetails, resolveStaleDeviceConflict, clearSyncPauseState, getLocalDbUid } from "../sync.js";
 import { t } from "../i18n.js";
 import {
   importRawKey,
@@ -349,6 +349,16 @@ export function updateLastSyncInfo(config) {
   if (syncMergeWizardBtn) {
     const canWizard = config?.sync?.pausedReason === "stale-device-conflict" || config?.sync?.pausedReason === "dbuid-mismatch";
     syncMergeWizardBtn.classList.toggle("hidden", !canWizard);
+  }
+  const syncDbuidInfo = document.getElementById("sync-dbuid-info");
+  if (syncDbuidInfo) {
+    getLocalDbUid().then(dbuid => {
+      syncDbuidInfo.textContent = "DBUID: ";
+      const code = document.createElement("code");
+      code.style.userSelect = "all";
+      code.textContent = dbuid || "(none)";
+      syncDbuidInfo.appendChild(code);
+    }).catch(() => {});
   }
   if (!lastSyncInfo) return;
   if (!config.sync.lastSync) {

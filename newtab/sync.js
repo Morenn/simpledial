@@ -1157,6 +1157,11 @@ export async function clearLocalTombstoneState({ resetDbUid = false } = {}) {
   });
 }
 
+export async function getLocalDbUid() {
+  const localState = await loadLocalTombstoneState();
+  return localState.dbuid || "";
+}
+
 function mergeTombstoneMaps(localMap, remoteMap) {
   const merged = new Map();
   for (const [id, ts] of sanitizeTombstonesMap(localMap)) {
