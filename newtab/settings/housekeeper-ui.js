@@ -482,6 +482,7 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
 
         updateHouseKeeperInfo(config);
         render();
+        renderHousekeeperTagsList();
       } catch (error) {
         hkCleanupStatus.textContent = "❌ Cleanup failed";
         hkCleanupStatus.style.color = "#f44336";
@@ -553,6 +554,7 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
         hkDeadLinksCount.textContent = `Dead links found: ${deadLinkCount}`;
 
         render();
+        renderHousekeeperTagsList();
       } catch (error) {
         hkLinkCheckStatus.textContent = "❌ Link check failed";
         hkLinkCheckStatus.style.color = "#f44336";
@@ -580,6 +582,7 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
         hkDeadLinksCount.textContent = "Dead links found: 0";
 
         try { render(); } catch {}
+        renderHousekeeperTagsList();
       } catch (error) {
         hkLinkCheckStatus.textContent = "❌ Clearing failed";
         hkLinkCheckStatus.style.color = "#f44336";
@@ -623,6 +626,7 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
         if (changed) {
           await saveSystemTags();
           try { render(); } catch {}
+          renderHousekeeperTagsList();
         }
 
         if (httpCount === 0) {
@@ -706,6 +710,7 @@ export function initHousekeeperSettings({ ensureAppearanceDraft }) {
         if (changed) {
           await saveSystemTags();
           try { render(); } catch {}
+          renderHousekeeperTagsList();
         }
 
         if (hkDuplicatesStatus) {
