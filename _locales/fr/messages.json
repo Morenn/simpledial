@@ -2,11 +2,14 @@
   "extensionName": {
     "message": "Simple SpeedDial"
   },
+  "extensionDescription": {
+    "message": "Extension SpeedDial simple pour enregistrer et synchroniser les favoris via WebDAV ou HTTP avec JSON GET/PUT."
+  },
   "searchPlaceholder": {
     "message": "Rechercher dans les favoris..."
   },
-  "extensionDescription": {
-    "message": "Extension SpeedDial simple pour enregistrer et synchroniser les favoris via WebDAV ou HTTP avec JSON GET/PUT."
+  "themeToggle": {
+    "message": "Changer de thème"
   },
   "settings": {
     "message": "Paramètres"
@@ -533,6 +536,9 @@
   "manualCleanupNow": {
     "message": "Nettoyer manuellement maintenant"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Nettoyer les objets orphelins"
+  },
   "iconAutoRefresh": {
     "message": "Actualisation automatique des icônes"
   },
@@ -581,6 +587,12 @@
   "hkCleanupCompleted": {
     "message": "Nettoyage terminé – {0} enregistrements supprimés définitivement."
   },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Objets orphelins nettoyés ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Aucun objet orphelin trouvé."
+  },
   "hkEnableLinkCheck": {
     "message": "Vérifier les liens morts"
   },
@@ -610,6 +622,9 @@
   },
   "syncDebugLogging": {
     "message": "Activer le journal de débogage de la synchronisation"
+  },
+  "webdavDebugLogging": {
+    "message": "Activer la journalisation de débogage WebDAV"
   },
   "i18nHotReload": {
     "message": "Recharger les fichiers de langue lors de l'actualisation de la page (débogage)"
@@ -1592,8 +1607,20 @@
   "notesRemind60m": {
     "message": "Dans 1 heure"
   },
+  "notesRemind1d": {
+    "message": "Dans 1 jour"
+  },
+  "notesRemind3d": {
+    "message": "Dans 3 jours"
+  },
+  "notesRemind1w": {
+    "message": "Dans 1 semaine"
+  },
+  "notesRemindRelative": {
+    "message": "Dans... (j/h)"
+  },
   "notesRemindCustom": {
-    "message": "À une heure..."
+    "message": "Date et heure..."
   },
   "notesReminderDue": {
     "message": "Échu !"
@@ -1871,6 +1898,30 @@
   "backupFileTooLarge": {
     "message": "Le fichier de sauvegarde est trop volumineux (max 3 Mo)."
   },
+  "hkBookmarkTagsTitle": {
+    "message": "Étiquettes des favoris"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Créez, renommez, recolorez ou supprimez des étiquettes de favoris dans tous les groupes."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Supprimer les étiquettes inutilisées"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Aucune étiquette de favori créée pour le moment."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} favori(s)"
+  },
+  "hkTagUpdated": {
+    "message": "Étiquette mise à jour."
+  },
+  "hkTagDeleted": {
+    "message": "Étiquette supprimée."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "{0} étiquette(s) inutilisée(s) supprimée(s)."
+  },
   "moreActions": {
     "message": "Plus d'actions"
   },
@@ -1931,17 +1982,32 @@
   "rssMarkAllRead": {
     "message": "Tout marquer comme lu"
   },
+  "rssMarkRead": {
+    "message": "Marquer comme lu"
+  },
+  "rssMarkUnread": {
+    "message": "Marquer comme non lu"
+  },
   "rssJustNow": {
     "message": "à l'instant"
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Autorisation requise — ouvrir et actualiser"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Ouvrez le widget et cliquez sur Actualiser (↻) pour accorder l'autorisation"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "L'autorisation d'accès à l'hôte est requise pour récupérer ce flux. Cliquez sur Actualiser (↻) ou Accorder et actualiser."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Accorder et actualiser"
   },
   "widgetStorageUsage": {
     "message": "Utilisation du stockage"
   },
   "infoStorageUsageTitle": {
     "message": "💾 Stockage de l'extension"
-  },
-  "themeToggle": {
-    "message": "Changer de thème"
   },
   "all": {
     "message": "Tout"
@@ -1972,51 +2038,6 @@
   },
   "noOtherGroups": {
     "message": "Aucun autre groupe"
-  },
-  "cleanupOrphanedObjects": {
-    "message": "Nettoyer les objets orphelins"
-  },
-  "hkOrphanedCleanupCompleted": {
-    "message": "Objets orphelins nettoyés ({0})."
-  },
-  "hkOrphanedCleanupNone": {
-    "message": "Aucun objet orphelin trouvé."
-  },
-  "hkBookmarkTagsTitle": {
-    "message": "Étiquettes des favoris"
-  },
-  "hkBookmarkTagsDesc": {
-    "message": "Créez, renommez, recolorez ou supprimez des étiquettes de favoris dans tous les groupes."
-  },
-  "hkRemoveUnusedTags": {
-    "message": "🧹 Supprimer les étiquettes inutilisées"
-  },
-  "hkBookmarkTagsEmpty": {
-    "message": "Aucune étiquette de favori créée pour le moment."
-  },
-  "hkTagUsageCount": {
-    "message": "{0} favori(s)"
-  },
-  "hkTagUpdated": {
-    "message": "Étiquette mise à jour."
-  },
-  "hkTagDeleted": {
-    "message": "Étiquette supprimée."
-  },
-  "hkUnusedTagsRemoved": {
-    "message": "{0} étiquette(s) inutilisée(s) supprimée(s)."
-  },
-  "rssPermissionRequiredBar": {
-    "message": "🔒 Autorisation requise — ouvrir et actualiser"
-  },
-  "rssPermissionRequiredBarTitle": {
-    "message": "Ouvrez le widget et cliquez sur Actualiser (↻) pour accorder l'autorisation"
-  },
-  "rssPermissionRequiredNotice": {
-    "message": "L'autorisation d'accès à l'hôte est requise pour récupérer ce flux. Cliquez sur Actualiser (↻) ou Accorder et actualiser."
-  },
-  "rssGrantPermissionAndRefresh": {
-    "message": "Accorder et actualiser"
   },
   "customWidgetModeWeather": {
     "message": "Météo"
@@ -2215,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Laisser désactivé"
+  },
+  "groups": {
+    "message": "Groupes"
+  },
+  "bookmarks": {
+    "message": "Favoris"
+  },
+  "tags": {
+    "message": "Tags"
+  },
+  "enableWidget": {
+    "message": "Activer le widget"
+  },
+  "disableWidget": {
+    "message": "Désactiver le widget"
+  },
+  "moveUp": {
+    "message": "Monter"
+  },
+  "moveDown": {
+    "message": "Descendre"
   }
 }

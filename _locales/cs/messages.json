@@ -2,11 +2,14 @@
   "extensionName": {
     "message": "Simple SpeedDial"
   },
+  "extensionDescription": {
+    "message": "Jednoduché rozšíření SpeedDial ukládá a synchronizuje záložky přes WebDAV nebo HTTP server s podporou JSON GET/PUT."
+  },
   "searchPlaceholder": {
     "message": "Hledat v záložkách..."
   },
-  "extensionDescription": {
-    "message": "Jednoduché rozšíření SpeedDial ukládá a synchronizuje záložky přes WebDAV nebo HTTP server s podporou JSON GET/PUT."
+  "themeToggle": {
+    "message": "Přepnout motiv"
   },
   "settings": {
     "message": "Nastavení"
@@ -533,6 +536,9 @@
   "manualCleanupNow": {
     "message": "Vyčistit nyní ručně"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Vyčistit osiřelé objekty"
+  },
   "iconAutoRefresh": {
     "message": "Automatické obnovování ikon"
   },
@@ -581,6 +587,12 @@
   "hkCleanupCompleted": {
     "message": "Čištění dokončeno – {0} záznamů bylo trvale smazáno."
   },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Osiřelé objekty vyčištěny ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Nebyly nalezeny žádné osiřelé objekty."
+  },
   "hkEnableLinkCheck": {
     "message": "Kontrolovat nefunkční odkazy"
   },
@@ -610,6 +622,9 @@
   },
   "syncDebugLogging": {
     "message": "Povolit ladění synchronizace"
+  },
+  "webdavDebugLogging": {
+    "message": "Povolit ladicí logování WebDAV"
   },
   "i18nHotReload": {
     "message": "Při obnovení stránky znovu načíst jazykové soubory (ladění)"
@@ -1592,8 +1607,20 @@
   "notesRemind60m": {
     "message": "Za 1 hodinu"
   },
+  "notesRemind1d": {
+    "message": "Za 1 den"
+  },
+  "notesRemind3d": {
+    "message": "Za 3 dny"
+  },
+  "notesRemind1w": {
+    "message": "Za 1 týden"
+  },
+  "notesRemindRelative": {
+    "message": "Za... (dny/hod)"
+  },
   "notesRemindCustom": {
-    "message": "V určitý čas..."
+    "message": "Datum a čas..."
   },
   "notesReminderDue": {
     "message": "Termín!"
@@ -1871,6 +1898,30 @@
   "backupFileTooLarge": {
     "message": "Záložní soubor je příliš velký (max 3 MB)."
   },
+  "hkBookmarkTagsTitle": {
+    "message": "Štítky záložek"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Vytvářejte, přejmenovávejte, přebarvujte nebo odstraňujte štítky záložek napříč všemi skupinami."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Odstranit nepoužívané štítky"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Zatím nejsou vytvořeny žádné štítky záložek."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} záložek"
+  },
+  "hkTagUpdated": {
+    "message": "Štítek aktualizován."
+  },
+  "hkTagDeleted": {
+    "message": "Štítek smazán."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Odstraněno {0} nepoužívaných štítků."
+  },
   "moreActions": {
     "message": "Další akce"
   },
@@ -1931,17 +1982,32 @@
   "rssMarkAllRead": {
     "message": "Označit vše jako přečtené"
   },
+  "rssMarkRead": {
+    "message": "Označit jako přečtené"
+  },
+  "rssMarkUnread": {
+    "message": "Označit jako nepřečtené"
+  },
   "rssJustNow": {
     "message": "právě teď"
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Vyžadováno oprávnění — otevřete a obnovte"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Otevřete widget a klikněte na Obnovit (↻) pro udělení oprávnění"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Pro načtení tohoto zdroje je vyžadováno oprávnění k hostiteli. Klikněte na Obnovit (↻) nebo Udělit oprávnění a obnovit."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Udělit oprávnění a obnovit"
   },
   "widgetStorageUsage": {
     "message": "Využití úložiště"
   },
   "infoStorageUsageTitle": {
     "message": "💾 Využití úložiště doplňku"
-  },
-  "themeToggle": {
-    "message": "Přepnout motiv"
   },
   "all": {
     "message": "Vše"
@@ -1972,51 +2038,6 @@
   },
   "noOtherGroups": {
     "message": "Žádné další skupiny"
-  },
-  "cleanupOrphanedObjects": {
-    "message": "Vyčistit osiřelé objekty"
-  },
-  "hkOrphanedCleanupCompleted": {
-    "message": "Osiřelé objekty vyčištěny ({0})."
-  },
-  "hkOrphanedCleanupNone": {
-    "message": "Nebyly nalezeny žádné osiřelé objekty."
-  },
-  "hkBookmarkTagsTitle": {
-    "message": "Štítky záložek"
-  },
-  "hkBookmarkTagsDesc": {
-    "message": "Vytvářejte, přejmenovávejte, přebarvujte nebo odstraňujte štítky záložek napříč všemi skupinami."
-  },
-  "hkRemoveUnusedTags": {
-    "message": "🧹 Odstranit nepoužívané štítky"
-  },
-  "hkBookmarkTagsEmpty": {
-    "message": "Zatím nejsou vytvořeny žádné štítky záložek."
-  },
-  "hkTagUsageCount": {
-    "message": "{0} záložek"
-  },
-  "hkTagUpdated": {
-    "message": "Štítek aktualizován."
-  },
-  "hkTagDeleted": {
-    "message": "Štítek smazán."
-  },
-  "hkUnusedTagsRemoved": {
-    "message": "Odstraněno {0} nepoužívaných štítků."
-  },
-  "rssPermissionRequiredBar": {
-    "message": "🔒 Vyžadováno oprávnění — otevřete a obnovte"
-  },
-  "rssPermissionRequiredBarTitle": {
-    "message": "Otevřete widget a klikněte na Obnovit (↻) pro udělení oprávnění"
-  },
-  "rssPermissionRequiredNotice": {
-    "message": "Pro načtení tohoto zdroje je vyžadováno oprávnění k hostiteli. Klikněte na Obnovit (↻) nebo Udělit oprávnění a obnovit."
-  },
-  "rssGrantPermissionAndRefresh": {
-    "message": "Udělit oprávnění a obnovit"
   },
   "customWidgetModeWeather": {
     "message": "Počasí"
@@ -2215,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Ponechat vypnuté"
+  },
+  "groups": {
+    "message": "Skupiny"
+  },
+  "bookmarks": {
+    "message": "Záložky"
+  },
+  "tags": {
+    "message": "Štítky"
+  },
+  "enableWidget": {
+    "message": "Povolit widget"
+  },
+  "disableWidget": {
+    "message": "Zakázat widget"
+  },
+  "moveUp": {
+    "message": "Posunout nahoru"
+  },
+  "moveDown": {
+    "message": "Posunout dolů"
   }
 }

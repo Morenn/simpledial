@@ -1607,8 +1607,20 @@
   "notesRemind60m": {
     "message": "In 1 hour"
   },
+  "notesRemind1d": {
+    "message": "In 1 day"
+  },
+  "notesRemind3d": {
+    "message": "In 3 days"
+  },
+  "notesRemind1w": {
+    "message": "In 1 week"
+  },
+  "notesRemindRelative": {
+    "message": "In... (days/hrs)"
+  },
   "notesRemindCustom": {
-    "message": "At time..."
+    "message": "At date & time..."
   },
   "notesReminderDue": {
     "message": "Due!"
@@ -2224,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Keep Disabled"
+  },
+  "groups": {
+    "message": "Groups"
+  },
+  "bookmarks": {
+    "message": "Bookmarks"
+  },
+  "tags": {
+    "message": "Tags"
+  },
+  "enableWidget": {
+    "message": "Enable widget"
+  },
+  "disableWidget": {
+    "message": "Disable widget"
+  },
+  "moveUp": {
+    "message": "Move up"
+  },
+  "moveDown": {
+    "message": "Move down"
   }
 }

@@ -71,6 +71,25 @@ export function normalizeNotesWidgetData(raw) {
 
 export function computeReminderTimestamp(preset, customValue = "", nowMs = Date.now()) {
   if (!preset || preset === "none") return null;
+  if (preset === "relative") {
+    let days = 0;
+    let hours = 0;
+    let mins = 0;
+    if (customValue && typeof customValue === "object") {
+      days = Math.max(0, Math.floor(Number(customValue.days) || 0));
+      hours = Math.max(0, Math.floor(Number(customValue.hours) || 0));
+      mins = Math.max(0, Math.floor(Number(customValue.mins) || 0));
+    } else if (typeof customValue === "string" && customValue.trim()) {
+      const dMatch = customValue.match(/(\d+)\s*d/i);
+      const hMatch = customValue.match(/(\d+)\s*h/i);
+      const mMatch = customValue.match(/(\d+)\s*m/i);
+      days = dMatch ? Number(dMatch[1]) : 0;
+      hours = hMatch ? Number(hMatch[1]) : 0;
+      mins = mMatch ? Number(mMatch[1]) : 0;
+    }
+    const totalMins = (days * 24 + hours) * 60 + mins;
+    return totalMins > 0 ? nowMs + totalMins * 60 * 1000 : null;
+  }
   if (preset === "custom") {
     if (typeof customValue !== "string" || !customValue.trim()) return null;
     const trimmed = customValue.trim();
@@ -630,6 +649,10 @@ function ensureNotesModalListeners() {
   const textarea = document.getElementById("notes-modal-textarea");
   const todoInput = document.getElementById("notes-todo-input");
   const remindSelect = document.getElementById("notes-todo-remind-select");
+  const remindRelative = document.getElementById("notes-todo-remind-relative");
+  const remindDays = document.getElementById("notes-todo-remind-days");
+  const remindHours = document.getElementById("notes-todo-remind-hours");
+  const remindMins = document.getElementById("notes-todo-remind-mins");
   const remindCustom = document.getElementById("notes-todo-remind-custom");
   const addTodoBtn = document.getElementById("notes-todo-add-btn");
 
@@ -713,14 +736,35 @@ function ensureNotesModalListeners() {
   });
   textarea?.addEventListener("blur", flushEntryTextSave);
 
+  const formatLocalDateTimeInput = (ms) => {
+    const d = new Date(ms);
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   remindSelect?.addEventListener("change", () => {
+    const mode = remindSelect.value;
+    if (remindRelative) {
+      const isRelative = mode === "relative";
+      remindRelative.classList.toggle("hidden", !isRelative);
+      if (isRelative) {
+        const dVal = Number(remindDays?.value) || 0;
+        const hVal = Number(remindHours?.value) || 0;
+        const mVal = Number(remindMins?.value) || 0;
+        if (dVal === 0 && hVal === 0 && mVal === 0 && remindDays) {
+          remindDays.value = "1";
+        }
+      }
+    }
     if (remindCustom) {
-      const isCustom = remindSelect.value === "custom";
+      const isCustom = mode === "custom";
       remindCustom.classList.toggle("hidden", !isCustom);
-      if (isCustom && !remindCustom.value) {
-        const d = new Date(Date.now() + 15 * 60 * 1000);
-        const pad = n => String(n).padStart(2, "0");
-        remindCustom.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      if (isCustom) {
+        const now = Date.now();
+        remindCustom.min = formatLocalDateTimeInput(now);
+        if (!remindCustom.value) {
+          remindCustom.value = formatLocalDateTimeInput(now + 15 * 60 * 1000);
+        }
       }
     }
   });
@@ -729,10 +773,15 @@ function ensureNotesModalListeners() {
     if (!activeModalWidgetId || !todoInput) return;
     const text = todoInput.value.trim();
     if (!text) return;
-    const remindAt = computeReminderTimestamp(
-      remindSelect?.value || "none",
-      remindCustom?.value || ""
-    );
+    const mode = remindSelect?.value || "none";
+    const customPayload = mode === "relative"
+      ? {
+          days: Number(remindDays?.value) || 0,
+          hours: Number(remindHours?.value) || 0,
+          mins: Number(remindMins?.value) || 0
+        }
+      : (remindCustom?.value || "");
+    const remindAt = computeReminderTimestamp(mode, customPayload);
     const newTodo = {
       id: makeId("nt"),
       text,
@@ -743,7 +792,14 @@ function ensureNotesModalListeners() {
     };
     todoInput.value = "";
     if (remindSelect) remindSelect.value = "none";
-    if (remindCustom) remindCustom.classList.add("hidden");
+    if (remindRelative) remindRelative.classList.add("hidden");
+    if (remindDays) remindDays.value = "1";
+    if (remindHours) remindHours.value = "0";
+    if (remindMins) remindMins.value = "0";
+    if (remindCustom) {
+      remindCustom.classList.add("hidden");
+      remindCustom.value = "";
+    }
 
     let targetEntryId = activeModalEntryId;
     if (!targetEntryId) {
@@ -774,11 +830,13 @@ function ensureNotesModalListeners() {
   };
 
   addTodoBtn?.addEventListener("click", () => { void submitTodo(); });
-  todoInput?.addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      void submitTodo();
-    }
+  [todoInput, remindDays, remindHours, remindMins, remindCustom].forEach(el => {
+    el?.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void submitTodo();
+      }
+    });
   });
 }
 

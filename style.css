@@ -2891,6 +2891,25 @@ body.theme-dark .bookmark-title:hover {
   width: auto;
 }
 
+.notes-todo-remind-relative {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+}
+
+.notes-todo-remind-num {
+  width: 3.4rem;
+  text-align: center;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.notes-todo-remind-unit {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
 .notes-modal-todo-list {
   display: flex;
   flex-direction: column;

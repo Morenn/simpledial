@@ -2,11 +2,14 @@
   "extensionName": {
     "message": "Simple SpeedDial"
   },
+  "extensionDescription": {
+    "message": "Просте розширення SpeedDial зберігає та синхронізує закладки через WebDAV або HTTP-сервер із підтримкою JSON GET/PUT."
+  },
   "searchPlaceholder": {
     "message": "Пошук у закладках..."
   },
-  "extensionDescription": {
-    "message": "Просте розширення SpeedDial зберігає та синхронізує закладки через WebDAV або HTTP-сервер із підтримкою JSON GET/PUT."
+  "themeToggle": {
+    "message": "Перемкнути тему"
   },
   "settings": {
     "message": "Налаштування"
@@ -533,6 +536,9 @@
   "manualCleanupNow": {
     "message": "Очищення вручну зараз"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Очистити осиротілі об'єкти"
+  },
   "iconAutoRefresh": {
     "message": "Автооновлення піктограм"
   },
@@ -581,6 +587,12 @@
   "hkCleanupCompleted": {
     "message": "Очищення завершено — {0} записів видалено назавжди."
   },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Осиротілі об'єкти очищено ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Осиротілих об'єктів не знайдено."
+  },
   "hkEnableLinkCheck": {
     "message": "Перевіряти мертві посилання"
   },
@@ -610,6 +622,9 @@
   },
   "syncDebugLogging": {
     "message": "Увімкнути журнал відлагодження синхронізації"
+  },
+  "webdavDebugLogging": {
+    "message": "Увімкнути журнал налагодження WebDAV"
   },
   "i18nHotReload": {
     "message": "Перезавантажувати мовні файли під час оновлення сторінки (відлагодження)"
@@ -1592,8 +1607,20 @@
   "notesRemind60m": {
     "message": "Через 1 год"
   },
+  "notesRemind1d": {
+    "message": "Через 1 день"
+  },
+  "notesRemind3d": {
+    "message": "Через 3 дні"
+  },
+  "notesRemind1w": {
+    "message": "Через 1 тиждень"
+  },
+  "notesRemindRelative": {
+    "message": "Через... (дні/год)"
+  },
   "notesRemindCustom": {
-    "message": "О котрій..."
+    "message": "Дата й час..."
   },
   "notesReminderDue": {
     "message": "Час!"
@@ -1871,6 +1898,30 @@
   "backupFileTooLarge": {
     "message": "Файл резервної копії занадто великий (макс. 3 МБ)."
   },
+  "hkBookmarkTagsTitle": {
+    "message": "Теги закладок"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Створюйте, перейменовуйте, змінюйте колір або видаляйте теги закладок у всіх групах."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Видалити невикористані теги"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Ще не створено жодного тегу закладок."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} закладок"
+  },
+  "hkTagUpdated": {
+    "message": "Тег оновлено."
+  },
+  "hkTagDeleted": {
+    "message": "Тег видалено."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Видалено {0} невикористаних тегів."
+  },
   "moreActions": {
     "message": "Більше дій"
   },
@@ -1931,17 +1982,32 @@
   "rssMarkAllRead": {
     "message": "Позначити все як прочитане"
   },
+  "rssMarkRead": {
+    "message": "Позначити як прочитане"
+  },
+  "rssMarkUnread": {
+    "message": "Позначити як непрочитане"
+  },
   "rssJustNow": {
     "message": "щойно"
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Потрібен дозвіл — відкрийте та оновіть"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Відкрийте віджет і натисніть Оновити (↻), щоб надати дозвіл"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Для завантаження цієї стрічки потрібен дозвіл для хоста. Натисніть Оновити (↻) або Надати дозвіл і оновити."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Надати дозвіл і оновити"
   },
   "widgetStorageUsage": {
     "message": "Використання сховища"
   },
   "infoStorageUsageTitle": {
     "message": "💾 Сховище розширення"
-  },
-  "themeToggle": {
-    "message": "Перемкнути тему"
   },
   "all": {
     "message": "Усі"
@@ -1972,51 +2038,6 @@
   },
   "noOtherGroups": {
     "message": "Інших груп немає"
-  },
-  "cleanupOrphanedObjects": {
-    "message": "Очистити осиротілі об'єкти"
-  },
-  "hkOrphanedCleanupCompleted": {
-    "message": "Осиротілі об'єкти очищено ({0})."
-  },
-  "hkOrphanedCleanupNone": {
-    "message": "Осиротілих об'єктів не знайдено."
-  },
-  "hkBookmarkTagsTitle": {
-    "message": "Теги закладок"
-  },
-  "hkBookmarkTagsDesc": {
-    "message": "Створюйте, перейменовуйте, змінюйте колір або видаляйте теги закладок у всіх групах."
-  },
-  "hkRemoveUnusedTags": {
-    "message": "🧹 Видалити невикористані теги"
-  },
-  "hkBookmarkTagsEmpty": {
-    "message": "Ще не створено жодного тегу закладок."
-  },
-  "hkTagUsageCount": {
-    "message": "{0} закладок"
-  },
-  "hkTagUpdated": {
-    "message": "Тег оновлено."
-  },
-  "hkTagDeleted": {
-    "message": "Тег видалено."
-  },
-  "hkUnusedTagsRemoved": {
-    "message": "Видалено {0} невикористаних тегів."
-  },
-  "rssPermissionRequiredBar": {
-    "message": "🔒 Потрібен дозвіл — відкрийте та оновіть"
-  },
-  "rssPermissionRequiredBarTitle": {
-    "message": "Відкрийте віджет і натисніть Оновити (↻), щоб надати дозвіл"
-  },
-  "rssPermissionRequiredNotice": {
-    "message": "Для завантаження цієї стрічки потрібен дозвіл для хоста. Натисніть Оновити (↻) або Надати дозвіл і оновити."
-  },
-  "rssGrantPermissionAndRefresh": {
-    "message": "Надати дозвіл і оновити"
   },
   "customWidgetModeWeather": {
     "message": "Погода"
@@ -2215,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Залишити вимкненою"
+  },
+  "groups": {
+    "message": "Групи"
+  },
+  "bookmarks": {
+    "message": "Закладки"
+  },
+  "tags": {
+    "message": "Теги"
+  },
+  "enableWidget": {
+    "message": "Увімкнути віджет"
+  },
+  "disableWidget": {
+    "message": "Вимкнути віджет"
+  },
+  "moveUp": {
+    "message": "Перемістити вгору"
+  },
+  "moveDown": {
+    "message": "Перемістити вниз"
   }
 }

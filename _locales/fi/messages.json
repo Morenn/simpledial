@@ -2,11 +2,14 @@
   "extensionName": {
     "message": "Simple SpeedDial"
   },
+  "extensionDescription": {
+    "message": "Yksinkertainen SpeedDial tallentaa ja synkronoi kirjanmerkit WebDAV:n tai JSON GET/PUT -tuella toimivan HTTP-palvelimen kautta."
+  },
   "searchPlaceholder": {
     "message": "Hae kirjanmerkeistä..."
   },
-  "extensionDescription": {
-    "message": "Yksinkertainen SpeedDial tallentaa ja synkronoi kirjanmerkit WebDAV:n tai JSON GET/PUT -tuella toimivan HTTP-palvelimen kautta."
+  "themeToggle": {
+    "message": "Vaihda teema"
   },
   "settings": {
     "message": "Asetukset"
@@ -533,6 +536,9 @@
   "manualCleanupNow": {
     "message": "Siivoa käsin nyt"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Siivoa orvot kohteet"
+  },
   "iconAutoRefresh": {
     "message": "Kuvakkeiden automaattinen päivitys"
   },
@@ -581,6 +587,12 @@
   "hkCleanupCompleted": {
     "message": "Siivous valmis – {0} tietuetta poistettu pysyvästi."
   },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Orvot kohteet siivottu ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Orpoja kohteita ei löytynyt."
+  },
   "hkEnableLinkCheck": {
     "message": "Tarkista kuolleet linkit"
   },
@@ -610,6 +622,9 @@
   },
   "syncDebugLogging": {
     "message": "Ota synkronoinnin vianetsintä käyttöön"
+  },
+  "webdavDebugLogging": {
+    "message": "Ota WebDAV-virheenkorjauslokitus käyttöön"
   },
   "i18nHotReload": {
     "message": "Lataa kielitiedostot uudelleen, kun sivu päivittyy (debug)"
@@ -1592,8 +1607,20 @@
   "notesRemind60m": {
     "message": "1 tunnin kuluttua"
   },
+  "notesRemind1d": {
+    "message": "1 päivän kuluttua"
+  },
+  "notesRemind3d": {
+    "message": "3 päivän kuluttua"
+  },
+  "notesRemind1w": {
+    "message": "1 viikon kuluttua"
+  },
+  "notesRemindRelative": {
+    "message": "Kuluttua... (pv/t)"
+  },
   "notesRemindCustom": {
-    "message": "Kellonaikana..."
+    "message": "Päivä & aika..."
   },
   "notesReminderDue": {
     "message": "Erääntynyt!"
@@ -1871,6 +1898,30 @@
   "backupFileTooLarge": {
     "message": "Varmuuskopiotiedosto on liian suuri (enintään 3 Mt)."
   },
+  "hkBookmarkTagsTitle": {
+    "message": "Kirjanmerkkien tunnisteet"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Luo, nimeä uudelleen, väritä tai poista kirjanmerkkien tunnisteita kaikissa ryhmissä."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Poista käyttämättömät tunnisteet"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Kirjanmerkkien tunnisteita ei ole vielä luotu."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} kirjanmerkkiä"
+  },
+  "hkTagUpdated": {
+    "message": "Tunniste päivitetty."
+  },
+  "hkTagDeleted": {
+    "message": "Tunniste poistettu."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Poistettiin {0} käyttämätöntä tunnistetta."
+  },
   "moreActions": {
     "message": "Lisää toimintoja"
   },
@@ -1931,17 +1982,32 @@
   "rssMarkAllRead": {
     "message": "Merkitse kaikki luetuiksi"
   },
+  "rssMarkRead": {
+    "message": "Merkitse luetuksi"
+  },
+  "rssMarkUnread": {
+    "message": "Merkitse lukemattomaksi"
+  },
   "rssJustNow": {
     "message": "juuri nyt"
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Käyttöoikeus vaaditaan — avaa ja päivitä"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Avaa widget ja napsauta Päivitä (↻) myöntääksesi käyttöoikeuden"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Syötteen hakeminen vaatii palvelimen käyttöoikeuden. Napsauta Päivitä (↻) tai Myönnä oikeus ja päivitä."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Myönnä oikeus ja päivitä"
   },
   "widgetStorageUsage": {
     "message": "Tallennustilan käyttö"
   },
   "infoStorageUsageTitle": {
     "message": "💾 Lisäosan tallennustila"
-  },
-  "themeToggle": {
-    "message": "Vaihda teema"
   },
   "all": {
     "message": "Kaikki"
@@ -1972,51 +2038,6 @@
   },
   "noOtherGroups": {
     "message": "Ei muita ryhmiä"
-  },
-  "cleanupOrphanedObjects": {
-    "message": "Siivoa orvot kohteet"
-  },
-  "hkOrphanedCleanupCompleted": {
-    "message": "Orvot kohteet siivottu ({0})."
-  },
-  "hkOrphanedCleanupNone": {
-    "message": "Orpoja kohteita ei löytynyt."
-  },
-  "hkBookmarkTagsTitle": {
-    "message": "Kirjanmerkkien tunnisteet"
-  },
-  "hkBookmarkTagsDesc": {
-    "message": "Luo, nimeä uudelleen, väritä tai poista kirjanmerkkien tunnisteita kaikissa ryhmissä."
-  },
-  "hkRemoveUnusedTags": {
-    "message": "🧹 Poista käyttämättömät tunnisteet"
-  },
-  "hkBookmarkTagsEmpty": {
-    "message": "Kirjanmerkkien tunnisteita ei ole vielä luotu."
-  },
-  "hkTagUsageCount": {
-    "message": "{0} kirjanmerkkiä"
-  },
-  "hkTagUpdated": {
-    "message": "Tunniste päivitetty."
-  },
-  "hkTagDeleted": {
-    "message": "Tunniste poistettu."
-  },
-  "hkUnusedTagsRemoved": {
-    "message": "Poistettiin {0} käyttämätöntä tunnistetta."
-  },
-  "rssPermissionRequiredBar": {
-    "message": "🔒 Käyttöoikeus vaaditaan — avaa ja päivitä"
-  },
-  "rssPermissionRequiredBarTitle": {
-    "message": "Avaa widget ja napsauta Päivitä (↻) myöntääksesi käyttöoikeuden"
-  },
-  "rssPermissionRequiredNotice": {
-    "message": "Syötteen hakeminen vaatii palvelimen käyttöoikeuden. Napsauta Päivitä (↻) tai Myönnä oikeus ja päivitä."
-  },
-  "rssGrantPermissionAndRefresh": {
-    "message": "Myönnä oikeus ja päivitä"
   },
   "customWidgetModeWeather": {
     "message": "Sää"
@@ -2215,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Pidä pois käytöstä"
+  },
+  "groups": {
+    "message": "Ryhmät"
+  },
+  "bookmarks": {
+    "message": "Kirjanmerkit"
+  },
+  "tags": {
+    "message": "Tunnisteet"
+  },
+  "enableWidget": {
+    "message": "Ota widget käyttöön"
+  },
+  "disableWidget": {
+    "message": "Poista widget käytöstä"
+  },
+  "moveUp": {
+    "message": "Siirrä ylös"
+  },
+  "moveDown": {
+    "message": "Siirrä alas"
   }
 }

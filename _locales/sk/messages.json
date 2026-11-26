@@ -2,11 +2,14 @@
   "extensionName": {
     "message": "Simple SpeedDial"
   },
+  "extensionDescription": {
+    "message": "Jednoduché rozšírenie SpeedDial synchronizuje záložky cez WebDAV alebo HTTP server s podporou JSON GET/PUT."
+  },
   "searchPlaceholder": {
     "message": "Hľadať v záložkách..."
   },
-  "extensionDescription": {
-    "message": "Jednoduché rozšírenie SpeedDial synchronizuje záložky cez WebDAV alebo HTTP server s podporou JSON GET/PUT."
+  "themeToggle": {
+    "message": "Prepnúť motív"
   },
   "settings": {
     "message": "Nastavenia"
@@ -533,6 +536,9 @@
   "manualCleanupNow": {
     "message": "Manuálne čistenie teraz"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Vyčistiť osirelé objekty"
+  },
   "iconAutoRefresh": {
     "message": "Automatická obnova ikon"
   },
@@ -581,6 +587,12 @@
   "hkCleanupCompleted": {
     "message": "Čistenie dokončené - {0} záznamov bolo trvalo odstránených."
   },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Osirelé objekty vyčistené ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Neboli nájdené žiadne osirelé objekty."
+  },
   "hkEnableLinkCheck": {
     "message": "Kontrolovať nefunkčné odkazy"
   },
@@ -610,6 +622,9 @@
   },
   "syncDebugLogging": {
     "message": "Povoliť ladenie synchronizácie"
+  },
+  "webdavDebugLogging": {
+    "message": "Povoliť ladiace logovanie WebDAV"
   },
   "i18nHotReload": {
     "message": "Reloadovať jazykové súbory pri refreshe stránky (debug)"
@@ -1592,8 +1607,20 @@
   "notesRemind60m": {
     "message": "Za 1 hodinu"
   },
+  "notesRemind1d": {
+    "message": "Za 1 deň"
+  },
+  "notesRemind3d": {
+    "message": "Za 3 dni"
+  },
+  "notesRemind1w": {
+    "message": "Za 1 týždeň"
+  },
+  "notesRemindRelative": {
+    "message": "Za... (dni/hod)"
+  },
   "notesRemindCustom": {
-    "message": "V určitý čas..."
+    "message": "Dátum a čas..."
   },
   "notesReminderDue": {
     "message": "Termín!"
@@ -1871,6 +1898,30 @@
   "backupFileTooLarge": {
     "message": "Záložný súbor je príliš veľký (max 3 MB)."
   },
+  "hkBookmarkTagsTitle": {
+    "message": "Štítky záložiek"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Vytvárajte, premenúvajte, prefarbujte alebo odstraňujte štítky záložiek naprieč všetkými skupinami."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Odstrániť nepoužívané štítky"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Zatiaľ nie sú vytvorené žiadne štítky záložiek."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} záložiek"
+  },
+  "hkTagUpdated": {
+    "message": "Štítok aktualizovaný."
+  },
+  "hkTagDeleted": {
+    "message": "Štítok odstránený."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "Odstránených {0} nepoužívaných štítkov."
+  },
   "moreActions": {
     "message": "Ďalšie akcie"
   },
@@ -1931,17 +1982,32 @@
   "rssMarkAllRead": {
     "message": "Označiť všetko ako prečítané"
   },
+  "rssMarkRead": {
+    "message": "Označiť ako prečítané"
+  },
+  "rssMarkUnread": {
+    "message": "Označiť ako neprečítané"
+  },
   "rssJustNow": {
     "message": "práve teraz"
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Vyžaduje sa povolenie — otvorte a obnovte"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Otvorte widget a kliknite na Obnoviť (↻) pre udelenie povolenia"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Na načítanie tohto kanála sa vyžaduje povolenie pre hostiteľa. Kliknite na Obnoviť (↻) alebo Udeliť povolenie a obnoviť."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Udeliť povolenie a obnoviť"
   },
   "widgetStorageUsage": {
     "message": "Využitie úložiska"
   },
   "infoStorageUsageTitle": {
     "message": "💾 Využitie úložiska doplnku"
-  },
-  "themeToggle": {
-    "message": "Prepnúť motív"
   },
   "all": {
     "message": "Všetko"
@@ -1972,51 +2038,6 @@
   },
   "noOtherGroups": {
     "message": "Žiadne ďalšie skupiny"
-  },
-  "cleanupOrphanedObjects": {
-    "message": "Vyčistiť osirelé objekty"
-  },
-  "hkOrphanedCleanupCompleted": {
-    "message": "Osirelé objekty vyčistené ({0})."
-  },
-  "hkOrphanedCleanupNone": {
-    "message": "Neboli nájdené žiadne osirelé objekty."
-  },
-  "hkBookmarkTagsTitle": {
-    "message": "Štítky záložiek"
-  },
-  "hkBookmarkTagsDesc": {
-    "message": "Vytvárajte, premenúvajte, prefarbujte alebo odstraňujte štítky záložiek naprieč všetkými skupinami."
-  },
-  "hkRemoveUnusedTags": {
-    "message": "🧹 Odstrániť nepoužívané štítky"
-  },
-  "hkBookmarkTagsEmpty": {
-    "message": "Zatiaľ nie sú vytvorené žiadne štítky záložiek."
-  },
-  "hkTagUsageCount": {
-    "message": "{0} záložiek"
-  },
-  "hkTagUpdated": {
-    "message": "Štítok aktualizovaný."
-  },
-  "hkTagDeleted": {
-    "message": "Štítok odstránený."
-  },
-  "hkUnusedTagsRemoved": {
-    "message": "Odstránených {0} nepoužívaných štítkov."
-  },
-  "rssPermissionRequiredBar": {
-    "message": "🔒 Vyžaduje sa povolenie — otvorte a obnovte"
-  },
-  "rssPermissionRequiredBarTitle": {
-    "message": "Otvorte widget a kliknite na Obnoviť (↻) pre udelenie povolenia"
-  },
-  "rssPermissionRequiredNotice": {
-    "message": "Na načítanie tohto kanála sa vyžaduje povolenie pre hostiteľa. Kliknite na Obnoviť (↻) alebo Udeliť povolenie a obnoviť."
-  },
-  "rssGrantPermissionAndRefresh": {
-    "message": "Udeliť povolenie a obnoviť"
   },
   "customWidgetModeWeather": {
     "message": "Počasie"
@@ -2215,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Ponechať vypnuté"
+  },
+  "groups": {
+    "message": "Skupiny"
+  },
+  "bookmarks": {
+    "message": "Záložky"
+  },
+  "tags": {
+    "message": "Štítky"
+  },
+  "enableWidget": {
+    "message": "Povoliť widget"
+  },
+  "disableWidget": {
+    "message": "Zakázať widget"
+  },
+  "moveUp": {
+    "message": "Posunúť nahor"
+  },
+  "moveDown": {
+    "message": "Posunúť nadol"
   }
 }

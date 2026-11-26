@@ -781,8 +781,19 @@ test("Notes / Scratchpad widget helpers compute reminders, detect due todos, and
   const at0900 = computeReminderTimestamp("custom", "09:00", baseMs);
   assert.equal(at0900, new Date("2026-11-18T09:00:00").getTime());
 
+  // Full datetime-local value (days ahead at specific hour)
+  const atFutureDate = computeReminderTimestamp("custom", "2026-11-29T14:30", baseMs);
+  assert.equal(atFutureDate, new Date("2026-11-29T14:30:00").getTime());
+
+  // Relative days + hours + minutes offset
+  const in2d8h = computeReminderTimestamp("relative", { days: 2, hours: 8, mins: 15 }, baseMs);
+  assert.equal(in2d8h, baseMs + ((2 * 24 + 8) * 60 + 15) * 60 * 1000);
+  assert.equal(computeReminderTimestamp("relative", { days: 0, hours: 0, mins: 0 }, baseMs), null);
+  assert.equal(computeReminderTimestamp("1440", "", baseMs), baseMs + 24 * 60 * 60 * 1000);
+
   assert.equal(formatReminderCountdown(baseMs + 10 * 60000, baseMs, false).label, "10m");
   assert.equal(formatReminderCountdown(baseMs + 3 * 60000, baseMs, false).status, "soon");
+  assert.equal(formatReminderCountdown(baseMs + 48 * 60 * 60000, baseMs, false).label, "2d");
   assert.equal(formatReminderCountdown(baseMs - 1000, baseMs, false).status, "due");
   assert.equal(formatReminderCountdown(baseMs - 1000, baseMs, true).status, "done");
 

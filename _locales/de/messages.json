@@ -2,11 +2,14 @@
   "extensionName": {
     "message": "Simple SpeedDial"
   },
+  "extensionDescription": {
+    "message": "Einfache SpeedDial-Erweiterung speichert und synchronisiert Lesezeichen über WebDAV oder HTTP mit JSON-GET/PUT."
+  },
   "searchPlaceholder": {
     "message": "In Lesezeichen suchen..."
   },
-  "extensionDescription": {
-    "message": "Einfache SpeedDial-Erweiterung speichert und synchronisiert Lesezeichen über WebDAV oder HTTP mit JSON-GET/PUT."
+  "themeToggle": {
+    "message": "Design wechseln"
   },
   "settings": {
     "message": "Einstellungen"
@@ -533,6 +536,9 @@
   "manualCleanupNow": {
     "message": "Jetzt manuell bereinigen"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Verwaiste Objekte bereinigen"
+  },
   "iconAutoRefresh": {
     "message": "Automatisches Aktualisieren von Symbolen"
   },
@@ -581,6 +587,12 @@
   "hkCleanupCompleted": {
     "message": "Bereinigung abgeschlossen – {0} Einträge dauerhaft gelöscht."
   },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Verwaiste Objekte bereinigt ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Keine verwaisten Objekte gefunden."
+  },
   "hkEnableLinkCheck": {
     "message": "Auf tote Links prüfen"
   },
@@ -610,6 +622,9 @@
   },
   "syncDebugLogging": {
     "message": "Debug-Protokollierung für die Synchronisierung aktivieren"
+  },
+  "webdavDebugLogging": {
+    "message": "WebDAV-Debug-Protokollierung aktivieren"
   },
   "i18nHotReload": {
     "message": "Sprachdateien beim Neuladen der Seite neu laden (Debug)"
@@ -1592,8 +1607,20 @@
   "notesRemind60m": {
     "message": "In 1 Stunde"
   },
+  "notesRemind1d": {
+    "message": "In 1 Tag"
+  },
+  "notesRemind3d": {
+    "message": "In 3 Tagen"
+  },
+  "notesRemind1w": {
+    "message": "In 1 Woche"
+  },
+  "notesRemindRelative": {
+    "message": "In... (Tage/Std)"
+  },
   "notesRemindCustom": {
-    "message": "Um Uhrzeit..."
+    "message": "Datum & Uhrzeit..."
   },
   "notesReminderDue": {
     "message": "Fällig!"
@@ -1871,6 +1898,30 @@
   "backupFileTooLarge": {
     "message": "Sicherungsdatei ist zu groß (max. 3 MB)."
   },
+  "hkBookmarkTagsTitle": {
+    "message": "Lesezeichen-Tags"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Lesezeichen-Tags gruppenübergreifend erstellen, umbenennen, umfärben oder entfernen."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Unbenutzte Tags entfernen"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Noch keine Lesezeichen-Tags erstellt."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} Lesezeichen"
+  },
+  "hkTagUpdated": {
+    "message": "Tag aktualisiert."
+  },
+  "hkTagDeleted": {
+    "message": "Tag gelöscht."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "{0} unbenutzte(s) Tag(s) entfernt."
+  },
   "moreActions": {
     "message": "Weitere Aktionen"
   },
@@ -1931,17 +1982,32 @@
   "rssMarkAllRead": {
     "message": "Alle als gelesen markieren"
   },
+  "rssMarkRead": {
+    "message": "Als gelesen markieren"
+  },
+  "rssMarkUnread": {
+    "message": "Als ungelesen markieren"
+  },
   "rssJustNow": {
     "message": "gerade eben"
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Berechtigung erforderlich — öffnen & aktualisieren"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Widget öffnen und auf Aktualisieren (↻) klicken, um die Berechtigung zu erteilen"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Zum Abrufen dieses Feeds ist eine Host-Berechtigung erforderlich. Klicken Sie auf Aktualisieren (↻) oder Berechtigung erteilen & aktualisieren."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Berechtigung erteilen & aktualisieren"
   },
   "widgetStorageUsage": {
     "message": "Speichernutzung"
   },
   "infoStorageUsageTitle": {
     "message": "💾 Addon-Speichernutzung"
-  },
-  "themeToggle": {
-    "message": "Design wechseln"
   },
   "all": {
     "message": "Alle"
@@ -1972,51 +2038,6 @@
   },
   "noOtherGroups": {
     "message": "Keine anderen Gruppen"
-  },
-  "cleanupOrphanedObjects": {
-    "message": "Verwaiste Objekte bereinigen"
-  },
-  "hkOrphanedCleanupCompleted": {
-    "message": "Verwaiste Objekte bereinigt ({0})."
-  },
-  "hkOrphanedCleanupNone": {
-    "message": "Keine verwaisten Objekte gefunden."
-  },
-  "hkBookmarkTagsTitle": {
-    "message": "Lesezeichen-Tags"
-  },
-  "hkBookmarkTagsDesc": {
-    "message": "Lesezeichen-Tags gruppenübergreifend erstellen, umbenennen, umfärben oder entfernen."
-  },
-  "hkRemoveUnusedTags": {
-    "message": "🧹 Unbenutzte Tags entfernen"
-  },
-  "hkBookmarkTagsEmpty": {
-    "message": "Noch keine Lesezeichen-Tags erstellt."
-  },
-  "hkTagUsageCount": {
-    "message": "{0} Lesezeichen"
-  },
-  "hkTagUpdated": {
-    "message": "Tag aktualisiert."
-  },
-  "hkTagDeleted": {
-    "message": "Tag gelöscht."
-  },
-  "hkUnusedTagsRemoved": {
-    "message": "{0} unbenutzte(s) Tag(s) entfernt."
-  },
-  "rssPermissionRequiredBar": {
-    "message": "🔒 Berechtigung erforderlich — öffnen & aktualisieren"
-  },
-  "rssPermissionRequiredBarTitle": {
-    "message": "Widget öffnen und auf Aktualisieren (↻) klicken, um die Berechtigung zu erteilen"
-  },
-  "rssPermissionRequiredNotice": {
-    "message": "Zum Abrufen dieses Feeds ist eine Host-Berechtigung erforderlich. Klicken Sie auf Aktualisieren (↻) oder Berechtigung erteilen & aktualisieren."
-  },
-  "rssGrantPermissionAndRefresh": {
-    "message": "Berechtigung erteilen & aktualisieren"
   },
   "customWidgetModeWeather": {
     "message": "Wetter"
@@ -2215,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Deaktiviert lassen"
+  },
+  "groups": {
+    "message": "Gruppen"
+  },
+  "bookmarks": {
+    "message": "Lesezeichen"
+  },
+  "tags": {
+    "message": "Tags"
+  },
+  "enableWidget": {
+    "message": "Widget aktivieren"
+  },
+  "disableWidget": {
+    "message": "Widget deaktivieren"
+  },
+  "moveUp": {
+    "message": "Nach oben"
+  },
+  "moveDown": {
+    "message": "Nach unten"
   }
 }

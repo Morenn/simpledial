@@ -484,9 +484,21 @@
                   <option value="15" data-i18n="notesRemind15m">In 15 min</option>
                   <option value="30" data-i18n="notesRemind30m">In 30 min</option>
                   <option value="60" data-i18n="notesRemind60m">In 1 hour</option>
-                  <option value="custom" data-i18n="notesRemindCustom">At time...</option>
+                  <option value="1440" data-i18n="notesRemind1d">In 1 day</option>
+                  <option value="4320" data-i18n="notesRemind3d">In 3 days</option>
+                  <option value="10080" data-i18n="notesRemind1w">In 1 week</option>
+                  <option value="relative" data-i18n="notesRemindRelative">In... (days/hrs)</option>
+                  <option value="custom" data-i18n="notesRemindCustom">At date &amp; time...</option>
                 </select>
-                <input type="time" id="notes-todo-remind-custom" class="sync-compact-input notes-todo-remind-custom hidden" aria-label="Custom reminder time">
+                <div id="notes-todo-remind-relative" class="notes-todo-remind-relative hidden">
+                  <input type="number" id="notes-todo-remind-days" class="sync-compact-input notes-todo-remind-num" min="0" max="365" value="1" aria-label="Reminder days">
+                  <span class="notes-todo-remind-unit">d</span>
+                  <input type="number" id="notes-todo-remind-hours" class="sync-compact-input notes-todo-remind-num" min="0" max="23" value="0" aria-label="Reminder hours">
+                  <span class="notes-todo-remind-unit">h</span>
+                  <input type="number" id="notes-todo-remind-mins" class="sync-compact-input notes-todo-remind-num" min="0" max="59" value="0" aria-label="Reminder minutes">
+                  <span class="notes-todo-remind-unit">m</span>
+                </div>
+                <input type="datetime-local" id="notes-todo-remind-custom" class="sync-compact-input notes-todo-remind-custom hidden" aria-label="Custom reminder date and time">
                 <button type="button" id="notes-todo-add-btn" class="icon-btn primary" data-i18n="customSearchAddBtn">+ Add</button>
               </div>
               <div id="notes-modal-todo-list" class="notes-modal-todo-list"></div>

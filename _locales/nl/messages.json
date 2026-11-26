@@ -2,11 +2,14 @@
   "extensionName": {
     "message": "Simple SpeedDial"
   },
+  "extensionDescription": {
+    "message": "Eenvoudige SpeedDial-extensie slaat bladwijzers op en synchroniseert ze via WebDAV of HTTP met JSON GET/PUT."
+  },
   "searchPlaceholder": {
     "message": "Zoeken in bladwijzers..."
   },
-  "extensionDescription": {
-    "message": "Eenvoudige SpeedDial-extensie slaat bladwijzers op en synchroniseert ze via WebDAV of HTTP met JSON GET/PUT."
+  "themeToggle": {
+    "message": "Thema wisselen"
   },
   "settings": {
     "message": "Instellingen"
@@ -533,6 +536,9 @@
   "manualCleanupNow": {
     "message": "Nu handmatig opschonen"
   },
+  "cleanupOrphanedObjects": {
+    "message": "Verweesde objecten opschonen"
+  },
   "iconAutoRefresh": {
     "message": "Pictogrammen automatisch vernieuwen"
   },
@@ -581,6 +587,12 @@
   "hkCleanupCompleted": {
     "message": "Opschoning voltooid – {0} records permanent verwijderd."
   },
+  "hkOrphanedCleanupCompleted": {
+    "message": "Verweesde objecten opgeschoond ({0})."
+  },
+  "hkOrphanedCleanupNone": {
+    "message": "Geen verweesde objecten gevonden."
+  },
   "hkEnableLinkCheck": {
     "message": "Controleer op dode links"
   },
@@ -610,6 +622,9 @@
   },
   "syncDebugLogging": {
     "message": "Debuglogging voor synchronisatie inschakelen"
+  },
+  "webdavDebugLogging": {
+    "message": "WebDAV-foutopsporingslogboek inschakelen"
   },
   "i18nHotReload": {
     "message": "Taalbestanden opnieuw laden bij het verversen van de pagina (debug)"
@@ -1592,8 +1607,20 @@
   "notesRemind60m": {
     "message": "Over 1 uur"
   },
+  "notesRemind1d": {
+    "message": "Over 1 dag"
+  },
+  "notesRemind3d": {
+    "message": "Over 3 dagen"
+  },
+  "notesRemind1w": {
+    "message": "Over 1 week"
+  },
+  "notesRemindRelative": {
+    "message": "Over... (dagen/uur)"
+  },
   "notesRemindCustom": {
-    "message": "Op tijd..."
+    "message": "Datum & tijd..."
   },
   "notesReminderDue": {
     "message": "Vervallen!"
@@ -1871,6 +1898,30 @@
   "backupFileTooLarge": {
     "message": "Back-upbestand is te groot (max 3 MB)."
   },
+  "hkBookmarkTagsTitle": {
+    "message": "Bladwijzertags"
+  },
+  "hkBookmarkTagsDesc": {
+    "message": "Maak, hernoem, herkleur of verwijder bladwijzertags in alle groepen."
+  },
+  "hkRemoveUnusedTags": {
+    "message": "🧹 Ongebruikte tags verwijderen"
+  },
+  "hkBookmarkTagsEmpty": {
+    "message": "Nog geen bladwijzertags aangemaakt."
+  },
+  "hkTagUsageCount": {
+    "message": "{0} bladwijzer(s)"
+  },
+  "hkTagUpdated": {
+    "message": "Tag bijgewerkt."
+  },
+  "hkTagDeleted": {
+    "message": "Tag verwijderd."
+  },
+  "hkUnusedTagsRemoved": {
+    "message": "{0} ongebruikte tag(s) verwijderd."
+  },
   "moreActions": {
     "message": "Meer acties"
   },
@@ -1931,17 +1982,32 @@
   "rssMarkAllRead": {
     "message": "Alles als gelezen markeren"
   },
+  "rssMarkRead": {
+    "message": "Markeren als gelezen"
+  },
+  "rssMarkUnread": {
+    "message": "Markeren als ongelezen"
+  },
   "rssJustNow": {
     "message": "zojuist"
+  },
+  "rssPermissionRequiredBar": {
+    "message": "🔒 Toestemming vereist — openen & vernieuwen"
+  },
+  "rssPermissionRequiredBarTitle": {
+    "message": "Open de widget en klik op Vernieuwen (↻) om toestemming te verlenen"
+  },
+  "rssPermissionRequiredNotice": {
+    "message": "Hosttoestemming is vereist om deze feed op te halen. Klik op Vernieuwen (↻) of Toestemming verlenen & vernieuwen."
+  },
+  "rssGrantPermissionAndRefresh": {
+    "message": "Toestemming verlenen & vernieuwen"
   },
   "widgetStorageUsage": {
     "message": "Opslaggebruik"
   },
   "infoStorageUsageTitle": {
     "message": "💾 Extensie-opslaggebruik"
-  },
-  "themeToggle": {
-    "message": "Thema wisselen"
   },
   "all": {
     "message": "Alles"
@@ -1972,51 +2038,6 @@
   },
   "noOtherGroups": {
     "message": "Geen andere groepen"
-  },
-  "cleanupOrphanedObjects": {
-    "message": "Verweesde objecten opschonen"
-  },
-  "hkOrphanedCleanupCompleted": {
-    "message": "Verweesde objecten opgeschoond ({0})."
-  },
-  "hkOrphanedCleanupNone": {
-    "message": "Geen verweesde objecten gevonden."
-  },
-  "hkBookmarkTagsTitle": {
-    "message": "Bladwijzertags"
-  },
-  "hkBookmarkTagsDesc": {
-    "message": "Maak, hernoem, herkleur of verwijder bladwijzertags in alle groepen."
-  },
-  "hkRemoveUnusedTags": {
-    "message": "🧹 Ongebruikte tags verwijderen"
-  },
-  "hkBookmarkTagsEmpty": {
-    "message": "Nog geen bladwijzertags aangemaakt."
-  },
-  "hkTagUsageCount": {
-    "message": "{0} bladwijzer(s)"
-  },
-  "hkTagUpdated": {
-    "message": "Tag bijgewerkt."
-  },
-  "hkTagDeleted": {
-    "message": "Tag verwijderd."
-  },
-  "hkUnusedTagsRemoved": {
-    "message": "{0} ongebruikte tag(s) verwijderd."
-  },
-  "rssPermissionRequiredBar": {
-    "message": "🔒 Toestemming vereist — openen & vernieuwen"
-  },
-  "rssPermissionRequiredBarTitle": {
-    "message": "Open de widget en klik op Vernieuwen (↻) om toestemming te verlenen"
-  },
-  "rssPermissionRequiredNotice": {
-    "message": "Hosttoestemming is vereist om deze feed op te halen. Klik op Vernieuwen (↻) of Toestemming verlenen & vernieuwen."
-  },
-  "rssGrantPermissionAndRefresh": {
-    "message": "Toestemming verlenen & vernieuwen"
   },
   "customWidgetModeWeather": {
     "message": "Weer"
@@ -2215,5 +2236,26 @@
   },
   "syncWebdavExtraKeepDisabled": {
     "message": "⏸️ Uitgeschakeld laten"
+  },
+  "groups": {
+    "message": "Groepen"
+  },
+  "bookmarks": {
+    "message": "Bladwijzers"
+  },
+  "tags": {
+    "message": "Tags"
+  },
+  "enableWidget": {
+    "message": "Widget inschakelen"
+  },
+  "disableWidget": {
+    "message": "Widget uitschakelen"
+  },
+  "moveUp": {
+    "message": "Omhoog"
+  },
+  "moveDown": {
+    "message": "Omlaag"
   }
 }
