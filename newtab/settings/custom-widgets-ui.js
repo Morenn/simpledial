@@ -44,7 +44,8 @@ import {
   pollAllWeatherWidgets
 } from "../custom-widgets.js";
 import { normalizeCustomIconValue, applyCachedIconImageSrc } from "../color-utils.js";
-import { loadConfig } from "../config.js";
+import { loadConfig, saveConfig } from "../config.js";
+import { loadSyncModule } from "../lazy-modules.js";
 import { getSecret, setSecret, isEncryptedSecret, isVaultUnlocked, isInsecureHttpUrl } from "../crypto.js";
 import { settingsState, markSettingsDirty } from "./context.js";
 import { ensureAppearanceDraft, updateDateTimeVisibility } from "./appearance-ui.js";
@@ -816,10 +817,30 @@ export function initCustomWidgetsSettings() {
         titleEl.appendChild(routeBadge);
       }
       if (customDef.sourceUrl) {
-        const srcBadge = document.createElement("span");
-        srcBadge.className = "custom-widget-mode-badge";
-        srcBadge.textContent = "🌐";
-        srcBadge.title = customDef.sourceUrl;
+        const isLocked = !!customDef.lockSourceUpdates;
+        const srcBadge = document.createElement("button");
+        srcBadge.type = "button";
+        srcBadge.className = `custom-widget-mode-badge custom-widget-source-toggle${isLocked ? " is-locked" : ""}`;
+        srcBadge.textContent = isLocked ? "🚫🌐" : "🌐";
+        srcBadge.title = isLocked
+          ? `${customDef.sourceUrl} — ${t("customWidgetUrlUpdatesBlocked") || "URL updates blocked (click to allow)"}`
+          : `${customDef.sourceUrl} — ${t("customWidgetUrlUpdatesAllowed") || "Click to block URL updates"}`;
+        srcBadge.setAttribute("aria-pressed", String(isLocked));
+        srcBadge.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          markSettingsDirty();
+          const draft = await ensureAppearanceDraft();
+          draft.customWidgets = (draft.customWidgets || []).map(w => {
+            if (w.id !== customDef.id) return w;
+            const nextLocked = !w.lockSourceUpdates;
+            if (nextLocked) {
+              return { ...w, lockSourceUpdates: true };
+            }
+            const { lockSourceUpdates: _ignored, ...rest } = w;
+            return rest;
+          });
+          renderCustomWidgetsList(draft);
+        });
         titleEl.appendChild(srcBadge);
       }
 
@@ -1051,7 +1072,7 @@ export function initCustomWidgetsSettings() {
         exportCustomWidgetsLibrary([customDef], `simple-dial-widget-${slug}`, customWidgetStatus);
       });
 
-      if (customDef.sourceUrl) {
+      if (customDef.sourceUrl && !customDef.lockSourceUpdates) {
         addMenuItem(`🔄 ${t("customSearchUpdateWidgetTitle") || "Update from URL"}`, async () => {
           await updateSingleCustomWidgetFromUrl(customDef.id);
         });
@@ -2910,6 +2931,9 @@ export function initCustomWidgetsSettings() {
     for (const w of importedWidgets) {
       if (existingIndexById.has(w.id)) {
         const idx = existingIndexById.get(w.id);
+        if (existing[idx]?.lockSourceUpdates) {
+          continue;
+        }
         existing[idx] = applyCustomWidgetUpdate(existing[idx], w, sourceUrl || existing[idx].sourceUrl || null);
         updatedCount++;
       } else {
@@ -2942,55 +2966,94 @@ export function initCustomWidgetsSettings() {
     return { addedCount, updatedCount, total: addedCount + updatedCount };
   };
 
+  let inFlightUrlWidgetSyncPauseCount = 0;
+  let shouldRestoreWidgetSyncAfterUrlUpdates = false;
+
+  const withWidgetsSyncTemporarilyDisabled = async (fn) => {
+    inFlightUrlWidgetSyncPauseCount++;
+    try {
+      const preCfg = await loadConfig();
+      if (preCfg?.sync?.type === "webdav" && preCfg?.sync?.webdavMode === "folder" && preCfg?.sync?.webdavSyncWidgets !== false) {
+        const syncMod = await loadSyncModule();
+        if (typeof syncMod?.withSyncLock === "function") {
+          await syncMod.withSyncLock(() => {});
+        }
+        const cfg = await loadConfig();
+        if (cfg?.sync?.type === "webdav" && cfg?.sync?.webdavMode === "folder" && cfg?.sync?.webdavSyncWidgets !== false) {
+          shouldRestoreWidgetSyncAfterUrlUpdates = true;
+          cfg.sync.webdavSyncWidgets = false;
+          await saveConfig(cfg);
+        }
+      }
+    } catch {}
+    try {
+      return await fn();
+    } finally {
+      inFlightUrlWidgetSyncPauseCount = Math.max(0, inFlightUrlWidgetSyncPauseCount - 1);
+      if (inFlightUrlWidgetSyncPauseCount === 0 && shouldRestoreWidgetSyncAfterUrlUpdates) {
+        shouldRestoreWidgetSyncAfterUrlUpdates = false;
+        try {
+          const latestCfg = await loadConfig();
+          if (latestCfg?.sync) {
+            latestCfg.sync.webdavSyncWidgets = true;
+            await saveConfig(latestCfg);
+          }
+        } catch {}
+      }
+    }
+  };
+
   async function updateSingleCustomWidgetFromUrl(widgetId) {
     const draft = await ensureAppearanceDraft();
     const target = (draft.customWidgets || []).find(w => w.id === widgetId);
-    if (!target?.sourceUrl) return;
+    if (!target?.sourceUrl || target.lockSourceUpdates) return;
     if (customWidgetsLibraryStatus) {
       customWidgetsLibraryStatus.textContent = "⏳ " + (t("customSearchUpdatingStatus") || "Updating from URL...");
     }
-    try {
-      const { url, widgets, autoRouteIcons, autoRouteDefaults } = await fetchCustomWidgetsFromUrl(target.sourceUrl);
-      const match =
-        widgets.find(w => w.id === target.id) ||
-        widgets.find(w => w.name && target.name && w.name.toLowerCase() === target.name.toLowerCase()) ||
-        (widgets.length === 1 ? widgets[0] : null);
-      if (!match) {
-        if (customWidgetsLibraryStatus) {
-          customWidgetsLibraryStatus.textContent = "❌ " + (t("customSearchUpdateNotFound") || "Matching widget not found at source URL.");
+    await withWidgetsSyncTemporarilyDisabled(async () => {
+      try {
+        const { url, widgets, autoRouteIcons, autoRouteDefaults } = await fetchCustomWidgetsFromUrl(target.sourceUrl);
+        const match =
+          widgets.find(w => w.id === target.id) ||
+          widgets.find(w => w.name && target.name && w.name.toLowerCase() === target.name.toLowerCase()) ||
+          (widgets.length === 1 ? widgets[0] : null);
+        if (!match) {
+          if (customWidgetsLibraryStatus) {
+            customWidgetsLibraryStatus.textContent = "❌ " + (t("customSearchUpdateNotFound") || "Matching widget not found at source URL.");
+          }
+          return;
         }
-        return;
+        markSettingsDirty();
+        draft.customWidgets = (draft.customWidgets || []).map(w =>
+          w.id === target.id ? applyCustomWidgetUpdate(w, match, url) : w
+        );
+        const groupKey = typeof match.groupName === "string" ? match.groupName.trim().toLowerCase() : "";
+        if (groupKey) {
+          applyImportedAutoRouteSettings(draft, {
+            autoRouteIcons: autoRouteIcons?.[groupKey] ? { [groupKey]: autoRouteIcons[groupKey] } : null,
+            autoRouteDefaults: typeof autoRouteDefaults?.[groupKey] === "boolean" ? { [groupKey]: autoRouteDefaults[groupKey] } : null
+          });
+        }
+        if (editingCustomWidgetId === target.id) {
+          const updated = draft.customWidgets.find(w => w.id === target.id);
+          if (updated) loadCustomWidgetIntoForm(updated);
+        }
+        renderWidgetOrderList(draft);
+        await applySideSpaces({ appearance: draft });
+        await render();
+        calculateGridLayout();
+        if (customWidgetsLibraryStatus) {
+          customWidgetsLibraryStatus.textContent = "✅ " + (t("customSearchUpdateSuccess") || "Widget updated (you can revert with ↩️; click Save to persist).");
+        }
+      } catch (err) {
+        if (customWidgetsLibraryStatus) {
+          const detail = err?.message === "INVALID_WIDGET_URL"
+            ? (t("customSearchInvalidSourceUrl") || "Enter a valid http(s) URL.")
+            : (err?.message || "Failed to update from URL.");
+          customWidgetsLibraryStatus.textContent = "❌ " + detail;
+        }
       }
-      markSettingsDirty();
-      draft.customWidgets = (draft.customWidgets || []).map(w =>
-        w.id === target.id ? applyCustomWidgetUpdate(w, match, url) : w
-      );
-      const groupKey = typeof match.groupName === "string" ? match.groupName.trim().toLowerCase() : "";
-      if (groupKey) {
-        applyImportedAutoRouteSettings(draft, {
-          autoRouteIcons: autoRouteIcons?.[groupKey] ? { [groupKey]: autoRouteIcons[groupKey] } : null,
-          autoRouteDefaults: typeof autoRouteDefaults?.[groupKey] === "boolean" ? { [groupKey]: autoRouteDefaults[groupKey] } : null
-        });
-      }
-      if (editingCustomWidgetId === target.id) {
-        const updated = draft.customWidgets.find(w => w.id === target.id);
-        if (updated) loadCustomWidgetIntoForm(updated);
-      }
-      renderWidgetOrderList(draft);
-      await applySideSpaces({ appearance: draft });
-      await render();
-      calculateGridLayout();
-      if (customWidgetsLibraryStatus) {
-        customWidgetsLibraryStatus.textContent = "✅ " + (t("customSearchUpdateSuccess") || "Widget updated (you can revert with ↩️; click Save to persist).");
-      }
-    } catch (err) {
-      if (customWidgetsLibraryStatus) {
-        const detail = err?.message === "INVALID_WIDGET_URL"
-          ? (t("customSearchInvalidSourceUrl") || "Enter a valid http(s) URL.")
-          : (err?.message || "Failed to update from URL.");
-        customWidgetsLibraryStatus.textContent = "❌ " + detail;
-      }
-    }
+    });
   }
 
   if (customWidgetImportFile) {
@@ -3052,32 +3115,39 @@ export function initCustomWidgetsSettings() {
       if (customWidgetStatus) {
         customWidgetStatus.textContent = "⏳ " + (t("customSearchLoadingUrlStatus") || "Loading widgets from URL...");
       }
-      try {
-        const { url, widgets, autoRouteIcons, autoRouteDefaults } = await fetchCustomWidgetsFromUrl(rawUrl);
-        const { total } = await mergeImportedCustomWidgets(widgets, { sourceUrl: url, autoRouteIcons, autoRouteDefaults });
-        customWidgetSourceUrlInput.value = "";
-        customWidgetUrlImportBox?.classList.add("hidden");
-        if (customWidgetStatus) {
-          customWidgetStatus.textContent = "✅ " + (t("customSearchImportSuccess") || "Imported") + ` (${total})`;
+      await withWidgetsSyncTemporarilyDisabled(async () => {
+        try {
+          const { url, widgets, autoRouteIcons, autoRouteDefaults } = await fetchCustomWidgetsFromUrl(rawUrl);
+          const { total } = await mergeImportedCustomWidgets(widgets, { sourceUrl: url, autoRouteIcons, autoRouteDefaults });
+          customWidgetSourceUrlInput.value = "";
+          customWidgetUrlImportBox?.classList.add("hidden");
+          if (customWidgetStatus) {
+            customWidgetStatus.textContent = "✅ " + (t("customSearchImportSuccess") || "Imported") + ` (${total})`;
+          }
+        } catch (err) {
+          if (customWidgetStatus) {
+            const msg = err?.message === "INVALID_WIDGET_URL"
+              ? (t("customSearchInvalidSourceUrl") || "Enter a valid http(s) URL.")
+              : err?.message === "INVALID_WIDGET_PAYLOAD"
+                ? (t("customSearchImportInvalid") || "No valid custom search widgets found at URL.")
+                : (err?.message || "Failed to load from URL.");
+            customWidgetStatus.textContent = "❌ " + msg;
+          }
         }
-      } catch (err) {
-        if (customWidgetStatus) {
-          const msg = err?.message === "INVALID_WIDGET_URL"
-            ? (t("customSearchInvalidSourceUrl") || "Enter a valid http(s) URL.")
-            : err?.message === "INVALID_WIDGET_PAYLOAD"
-              ? (t("customSearchImportInvalid") || "No valid custom search widgets found at URL.")
-              : (err?.message || "Failed to load from URL.");
-          customWidgetStatus.textContent = "❌ " + msg;
-        }
-      }
+      });
     });
   }
 
   if (customWidgetUpdateAllBtn) {
     customWidgetUpdateAllBtn.addEventListener("click", async () => {
       const draft = await ensureAppearanceDraft();
-      const urlWidgets = (draft.customWidgets || []).filter(w => !!w?.sourceUrl);
-      if (urlWidgets.length === 0) return;
+      const urlWidgets = (draft.customWidgets || []).filter(w => !!w?.sourceUrl && !w?.lockSourceUpdates);
+      if (urlWidgets.length === 0) {
+        if (customWidgetsLibraryStatus && (draft.customWidgets || []).some(w => !!w?.sourceUrl)) {
+          customWidgetsLibraryStatus.textContent = "ℹ️ " + (t("customWidgetUrlUpdatesAllBlocked") || "All URL-linked widgets are locked against updates.");
+        }
+        return;
+      }
 
       if (customWidgetsLibraryStatus) {
         customWidgetsLibraryStatus.textContent = "⏳ " + (t("customSearchUpdatingStatus") || "Updating from URL...");
@@ -3088,40 +3158,42 @@ export function initCustomWidgetsSettings() {
       let errorCount = 0;
       const fetchedByUrl = new Map();
 
-      for (const sourceUrl of uniqueUrls) {
-        try {
-          const res = await fetchCustomWidgetsFromUrl(sourceUrl);
-          fetchedByUrl.set(sourceUrl, res);
-        } catch {
-          errorCount++;
-        }
-      }
-
-      if (fetchedByUrl.size > 0) {
-        markSettingsDirty();
-        draft.customWidgets = (draft.customWidgets || []).map(w => {
-          if (!w?.sourceUrl || !fetchedByUrl.has(w.sourceUrl)) return w;
-          const { url, widgets, autoRouteIcons, autoRouteDefaults } = fetchedByUrl.get(w.sourceUrl);
-          const match =
-            widgets.find(item => item.id === w.id) ||
-            widgets.find(item => item.name && w.name && item.name.toLowerCase() === w.name.toLowerCase()) ||
-            (widgets.length === 1 ? widgets[0] : null);
-          if (!match) return w;
-          updatedCount++;
-          const groupKey = typeof match.groupName === "string" ? match.groupName.trim().toLowerCase() : "";
-          if (groupKey) {
-            applyImportedAutoRouteSettings(draft, {
-              autoRouteIcons: autoRouteIcons?.[groupKey] ? { [groupKey]: autoRouteIcons[groupKey] } : null,
-              autoRouteDefaults: typeof autoRouteDefaults?.[groupKey] === "boolean" ? { [groupKey]: autoRouteDefaults[groupKey] } : null
-            });
+      await withWidgetsSyncTemporarilyDisabled(async () => {
+        for (const sourceUrl of uniqueUrls) {
+          try {
+            const res = await fetchCustomWidgetsFromUrl(sourceUrl);
+            fetchedByUrl.set(sourceUrl, res);
+          } catch {
+            errorCount++;
           }
-          return applyCustomWidgetUpdate(w, match, url);
-        });
-        renderWidgetOrderList(draft);
-        await applySideSpaces({ appearance: draft });
-        await render();
-        calculateGridLayout();
-      }
+        }
+
+        if (fetchedByUrl.size > 0) {
+          markSettingsDirty();
+          draft.customWidgets = (draft.customWidgets || []).map(w => {
+            if (!w?.sourceUrl || w.lockSourceUpdates || !fetchedByUrl.has(w.sourceUrl)) return w;
+            const { url, widgets, autoRouteIcons, autoRouteDefaults } = fetchedByUrl.get(w.sourceUrl);
+            const match =
+              widgets.find(item => item.id === w.id) ||
+              widgets.find(item => item.name && w.name && item.name.toLowerCase() === w.name.toLowerCase()) ||
+              (widgets.length === 1 ? widgets[0] : null);
+            if (!match) return w;
+            updatedCount++;
+            const groupKey = typeof match.groupName === "string" ? match.groupName.trim().toLowerCase() : "";
+            if (groupKey) {
+              applyImportedAutoRouteSettings(draft, {
+                autoRouteIcons: autoRouteIcons?.[groupKey] ? { [groupKey]: autoRouteIcons[groupKey] } : null,
+                autoRouteDefaults: typeof autoRouteDefaults?.[groupKey] === "boolean" ? { [groupKey]: autoRouteDefaults[groupKey] } : null
+              });
+            }
+            return applyCustomWidgetUpdate(w, match, url);
+          });
+          renderWidgetOrderList(draft);
+          await applySideSpaces({ appearance: draft });
+          await render();
+          calculateGridLayout();
+        }
+      });
 
       if (customWidgetsLibraryStatus) {
         if (updatedCount > 0 && errorCount === 0) {

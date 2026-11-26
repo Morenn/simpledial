@@ -590,9 +590,14 @@ export function applyCustomWidgetUpdate(existingWidget, incomingWidget, sourceUr
       ? { routePrefixes: incomingPrefixes.length > 0 ? incomingPrefixes : existingPrefixes }
       : {}),
     ...(resolvedSourceUrl ? { sourceUrl: resolvedSourceUrl } : {}),
+    ...(existingWidget?.lockSourceUpdates ? { lockSourceUpdates: true } : {}),
     sourceUpdatedAt: new Date().toISOString(),
     previousVersion: prevSnapshot
   };
+}
+
+export function shouldSkipCustomWidgetUrlUpdate(widget) {
+  return !!widget?.lockSourceUpdates;
 }
 
 export function revertCustomWidgetVersion(widget) {

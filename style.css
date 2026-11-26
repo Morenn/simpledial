@@ -4342,8 +4342,9 @@ body.highlight-side-spaces .workspace-side-space {
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.55);
 }
 
-.custom-widget-library-item.is-disabled,
-.custom-widget-group-card.is-disabled .custom-widget-group-header {
+.custom-widget-library-item.is-disabled .custom-search-icon,
+.custom-widget-library-item.is-disabled .custom-widget-library-info,
+.custom-widget-group-card.is-disabled .custom-widget-group-title {
   opacity: 0.72;
 }
 
@@ -4355,6 +4356,21 @@ body.highlight-side-spaces .workspace-side-space {
   background: var(--bg2);
   border: 1px solid var(--border);
   color: var(--muted);
+}
+
+.custom-widget-source-toggle {
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.custom-widget-source-toggle:hover {
+  border-color: var(--accent, var(--border));
+}
+
+.custom-widget-source-toggle.is-locked {
+  border-color: rgba(239, 68, 68, 0.7);
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
 }
 
 .custom-widget-library-url {

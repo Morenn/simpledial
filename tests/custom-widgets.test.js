@@ -52,6 +52,7 @@ const {
   resolveCustomWidgetIcon,
   applyCustomWidgetUpdate,
   revertCustomWidgetVersion,
+  shouldSkipCustomWidgetUrlUpdate,
   parseFeedResponse,
   pruneRssStorageForWidgets,
   pruneNotesStorageForWidgets,
@@ -1335,4 +1336,25 @@ test("getWidgetGroupMemberIds and resolveGroupedWidgetMapValue resolve across di
   const newRowMap = { s1: true };
   assert.equal(resolveGroupedWidgetMapValue(newRowMap, "s2", widgets), true);
   assert.equal(resolveGroupedWidgetMapValue(newRowMap, "solo", widgets), undefined);
+});
+
+test("lockSourceUpdates flag marks widget as skipped for URL updates and is preserved by applyCustomWidgetUpdate", () => {
+  const lockedWidget = {
+    id: "w_locked",
+    type: "custom-search",
+    name: "My Custom Copy",
+    urlTemplate: "https://example.com/?q={query}",
+    sourceUrl: "https://example.com/widgets.json",
+    lockSourceUpdates: true
+  };
+  assert.equal(shouldSkipCustomWidgetUrlUpdate(lockedWidget), true);
+  assert.equal(shouldSkipCustomWidgetUrlUpdate({ ...lockedWidget, lockSourceUpdates: false }), false);
+
+  const updated = applyCustomWidgetUpdate(lockedWidget, {
+    id: "w_locked",
+    type: "custom-search",
+    name: "Remote",
+    urlTemplate: "https://example.com/?q={query}"
+  });
+  assert.equal(updated.lockSourceUpdates, true);
 });
