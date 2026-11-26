@@ -1642,7 +1642,62 @@ export async function syncWriteTest() {
   return await withSyncLock(async () => {
     const config = await loadConfig();
     const syncConfig = buildSyncConfigFromConfig(config);
+    if (!syncConfig) {
+      return { ok: false, reason: 'not-configured' };
+    }
+
+    if (syncConfig.type === 'webdav' && syncConfig.webdavMode === 'folder') {
+      const folderBase = resolveWebdavFolderBaseUrl(syncConfig.url, syncConfig.webdavFolderPath);
+      if (!isValidHttpSyncUrl(folderBase)) {
+        return { ok: false, reason: 'invalid-url' };
+      }
+      const credentials = await resolveSyncCredentials(syncConfig, 'syncWriteTest');
+      if (!credentials.ok) {
+        return credentials;
+      }
+      const headers = {};
+      applyWebdavCompatibilityHeaders(headers, syncConfig);
+      if (credentials.password) {
+        headers['Authorization'] = safeBasicAuthHeader(credentials.username || '', credentials.password);
+      }
+      const probeUrl = `${folderBase}/.simpledial-write-test-${Date.now()}.tmp`;
+      try {
+        const putRes = await fetchWithTimeout(probeUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'text/plain', ...headers },
+          body: 'ok'
+        });
+        if (!putRes.ok) {
+          if (putRes.status === 401 || putRes.status === 403) {
+            return { ok: false, reason: 'auth', status: putRes.status };
+          }
+          return { ok: false, reason: 'http-error', status: putRes.status };
+        }
+        try {
+          await fetchWithTimeout(probeUrl, { method: 'DELETE', headers });
+        } catch {}
+        return { ok: true, reason: 'ok' };
+      } catch (e) {
+        if (e.name === 'AbortError') return { ok: false, reason: 'timeout' };
+        return { ok: false, reason: 'network-or-cors' };
+      }
+    }
+
     const tombstoneState = await loadLocalTombstoneState();
+    const remote = await syncReadDetailed(syncConfig, { allowInitialize: false });
+    if (remote.ok) {
+      const localDbuid = tombstoneState.dbuid || "";
+      const remoteDbuid = typeof remote.data?.dbuid === "string" ? remote.data.dbuid.trim() : "";
+      if (remoteDbuid && localDbuid !== remoteDbuid) {
+        return { ok: false, reason: 'dbuid-mismatch', localDbuid, remoteDbuid };
+      }
+      if (!syncConfig.lastSync && hasMeaningfulGroups(remote.data?.groups)) {
+        return { ok: false, reason: 'protected-remote-data' };
+      }
+    } else if (remote.status !== 404) {
+      return remote;
+    }
+
     return await syncWriteDetailed(syncConfig, state.groups, state.tags, {
       dbuid: tombstoneState.dbuid,
       tombstones: tombstoneState.tombstones,

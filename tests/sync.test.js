@@ -2175,3 +2175,63 @@ test("WebDAV bookmarks-db sends normalized If-Match ETag, re-merges on 412, and 
   assert.equal(forceRes.ok, true);
   assert.equal(putIfMatchHeaders[2], null);
 });
+
+test("syncWriteTest uses temp probe in WebDAV folder mode and refuses to overwrite mismatched remote DB in Direct mode", async () => {
+  const { syncWriteTest } = await import("../newtab/sync.js");
+  const { saveConfig } = await import("../newtab/config.js");
+
+  // 1. WebDAV folder mode must never touch bookmarks-db.json
+  const webdavUrls = [];
+  fetchRemote = async (url, options = {}) => {
+    webdavUrls.push(`${String(options.method || "GET").toUpperCase()} ${url}`);
+    return new Response(null, { status: 204 });
+  };
+  const wdCfg = {
+    sync: {
+      enabled: true,
+      type: "webdav",
+      webdavMode: "folder",
+      webdavFolderPath: "SimpleDial",
+      serverUrl: "https://cloud.example/dav",
+      authMode: "basic",
+      username: "alice",
+      password: "secret"
+    },
+    appearance: {}
+  };
+  setClient(
+    [group([item("b_new", "New Device", "https://new.example", 2000)], "g_new", "New", 2000)],
+    wdCfg,
+    []
+  );
+  await saveConfig(wdCfg);
+  const wdRes = await syncWriteTest();
+  assert.equal(wdRes.ok, true);
+  assert.ok(webdavUrls.some(u => u.includes(".simpledial-write-test-")));
+  assert.ok(!webdavUrls.some(u => u.includes("bookmarks-db.json")));
+
+  // 2. Direct mode must refuse to overwrite remote DB when dbuid mismatches
+  let directPutCalled = false;
+  fetchRemote = async (_url, options = {}) => {
+    if (String(options.method || "GET").toUpperCase() === "PUT") {
+      directPutCalled = true;
+      return new Response("", { status: 200 });
+    }
+    return new Response(JSON.stringify({
+      groups: [group([item("b_existing", "Existing", "https://existing.example", 1000)], "g_1", "Main", 1000)],
+      tags: [],
+      dbuid: "remote-db-123"
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const directCfg = httpConfig("direct", { lastSync: 0 });
+  setClient(
+    [group([item("b_new", "New Device", "https://new.example", 2000)], "g_new", "New", 2000)],
+    directCfg,
+    []
+  );
+  await saveConfig(directCfg);
+  const directRes = await syncWriteTest();
+  assert.equal(directRes.ok, false);
+  assert.equal(directRes.reason, "dbuid-mismatch");
+  assert.equal(directPutCalled, false);
+});
