@@ -2413,7 +2413,11 @@ export function startSyncLoop(options = {}) {
         return;
       }
       if (!result.ok && result.reason !== 'not-configured') {
-        console.warn('sync loop failed:', result.reason, result.status || '');
+        if (result.reason === 'credentials-locked') {
+          syncDebugLog('sync loop skipped: credentials-locked');
+        } else {
+          console.warn('sync loop failed:', result.reason, result.status || '');
+        }
       }
       if (result.ok && result.changed) {
         window.dispatchEvent(new CustomEvent('speeddial:data-changed'));

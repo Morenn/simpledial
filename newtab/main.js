@@ -538,10 +538,14 @@ export function updateShowDeletedButtonAppearance() {
           void updateFooter(null, { allowLazyLoad: true });
 
           if (!result.ok) {
-            console.warn("Sync failed:", result.reason || "unknown", result);
-            const latestCfg = await loadConfig();
-            if (result.reason === "credentials-locked" && latestCfg?.vaultMuteSyncLockedWarning) {
-              return;
+            if (result.reason === "credentials-locked") {
+              logDebug("sync", "Sync skipped: credentials-locked", result);
+              const latestCfg = await loadConfig();
+              if (latestCfg?.vaultMuteSyncLockedWarning) {
+                return;
+              }
+            } else {
+              console.warn("Sync failed:", result.reason || "unknown", result);
             }
             showSyncUnavailableNotification(result);
             return;
