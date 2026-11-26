@@ -1,5 +1,5 @@
 import { loadConfig } from "../config.js";
-import { t } from "../i18n.js";
+import { t, getCurrentLanguage } from "../i18n.js";
 import { getSecret, isVaultUnlocked } from "../crypto.js";
 import { requestRestEndpointPermission, hasHostPermissionForUrl } from "./rest-status-widget.js";
 
@@ -162,7 +162,8 @@ function formatDayName(dateStr, index) {
   if (index === 1) return t("weatherTomorrow") || "Tomorrow";
   try {
     const d = new Date(`${dateStr}T12:00:00`);
-    return d.toLocaleDateString(undefined, { weekday: "short" });
+    const lang = typeof getCurrentLanguage === "function" ? getCurrentLanguage() : "";
+    return d.toLocaleDateString(lang || undefined, { weekday: "short" });
   } catch {
     return dateStr;
   }
