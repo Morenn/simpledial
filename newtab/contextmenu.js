@@ -100,6 +100,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
   const excludeIconBtn = contextMenu.querySelector('[data-action="toggle-exclude-icon"]');
   const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
+  const copyUrlBtn = contextMenu.querySelector('[data-action="copy-url"]');
   const removeFromStackBtn = contextMenu.querySelector('[data-action="remove-from-stack"]');
   const unstackBtn = contextMenu.querySelector('[data-action="unstack"]');
 
@@ -119,6 +120,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
     if (refreshIconBtn) refreshIconBtn.classList.add("hidden");
     if (excludeIconBtn) excludeIconBtn.classList.add("hidden");
     if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
+    if (copyUrlBtn) copyUrlBtn.classList.toggle("hidden", isStack || !item.url);
     if (removeFromStackBtn) removeFromStackBtn.classList.add("hidden");
     if (unstackBtn) unstackBtn.classList.add("hidden");
     if (moveToItem) moveToItem.classList.add("hidden");
@@ -140,6 +142,7 @@ function updateContextMenuForBookmark(bookmarkTile) {
       }
     }
     if (openNewTabBtn) openNewTabBtn.classList.remove("hidden");
+    if (copyUrlBtn) copyUrlBtn.classList.toggle("hidden", isStack || !item.url);
     if (removeFromStackBtn) removeFromStackBtn.classList.toggle("hidden", !isChildInStack);
     if (unstackBtn) unstackBtn.classList.toggle("hidden", !isStack);
     if (moveToItem) moveToItem.classList.remove("hidden");
@@ -190,6 +193,7 @@ function updateContextMenuForGroup(groupTab) {
   const refreshIconBtn = contextMenu.querySelector('[data-action="refresh-icon"]');
   const toggleExcludeIconBtn = contextMenu.querySelector('[data-action="toggle-exclude-icon"]');
   const openNewTabBtn = contextMenu.querySelector('[data-action="open-new-tab"]');
+  const copyUrlBtn = contextMenu.querySelector('[data-action="copy-url"]');
   const removeFromStackBtn = contextMenu.querySelector('[data-action="remove-from-stack"]');
   const unstackBtn = contextMenu.querySelector('[data-action="unstack"]');
 
@@ -197,6 +201,7 @@ function updateContextMenuForGroup(groupTab) {
 
   if (moveToItem) moveToItem.classList.add("hidden");
   if (openNewTabBtn) openNewTabBtn.classList.add("hidden");
+  if (copyUrlBtn) copyUrlBtn.classList.add("hidden");
   if (removeFromStackBtn) removeFromStackBtn.classList.add("hidden");
   if (unstackBtn) unstackBtn.classList.add("hidden");
   if (toggleExcludeIconBtn) toggleExcludeIconBtn.classList.add("hidden");

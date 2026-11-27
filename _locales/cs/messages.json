@@ -2344,5 +2344,8 @@
   },
   "insecureHttpCalendarConfirm": {
     "message": "Upozornění: Tato adresa používá nešifrované HTTP (nikoli HTTPS). Data kalendáře a přihlašovací údaje budou přenášeny nešifrovaně po síti.\n\nPřesto pokračovat?"
+  },
+  "copyUrl": {
+    "message": "Kopírovat URL"
   }
 }

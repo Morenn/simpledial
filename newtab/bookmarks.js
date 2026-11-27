@@ -2072,6 +2072,29 @@ export async function handleBookmarkContext(action, el) {
     return;
   }
 
+  if (action === "copy-url") {
+    if (!stackItem && item.url) {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(item.url);
+        } else {
+          const tmp = document.createElement("textarea");
+          tmp.value = item.url;
+          tmp.setAttribute("readonly", "");
+          tmp.style.position = "fixed";
+          tmp.style.opacity = "0";
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand("copy");
+          tmp.remove();
+        }
+      } catch (err) {
+        console.warn("Failed to copy bookmark URL", err);
+      }
+    }
+    return;
+  }
+
   if (action === "remove-from-stack" && parentStack) {
     list.splice(index, 1);
     const now = Date.now();

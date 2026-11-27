@@ -2344,5 +2344,8 @@
   },
   "insecureHttpCalendarConfirm": {
     "message": "Warnung: Diese URL verwendet unverschlüsseltes HTTP (nicht HTTPS). Kalenderdaten und Zugangsdaten werden unverschlüsselt über das Netzwerk gesendet.\n\nTrotzdem fortfahren?"
+  },
+  "copyUrl": {
+    "message": "URL kopieren"
   }
 }

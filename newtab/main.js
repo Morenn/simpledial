@@ -868,6 +868,9 @@ export function updateUIText({ includeModals = true } = {}) {
     const openNewTabItem = contextMenu.querySelector('[data-action="open-new-tab"]');
     if (openNewTabItem) openNewTabItem.textContent = t("openInNewTab");
 
+    const copyUrlItem = contextMenu.querySelector('[data-action="copy-url"]');
+    if (copyUrlItem) copyUrlItem.textContent = t("copyUrl");
+
     const deleteItem = contextMenu.querySelector('[data-action="delete"]');
     if (deleteItem) deleteItem.textContent = t("delete");
 
