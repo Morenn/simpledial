@@ -2341,5 +2341,8 @@
   },
   "calendarReminderSourcesLabel": {
     "message": "Upozornenia pripomienok z:"
+  },
+  "insecureHttpCalendarConfirm": {
+    "message": "Upozornenie: Táto adresa používa nešifrované HTTP (nie HTTPS). Údaje kalendára a prihlasovacie údaje sa budú prenášať nešifrovane po sieti.\n\nNapriek tomu pokračovať?"
   }
 }

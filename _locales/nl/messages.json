@@ -2341,5 +2341,8 @@
   },
   "calendarReminderSourcesLabel": {
     "message": "Herinneringsmeldingen van:"
+  },
+  "insecureHttpCalendarConfirm": {
+    "message": "Waarschuwing: deze URL gebruikt onversleuteld HTTP (geen HTTPS). Agendagegevens en inloggegevens worden onversleuteld via het netwerk verzonden.\n\nToch doorgaan?"
   }
 }

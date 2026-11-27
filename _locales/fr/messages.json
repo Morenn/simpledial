@@ -2341,5 +2341,8 @@
   },
   "calendarReminderSourcesLabel": {
     "message": "Notifications de rappel depuis :"
+  },
+  "insecureHttpCalendarConfirm": {
+    "message": "Avertissement : cette URL utilise HTTP non chiffré (pas HTTPS). Les données du calendrier et les identifiants seront envoyés en clair sur le réseau.\n\nContinuer quand même ?"
   }
 }

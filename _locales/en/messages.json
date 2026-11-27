@@ -2341,5 +2341,8 @@
   },
   "calendarReminderSourcesLabel": {
     "message": "Reminder notifications from:"
+  },
+  "insecureHttpCalendarConfirm": {
+    "message": "Warning: This URL uses unencrypted HTTP (not HTTPS). Calendar data and credentials will be sent unencrypted over the network.\n\nContinue anyway?"
   }
 }

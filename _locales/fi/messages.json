@@ -2341,5 +2341,8 @@
   },
   "calendarReminderSourcesLabel": {
     "message": "Muistutusilmoitukset lähteistä:"
+  },
+  "insecureHttpCalendarConfirm": {
+    "message": "Varoitus: Tämä osoite käyttää salaamatonta HTTP-yhteyttä (ei HTTPS). Kalenteritiedot ja tunnukset lähetetään salaamattomina verkossa.\n\nJatketaanko silti?"
   }
 }

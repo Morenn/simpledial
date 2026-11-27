@@ -582,6 +582,16 @@ export function initCustomWidgetsSettings() {
           setCalendarFormStatus(t("calendarInvalidUrl") || "Please enter a valid http(s):// or webcal:// URL.", true);
           return;
         }
+        if (isInsecureHttpUrl(normalizedUrl)) {
+          const confirmed = window.confirm(
+            t("insecureHttpCalendarConfirm") ||
+              "Warning: This URL uses unencrypted HTTP (not HTTPS). Calendar data and credentials will be sent unencrypted over the network.\n\nContinue anyway?",
+          );
+          if (!confirmed) {
+            setCalendarFormStatus(`❌ ${t("insecureHttpAuthWarning") || "HTTP URL sends data unencrypted."}`, true);
+            return;
+          }
+        }
 
         saveCalBtn.disabled = true;
         setCalendarFormStatus(t("loading") || "Checking feed...");
