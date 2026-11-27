@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "extensionDescription": {
-    "message": "Extension SpeedDial simple pour enregistrer et synchroniser les favoris via WebDAV ou HTTP avec JSON GET/PUT."
+    "message": "Nouvel onglet Speed Dial personnalisable : groupes de favoris, synchro WebDAV/HTTP, widgets, notes, météo et calendrier."
   },
   "searchPlaceholder": {
     "message": "Rechercher dans les favoris..."

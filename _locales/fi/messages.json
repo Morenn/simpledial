@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "extensionDescription": {
-    "message": "Yksinkertainen SpeedDial tallentaa ja synkronoi kirjanmerkit WebDAV:n tai JSON GET/PUT -tuella toimivan HTTP-palvelimen kautta."
+    "message": "Mukautettava Speed Dial -uusi välilehti: kirjanmerkkiryhmät, WebDAV/HTTP-synkronointi, widgetit, muistiinpanot, sää ja kalenteri."
   },
   "searchPlaceholder": {
     "message": "Hae kirjanmerkeistä..."

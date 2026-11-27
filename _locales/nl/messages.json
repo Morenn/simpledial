@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "extensionDescription": {
-    "message": "Eenvoudige SpeedDial-extensie slaat bladwijzers op en synchroniseert ze via WebDAV of HTTP met JSON GET/PUT."
+    "message": "Aanpasbaar nieuw tabblad Speed Dial met bladwijzergroepen, WebDAV/HTTP-sync, widgets, notities, weer en agenda."
   },
   "searchPlaceholder": {
     "message": "Zoeken in bladwijzers..."

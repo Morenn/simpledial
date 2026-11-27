@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "extensionDescription": {
-    "message": "Jednoduché rozšírenie SpeedDial synchronizuje záložky cez WebDAV alebo HTTP server s podporou JSON GET/PUT."
+    "message": "Prispôsobiteľná nová karta Speed Dial so skupinami záložiek, WebDAV/HTTP sync, widgetmi, poznámkami, počasím a kalendárom."
   },
   "searchPlaceholder": {
     "message": "Hľadať v záložkách..."

@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "extensionDescription": {
-    "message": "Einfache SpeedDial-Erweiterung speichert und synchronisiert Lesezeichen über WebDAV oder HTTP mit JSON-GET/PUT."
+    "message": "Anpassbarer neuer Tab Speed Dial mit Lesezeichengruppen, WebDAV/HTTP-Sync, Widgets, Notizen, Wetter und Kalender."
   },
   "searchPlaceholder": {
     "message": "In Lesezeichen suchen..."

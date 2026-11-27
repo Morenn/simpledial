@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "extensionDescription": {
-    "message": "Просте розширення SpeedDial зберігає та синхронізує закладки через WebDAV або HTTP-сервер із підтримкою JSON GET/PUT."
+    "message": "Налаштовувана нова вкладка Speed Dial: групи закладок, WebDAV/HTTP-синк, віджети, нотатки, погода і календар."
   },
   "searchPlaceholder": {
     "message": "Пошук у закладках..."

@@ -3,7 +3,7 @@
     "message": "Simple SpeedDial"
   },
   "extensionDescription": {
-    "message": "Simple SpeedDial stores and syncs bookmarks via WebDAV or any HTTP server with JSON GET/PUT."
+    "message": "Customizable new-tab Speed Dial with bookmark groups, WebDAV/HTTP sync, custom widgets, notes, weather, and calendar."
   },
   "searchPlaceholder": {
     "message": "Search in bookmarks..."
