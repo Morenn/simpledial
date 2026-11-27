@@ -2257,5 +2257,59 @@
   },
   "moveDown": {
     "message": "Перемістити вниз"
+  },
+  "calendarWeekStartLabel": {
+    "message": "Тиждень починається з"
+  },
+  "calendarWeekStartMonday": {
+    "message": "Понеділка"
+  },
+  "calendarWeekStartSunday": {
+    "message": "Неділі"
+  },
+  "calendarTodayBtn": {
+    "message": "Сьогодні"
+  },
+  "calendarWeekCol": {
+    "message": "Тиж"
+  },
+  "calendarPrevMonth": {
+    "message": "Попередній місяць"
+  },
+  "calendarNextMonth": {
+    "message": "Наступний місяць"
+  },
+  "dateTimeCalendarTitle": {
+    "message": "Натисніть, щоб відкрити мінікалендар"
+  },
+  "calendarAllDay": {
+    "message": "Увесь день"
+  },
+  "calendarSourcesTitle": {
+    "message": "Календарі"
+  },
+  "calendarAddWebcalBtn": {
+    "message": "+ Додати WebCAL"
+  },
+  "calendarFilterPlaceholder": {
+    "message": "Фільтрувати календарі..."
+  },
+  "calendarNamePlaceholder": {
+    "message": "Назва календаря (напр. Свята)"
+  },
+  "calendarUrlPlaceholder": {
+    "message": "https://... або webcal://...ics"
+  },
+  "calendarRefreshLabel": {
+    "message": "Оновлювати (хв):"
+  },
+  "calendarNoSources": {
+    "message": "Календарі ще не додано."
+  },
+  "calendarInvalidUrl": {
+    "message": "Введіть коректну URL-адресу http(s):// або webcal://."
+  },
+  "calendarPermissionDenied": {
+    "message": "Щоб отримати цей календар, потрібен дозвіл хоста."
   }
 }

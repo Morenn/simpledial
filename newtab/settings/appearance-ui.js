@@ -1,5 +1,6 @@
 import { loadConfig, defaultConfig } from "../config.js";
 import { t, getCurrentLanguage, setLanguage, resetLanguageToBrowser } from "../i18n.js";
+import { normalizeCalendarSources } from "../calendar-sources.js";
 import { render, calculateGridLayout } from "../render.js";
 import {
   applyBackground,
@@ -67,6 +68,7 @@ const tallBookmarkTilesToggle = document.getElementById("tall-bookmark-tiles-tog
 const clickableTagsToggle = document.getElementById("clickable-tags-toggle");
 const searchStyleSelect = document.getElementById("search-style-select");
 const headerSingleRowToggle = document.getElementById("header-single-row-toggle");
+const calendarWeekStartSelect = document.getElementById("calendar-week-start-select");
 const massEnableColorFromIconBtn = document.getElementById("mass-enable-color-from-icon");
 const massDisableColorFromIconBtn = document.getElementById("mass-disable-color-from-icon");
 const massColorFromIconStatus = document.getElementById("mass-color-from-icon-status");
@@ -226,6 +228,8 @@ export function createAppearanceDraftFromConfig(config) {
     dateTimeSpace: (appearance.dateTimeSpace === "disabled" || appearance.showDateTime === false)
       ? "disabled"
       : (appearance.dateTimeSpace || "footer"),
+    calendarWeekStartsOn: appearance.calendarWeekStartsOn === "sunday" ? "sunday" : "monday",
+    calendarSources: normalizeCalendarSources(appearance.calendarSources),
     groupsSpace: appearance.groupsSpace || "header",
     searchSpace: appearance.searchSpace || "center",
     manageSpace: appearance.manageSpace || "header",
@@ -299,6 +303,9 @@ export function syncAppearanceControlsFromDraft(draft) {
   }
   if (headerSingleRowToggle) {
     headerSingleRowToggle.checked = !!draft.headerSingleRow;
+  }
+  if (calendarWeekStartSelect) {
+    calendarWeekStartSelect.value = draft.calendarWeekStartsOn === "sunday" ? "sunday" : "monday";
   }
   window.groupCountPreviewEnabled = null;
 
@@ -422,6 +429,9 @@ export function populateAppearanceSettings(config) {
   }
   if (searchStyleSelect) {
     searchStyleSelect.value = config.appearance?.searchStyle || "full";
+  }
+  if (calendarWeekStartSelect) {
+    calendarWeekStartSelect.value = config.appearance?.calendarWeekStartsOn === "sunday" ? "sunday" : "monday";
   }
   window.renderWidgetOrderList?.(config.appearance || {});
 
@@ -553,6 +563,14 @@ export async function applyAppearanceToConfig(config, { setSyncStatusMessage }) 
   }
   if (searchStyleSelect) {
     config.appearance.searchStyle = searchStyleSelect.value || "full";
+  }
+  if (calendarWeekStartSelect) {
+    config.appearance.calendarWeekStartsOn = calendarWeekStartSelect.value === "sunday" ? "sunday" : "monday";
+  } else if (draft?.calendarWeekStartsOn) {
+    config.appearance.calendarWeekStartsOn = draft.calendarWeekStartsOn === "sunday" ? "sunday" : "monday";
+  }
+  if (Array.isArray(draft?.calendarSources)) {
+    config.appearance.calendarSources = normalizeCalendarSources(draft.calendarSources);
   }
   if (draft?.customWidgets) {
     config.appearance.customWidgets = draft.customWidgets.map(w => ({ ...w }));
@@ -778,10 +796,16 @@ export function initAppearanceSettings() {
         : ((await loadConfig()).appearance?.customWidgets || []);
       const disabledCustomWidgets = existingCustomWidgets.map(w => ({ ...w, space: "disabled" }));
 
+      const existingCalendarSources = Array.isArray(settingsState.appearanceDraft?.calendarSources)
+        ? settingsState.appearanceDraft.calendarSources
+        : ((await loadConfig()).appearance?.calendarSources || []);
+      const disabledCalendarSources = existingCalendarSources.map(s => ({ ...s, enabled: false }));
+
       settingsState.appearanceDraft = createAppearanceDraftFromConfig({
         appearance: {
           ...defaultConfig.appearance,
           customWidgets: disabledCustomWidgets,
+          calendarSources: disabledCalendarSources,
           widgetOrder: normalizeWidgetOrder(defaultConfig.appearance.widgetOrder, disabledCustomWidgets)
         }
       });
@@ -998,6 +1022,16 @@ export function initAppearanceSettings() {
       }
       renderGroups(true);
       calculateGridLayout();
+    });
+  }
+
+  if (calendarWeekStartSelect) {
+    calendarWeekStartSelect.addEventListener("change", (e) => {
+      const value = e.target.value === "sunday" ? "sunday" : "monday";
+      const draft = ensureAppearanceDraft();
+      draft.calendarWeekStartsOn = value;
+      markSettingsDirty();
+      window.refreshDateTimeCalendarPopover?.(value);
     });
   }
 

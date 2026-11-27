@@ -2257,5 +2257,59 @@
   },
   "moveDown": {
     "message": "Posunúť nadol"
+  },
+  "calendarWeekStartLabel": {
+    "message": "Týždeň začína"
+  },
+  "calendarWeekStartMonday": {
+    "message": "Pondelok"
+  },
+  "calendarWeekStartSunday": {
+    "message": "Nedeľa"
+  },
+  "calendarTodayBtn": {
+    "message": "Dnes"
+  },
+  "calendarWeekCol": {
+    "message": "Týž"
+  },
+  "calendarPrevMonth": {
+    "message": "Predchádzajúci mesiac"
+  },
+  "calendarNextMonth": {
+    "message": "Nasledujúci mesiac"
+  },
+  "dateTimeCalendarTitle": {
+    "message": "Kliknutím otvoríte minikalendár"
+  },
+  "calendarAllDay": {
+    "message": "Celý deň"
+  },
+  "calendarSourcesTitle": {
+    "message": "Kalendáre"
+  },
+  "calendarAddWebcalBtn": {
+    "message": "+ Pridať WebCAL"
+  },
+  "calendarFilterPlaceholder": {
+    "message": "Filtrovať kalendáre..."
+  },
+  "calendarNamePlaceholder": {
+    "message": "Názov kalendára (napr. Sviatky)"
+  },
+  "calendarUrlPlaceholder": {
+    "message": "https://... alebo webcal://...ics"
+  },
+  "calendarRefreshLabel": {
+    "message": "Obnoviť (min):"
+  },
+  "calendarNoSources": {
+    "message": "Zatiaľ nie sú pridané žiadne kalendáre."
+  },
+  "calendarInvalidUrl": {
+    "message": "Zadajte platnú adresu http(s):// alebo webcal://."
+  },
+  "calendarPermissionDenied": {
+    "message": "Na načítanie tohto kalendára je potrebné povolenie hostiteľa."
   }
 }

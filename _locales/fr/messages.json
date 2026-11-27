@@ -2257,5 +2257,59 @@
   },
   "moveDown": {
     "message": "Descendre"
+  },
+  "calendarWeekStartLabel": {
+    "message": "Début de semaine"
+  },
+  "calendarWeekStartMonday": {
+    "message": "Lundi"
+  },
+  "calendarWeekStartSunday": {
+    "message": "Dimanche"
+  },
+  "calendarTodayBtn": {
+    "message": "Aujourd’hui"
+  },
+  "calendarWeekCol": {
+    "message": "Sem"
+  },
+  "calendarPrevMonth": {
+    "message": "Mois précédent"
+  },
+  "calendarNextMonth": {
+    "message": "Mois suivant"
+  },
+  "dateTimeCalendarTitle": {
+    "message": "Cliquer pour ouvrir le mini-calendrier"
+  },
+  "calendarAllDay": {
+    "message": "Toute la journée"
+  },
+  "calendarSourcesTitle": {
+    "message": "Calendriers"
+  },
+  "calendarAddWebcalBtn": {
+    "message": "+ Ajouter WebCAL"
+  },
+  "calendarFilterPlaceholder": {
+    "message": "Filtrer les calendriers..."
+  },
+  "calendarNamePlaceholder": {
+    "message": "Nom du calendrier (ex. Jours fériés)"
+  },
+  "calendarUrlPlaceholder": {
+    "message": "https://... ou webcal://...ics"
+  },
+  "calendarRefreshLabel": {
+    "message": "Actualiser (min) :"
+  },
+  "calendarNoSources": {
+    "message": "Aucun calendrier ajouté pour le moment."
+  },
+  "calendarInvalidUrl": {
+    "message": "Veuillez saisir une URL http(s):// ou webcal:// valide."
+  },
+  "calendarPermissionDenied": {
+    "message": "L’autorisation d’accès à l’hôte est requise pour ce calendrier."
   }
 }

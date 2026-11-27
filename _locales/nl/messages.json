@@ -2257,5 +2257,59 @@
   },
   "moveDown": {
     "message": "Omlaag"
+  },
+  "calendarWeekStartLabel": {
+    "message": "Week begint op"
+  },
+  "calendarWeekStartMonday": {
+    "message": "Maandag"
+  },
+  "calendarWeekStartSunday": {
+    "message": "Zondag"
+  },
+  "calendarTodayBtn": {
+    "message": "Vandaag"
+  },
+  "calendarWeekCol": {
+    "message": "Wk"
+  },
+  "calendarPrevMonth": {
+    "message": "Vorige maand"
+  },
+  "calendarNextMonth": {
+    "message": "Volgende maand"
+  },
+  "dateTimeCalendarTitle": {
+    "message": "Klik om de minikalender te openen"
+  },
+  "calendarAllDay": {
+    "message": "Hele dag"
+  },
+  "calendarSourcesTitle": {
+    "message": "Agenda's"
+  },
+  "calendarAddWebcalBtn": {
+    "message": "+ WebCAL toevoegen"
+  },
+  "calendarFilterPlaceholder": {
+    "message": "Agenda's filteren..."
+  },
+  "calendarNamePlaceholder": {
+    "message": "Agendanaam (bijv. Feestdagen)"
+  },
+  "calendarUrlPlaceholder": {
+    "message": "https://... of webcal://...ics"
+  },
+  "calendarRefreshLabel": {
+    "message": "Vernieuwen (min):"
+  },
+  "calendarNoSources": {
+    "message": "Nog geen agenda's toegevoegd."
+  },
+  "calendarInvalidUrl": {
+    "message": "Voer een geldige http(s)://- of webcal://-URL in."
+  },
+  "calendarPermissionDenied": {
+    "message": "Hostmachtiging is vereist om deze agenda op te halen."
   }
 }

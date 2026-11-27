@@ -2257,5 +2257,59 @@
   },
   "moveDown": {
     "message": "Posunout dolů"
+  },
+  "calendarWeekStartLabel": {
+    "message": "Týden začíná"
+  },
+  "calendarWeekStartMonday": {
+    "message": "Pondělí"
+  },
+  "calendarWeekStartSunday": {
+    "message": "Neděle"
+  },
+  "calendarTodayBtn": {
+    "message": "Dnes"
+  },
+  "calendarWeekCol": {
+    "message": "Týd"
+  },
+  "calendarPrevMonth": {
+    "message": "Předchozí měsíc"
+  },
+  "calendarNextMonth": {
+    "message": "Následující měsíc"
+  },
+  "dateTimeCalendarTitle": {
+    "message": "Kliknutím otevřete minikalendář"
+  },
+  "calendarAllDay": {
+    "message": "Celý den"
+  },
+  "calendarSourcesTitle": {
+    "message": "Kalendáře"
+  },
+  "calendarAddWebcalBtn": {
+    "message": "+ Přidat WebCAL"
+  },
+  "calendarFilterPlaceholder": {
+    "message": "Filtrovat kalendáře..."
+  },
+  "calendarNamePlaceholder": {
+    "message": "Název kalendáře (např. Svátky)"
+  },
+  "calendarUrlPlaceholder": {
+    "message": "https://... nebo webcal://...ics"
+  },
+  "calendarRefreshLabel": {
+    "message": "Obnovit (min):"
+  },
+  "calendarNoSources": {
+    "message": "Zatím nejsou přidány žádné kalendáře."
+  },
+  "calendarInvalidUrl": {
+    "message": "Zadejte platnou adresu http(s):// nebo webcal://."
+  },
+  "calendarPermissionDenied": {
+    "message": "Pro načtení tohoto kalendáře je potřeba oprávnění hostitele."
   }
 }

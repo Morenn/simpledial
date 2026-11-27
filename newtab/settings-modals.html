@@ -1208,3 +1208,53 @@
       </div>
     </div>
   </div>
+
+  <!-- System Widget Editor Modal -->
+  <div id="system-widget-editor-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="system-widget-editor-title">
+    <div class="modal-content system-widget-editor-modal-content">
+      <h3 id="system-widget-editor-title">Date &amp; Time</h3>
+      <div id="system-widget-datetime-fields" class="appearance-display-list">
+        <div class="appearance-slider-row">
+          <label for="calendar-week-start-select" data-i18n="calendarWeekStartLabel">Week starts on</label>
+          <select id="calendar-week-start-select" class="appearance-select">
+            <option value="monday" data-i18n="calendarWeekStartMonday">Monday</option>
+            <option value="sunday" data-i18n="calendarWeekStartSunday">Sunday</option>
+          </select>
+        </div>
+
+        <div class="system-calendar-section">
+          <div class="system-calendar-section-header">
+            <div class="system-calendar-section-heading">
+              <span class="system-calendar-section-title" data-i18n="calendarSourcesTitle">Calendars</span>
+              <span id="system-calendar-webcal-count" class="system-calendar-count-badge">0 / 10</span>
+            </div>
+            <button type="button" id="system-calendar-add-btn" class="icon-btn" data-i18n="calendarAddWebcalBtn">+ Add WebCAL</button>
+          </div>
+
+          <input type="search" id="system-calendar-filter-input" class="sync-compact-input hidden" data-i18n-placeholder="calendarFilterPlaceholder" placeholder="Filter calendars..." aria-label="Filter calendars">
+
+          <div id="system-calendar-source-form" class="system-calendar-source-form hidden">
+            <div class="system-calendar-form-row">
+              <input type="text" id="system-calendar-name-input" class="sync-compact-input" maxlength="80" data-i18n-placeholder="calendarNamePlaceholder" placeholder="Calendar name (e.g. Holidays)" aria-label="Calendar name">
+              <input type="color" id="system-calendar-color-input" class="system-calendar-color-input" value="#4a6bff" aria-label="Calendar color">
+            </div>
+            <input type="url" id="system-calendar-url-input" class="sync-compact-input" data-i18n-placeholder="calendarUrlPlaceholder" placeholder="https://... or webcal://...ics" aria-label="Calendar URL">
+            <div class="system-calendar-form-row">
+              <label for="system-calendar-refresh-input" data-i18n="calendarRefreshLabel">Refresh (min):</label>
+              <input type="number" id="system-calendar-refresh-input" class="appearance-number-input" min="5" max="1440" value="60">
+              <div class="system-calendar-form-actions">
+                <button type="button" id="system-calendar-save-btn" class="icon-btn primary" data-i18n="save">Save</button>
+                <button type="button" id="system-calendar-cancel-btn" class="icon-btn" data-i18n="cancel">Cancel</button>
+              </div>
+            </div>
+            <div id="system-calendar-form-status" class="status"></div>
+          </div>
+
+          <div id="system-calendar-sources-list" class="system-calendar-sources-list"></div>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button type="button" id="system-widget-editor-done-btn" class="icon-btn primary" data-i18n="done">Done</button>
+      </div>
+    </div>
+  </div>

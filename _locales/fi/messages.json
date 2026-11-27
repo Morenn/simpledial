@@ -2257,5 +2257,59 @@
   },
   "moveDown": {
     "message": "Siirrä alas"
+  },
+  "calendarWeekStartLabel": {
+    "message": "Viikko alkaa"
+  },
+  "calendarWeekStartMonday": {
+    "message": "Maanantai"
+  },
+  "calendarWeekStartSunday": {
+    "message": "Sunnuntai"
+  },
+  "calendarTodayBtn": {
+    "message": "Tänään"
+  },
+  "calendarWeekCol": {
+    "message": "Vk"
+  },
+  "calendarPrevMonth": {
+    "message": "Edellinen kuukausi"
+  },
+  "calendarNextMonth": {
+    "message": "Seuraava kuukausi"
+  },
+  "dateTimeCalendarTitle": {
+    "message": "Avaa minikalenteri napsauttamalla"
+  },
+  "calendarAllDay": {
+    "message": "Koko päivä"
+  },
+  "calendarSourcesTitle": {
+    "message": "Kalenterit"
+  },
+  "calendarAddWebcalBtn": {
+    "message": "+ Lisää WebCAL"
+  },
+  "calendarFilterPlaceholder": {
+    "message": "Suodata kalentereita..."
+  },
+  "calendarNamePlaceholder": {
+    "message": "Kalenterin nimi (esim. Pyhäpäivät)"
+  },
+  "calendarUrlPlaceholder": {
+    "message": "https://... tai webcal://...ics"
+  },
+  "calendarRefreshLabel": {
+    "message": "Päivitä (min):"
+  },
+  "calendarNoSources": {
+    "message": "Kalentereita ei ole vielä lisätty."
+  },
+  "calendarInvalidUrl": {
+    "message": "Anna kelvollinen http(s)://- tai webcal://-osoite."
+  },
+  "calendarPermissionDenied": {
+    "message": "Kalenterin hakeminen vaatii isäntäoikeuden."
   }
 }

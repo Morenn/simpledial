@@ -78,6 +78,8 @@ export const defaultConfig = {
     groupTileSize: 1, // Group tile scale: 0.5 (50%) to 1.5 (150%)
     showDateTime: true,
     dateTimeSpace: "footer", // "disabled", "header", "left", "center", "right", "footer"
+    calendarWeekStartsOn: "monday", // "monday" | "sunday"
+    calendarSources: [], // External calendar feeds (WebCAL now, CalDAV-ready)
     showDeleted: false,
     showGroupBookmarkCount: true,
     showSideSpaces: false,

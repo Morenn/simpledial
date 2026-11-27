@@ -2257,5 +2257,59 @@
   },
   "moveDown": {
     "message": "Move down"
+  },
+  "calendarWeekStartLabel": {
+    "message": "Week starts on"
+  },
+  "calendarWeekStartMonday": {
+    "message": "Monday"
+  },
+  "calendarWeekStartSunday": {
+    "message": "Sunday"
+  },
+  "calendarTodayBtn": {
+    "message": "Today"
+  },
+  "calendarWeekCol": {
+    "message": "Wk"
+  },
+  "calendarPrevMonth": {
+    "message": "Previous month"
+  },
+  "calendarNextMonth": {
+    "message": "Next month"
+  },
+  "dateTimeCalendarTitle": {
+    "message": "Click to open mini calendar"
+  },
+  "calendarAllDay": {
+    "message": "All day"
+  },
+  "calendarSourcesTitle": {
+    "message": "Calendars"
+  },
+  "calendarAddWebcalBtn": {
+    "message": "+ Add WebCAL"
+  },
+  "calendarFilterPlaceholder": {
+    "message": "Filter calendars..."
+  },
+  "calendarNamePlaceholder": {
+    "message": "Calendar name (e.g. Holidays)"
+  },
+  "calendarUrlPlaceholder": {
+    "message": "https://... or webcal://...ics"
+  },
+  "calendarRefreshLabel": {
+    "message": "Refresh (min):"
+  },
+  "calendarNoSources": {
+    "message": "No calendars added yet."
+  },
+  "calendarInvalidUrl": {
+    "message": "Please enter a valid http(s):// or webcal:// URL."
+  },
+  "calendarPermissionDenied": {
+    "message": "Host permission is required to fetch this calendar."
   }
 }

@@ -4,6 +4,16 @@ import { render, calculateGridLayout } from "../render.js";
 import { applySideSpaces, applyTileSize } from "../theme.js";
 import { formatBackupTimestamp } from "../backup.js";
 import {
+  MAX_WEBCAL_SOURCES,
+  normalizeCalendarSourceUrl,
+  normalizeCalendarColor,
+  normalizeCalendarRefreshMinutes,
+  requestCalendarSourcePermission,
+  fetchWebcalSource,
+  getCalendarSourceCacheStatus,
+  removeCalendarSourceCache,
+} from "../calendar-sources.js";
+import {
   normalizeWidgetOrder,
   moveWidgetGroupInOrder,
   buildWidgetGroupMeta,
@@ -164,13 +174,315 @@ export function initCustomWidgetsSettings() {
     manage: { key: "widgetManage", fallback: "Manage buttons", field: "manageSpace", defaultSpace: "header", allowDisabled: false },
     bookmarks: { key: "widgetBookmarks", fallback: "Bookmarks", field: null, defaultSpace: "center", allowDisabled: false, fixedSpace: true },
     syncStatus: { key: "widgetSyncStatus", fallback: "Sync status", field: "syncStatusSpace", defaultSpace: "footer", allowDisabled: true },
-    dateTime: { key: "widgetDateTime", fallback: "Date & Time", field: "dateTimeSpace", defaultSpace: "footer", allowDisabled: true },
+    dateTime: { key: "widgetDateTime", fallback: "Date & Time", field: "dateTimeSpace", defaultSpace: "footer", allowDisabled: true, configurable: true },
     shortcutPalette: { key: "widgetShortcutPalette", fallback: "Shortcut palette", field: "shortcutPaletteSpace", defaultSpace: "footer", allowDisabled: true },
     bookmarksCount: { key: "widgetBookmarksCount", fallback: "Bookmarks count", field: "bookmarksCountSpace", defaultSpace: "footer", allowDisabled: true },
     storageUsage: { key: "widgetStorageUsage", fallback: "Storage usage", field: "storageUsageSpace", defaultSpace: "disabled", allowDisabled: true }
   };
 
   const collapsedWidgetSpaceGroups = new Set();
+
+  let systemWidgetModalListenersBound = false;
+  let editingCalendarSourceId = null;
+
+  const closeSystemWidgetEditorModal = () => {
+    const modal = document.getElementById("system-widget-editor-modal");
+    const form = document.getElementById("system-calendar-source-form");
+    if (form) form.classList.add("hidden");
+    editingCalendarSourceId = null;
+    if (modal) modal.classList.add("hidden");
+  };
+
+  const setCalendarFormStatus = (msg, isError = false) => {
+    const statusEl = document.getElementById("system-calendar-form-status");
+    if (!statusEl) return;
+    statusEl.textContent = msg || "";
+    statusEl.className = `status${isError ? " error" : ""}`;
+  };
+
+  const openCalendarSourceForm = (source = null) => {
+    const form = document.getElementById("system-calendar-source-form");
+    const nameInput = document.getElementById("system-calendar-name-input");
+    const colorInput = document.getElementById("system-calendar-color-input");
+    const urlInput = document.getElementById("system-calendar-url-input");
+    const refreshInput = document.getElementById("system-calendar-refresh-input");
+    if (!form || !nameInput || !colorInput || !urlInput || !refreshInput) return;
+
+    editingCalendarSourceId = source?.id || null;
+    nameInput.value = source?.name || "";
+    colorInput.value = normalizeCalendarColor(source?.color);
+    urlInput.value = source?.url || "";
+    refreshInput.value = String(normalizeCalendarRefreshMinutes(source?.refreshMinutes));
+    setCalendarFormStatus("");
+    form.classList.remove("hidden");
+    nameInput.focus();
+  };
+
+  const renderSystemCalendarSourcesList = async () => {
+    const listEl = document.getElementById("system-calendar-sources-list");
+    const filterInput = document.getElementById("system-calendar-filter-input");
+    if (!listEl) return;
+
+    const draft = await ensureAppearanceDraft();
+    const sources = Array.isArray(draft.calendarSources) ? draft.calendarSources : [];
+    const webcalCount = sources.filter((s) => (s?.type || "webcal") === "webcal").length;
+    const countBadge = document.getElementById("system-calendar-webcal-count");
+    if (countBadge) {
+      countBadge.textContent = `${webcalCount} / ${MAX_WEBCAL_SOURCES}`;
+    }
+    const addCalBtn = document.getElementById("system-calendar-add-btn");
+    if (addCalBtn) {
+      addCalBtn.disabled = webcalCount >= MAX_WEBCAL_SOURCES;
+    }
+    if (filterInput) {
+      filterInput.classList.toggle("hidden", sources.length <= 4);
+    }
+
+    const query = (filterInput?.value || "").trim().toLowerCase();
+    const filtered = query
+      ? sources.filter((s) =>
+          (s.name || "").toLowerCase().includes(query) ||
+          (s.url || "").toLowerCase().includes(query))
+      : sources;
+
+    listEl.replaceChildren();
+    if (filtered.length === 0) {
+      const emptyEl = document.createElement("div");
+      emptyEl.className = "system-calendar-empty";
+      emptyEl.textContent = t("calendarNoSources") || "No calendars added yet.";
+      listEl.appendChild(emptyEl);
+      return;
+    }
+
+    for (const source of filtered) {
+      const row = document.createElement("div");
+      row.className = `system-calendar-row${source.enabled === false ? " is-disabled" : ""}`;
+
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = source.enabled !== false;
+      toggle.title = t("enable") || "Enable";
+      toggle.addEventListener("change", async () => {
+        const nextDraft = await ensureAppearanceDraft();
+        const nextSources = Array.isArray(nextDraft.calendarSources) ? [...nextDraft.calendarSources] : [];
+        const idx = nextSources.findIndex((s) => s.id === source.id);
+        if (idx !== -1) {
+          nextSources[idx] = { ...nextSources[idx], enabled: toggle.checked };
+          nextDraft.calendarSources = nextSources;
+          markSettingsDirty();
+          void renderSystemCalendarSourcesList();
+        }
+      });
+
+      const dot = document.createElement("span");
+      dot.className = "system-calendar-color-dot";
+      dot.style.backgroundColor = normalizeCalendarColor(source.color);
+
+      const info = document.createElement("div");
+      info.className = "system-calendar-row-info";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "system-calendar-row-name";
+      nameEl.textContent = source.name || "Calendar";
+      nameEl.title = source.url || "";
+
+      const typeBadge = document.createElement("span");
+      typeBadge.className = "system-calendar-type-badge";
+      typeBadge.textContent = source.type === "caldav" ? "CalDAV" : "WebCAL";
+
+      const statusBadge = document.createElement("span");
+      statusBadge.className = "system-calendar-status-badge";
+      void getCalendarSourceCacheStatus(source.id).then((cached) => {
+        if (!cached) return;
+        if (cached.lastError) {
+          statusBadge.textContent = "⚠️";
+          statusBadge.title = cached.lastError;
+        } else if (cached.fetchedAt) {
+          statusBadge.textContent = "✓";
+          statusBadge.title = new Date(cached.fetchedAt).toLocaleString();
+        }
+      });
+
+      info.append(nameEl, typeBadge, statusBadge);
+
+      const actions = document.createElement("div");
+      actions.className = "system-calendar-row-actions";
+
+      const refreshBtn = document.createElement("button");
+      refreshBtn.type = "button";
+      refreshBtn.className = "widget-order-btn";
+      refreshBtn.textContent = "🔄";
+      refreshBtn.title = t("refresh") || "Refresh";
+      refreshBtn.addEventListener("click", async () => {
+        refreshBtn.disabled = true;
+        const granted = await requestCalendarSourcePermission(source.url);
+        if (granted) {
+          await fetchWebcalSource(source, { force: true });
+        }
+        refreshBtn.disabled = false;
+        void renderSystemCalendarSourcesList();
+      });
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "widget-order-btn";
+      editBtn.textContent = "✏️";
+      editBtn.title = t("edit") || "Edit";
+      editBtn.addEventListener("click", () => {
+        openCalendarSourceForm(source);
+      });
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "widget-order-btn";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.title = t("delete") || "Delete";
+      deleteBtn.addEventListener("click", async () => {
+        const nextDraft = await ensureAppearanceDraft();
+        nextDraft.calendarSources = (nextDraft.calendarSources || []).filter((s) => s.id !== source.id);
+        markSettingsDirty();
+        await removeCalendarSourceCache(source.id);
+        if (editingCalendarSourceId === source.id) {
+          document.getElementById("system-calendar-source-form")?.classList.add("hidden");
+          editingCalendarSourceId = null;
+        }
+        void renderSystemCalendarSourcesList();
+      });
+
+      actions.append(refreshBtn, editBtn, deleteBtn);
+      row.append(toggle, dot, info, actions);
+      listEl.appendChild(row);
+    }
+  };
+
+  const ensureSystemWidgetModalListeners = () => {
+    if (systemWidgetModalListenersBound) return;
+    const modal = document.getElementById("system-widget-editor-modal");
+    const doneBtn = document.getElementById("system-widget-editor-done-btn");
+    const addCalBtn = document.getElementById("system-calendar-add-btn");
+    const cancelCalBtn = document.getElementById("system-calendar-cancel-btn");
+    const saveCalBtn = document.getElementById("system-calendar-save-btn");
+    const filterInput = document.getElementById("system-calendar-filter-input");
+
+    if (doneBtn) {
+      doneBtn.addEventListener("click", closeSystemWidgetEditorModal);
+    }
+    if (addCalBtn) {
+      addCalBtn.addEventListener("click", () => openCalendarSourceForm(null));
+    }
+    if (cancelCalBtn) {
+      cancelCalBtn.addEventListener("click", () => {
+        document.getElementById("system-calendar-source-form")?.classList.add("hidden");
+        editingCalendarSourceId = null;
+        setCalendarFormStatus("");
+      });
+    }
+    if (filterInput) {
+      filterInput.addEventListener("input", () => {
+        void renderSystemCalendarSourcesList();
+      });
+    }
+    if (saveCalBtn) {
+      saveCalBtn.addEventListener("click", async () => {
+        const nameInput = document.getElementById("system-calendar-name-input");
+        const colorInput = document.getElementById("system-calendar-color-input");
+        const urlInput = document.getElementById("system-calendar-url-input");
+        const refreshInput = document.getElementById("system-calendar-refresh-input");
+        const normalizedUrl = normalizeCalendarSourceUrl(urlInput?.value || "");
+        if (!normalizedUrl) {
+          setCalendarFormStatus(t("calendarInvalidUrl") || "Please enter a valid http(s):// or webcal:// URL.", true);
+          return;
+        }
+
+        saveCalBtn.disabled = true;
+        setCalendarFormStatus(t("loading") || "Checking feed...");
+        const granted = await requestCalendarSourcePermission(normalizedUrl);
+        if (!granted) {
+          saveCalBtn.disabled = false;
+          setCalendarFormStatus(t("calendarPermissionDenied") || "Host permission is required to fetch this calendar.", true);
+          return;
+        }
+
+        const draft = await ensureAppearanceDraft();
+        const existingSources = Array.isArray(draft.calendarSources) ? [...draft.calendarSources] : [];
+        const webcalCount = existingSources.filter((s) => (s?.type || "webcal") === "webcal").length;
+        if (!editingCalendarSourceId && webcalCount >= MAX_WEBCAL_SOURCES) {
+          saveCalBtn.disabled = false;
+          setCalendarFormStatus(`Maximum of ${MAX_WEBCAL_SOURCES} WebCAL calendars reached.`, true);
+          return;
+        }
+        const entry = {
+          id: editingCalendarSourceId || `webcal_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+          type: "webcal",
+          name: (nameInput?.value || "").trim() || "WebCAL",
+          url: normalizedUrl,
+          color: normalizeCalendarColor(colorInput?.value),
+          enabled: true,
+          refreshMinutes: normalizeCalendarRefreshMinutes(refreshInput?.value),
+        };
+
+        const testRes = await fetchWebcalSource(entry, { force: true });
+        if (!testRes.ok) {
+          saveCalBtn.disabled = false;
+          setCalendarFormStatus(testRes.error || "Failed to fetch calendar.", true);
+          return;
+        }
+
+        const existingIdx = existingSources.findIndex((s) => s.id === entry.id);
+        if (existingIdx !== -1) {
+          entry.enabled = existingSources[existingIdx].enabled !== false;
+          existingSources[existingIdx] = entry;
+        } else {
+          existingSources.push(entry);
+        }
+        draft.calendarSources = existingSources;
+        markSettingsDirty();
+
+        saveCalBtn.disabled = false;
+        document.getElementById("system-calendar-source-form")?.classList.add("hidden");
+        editingCalendarSourceId = null;
+        setCalendarFormStatus("");
+        void renderSystemCalendarSourcesList();
+      });
+    }
+    if (modal) {
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeSystemWidgetEditorModal();
+      });
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
+        e.stopPropagation();
+        closeSystemWidgetEditorModal();
+      }
+    }, true);
+    systemWidgetModalListenersBound = true;
+  };
+
+  const openSystemWidgetEditorModal = (widgetKey) => {
+    const builtInDef = WIDGET_REGISTRY[widgetKey];
+    if (!builtInDef) return;
+    ensureSystemWidgetModalListeners();
+    const modal = document.getElementById("system-widget-editor-modal");
+    if (!modal) return;
+    const titleEl = document.getElementById("system-widget-editor-title");
+    if (titleEl) {
+      titleEl.textContent = (builtInDef.key ? t(builtInDef.key) : "") || builtInDef.fallback;
+    }
+    const dateTimeFields = document.getElementById("system-widget-datetime-fields");
+    if (dateTimeFields) {
+      dateTimeFields.classList.toggle("hidden", widgetKey !== "dateTime");
+    }
+    if (widgetKey === "dateTime") {
+      const weekSelect = document.getElementById("calendar-week-start-select");
+      if (weekSelect) {
+        weekSelect.value = settingsState.appearanceDraft?.calendarWeekStartsOn === "sunday" ? "sunday" : "monday";
+        weekSelect.focus();
+      }
+      void renderSystemCalendarSourcesList();
+    }
+    modal.classList.remove("hidden");
+  };
 
   const bindCollapsibleGroupToggle = (containerEl, headerEl, chevronEl, collapsedSet, key) => {
     const isCollapsed = collapsedSet.has(key);
@@ -504,12 +816,26 @@ export function initCustomWidgetsSettings() {
       downBtn.disabled = spaceIdx === -1 || spaceIdx >= sameSpaceKeys.length - 1;
       downBtn.addEventListener("click", () => { void moveWithinSpace(1); });
 
-      actions.append(upBtn, downBtn);
-      if (alignControl) {
-        row.append(nameEl, spaceControl, alignControl, actions);
-      } else {
-        row.append(nameEl, spaceControl, actions);
+      let editSystemBtn = null;
+      if (builtInDef?.configurable) {
+        editSystemBtn = document.createElement("button");
+        editSystemBtn.type = "button";
+        editSystemBtn.className = "widget-order-btn";
+        editSystemBtn.textContent = "✏️";
+        editSystemBtn.title = t("edit") || "Edit";
+        editSystemBtn.setAttribute("aria-label", t("edit") || "Edit");
+        editSystemBtn.addEventListener("click", () => {
+          openSystemWidgetEditorModal(key);
+        });
       }
+
+      actions.append(upBtn, downBtn);
+      const rowNodes = [nameEl];
+      if (editSystemBtn) rowNodes.push(editSystemBtn);
+      rowNodes.push(spaceControl);
+      if (alignControl) rowNodes.push(alignControl);
+      rowNodes.push(actions);
+      row.append(...rowNodes);
       spaceBuckets[bucketKey].push(row);
     });
 

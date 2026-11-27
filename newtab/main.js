@@ -207,6 +207,29 @@ function applyDateTimeVisibility() {
   dateTimeDisplay.style.display = getEffectiveDateTimeEnabled() ? "block" : "none";
 }
 
+if (dateTimeDisplay) {
+  dateTimeDisplay.setAttribute("role", "button");
+  dateTimeDisplay.setAttribute("tabindex", "0");
+  dateTimeDisplay.setAttribute("aria-haspopup", "dialog");
+  dateTimeDisplay.setAttribute("aria-expanded", "false");
+
+  const openOrToggleDateTimeCalendar = async () => {
+    const { toggleDateTimeCalendarPopover } = await import("./calendar-popover.js");
+    await toggleDateTimeCalendarPopover(dateTimeDisplay);
+  };
+
+  dateTimeDisplay.addEventListener("click", () => {
+    void openOrToggleDateTimeCalendar();
+  });
+
+  dateTimeDisplay.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      void openOrToggleDateTimeCalendar();
+    }
+  });
+}
+
 function updateDateTimeEnabledFromConfig(config) {
   const appearance = config?.appearance || {};
   isDateTimeEnabled = appearance.dateTimeSpace !== "disabled" && (appearance.showDateTime ?? true);
@@ -757,6 +780,10 @@ export function updateClock() {
 // Update all UI text elements
 export function updateUIText({ includeModals = true } = {}) {
   window._updateShortcutPaletteButton?.();
+  if (dateTimeDisplay) {
+    dateTimeDisplay.title = t("dateTimeCalendarTitle");
+  }
+  window.refreshDateTimeCalendarPopover?.();
   // Search box & search controls
   const searchBox = document.getElementById("search-box");
   if (searchBox) searchBox.placeholder = t("searchPlaceholder");
