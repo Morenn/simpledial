@@ -2311,5 +2311,26 @@
   },
   "calendarPermissionDenied": {
     "message": "L’autorisation d’accès à l’hôte est requise pour ce calendrier."
+  },
+  "calendarAddCaldavBtn": {
+    "message": "+ Ajouter CalDAV"
+  },
+  "calendarCaldavUrlPlaceholder": {
+    "message": "https://dav.example.com/calendars/user/personal/"
+  },
+  "calendarCaldavUsernamePlaceholder": {
+    "message": "Nom d’utilisateur"
+  },
+  "calendarCaldavPasswordPlaceholder": {
+    "message": "Mot de passe / Mot de passe d’application"
+  },
+  "calendarCaldavSyncNotesLabel": {
+    "message": "Synchroniser les rappels du bloc-notes avec ce calendrier CalDAV"
+  },
+  "calendarNotesSyncTargetLabel": {
+    "message": "Synchro des rappels :"
+  },
+  "calendarNotesSyncNone": {
+    "message": "Aucun"
   }
 }

@@ -391,3 +391,68 @@ export function parseIcsCalendar(icsText, { rangeStartMs = -Infinity, rangeEndMs
 
   return events;
 }
+
+/**
+ * Format an epoch ms timestamp as an RFC 5545 UTC DATE-TIME (YYYYMMDDTHHMMSSZ).
+ * @param {number} ms
+ */
+export function formatIcsUtcDateTime(ms) {
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    `${d.getUTCFullYear()}` +
+    `${pad(d.getUTCMonth() + 1)}` +
+    `${pad(d.getUTCDate())}T` +
+    `${pad(d.getUTCHours())}` +
+    `${pad(d.getUTCMinutes())}` +
+    `${pad(d.getUTCSeconds())}Z`
+  );
+}
+
+function escapeIcsText(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
+}
+
+/**
+ * Serialize a single VEVENT into an RFC 5545 VCALENDAR string for CalDAV PUT.
+ * @param {{ uid: string, summary: string, startMs: number, endMs?: number, description?: string, done?: boolean }} event
+ */
+export function serializeIcsEvent(event) {
+  const uid = String(event?.uid || "")
+    .replace(/[\r\n]+/g, "")
+    .trim()
+    .slice(0, MAX_ICS_UID_LENGTH);
+  const summaryText = event?.done ? `✓ ${event?.summary || ""}` : String(event?.summary || "");
+  const summary = escapeIcsText(summaryText.slice(0, MAX_ICS_SUMMARY_LENGTH));
+  const startMs = Number(event?.startMs);
+  const endMs = Number.isFinite(Number(event?.endMs)) && Number(event.endMs) > startMs
+    ? Number(event.endMs)
+    : startMs + 15 * 60 * 1000;
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Simple Dial//Calendar//EN",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${formatIcsUtcDateTime(Date.now())}`,
+    `DTSTART:${formatIcsUtcDateTime(startMs)}`,
+    `DTEND:${formatIcsUtcDateTime(endMs)}`,
+    `SUMMARY:${summary}`,
+    `STATUS:${event?.done ? "CANCELLED" : "CONFIRMED"}`,
+  ];
+
+  if (event?.description) {
+    lines.push(`DESCRIPTION:${escapeIcsText(String(event.description).slice(0, 500))}`);
+  }
+  if (event?.done) {
+    lines.push("X-SIMPLEDIAL-DONE:1");
+  }
+
+  lines.push("END:VEVENT", "END:VCALENDAR", "");
+  return lines.join("\r\n");
+}

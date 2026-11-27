@@ -2311,5 +2311,26 @@
   },
   "calendarPermissionDenied": {
     "message": "Na načítanie tohto kalendára je potrebné povolenie hostiteľa."
+  },
+  "calendarAddCaldavBtn": {
+    "message": "+ Pridať CalDAV"
+  },
+  "calendarCaldavUrlPlaceholder": {
+    "message": "https://dav.example.com/calendars/user/personal/"
+  },
+  "calendarCaldavUsernamePlaceholder": {
+    "message": "Používateľské meno"
+  },
+  "calendarCaldavPasswordPlaceholder": {
+    "message": "Heslo / Heslo aplikácie"
+  },
+  "calendarCaldavSyncNotesLabel": {
+    "message": "Synchronizovať pripomienky z poznámok do tohto CalDAV kalendára"
+  },
+  "calendarNotesSyncTargetLabel": {
+    "message": "Synchronizácia pripomienok:"
+  },
+  "calendarNotesSyncNone": {
+    "message": "Žiadny"
   }
 }

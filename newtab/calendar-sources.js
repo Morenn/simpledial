@@ -2,8 +2,7 @@ import { isAllowedThemeUrl } from "./color-utils.js";
 import { MAX_ICS_BYTES, parseIcsCalendar } from "./calendar-ics.js";
 
 export const CALENDAR_CACHE_KEY = "myspeeddial-calendar-cache";
-export const MAX_WEBCAL_SOURCES = 10;
-export const MAX_CALDAV_SOURCES = 1;
+export const MAX_CALENDAR_SOURCES = 10;
 export const MAX_CALENDAR_URL_LENGTH = 2048;
 const WEBCAL_TIMEOUT_MS = 10000;
 
@@ -42,10 +41,10 @@ export function normalizeCalendarSources(sources) {
   if (!Array.isArray(sources)) return [];
   const normalized = [];
   const seenIds = new Set();
-  let webcalCount = 0;
-  let caldavCount = 0;
+  let hasNotesSyncTarget = false;
 
   for (const item of sources) {
+    if (normalized.length >= MAX_CALENDAR_SOURCES) break;
     if (!item || typeof item !== "object") continue;
     const id = typeof item.id === "string" && item.id.trim()
       ? item.id.trim()
@@ -53,17 +52,13 @@ export function normalizeCalendarSources(sources) {
     if (seenIds.has(id)) continue;
 
     const type = item.type === "caldav" ? "caldav" : "webcal";
-    if (type === "webcal" && webcalCount >= MAX_WEBCAL_SOURCES) continue;
-    if (type === "caldav" && caldavCount >= MAX_CALDAV_SOURCES) continue;
-
     const url = normalizeCalendarSourceUrl(item.url);
     if (!url) continue;
 
     seenIds.add(id);
-    if (type === "webcal") {
-      webcalCount += 1;
-    } else {
-      caldavCount += 1;
+    const wantsNotesSync = type === "caldav" && Boolean(item.syncNotesReminders) && !hasNotesSyncTarget;
+    if (wantsNotesSync) {
+      hasNotesSyncTarget = true;
     }
 
     normalized.push({
@@ -74,7 +69,7 @@ export function normalizeCalendarSources(sources) {
       color: normalizeCalendarColor(item.color),
       enabled: item.enabled !== false,
       refreshMinutes: normalizeCalendarRefreshMinutes(item.refreshMinutes),
-      syncNotesReminders: Boolean(item.syncNotesReminders),
+      syncNotesReminders: wantsNotesSync,
     });
   }
 
@@ -88,7 +83,7 @@ export async function requestCalendarSourcePermission(rawUrl) {
   return requestRestEndpointPermission(url);
 }
 
-async function readCalendarCacheMap() {
+export async function readCalendarCacheMap() {
   if (typeof chrome === "undefined" || !chrome.storage?.local) return {};
   const stored = await chrome.storage.local.get(CALENDAR_CACHE_KEY);
   const raw = stored?.[CALENDAR_CACHE_KEY];
@@ -97,7 +92,7 @@ async function readCalendarCacheMap() {
 
 let calendarCacheWriteQueue = Promise.resolve();
 
-function updateCalendarCacheMap(mutator) {
+export function updateCalendarCacheMap(mutator) {
   const run = calendarCacheWriteQueue.then(async () => {
     const cacheMap = await readCalendarCacheMap();
     const changed = mutator(cacheMap);
@@ -120,6 +115,42 @@ export async function removeCalendarSourceCache(sourceId) {
     delete cacheMap[sourceId];
     return true;
   });
+}
+
+export async function readResponseTextWithLimit(response, maxBytes = MAX_ICS_BYTES) {
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new Error(`Calendar feed exceeds ${Math.round(maxBytes / (1024 * 1024))} MB limit`);
+  }
+
+  if (response.body?.getReader) {
+    const reader = response.body.getReader();
+    const chunks = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value?.byteLength || 0;
+      if (totalBytes > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new Error(`Calendar feed exceeds ${Math.round(maxBytes / (1024 * 1024))} MB limit`);
+      }
+      chunks.push(value);
+    }
+    const merged = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(merged);
+  }
+
+  const text = await response.text();
+  if (text.length > maxBytes) {
+    throw new Error(`Calendar feed exceeds ${Math.round(maxBytes / (1024 * 1024))} MB limit`);
+  }
+  return text;
 }
 
 /**
@@ -184,39 +215,7 @@ export async function fetchWebcalSource(
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const contentLength = Number(response.headers.get("content-length"));
-    if (Number.isFinite(contentLength) && contentLength > MAX_ICS_BYTES) {
-      throw new Error("Calendar feed exceeds 2 MB limit");
-    }
-
-    let icsText = "";
-    if (response.body?.getReader) {
-      const reader = response.body.getReader();
-      const chunks = [];
-      let totalBytes = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        totalBytes += value?.byteLength || 0;
-        if (totalBytes > MAX_ICS_BYTES) {
-          await reader.cancel().catch(() => {});
-          throw new Error("Calendar feed exceeds 2 MB limit");
-        }
-        chunks.push(value);
-      }
-      const merged = new Uint8Array(totalBytes);
-      let offset = 0;
-      for (const chunk of chunks) {
-        merged.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      icsText = new TextDecoder().decode(merged);
-    } else {
-      icsText = await response.text();
-      if (icsText.length > MAX_ICS_BYTES) {
-        throw new Error("Calendar feed exceeds 2 MB limit");
-      }
-    }
+    const icsText = await readResponseTextWithLimit(response, MAX_ICS_BYTES);
     const nextEntry = {
       icsText,
       etag: response.headers.get("etag") || "",
@@ -266,11 +265,17 @@ export async function loadExternalCalendarEvents({
 
   const results = await Promise.all(
     normalized.map(async (source) => {
-      if (source.type === "webcal") {
-        const res = await fetchWebcalSource(source, { force, rangeStartMs, rangeEndMs, nowMs });
+      if (source.type === "webcal" || source.type === "caldav") {
+        let res;
+        if (source.type === "caldav") {
+          const { fetchCaldavSource } = await import("./calendar-caldav.js");
+          res = await fetchCaldavSource(source, { force, rangeStartMs, rangeEndMs, nowMs });
+        } else {
+          res = await fetchWebcalSource(source, { force, rangeStartMs, rangeEndMs, nowMs });
+        }
         return res.events.map((ev) => ({
-          id: `webcal:${source.id}:${ev.uid}:${ev.startMs}`,
-          source: "webcal",
+          id: `${source.type}:${source.id}:${ev.uid}:${ev.startMs}`,
+          source: source.type,
           calendarId: source.id,
           calendarName: source.name,
           color: source.color,
@@ -283,7 +288,6 @@ export async function loadExternalCalendarEvents({
           status: ev.startMs < nowMs ? "past" : "future",
         }));
       }
-      // Future CalDAV provider plugs in here for source.type === "caldav".
       return [];
     }),
   );

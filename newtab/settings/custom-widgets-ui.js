@@ -4,7 +4,7 @@ import { render, calculateGridLayout } from "../render.js";
 import { applySideSpaces, applyTileSize } from "../theme.js";
 import { formatBackupTimestamp } from "../backup.js";
 import {
-  MAX_WEBCAL_SOURCES,
+  MAX_CALENDAR_SOURCES,
   normalizeCalendarSourceUrl,
   normalizeCalendarColor,
   normalizeCalendarRefreshMinutes,
@@ -13,6 +13,13 @@ import {
   getCalendarSourceCacheStatus,
   removeCalendarSourceCache,
 } from "../calendar-sources.js";
+import {
+  deleteCaldavCredentials,
+  fetchCaldavSource,
+  loadCaldavCredentials,
+  saveCaldavCredentials,
+  syncNotesRemindersToCaldav,
+} from "../calendar-caldav.js";
 import {
   normalizeWidgetOrder,
   moveWidgetGroupInOrder,
@@ -184,12 +191,14 @@ export function initCustomWidgetsSettings() {
 
   let systemWidgetModalListenersBound = false;
   let editingCalendarSourceId = null;
+  let editingCalendarSourceType = "webcal";
 
   const closeSystemWidgetEditorModal = () => {
     const modal = document.getElementById("system-widget-editor-modal");
     const form = document.getElementById("system-calendar-source-form");
     if (form) form.classList.add("hidden");
     editingCalendarSourceId = null;
+    editingCalendarSourceType = "webcal";
     if (modal) modal.classList.add("hidden");
   };
 
@@ -200,19 +209,56 @@ export function initCustomWidgetsSettings() {
     statusEl.className = `status${isError ? " error" : ""}`;
   };
 
-  const openCalendarSourceForm = (source = null) => {
+  const openCalendarSourceForm = (source = null, typeOverride = "webcal") => {
     const form = document.getElementById("system-calendar-source-form");
     const nameInput = document.getElementById("system-calendar-name-input");
     const colorInput = document.getElementById("system-calendar-color-input");
     const urlInput = document.getElementById("system-calendar-url-input");
     const refreshInput = document.getElementById("system-calendar-refresh-input");
+    const caldavFields = document.getElementById("system-calendar-caldav-fields");
+    const userInput = document.getElementById("system-calendar-username-input");
+    const passInput = document.getElementById("system-calendar-password-input");
+    const syncNotesCheckbox = document.getElementById("system-calendar-sync-notes-checkbox");
     if (!form || !nameInput || !colorInput || !urlInput || !refreshInput) return;
 
     editingCalendarSourceId = source?.id || null;
+    editingCalendarSourceType = source?.type === "caldav" || typeOverride === "caldav" ? "caldav" : "webcal";
+    const isCaldav = editingCalendarSourceType === "caldav";
+
     nameInput.value = source?.name || "";
     colorInput.value = normalizeCalendarColor(source?.color);
     urlInput.value = source?.url || "";
+    urlInput.placeholder = isCaldav
+      ? (t("calendarCaldavUrlPlaceholder") || "https://dav.example.com/calendars/user/personal/")
+      : (t("calendarUrlPlaceholder") || "https://... or webcal://...ics");
     refreshInput.value = String(normalizeCalendarRefreshMinutes(source?.refreshMinutes));
+
+    if (caldavFields) caldavFields.classList.toggle("hidden", !isCaldav);
+    if (userInput) userInput.value = "";
+    if (passInput) passInput.value = "";
+    if (syncNotesCheckbox) {
+      if (source) {
+        syncNotesCheckbox.checked = Boolean(source.syncNotesReminders);
+      } else {
+        const hasExistingSyncTarget = (settingsState.appearanceDraft?.calendarSources || []).some(
+          (s) => s?.type === "caldav" && s.syncNotesReminders,
+        );
+        syncNotesCheckbox.checked = !hasExistingSyncTarget;
+      }
+    }
+    if (isCaldav && source?.id && userInput) {
+      void loadCaldavCredentials(source.id).then((creds) => {
+        if (editingCalendarSourceId === source.id && creds) {
+          userInput.value = creds.username || "";
+          if (passInput && creds.ok && creds.password) {
+            passInput.placeholder = "••••••••";
+          }
+        }
+      });
+    } else if (passInput) {
+      passInput.placeholder = t("calendarCaldavPasswordPlaceholder") || "Password / App password";
+    }
+
     setCalendarFormStatus("");
     form.classList.remove("hidden");
     nameInput.focus();
@@ -225,17 +271,45 @@ export function initCustomWidgetsSettings() {
 
     const draft = await ensureAppearanceDraft();
     const sources = Array.isArray(draft.calendarSources) ? draft.calendarSources : [];
-    const webcalCount = sources.filter((s) => (s?.type || "webcal") === "webcal").length;
+    const totalCount = sources.length;
     const countBadge = document.getElementById("system-calendar-webcal-count");
     if (countBadge) {
-      countBadge.textContent = `${webcalCount} / ${MAX_WEBCAL_SOURCES}`;
+      countBadge.textContent = `${totalCount} / ${MAX_CALENDAR_SOURCES}`;
     }
+    const atLimit = totalCount >= MAX_CALENDAR_SOURCES;
     const addCalBtn = document.getElementById("system-calendar-add-btn");
     if (addCalBtn) {
-      addCalBtn.disabled = webcalCount >= MAX_WEBCAL_SOURCES;
+      addCalBtn.disabled = atLimit;
+    }
+    const addCaldavBtn = document.getElementById("system-calendar-add-caldav-btn");
+    if (addCaldavBtn) {
+      addCaldavBtn.disabled = atLimit;
     }
     if (filterInput) {
       filterInput.classList.toggle("hidden", sources.length <= 4);
+    }
+
+    const caldavSources = sources.filter((s) => s?.type === "caldav");
+    const notesTargetRow = document.getElementById("system-calendar-notes-target-row");
+    const notesTargetSelect = document.getElementById("system-calendar-notes-target-select");
+    if (notesTargetRow && notesTargetSelect) {
+      notesTargetRow.classList.toggle("hidden", caldavSources.length === 0);
+      notesTargetSelect.replaceChildren();
+      const noneOpt = document.createElement("option");
+      noneOpt.value = "";
+      noneOpt.textContent = t("calendarNotesSyncNone") || "None";
+      notesTargetSelect.appendChild(noneOpt);
+      let activeCaldavId = "";
+      for (const cal of caldavSources) {
+        const opt = document.createElement("option");
+        opt.value = cal.id;
+        opt.textContent = cal.name || "CalDAV";
+        notesTargetSelect.appendChild(opt);
+        if (cal.syncNotesReminders && !activeCaldavId) {
+          activeCaldavId = cal.id;
+        }
+      }
+      notesTargetSelect.value = activeCaldavId;
     }
 
     const query = (filterInput?.value || "").trim().toLowerCase();
@@ -308,6 +382,30 @@ export function initCustomWidgetsSettings() {
       const actions = document.createElement("div");
       actions.className = "system-calendar-row-actions";
 
+      if (source.type === "caldav") {
+        const isSyncTarget = Boolean(source.syncNotesReminders);
+        const syncNotesBtn = document.createElement("button");
+        syncNotesBtn.type = "button";
+        syncNotesBtn.className = `widget-order-btn system-calendar-sync-btn${isSyncTarget ? " is-active" : ""}`;
+        syncNotesBtn.textContent = "📝";
+        syncNotesBtn.title = t("calendarCaldavSyncNotesLabel") || "Sync Notepad reminders to this CalDAV calendar";
+        syncNotesBtn.setAttribute("aria-pressed", String(isSyncTarget));
+        syncNotesBtn.addEventListener("click", async () => {
+          const nextDraft = await ensureAppearanceDraft();
+          const nextValue = !isSyncTarget;
+          nextDraft.calendarSources = (nextDraft.calendarSources || []).map((s) => {
+            if (s.type !== "caldav") return s;
+            return {
+              ...s,
+              syncNotesReminders: s.id === source.id ? nextValue : false,
+            };
+          });
+          markSettingsDirty();
+          void renderSystemCalendarSourcesList();
+        });
+        actions.appendChild(syncNotesBtn);
+      }
+
       const refreshBtn = document.createElement("button");
       refreshBtn.type = "button";
       refreshBtn.className = "widget-order-btn";
@@ -317,7 +415,14 @@ export function initCustomWidgetsSettings() {
         refreshBtn.disabled = true;
         const granted = await requestCalendarSourcePermission(source.url);
         if (granted) {
-          await fetchWebcalSource(source, { force: true });
+          if (source.type === "caldav") {
+            await fetchCaldavSource(source, { force: true });
+            if (source.syncNotesReminders) {
+              await syncNotesRemindersToCaldav().catch(() => {});
+            }
+          } else {
+            await fetchWebcalSource(source, { force: true });
+          }
         }
         refreshBtn.disabled = false;
         void renderSystemCalendarSourcesList();
@@ -329,7 +434,7 @@ export function initCustomWidgetsSettings() {
       editBtn.textContent = "✏️";
       editBtn.title = t("edit") || "Edit";
       editBtn.addEventListener("click", () => {
-        openCalendarSourceForm(source);
+        openCalendarSourceForm(source, source.type || "webcal");
       });
 
       const deleteBtn = document.createElement("button");
@@ -342,9 +447,13 @@ export function initCustomWidgetsSettings() {
         nextDraft.calendarSources = (nextDraft.calendarSources || []).filter((s) => s.id !== source.id);
         markSettingsDirty();
         await removeCalendarSourceCache(source.id);
+        if (source.type === "caldav") {
+          await deleteCaldavCredentials(source.id);
+        }
         if (editingCalendarSourceId === source.id) {
           document.getElementById("system-calendar-source-form")?.classList.add("hidden");
           editingCalendarSourceId = null;
+          editingCalendarSourceType = "webcal";
         }
         void renderSystemCalendarSourcesList();
       });
@@ -360,6 +469,7 @@ export function initCustomWidgetsSettings() {
     const modal = document.getElementById("system-widget-editor-modal");
     const doneBtn = document.getElementById("system-widget-editor-done-btn");
     const addCalBtn = document.getElementById("system-calendar-add-btn");
+    const addCaldavBtn = document.getElementById("system-calendar-add-caldav-btn");
     const cancelCalBtn = document.getElementById("system-calendar-cancel-btn");
     const saveCalBtn = document.getElementById("system-calendar-save-btn");
     const filterInput = document.getElementById("system-calendar-filter-input");
@@ -368,17 +478,34 @@ export function initCustomWidgetsSettings() {
       doneBtn.addEventListener("click", closeSystemWidgetEditorModal);
     }
     if (addCalBtn) {
-      addCalBtn.addEventListener("click", () => openCalendarSourceForm(null));
+      addCalBtn.addEventListener("click", () => openCalendarSourceForm(null, "webcal"));
+    }
+    if (addCaldavBtn) {
+      addCaldavBtn.addEventListener("click", () => openCalendarSourceForm(null, "caldav"));
     }
     if (cancelCalBtn) {
       cancelCalBtn.addEventListener("click", () => {
         document.getElementById("system-calendar-source-form")?.classList.add("hidden");
         editingCalendarSourceId = null;
+        editingCalendarSourceType = "webcal";
         setCalendarFormStatus("");
       });
     }
     if (filterInput) {
       filterInput.addEventListener("input", () => {
+        void renderSystemCalendarSourcesList();
+      });
+    }
+    const notesTargetSelect = document.getElementById("system-calendar-notes-target-select");
+    if (notesTargetSelect) {
+      notesTargetSelect.addEventListener("change", async () => {
+        const selectedId = notesTargetSelect.value || "";
+        const nextDraft = await ensureAppearanceDraft();
+        nextDraft.calendarSources = (nextDraft.calendarSources || []).map((s) => {
+          if (s.type !== "caldav") return s;
+          return { ...s, syncNotesReminders: s.id === selectedId };
+        });
+        markSettingsDirty();
         void renderSystemCalendarSourcesList();
       });
     }
@@ -388,6 +515,10 @@ export function initCustomWidgetsSettings() {
         const colorInput = document.getElementById("system-calendar-color-input");
         const urlInput = document.getElementById("system-calendar-url-input");
         const refreshInput = document.getElementById("system-calendar-refresh-input");
+        const userInput = document.getElementById("system-calendar-username-input");
+        const passInput = document.getElementById("system-calendar-password-input");
+        const syncNotesCheckbox = document.getElementById("system-calendar-sync-notes-checkbox");
+        const isCaldav = editingCalendarSourceType === "caldav";
         const normalizedUrl = normalizeCalendarSourceUrl(urlInput?.value || "");
         if (!normalizedUrl) {
           setCalendarFormStatus(t("calendarInvalidUrl") || "Please enter a valid http(s):// or webcal:// URL.", true);
@@ -405,29 +536,50 @@ export function initCustomWidgetsSettings() {
 
         const draft = await ensureAppearanceDraft();
         const existingSources = Array.isArray(draft.calendarSources) ? [...draft.calendarSources] : [];
-        const webcalCount = existingSources.filter((s) => (s?.type || "webcal") === "webcal").length;
-        if (!editingCalendarSourceId && webcalCount >= MAX_WEBCAL_SOURCES) {
+        if (!editingCalendarSourceId && existingSources.length >= MAX_CALENDAR_SOURCES) {
           saveCalBtn.disabled = false;
-          setCalendarFormStatus(`Maximum of ${MAX_WEBCAL_SOURCES} WebCAL calendars reached.`, true);
+          setCalendarFormStatus(`Maximum of ${MAX_CALENDAR_SOURCES} calendars reached.`, true);
           return;
         }
+
+        const sourceId = editingCalendarSourceId || `${isCaldav ? "caldav" : "webcal"}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
         const entry = {
-          id: editingCalendarSourceId || `webcal_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-          type: "webcal",
-          name: (nameInput?.value || "").trim() || "WebCAL",
+          id: sourceId,
+          type: isCaldav ? "caldav" : "webcal",
+          name: (nameInput?.value || "").trim() || (isCaldav ? "CalDAV" : "WebCAL"),
           url: normalizedUrl,
           color: normalizeCalendarColor(colorInput?.value),
           enabled: true,
           refreshMinutes: normalizeCalendarRefreshMinutes(refreshInput?.value),
+          syncNotesReminders: isCaldav ? Boolean(syncNotesCheckbox?.checked) : false,
         };
 
-        const testRes = await fetchWebcalSource(entry, { force: true });
+        if (isCaldav) {
+          await saveCaldavCredentials(sourceId, {
+            username: userInput?.value || "",
+            password: passInput?.value || "",
+          });
+        }
+
+        const testRes = isCaldav
+          ? await fetchCaldavSource(entry, { force: true })
+          : await fetchWebcalSource(entry, { force: true });
         if (!testRes.ok) {
+          if (isCaldav && !editingCalendarSourceId) {
+            await deleteCaldavCredentials(sourceId);
+          }
           saveCalBtn.disabled = false;
           setCalendarFormStatus(testRes.error || "Failed to fetch calendar.", true);
           return;
         }
 
+        if (entry.syncNotesReminders) {
+          for (let i = 0; i < existingSources.length; i += 1) {
+            if (existingSources[i].id !== entry.id && existingSources[i].syncNotesReminders) {
+              existingSources[i] = { ...existingSources[i], syncNotesReminders: false };
+            }
+          }
+        }
         const existingIdx = existingSources.findIndex((s) => s.id === entry.id);
         if (existingIdx !== -1) {
           entry.enabled = existingSources[existingIdx].enabled !== false;
@@ -441,13 +593,9 @@ export function initCustomWidgetsSettings() {
         saveCalBtn.disabled = false;
         document.getElementById("system-calendar-source-form")?.classList.add("hidden");
         editingCalendarSourceId = null;
+        editingCalendarSourceType = "webcal";
         setCalendarFormStatus("");
         void renderSystemCalendarSourcesList();
-      });
-    }
-    if (modal) {
-      modal.addEventListener("click", (e) => {
-        if (e.target === modal) closeSystemWidgetEditorModal();
       });
     }
     document.addEventListener("keydown", (e) => {

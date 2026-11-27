@@ -6274,6 +6274,22 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   gap: 0.45rem;
 }
 
+.system-calendar-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.system-calendar-caldav-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.system-calendar-caldav-fields .system-calendar-form-row > input {
+  flex: 1;
+}
+
 .system-calendar-section-title {
   font-size: 0.92rem;
   font-weight: 600;
@@ -6393,6 +6409,18 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   display: inline-flex;
   gap: 0.25rem;
   flex-shrink: 0;
+}
+
+.system-calendar-sync-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.system-calendar-notes-target-row {
+  margin-top: 0.25rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border);
 }
 
 #date-time-display[role="button"] {
@@ -6589,9 +6617,10 @@ body.theme-light .datetime-calendar-day.has-reminder-past {
 }
 
 .datetime-calendar-dot {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--bg2);
 }
 
 .datetime-calendar-day.is-selected {

@@ -2311,5 +2311,26 @@
   },
   "calendarPermissionDenied": {
     "message": "Pro načtení tohoto kalendáře je potřeba oprávnění hostitele."
+  },
+  "calendarAddCaldavBtn": {
+    "message": "+ Přidat CalDAV"
+  },
+  "calendarCaldavUrlPlaceholder": {
+    "message": "https://dav.example.com/calendars/user/personal/"
+  },
+  "calendarCaldavUsernamePlaceholder": {
+    "message": "Uživatelské jméno"
+  },
+  "calendarCaldavPasswordPlaceholder": {
+    "message": "Heslo / Heslo aplikace"
+  },
+  "calendarCaldavSyncNotesLabel": {
+    "message": "Synchronizovat připomínky z poznámek do tohoto CalDAV kalendáře"
+  },
+  "calendarNotesSyncTargetLabel": {
+    "message": "Synchronizace připomínek:"
+  },
+  "calendarNotesSyncNone": {
+    "message": "Žádný"
   }
 }

@@ -11,11 +11,16 @@ import {
   formatLocalDateKey,
   indexCalendarEventsByDate,
 } from "../newtab/calendar-events.js";
-import { MAX_ICS_BYTES, MAX_ICS_SUMMARY_LENGTH, parseIcsCalendar } from "../newtab/calendar-ics.js";
 import {
-  MAX_CALDAV_SOURCES,
+  MAX_ICS_BYTES,
+  MAX_ICS_SUMMARY_LENGTH,
+  parseIcsCalendar,
+  serializeIcsEvent,
+} from "../newtab/calendar-ics.js";
+import { parseCaldavMultistatusXml } from "../newtab/calendar-caldav.js";
+import {
+  MAX_CALENDAR_SOURCES,
   MAX_CALENDAR_URL_LENGTH,
-  MAX_WEBCAL_SOURCES,
   normalizeCalendarSourceUrl,
   normalizeCalendarSources,
 } from "../newtab/calendar-sources.js";
@@ -220,25 +225,26 @@ test("indexCalendarEventsByDate spans multi-day external events and preserves no
   assert.equal(byDate.has("2026-12-27"), false); // DTEND is exclusive
 });
 
-test("calendar bounds enforce per-type source limits, URL length, summary truncation, and max ICS size", () => {
+test("calendar bounds enforce combined source limit, single notes-sync target, URL length, summary truncation, and max ICS size", () => {
   const longUrl = `https://example.com/${"a".repeat(MAX_CALENDAR_URL_LENGTH)}`;
   assert.equal(normalizeCalendarSourceUrl(longUrl), "");
 
-  const manyWebcals = Array.from({ length: MAX_WEBCAL_SOURCES + 5 }, (_, i) => ({
+  const manyWebcals = Array.from({ length: 7 }, (_, i) => ({
     id: `w_${i}`,
     type: "webcal",
     name: `WebCAL ${i}`,
     url: `https://example.com/${i}.ics`,
   }));
-  const manyCaldavs = Array.from({ length: MAX_CALDAV_SOURCES + 3 }, (_, i) => ({
+  const manyCaldavs = Array.from({ length: 6 }, (_, i) => ({
     id: `d_${i}`,
     type: "caldav",
     name: `CalDAV ${i}`,
     url: `https://caldav.example.com/${i}/`,
+    syncNotesReminders: true,
   }));
   const normalized = normalizeCalendarSources([...manyWebcals, ...manyCaldavs]);
-  assert.equal(normalized.filter((s) => s.type === "webcal").length, MAX_WEBCAL_SOURCES);
-  assert.equal(normalized.filter((s) => s.type === "caldav").length, MAX_CALDAV_SOURCES);
+  assert.equal(normalized.length, MAX_CALENDAR_SOURCES);
+  assert.equal(normalized.filter((s) => s.syncNotesReminders).length, 1);
 
   const longSummary = "X".repeat(MAX_ICS_SUMMARY_LENGTH + 50);
   const ics = [
@@ -282,4 +288,59 @@ test("parseIcsCalendar includes date-only UNTIL day and expands long-running wee
   });
   assert.equal(untilEvents.filter((e) => e.uid === "until-inclusive").length, 3);
   assert.ok(untilEvents.some((e) => e.uid === "old-weekly"));
+});
+
+test("serializeIcsEvent and parseCaldavMultistatusXml round-trip VEVENTs", () => {
+  const startMs = Date.UTC(2026, 10, 27, 14, 30, 0);
+  const ics = serializeIcsEvent({
+    uid: "simpledial-note-nt1",
+    summary: "Pay bills, check mail",
+    description: "Finance",
+    startMs,
+    done: false,
+  });
+
+  const xml = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">',
+    "  <d:response>",
+    "    <d:href>/calendars/user/personal/simpledial-note-nt1.ics</d:href>",
+    "    <d:propstat>",
+    "      <d:prop>",
+    '        <d:getetag>"abc-123"</d:getetag>',
+    `        <cal:calendar-data>${ics.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</cal:calendar-data>`,
+    "      </d:prop>",
+    "    </d:propstat>",
+    "  </d:response>",
+    "</d:multistatus>",
+  ].join("\n");
+
+  const items = parseCaldavMultistatusXml(xml, "https://dav.example.com/calendars/user/personal/");
+  assert.equal(items.length, 1);
+  assert.equal(items[0].href, "https://dav.example.com/calendars/user/personal/simpledial-note-nt1.ics");
+  assert.equal(items[0].etag, '"abc-123"');
+
+  const parsed = parseIcsCalendar(items[0].icsText);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].uid, "simpledial-note-nt1");
+  assert.equal(parsed[0].title, "Pay bills, check mail");
+  assert.equal(parsed[0].startMs, startMs);
+
+  // Security: UID newlines are stripped and cross-origin <href> is rejected.
+  const injectedIcs = serializeIcsEvent({
+    uid: "id-1\r\nATTENDEE:mailto:evil@example.com",
+    summary: "Safe",
+    startMs,
+  });
+  assert.equal(injectedIcs.includes("\r\nATTENDEE:"), false);
+
+  const crossOriginXml = [
+    '<d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">',
+    "  <d:response>",
+    "    <d:href>https://evil.example.com/steal.ics</d:href>",
+    `    <d:propstat><d:prop><cal:calendar-data>${ics.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</cal:calendar-data></d:prop></d:propstat>`,
+    "  </d:response>",
+    "</d:multistatus>",
+  ].join("\n");
+  assert.equal(parseCaldavMultistatusXml(crossOriginXml, "https://dav.example.com/cal/").length, 0);
 });

@@ -1228,7 +1228,10 @@
               <span class="system-calendar-section-title" data-i18n="calendarSourcesTitle">Calendars</span>
               <span id="system-calendar-webcal-count" class="system-calendar-count-badge">0 / 10</span>
             </div>
-            <button type="button" id="system-calendar-add-btn" class="icon-btn" data-i18n="calendarAddWebcalBtn">+ Add WebCAL</button>
+            <div class="system-calendar-header-actions">
+              <button type="button" id="system-calendar-add-btn" class="icon-btn" data-i18n="calendarAddWebcalBtn">+ Add WebCAL</button>
+              <button type="button" id="system-calendar-add-caldav-btn" class="icon-btn" data-i18n="calendarAddCaldavBtn">+ Add CalDAV</button>
+            </div>
           </div>
 
           <input type="search" id="system-calendar-filter-input" class="sync-compact-input hidden" data-i18n-placeholder="calendarFilterPlaceholder" placeholder="Filter calendars..." aria-label="Filter calendars">
@@ -1239,6 +1242,16 @@
               <input type="color" id="system-calendar-color-input" class="system-calendar-color-input" value="#4a6bff" aria-label="Calendar color">
             </div>
             <input type="url" id="system-calendar-url-input" class="sync-compact-input" data-i18n-placeholder="calendarUrlPlaceholder" placeholder="https://... or webcal://...ics" aria-label="Calendar URL">
+            <div id="system-calendar-caldav-fields" class="system-calendar-caldav-fields hidden">
+              <div class="system-calendar-form-row">
+                <input type="text" id="system-calendar-username-input" class="sync-compact-input" maxlength="256" autocomplete="off" data-i18n-placeholder="calendarCaldavUsernamePlaceholder" placeholder="Username" aria-label="CalDAV username">
+                <input type="password" id="system-calendar-password-input" class="sync-compact-input" maxlength="512" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-i18n-placeholder="calendarCaldavPasswordPlaceholder" placeholder="Password / App password" aria-label="CalDAV password">
+              </div>
+              <label class="checkbox-row">
+                <input type="checkbox" id="system-calendar-sync-notes-checkbox" checked>
+                <span data-i18n="calendarCaldavSyncNotesLabel">Sync Notepad reminders to this CalDAV calendar</span>
+              </label>
+            </div>
             <div class="system-calendar-form-row">
               <label for="system-calendar-refresh-input" data-i18n="calendarRefreshLabel">Refresh (min):</label>
               <input type="number" id="system-calendar-refresh-input" class="appearance-number-input" min="5" max="1440" value="60">
@@ -1251,6 +1264,11 @@
           </div>
 
           <div id="system-calendar-sources-list" class="system-calendar-sources-list"></div>
+
+          <div id="system-calendar-notes-target-row" class="appearance-slider-row system-calendar-notes-target-row hidden">
+            <label for="system-calendar-notes-target-select" data-i18n="calendarNotesSyncTargetLabel">Notepad reminders sync:</label>
+            <select id="system-calendar-notes-target-select" class="appearance-select"></select>
+          </div>
         </div>
       </div>
       <div class="modal-buttons">

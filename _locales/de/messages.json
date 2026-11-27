@@ -2311,5 +2311,26 @@
   },
   "calendarPermissionDenied": {
     "message": "Für diesen Kalender ist eine Host-Berechtigung erforderlich."
+  },
+  "calendarAddCaldavBtn": {
+    "message": "+ CalDAV hinzufügen"
+  },
+  "calendarCaldavUrlPlaceholder": {
+    "message": "https://dav.example.com/calendars/user/personal/"
+  },
+  "calendarCaldavUsernamePlaceholder": {
+    "message": "Benutzername"
+  },
+  "calendarCaldavPasswordPlaceholder": {
+    "message": "Passwort / App-Passwort"
+  },
+  "calendarCaldavSyncNotesLabel": {
+    "message": "Notiz-Erinnerungen mit diesem CalDAV-Kalender synchronisieren"
+  },
+  "calendarNotesSyncTargetLabel": {
+    "message": "Notiz-Erinnerungen synchronisieren:"
+  },
+  "calendarNotesSyncNone": {
+    "message": "Keiner"
   }
 }

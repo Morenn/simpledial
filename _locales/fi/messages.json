@@ -2311,5 +2311,26 @@
   },
   "calendarPermissionDenied": {
     "message": "Kalenterin hakeminen vaatii isäntäoikeuden."
+  },
+  "calendarAddCaldavBtn": {
+    "message": "+ Lisää CalDAV"
+  },
+  "calendarCaldavUrlPlaceholder": {
+    "message": "https://dav.example.com/calendars/user/personal/"
+  },
+  "calendarCaldavUsernamePlaceholder": {
+    "message": "Käyttäjätunnus"
+  },
+  "calendarCaldavPasswordPlaceholder": {
+    "message": "Salasana / Sovellussalasana"
+  },
+  "calendarCaldavSyncNotesLabel": {
+    "message": "Synkronoi muistiinpanojen muistutukset tähän CalDAV-kalenteriin"
+  },
+  "calendarNotesSyncTargetLabel": {
+    "message": "Muistutusten synkronointi:"
+  },
+  "calendarNotesSyncNone": {
+    "message": "Ei mitään"
   }
 }

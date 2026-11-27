@@ -23,6 +23,10 @@ let isPopoverOpen = false;
 let listenersAttached = false;
 let storageListenerAttached = false;
 let viewLoadGeneration = 0;
+let lastManualRefreshAt = 0;
+let isManualRefreshInFlight = false;
+let refreshCooldownTimerId = 0;
+const MANUAL_REFRESH_COOLDOWN_MS = 30000;
 
 function getVisibleMonthRange(year, month) {
   return {
@@ -31,13 +35,14 @@ function getVisibleMonthRange(year, month) {
   };
 }
 
-async function reloadEventsForCurrentView() {
+async function reloadEventsForCurrentView({ forceExternal = false } = {}) {
   const gen = ++viewLoadGeneration;
   const { rangeStartMs, rangeEndMs } = getVisibleMonthRange(viewYear, viewMonth);
   const loaded = await loadCalendarEvents({
     sources: activeCalendarSources,
     rangeStartMs,
     rangeEndMs,
+    forceExternal,
   });
   if (gen !== viewLoadGeneration) return false;
   rawEvents = loaded.events;
@@ -154,6 +159,56 @@ function renderPopover() {
   });
 
   nav.append(prevBtn, todayBtn, nextBtn);
+  const hasActiveExternalCalendar = activeCalendarSources.some(
+    (s) => s && (s.type === "webcal" || s.type === "caldav") && Boolean(s.url) && s.enabled !== false,
+  );
+  if (hasActiveExternalCalendar) {
+    const refreshBtn = document.createElement("button");
+    refreshBtn.type = "button";
+    refreshBtn.className = "datetime-calendar-nav-btn";
+    refreshBtn.textContent = "↻";
+    const remainingMs = Math.max(0, MANUAL_REFRESH_COOLDOWN_MS - (Date.now() - lastManualRefreshAt));
+    const onCooldown = isManualRefreshInFlight || remainingMs > 0;
+    refreshBtn.disabled = onCooldown;
+    refreshBtn.title = remainingMs > 0
+      ? `${t("refresh") || "Refresh"} (${Math.ceil(remainingMs / 1000)}s)`
+      : (t("refresh") || "Refresh");
+    refreshBtn.setAttribute("aria-label", t("refresh") || "Refresh");
+    if (remainingMs > 0 && !refreshCooldownTimerId) {
+      refreshCooldownTimerId = setTimeout(() => {
+        refreshCooldownTimerId = 0;
+        if (isPopoverOpen) {
+          renderPopover();
+        }
+      }, remainingMs + 50);
+    }
+    refreshBtn.addEventListener("click", () => {
+      const now = Date.now();
+      if (isManualRefreshInFlight || now - lastManualRefreshAt < MANUAL_REFRESH_COOLDOWN_MS) {
+        return;
+      }
+      isManualRefreshInFlight = true;
+      lastManualRefreshAt = now;
+      refreshBtn.disabled = true;
+      if (refreshCooldownTimerId) {
+        clearTimeout(refreshCooldownTimerId);
+      }
+      refreshCooldownTimerId = setTimeout(() => {
+        refreshCooldownTimerId = 0;
+        if (isPopoverOpen) {
+          renderPopover();
+        }
+      }, MANUAL_REFRESH_COOLDOWN_MS + 50);
+      void reloadEventsForCurrentView({ forceExternal: true }).finally(() => {
+        isManualRefreshInFlight = false;
+        if (isPopoverOpen) {
+          renderPopover();
+          positionPopover();
+        }
+      });
+    });
+    nav.appendChild(refreshBtn);
+  }
   header.append(title, nav);
 
   const table = document.createElement("div");

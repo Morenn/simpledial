@@ -258,6 +258,9 @@ function updateNotesData(widgetId, updater) {
     const next = normalizeNotesWidgetData(updater(current));
     notesDataCache.set(widgetId, next);
     await persistNotesStore();
+    void import("../calendar-caldav.js")
+      .then((m) => m.syncNotesRemindersToCaldav())
+      .catch(() => {});
     refreshNotesWidgetDom(widgetId);
     if (activeModalWidgetId === widgetId) {
       renderNotesModalContent(widgetId);

@@ -2311,5 +2311,26 @@
   },
   "calendarPermissionDenied": {
     "message": "Host permission is required to fetch this calendar."
+  },
+  "calendarAddCaldavBtn": {
+    "message": "+ Add CalDAV"
+  },
+  "calendarCaldavUrlPlaceholder": {
+    "message": "https://dav.example.com/calendars/user/personal/"
+  },
+  "calendarCaldavUsernamePlaceholder": {
+    "message": "Username"
+  },
+  "calendarCaldavPasswordPlaceholder": {
+    "message": "Password / App password"
+  },
+  "calendarCaldavSyncNotesLabel": {
+    "message": "Sync Notepad reminders to this CalDAV calendar"
+  },
+  "calendarNotesSyncTargetLabel": {
+    "message": "Notepad reminders sync:"
+  },
+  "calendarNotesSyncNone": {
+    "message": "None"
   }
 }
