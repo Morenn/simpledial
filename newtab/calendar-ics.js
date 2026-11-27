@@ -286,6 +286,8 @@ export function parseIcsCalendar(icsText, { rangeStartMs = -Infinity, rangeEndMs
         status: "",
         rrule: null,
         exdates: [],
+        alarmOffsetsMs: [],
+        inValarm: false,
       };
       depth = 1;
       continue;
@@ -295,10 +297,16 @@ export function parseIcsCalendar(icsText, { rangeStartMs = -Infinity, rangeEndMs
 
     if (upper.startsWith("BEGIN:")) {
       depth += 1;
+      if (depth === 2 && upper === "BEGIN:VALARM") {
+        current.inValarm = true;
+      }
       continue;
     }
 
     if (upper.startsWith("END:")) {
+      if (depth === 2 && upper === "END:VALARM") {
+        current.inValarm = false;
+      }
       depth -= 1;
       if (upper === "END:VEVENT" && depth === 0) {
         if (current.status !== "CANCELLED" && Number.isFinite(current.startMs) && current.title) {
@@ -323,6 +331,7 @@ export function parseIcsCalendar(icsText, { rangeStartMs = -Infinity, rangeEndMs
               status: current.status,
               rrule: current.rrule,
               exdates: current.exdates,
+              alarmOffsetsMs: current.alarmOffsetsMs,
             },
             rangeStartMs,
             rangeEndMs,
@@ -334,6 +343,17 @@ export function parseIcsCalendar(icsText, { rangeStartMs = -Infinity, rangeEndMs
           }
         }
         current = null;
+      }
+      continue;
+    }
+
+    if (depth === 2 && current.inValarm) {
+      const parsedAlarm = parseContentLine(line);
+      if (parsedAlarm?.name === "TRIGGER" && current.alarmOffsetsMs.length < 5) {
+        const offsetMs = parseIcsDurationMs(parsedAlarm.value);
+        if (Number.isFinite(offsetMs) && !current.alarmOffsetsMs.includes(offsetMs)) {
+          current.alarmOffsetsMs.push(offsetMs);
+        }
       }
       continue;
     }
@@ -455,4 +475,56 @@ export function serializeIcsEvent(event) {
 
   lines.push("END:VEVENT", "END:VCALENDAR", "");
   return lines.join("\r\n");
+}
+
+export const EXTERNAL_REMINDER_PAST_MS = DAY_MS;
+export const EXTERNAL_REMINDER_FUTURE_MS = 7 * DAY_MS;
+
+/**
+ * Find due external calendar reminders in [nowMs - 1 day, nowMs] (including missed ones
+ * within the past day) and prune notified records older than -1 day.
+ * @param {Array<any>} events
+ * @param {Record<string, number>} [notifiedMap={}]
+ * @param {number} [nowMs=Date.now()]
+ */
+export function findDueExternalCalendarReminders(events, notifiedMap = {}, nowMs = Date.now()) {
+  const minTriggerMs = nowMs - EXTERNAL_REMINDER_PAST_MS;
+  const prunedNotifiedMap = {};
+  let changed = false;
+
+  if (notifiedMap && typeof notifiedMap === "object") {
+    for (const [key, ts] of Object.entries(notifiedMap)) {
+      if (Number.isFinite(Number(ts)) && Number(ts) >= minTriggerMs) {
+        prunedNotifiedMap[key] = Number(ts);
+      } else {
+        changed = true;
+      }
+    }
+  }
+
+  const dueReminders = [];
+  if (!Array.isArray(events)) {
+    return { dueReminders, prunedNotifiedMap, changed };
+  }
+
+  for (const ev of events) {
+    if (!ev || !Number.isFinite(Number(ev.startMs))) continue;
+    const uid = String(ev.uid || ev.id || "");
+    if (uid.startsWith("simpledial-note-")) continue;
+
+    const offsets = Array.isArray(ev.alarmOffsetsMs) && ev.alarmOffsetsMs.length > 0
+      ? ev.alarmOffsetsMs
+      : (ev.allDay ? [] : [0]);
+
+    for (const offsetMs of offsets) {
+      const triggerMs = Number(ev.startMs) + Number(offsetMs || 0);
+      if (triggerMs < minTriggerMs || triggerMs > nowMs) continue;
+      const key = `${ev.calendarId || ev.source || "cal"}:${uid}:${ev.startMs}:${triggerMs}`;
+      if (Object.prototype.hasOwnProperty.call(prunedNotifiedMap, key)) continue;
+      dueReminders.push({ key, triggerMs, event: ev });
+    }
+  }
+
+  dueReminders.sort((a, b) => a.triggerMs - b.triggerMs);
+  return { dueReminders, prunedNotifiedMap, changed };
 }

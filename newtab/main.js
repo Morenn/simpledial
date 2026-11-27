@@ -12,6 +12,7 @@ let restWidgetMod = null;
 let rssWidgetMod = null;
 let weatherWidgetMod = null;
 let notesReminderStarted = false;
+let caldavReminderStarted = false;
 
 function startActiveCustomWidgets(config) {
   const customWidgets = Array.isArray(config?.appearance?.customWidgets) ? config.appearance.customWidgets : [];
@@ -32,6 +33,25 @@ function startActiveCustomWidgets(config) {
     notesReminderStarted = true;
     void import("./widgets/notes-widget.js").then(m => {
       m.startNotesReminderPolling();
+    });
+  }
+  const calendarSources = Array.isArray(config?.appearance?.calendarSources)
+    ? config.appearance.calendarSources
+    : [];
+  if (
+    !caldavReminderStarted &&
+    calendarSources.some(
+      (s) =>
+        s &&
+        (s.type === "caldav" || s.type === "webcal") &&
+        Boolean(s.url) &&
+        s.enabled !== false &&
+        (s.enableReminders !== undefined ? Boolean(s.enableReminders) : s.type === "caldav"),
+    )
+  ) {
+    caldavReminderStarted = true;
+    void import("./calendar-reminders.js").then(m => {
+      m.startCalendarReminderPolling();
     });
   }
   if (customWidgets.some(w => w?.type === "rss-feed" && w?.space !== "disabled")) {
@@ -475,7 +495,12 @@ export function updateShowDeletedButtonAppearance() {
   });
   updateClock();
   setInterval(() => { void updateFooter(); }, 60000);
-  const initialWidgetsSnapshot = { appearance: { customWidgets: config.appearance?.customWidgets } };
+  const initialWidgetsSnapshot = {
+    appearance: {
+      customWidgets: config.appearance?.customWidgets,
+      calendarSources: config.appearance?.calendarSources
+    }
+  };
   updateHeaderManualSyncButton(config);
   const startupSyncEnabled = !!(config.sync.enabled && (config.sync.serverUrl || config.sync.type === 'browser') && shouldSync(config));
   const startupHousekeeperCleanup = config.housekeeper?.autoCleanupEnabled

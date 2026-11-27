@@ -60,6 +60,8 @@ export function normalizeCalendarSources(sources) {
     if (wantsNotesSync) {
       hasNotesSyncTarget = true;
     }
+    const enableReminders =
+      item.enableReminders !== undefined ? Boolean(item.enableReminders) : type === "caldav";
 
     normalized.push({
       id,
@@ -69,6 +71,7 @@ export function normalizeCalendarSources(sources) {
       color: normalizeCalendarColor(item.color),
       enabled: item.enabled !== false,
       refreshMinutes: normalizeCalendarRefreshMinutes(item.refreshMinutes),
+      enableReminders,
       syncNotesReminders: wantsNotesSync,
     });
   }
@@ -275,6 +278,7 @@ export async function loadExternalCalendarEvents({
         }
         return res.events.map((ev) => ({
           id: `${source.type}:${source.id}:${ev.uid}:${ev.startMs}`,
+          uid: ev.uid,
           source: source.type,
           calendarId: source.id,
           calendarName: source.name,
@@ -284,6 +288,7 @@ export async function loadExternalCalendarEvents({
           startMs: ev.startMs,
           endMs: ev.endMs,
           allDay: ev.allDay,
+          alarmOffsetsMs: Array.isArray(ev.alarmOffsetsMs) ? ev.alarmOffsetsMs : [],
           done: false,
           status: ev.startMs < nowMs ? "past" : "future",
         }));

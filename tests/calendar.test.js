@@ -14,6 +14,7 @@ import {
 import {
   MAX_ICS_BYTES,
   MAX_ICS_SUMMARY_LENGTH,
+  findDueExternalCalendarReminders,
   parseIcsCalendar,
   serializeIcsEvent,
 } from "../newtab/calendar-ics.js";
@@ -245,6 +246,8 @@ test("calendar bounds enforce combined source limit, single notes-sync target, U
   const normalized = normalizeCalendarSources([...manyWebcals, ...manyCaldavs]);
   assert.equal(normalized.length, MAX_CALENDAR_SOURCES);
   assert.equal(normalized.filter((s) => s.syncNotesReminders).length, 1);
+  assert.equal(normalized[0].enableReminders, false); // webcal defaults to false
+  assert.equal(normalized[7].enableReminders, true);  // caldav defaults to true
 
   const longSummary = "X".repeat(MAX_ICS_SUMMARY_LENGTH + 50);
   const ics = [
@@ -343,4 +346,73 @@ test("serializeIcsEvent and parseCaldavMultistatusXml round-trip VEVENTs", () =>
     "</d:multistatus>",
   ].join("\n");
   assert.equal(parseCaldavMultistatusXml(crossOriginXml, "https://dav.example.com/cal/").length, 0);
+});
+
+test("parseIcsCalendar parses VALARM triggers and findDueExternalCalendarReminders enforces -1d window & prunes old entries", () => {
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "BEGIN:VEVENT",
+    "UID:caldav-ev-1",
+    "SUMMARY:Dentist",
+    "DTSTART:20261127T100000Z",
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    "TRIGGER:-PT15M",
+    "END:VALARM",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  const parsed = parseIcsCalendar(ics);
+  assert.equal(parsed.length, 1);
+  assert.deepEqual(parsed[0].alarmOffsetsMs, [-15 * 60000]);
+
+  const nowMs = Date.UTC(2026, 10, 27, 12, 0, 0);
+  const { dueReminders, prunedNotifiedMap, changed } = findDueExternalCalendarReminders(
+    [
+      {
+        uid: "missed-12h",
+        calendarId: "cal_1",
+        title: "Missed 12h ago",
+        startMs: nowMs - 12 * 3600000,
+        allDay: false,
+        alarmOffsetsMs: [0],
+      },
+      {
+        uid: "too-old-30h",
+        calendarId: "cal_1",
+        title: "Old 30h ago",
+        startMs: nowMs - 30 * 3600000,
+        allDay: false,
+        alarmOffsetsMs: [0],
+      },
+      {
+        uid: "future-2h",
+        calendarId: "cal_1",
+        title: "Future",
+        startMs: nowMs + 2 * 3600000,
+        allDay: false,
+        alarmOffsetsMs: [-15 * 60000],
+      },
+      {
+        uid: "simpledial-note-nt1",
+        calendarId: "cal_1",
+        title: "Synced note",
+        startMs: nowMs - 60000,
+        allDay: false,
+        alarmOffsetsMs: [0],
+      },
+    ],
+    {
+      "cal_1:stale:1:1": nowMs - 48 * 3600000,
+      "cal_1:recent:2:2": nowMs - 2 * 3600000,
+    },
+    nowMs,
+  );
+
+  assert.equal(changed, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(prunedNotifiedMap, "cal_1:stale:1:1"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(prunedNotifiedMap, "cal_1:recent:2:2"), true);
+  assert.equal(dueReminders.length, 1);
+  assert.equal(dueReminders[0].event.uid, "missed-12h");
 });

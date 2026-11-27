@@ -2332,5 +2332,14 @@
   },
   "calendarNotesSyncNone": {
     "message": "Ei mitään"
+  },
+  "dismiss": {
+    "message": "Ohita"
+  },
+  "calendarEnableRemindersLabel": {
+    "message": "Näytä muistutusilmoitukset"
+  },
+  "calendarReminderSourcesLabel": {
+    "message": "Muistutusilmoitukset lähteistä:"
   }
 }

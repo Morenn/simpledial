@@ -2332,5 +2332,14 @@
   },
   "calendarNotesSyncNone": {
     "message": "Geen"
+  },
+  "dismiss": {
+    "message": "Sluiten"
+  },
+  "calendarEnableRemindersLabel": {
+    "message": "Herinneringsmeldingen tonen"
+  },
+  "calendarReminderSourcesLabel": {
+    "message": "Herinneringsmeldingen van:"
   }
 }

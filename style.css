@@ -6417,6 +6417,45 @@ body.clickable-bookmark-tags .bookmark-tag-badge:not(.bookmark-tag-more):hover {
   color: var(--accent-text);
 }
 
+.system-calendar-reminder-sources-row {
+  margin-top: 0.25rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.system-calendar-reminder-sources-label {
+  font-size: 0.84rem;
+  opacity: 0.88;
+}
+
+.system-calendar-reminder-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.system-calendar-reminder-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.system-calendar-reminder-tag.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
 .system-calendar-notes-target-row {
   margin-top: 0.25rem;
   padding-top: 0.45rem;

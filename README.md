@@ -22,7 +22,7 @@ A clean, privacy-focused, and customizable Speed Dial new-tab browser extension 
   - **Simple Notes / Scratchpad** — Multi-entry notes, checkable to-do lists, timed, multi-day, relative (`days`/`hours`/`mins`), and date-time reminders with live countdowns, plus compact modal mode. See [Notes Widgets Guide & Examples](https://github.com/Morenn/simpledial-widget-examples/tree/main/notes/README.md).
   - **Weather** — Current conditions and forecasts via Open-Meteo (default) or OpenWeatherMap (optional Secrets Vault-encrypted API key), with `pill`, `small`, `medium`, and detailed modal views.
   - **RSS / Atom Feed** — Subscribe to RSS/Atom feeds with unread counters, item read/unread toggles, and widget grouping.
-- **Workspace Layout & Widget Placement** — Place built-in and custom widgets across **Header**, **Left**, **Center**, **Right**, and **Footer** spaces with per-widget ordering, alignment, and row-break controls, plus a footer status bar and movable Date & Time display.
+- **Workspace Layout & Widget Placement** — Place built-in and custom widgets across **Header**, **Left**, **Center**, **Right**, and **Footer** spaces with per-widget ordering, alignment, and row-break controls, plus a footer status bar and movable Date & Time display with a click-to-open **Mini Calendar** (ISO week numbers, Notepad reminder highlights, and **WebCAL** / **CalDAV** integration).
 - **Keyboard Navigation & Shortcuts** — Navigate groups, tiles, and search with the keyboard and view the built-in shortcut palette.
 - **Themes & Appearance** — Switch between Dark and Light modes, built-in seasonal themes (**Spring**, **Summer**, **Autumn**, **Winter**), or load custom CSS from a file or URL. Customize background images (file or URL, with automatic native WebP/JPEG downscaling up to `1920×1080` / `2 MB`), background dim overlay, header/footer and tile transparency, and independent tile/group sizes.
 - **Synchronization** — Sync bookmarks via built-in browser sync, Direct HTTP/HTTPS endpoints, or WebDAV (including **WebDAV Folder Sync** for config, custom widgets, backups, and background) with optional Secrets Vault credential encryption, `ETag` `If-Match` concurrency, permanent-delete tombstones, `dbuid`/stale-device conflict detection, per-part conflict resolution, and an interactive **Merge Wizard**.
@@ -59,6 +59,35 @@ Widgets can be placed in **Header**, **Left**, **Center**, **Right**, or **Foote
 | Time Zone (`timezone`) | `right` | No | — |
 | Notes / Scratchpad (`notes`) | `right` | No | — |
 | Custom Search (`custom-search`) | `right` | Yes | Inherits group space when added/joined to an existing group |
+
+## Mini Calendar, WebCAL & CalDAV Configuration
+
+Click the **Date & Time** widget on the new-tab page to open the mini calendar (ISO week numbers, **green** future / **red** past Notepad reminder highlights, colored dots for external calendar events, and a `↻` refresh button with a 30-second cooldown).
+
+### Where to Configure
+Open **Settings → Appearance → Widgets**, find **Date & Time**, and click the **`✏️` Edit** button to configure:
+- **Week starts on:** `Monday` or `Sunday`.
+- **Calendars (`0 / 10`):** Add up to **10** combined **WebCAL** and **CalDAV** calendars, toggle individual feeds on/off, or set refresh intervals.
+- **Notepad reminders sync:** Select which **CalDAV** calendar receives reminders created/updated/deleted in Simple Notes (via the `📝` button on a CalDAV row or the **Notepad reminders sync** dropdown).
+
+### WebCAL Examples (Read-Only Subscriptions)
+Use **+ Add WebCAL** for public holiday calendars or read-only `.ics` / `webcal://` links (`webcal://` is automatically converted to `https://`):
+
+```text
+https://calendar.google.com/calendar/ical/en.slovak%23holiday%40group.v.calendar.google.com/public/basic.ics
+webcal://example.com/team-schedule.ics
+```
+
+### CalDAV Examples (Nextcloud & Standard CalDAV)
+Use **+ Add CalDAV** for private calendars or two-way Notepad reminder sync. The URL must point to a **specific calendar collection** (not just `/remote.php/dav/`):
+
+```text
+https://nextcloud.example/remote.php/dav/calendars/<user>/<calendar>
+https://nextcloud.example/remote.php/dav/calendars/admin/personal
+```
+
+- **Finding the URL in Nextcloud:** Open **Nextcloud Calendar** → click the **3 dots (`⋯`)** next to a calendar → **Copy private link**.
+- **Username & Password:** Enter your Nextcloud **username** and an **App Password** (*Nextcloud → Personal settings → Security → Devices & sessions → Create new app password*). When **Secrets Vault** is enabled, passwords are encrypted locally at rest.
 
 ## Known Issues
 

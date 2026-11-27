@@ -2332,5 +2332,14 @@
   },
   "calendarNotesSyncNone": {
     "message": "Žiadny"
+  },
+  "dismiss": {
+    "message": "Zavrieť"
+  },
+  "calendarEnableRemindersLabel": {
+    "message": "Zobrazovať upozornenia pripomienok"
+  },
+  "calendarReminderSourcesLabel": {
+    "message": "Upozornenia pripomienok z:"
   }
 }

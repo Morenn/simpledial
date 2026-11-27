@@ -1252,6 +1252,10 @@
                 <span data-i18n="calendarCaldavSyncNotesLabel">Sync Notepad reminders to this CalDAV calendar</span>
               </label>
             </div>
+            <label class="checkbox-row">
+              <input type="checkbox" id="system-calendar-reminders-checkbox">
+              <span data-i18n="calendarEnableRemindersLabel">Show reminder notifications</span>
+            </label>
             <div class="system-calendar-form-row">
               <label for="system-calendar-refresh-input" data-i18n="calendarRefreshLabel">Refresh (min):</label>
               <input type="number" id="system-calendar-refresh-input" class="appearance-number-input" min="5" max="1440" value="60">
@@ -1264,6 +1268,11 @@
           </div>
 
           <div id="system-calendar-sources-list" class="system-calendar-sources-list"></div>
+
+          <div id="system-calendar-reminder-sources-row" class="system-calendar-reminder-sources-row hidden">
+            <span class="system-calendar-reminder-sources-label" data-i18n="calendarReminderSourcesLabel">Reminder notifications from:</span>
+            <div id="system-calendar-reminder-tags" class="system-calendar-reminder-tags"></div>
+          </div>
 
           <div id="system-calendar-notes-target-row" class="appearance-slider-row system-calendar-notes-target-row hidden">
             <label for="system-calendar-notes-target-select" data-i18n="calendarNotesSyncTargetLabel">Notepad reminders sync:</label>

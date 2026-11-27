@@ -2332,5 +2332,14 @@
   },
   "calendarNotesSyncNone": {
     "message": "Keiner"
+  },
+  "dismiss": {
+    "message": "Schließen"
+  },
+  "calendarEnableRemindersLabel": {
+    "message": "Erinnerungsbenachrichtigungen anzeigen"
+  },
+  "calendarReminderSourcesLabel": {
+    "message": "Erinnerungsbenachrichtigungen von:"
   }
 }

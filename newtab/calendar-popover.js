@@ -205,6 +205,9 @@ function renderPopover() {
           renderPopover();
           positionPopover();
         }
+        void import("./calendar-reminders.js")
+          .then((m) => m.checkDueCalendarReminders())
+          .catch(() => {});
       });
     });
     nav.appendChild(refreshBtn);

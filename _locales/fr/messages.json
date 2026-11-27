@@ -2332,5 +2332,14 @@
   },
   "calendarNotesSyncNone": {
     "message": "Aucun"
+  },
+  "dismiss": {
+    "message": "Ignorer"
+  },
+  "calendarEnableRemindersLabel": {
+    "message": "Afficher les notifications de rappel"
+  },
+  "calendarReminderSourcesLabel": {
+    "message": "Notifications de rappel depuis :"
   }
 }

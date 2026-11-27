@@ -2332,5 +2332,14 @@
   },
   "calendarNotesSyncNone": {
     "message": "Жодного"
+  },
+  "dismiss": {
+    "message": "Закрити"
+  },
+  "calendarEnableRemindersLabel": {
+    "message": "Показувати сповіщення нагадувань"
+  },
+  "calendarReminderSourcesLabel": {
+    "message": "Сповіщення нагадувань із:"
   }
 }

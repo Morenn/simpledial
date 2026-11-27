@@ -219,6 +219,7 @@ export function initCustomWidgetsSettings() {
     const userInput = document.getElementById("system-calendar-username-input");
     const passInput = document.getElementById("system-calendar-password-input");
     const syncNotesCheckbox = document.getElementById("system-calendar-sync-notes-checkbox");
+    const remindersCheckbox = document.getElementById("system-calendar-reminders-checkbox");
     if (!form || !nameInput || !colorInput || !urlInput || !refreshInput) return;
 
     editingCalendarSourceId = source?.id || null;
@@ -245,6 +246,11 @@ export function initCustomWidgetsSettings() {
         );
         syncNotesCheckbox.checked = !hasExistingSyncTarget;
       }
+    }
+    if (remindersCheckbox) {
+      remindersCheckbox.checked = source
+        ? (source.enableReminders !== undefined ? Boolean(source.enableReminders) : source.type === "caldav")
+        : isCaldav;
     }
     if (isCaldav && source?.id && userInput) {
       void loadCaldavCredentials(source.id).then((creds) => {
@@ -287,6 +293,38 @@ export function initCustomWidgetsSettings() {
     }
     if (filterInput) {
       filterInput.classList.toggle("hidden", sources.length <= 4);
+    }
+
+    const reminderSourcesRow = document.getElementById("system-calendar-reminder-sources-row");
+    const reminderTagsEl = document.getElementById("system-calendar-reminder-tags");
+    if (reminderSourcesRow && reminderTagsEl) {
+      reminderSourcesRow.classList.toggle("hidden", sources.length === 0);
+      reminderTagsEl.replaceChildren();
+      for (const src of sources) {
+        const isOn = src.enableReminders !== undefined ? Boolean(src.enableReminders) : src.type === "caldav";
+        const tagBtn = document.createElement("button");
+        tagBtn.type = "button";
+        tagBtn.className = `system-calendar-reminder-tag${isOn ? " is-active" : ""}`;
+        tagBtn.setAttribute("aria-pressed", String(isOn));
+
+        const tagDot = document.createElement("span");
+        tagDot.className = "system-calendar-color-dot";
+        tagDot.style.backgroundColor = normalizeCalendarColor(src.color);
+
+        const tagLabel = document.createElement("span");
+        tagLabel.textContent = src.name || (src.type === "caldav" ? "CalDAV" : "WebCAL");
+
+        tagBtn.append(tagDot, tagLabel);
+        tagBtn.addEventListener("click", async () => {
+          const nextDraft = await ensureAppearanceDraft();
+          nextDraft.calendarSources = (nextDraft.calendarSources || []).map((item) =>
+            item.id === src.id ? { ...item, enableReminders: !isOn } : item,
+          );
+          markSettingsDirty();
+          void renderSystemCalendarSourcesList();
+        });
+        reminderTagsEl.appendChild(tagBtn);
+      }
     }
 
     const caldavSources = sources.filter((s) => s?.type === "caldav");
@@ -381,6 +419,25 @@ export function initCustomWidgetsSettings() {
 
       const actions = document.createElement("div");
       actions.className = "system-calendar-row-actions";
+
+      const isRemindersOn = source.enableReminders !== undefined
+        ? Boolean(source.enableReminders)
+        : source.type === "caldav";
+      const notifyBtn = document.createElement("button");
+      notifyBtn.type = "button";
+      notifyBtn.className = `widget-order-btn system-calendar-sync-btn${isRemindersOn ? " is-active" : ""}`;
+      notifyBtn.textContent = "🔔";
+      notifyBtn.title = t("calendarEnableRemindersLabel") || "Show reminder notifications";
+      notifyBtn.setAttribute("aria-pressed", String(isRemindersOn));
+      notifyBtn.addEventListener("click", async () => {
+        const nextDraft = await ensureAppearanceDraft();
+        nextDraft.calendarSources = (nextDraft.calendarSources || []).map((s) =>
+          s.id === source.id ? { ...s, enableReminders: !isRemindersOn } : s,
+        );
+        markSettingsDirty();
+        void renderSystemCalendarSourcesList();
+      });
+      actions.appendChild(notifyBtn);
 
       if (source.type === "caldav") {
         const isSyncTarget = Boolean(source.syncNotesReminders);
@@ -518,6 +575,7 @@ export function initCustomWidgetsSettings() {
         const userInput = document.getElementById("system-calendar-username-input");
         const passInput = document.getElementById("system-calendar-password-input");
         const syncNotesCheckbox = document.getElementById("system-calendar-sync-notes-checkbox");
+        const remindersCheckbox = document.getElementById("system-calendar-reminders-checkbox");
         const isCaldav = editingCalendarSourceType === "caldav";
         const normalizedUrl = normalizeCalendarSourceUrl(urlInput?.value || "");
         if (!normalizedUrl) {
@@ -551,6 +609,7 @@ export function initCustomWidgetsSettings() {
           color: normalizeCalendarColor(colorInput?.value),
           enabled: true,
           refreshMinutes: normalizeCalendarRefreshMinutes(refreshInput?.value),
+          enableReminders: remindersCheckbox ? Boolean(remindersCheckbox.checked) : isCaldav,
           syncNotesReminders: isCaldav ? Boolean(syncNotesCheckbox?.checked) : false,
         };
 
