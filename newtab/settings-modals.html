@@ -784,6 +784,12 @@
               <p class="appearance-card-desc" data-i18n="securityKdfChangeHint">PBKDF2-SHA512 (210k) is faster on 64-bit systems (recommended default); PBKDF2-SHA256 (600k) is for 32-bit. To switch KDF, select the new algorithm above and click Change Password (you may keep the same password when migrating KDF).</p>
             </div>
 
+            <div id="security-vault-items-panel" class="security-panel hidden">
+              <hr class="security-divider">
+              <div class="custom-widget-sub-label" data-i18n="securityVaultItemsTitle">Encrypted Items in Vault</div>
+              <div id="security-vault-items-list" class="security-vault-items-list"></div>
+            </div>
+
             <div id="security-destroy-panel" class="security-panel hidden">
               <hr class="security-divider">
               <label class="checkbox-row">
@@ -1242,6 +1248,14 @@
               <input type="color" id="system-calendar-color-input" class="system-calendar-color-input" value="#4a6bff" aria-label="Calendar color">
             </div>
             <input type="url" id="system-calendar-url-input" class="sync-compact-input" data-i18n-placeholder="calendarUrlPlaceholder" placeholder="https://... or webcal://...ics" aria-label="Calendar URL">
+            <label id="system-calendar-webcal-private-row" class="checkbox-row">
+              <input type="checkbox" id="system-calendar-private-checkbox">
+              <span data-i18n="calendarPrivateUrlLabel">🔒 Private URL (encrypt in Vault, local only)</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="system-calendar-encrypt-cache-checkbox">
+              <span data-i18n="calendarEncryptCacheLabel">🔒 Encrypt cached calendar events in Vault (local only)</span>
+            </label>
             <div id="system-calendar-caldav-fields" class="system-calendar-caldav-fields hidden">
               <div class="system-calendar-form-row">
                 <input type="text" id="system-calendar-username-input" class="sync-compact-input" maxlength="256" autocomplete="off" data-i18n-placeholder="calendarCaldavUsernamePlaceholder" placeholder="Username" aria-label="CalDAV username">
@@ -1255,6 +1269,10 @@
             <label class="checkbox-row">
               <input type="checkbox" id="system-calendar-reminders-checkbox">
               <span data-i18n="calendarEnableRemindersLabel">Show reminder notifications</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="system-calendar-hide-name-checkbox">
+              <span data-i18n="calendarHideNameLabel">Hide calendar name in mini calendar</span>
             </label>
             <div class="system-calendar-form-row">
               <label for="system-calendar-refresh-input" data-i18n="calendarRefreshLabel">Refresh (min):</label>

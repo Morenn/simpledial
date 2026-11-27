@@ -2,6 +2,7 @@ import { isAllowedThemeUrl } from "./color-utils.js";
 import { MAX_ICS_BYTES, parseIcsCalendar } from "./calendar-ics.js";
 
 export const CALENDAR_CACHE_KEY = "myspeeddial-calendar-cache";
+export const CALENDAR_SECRETS_KEY = "myspeeddial-calendar-secrets";
 export const MAX_CALENDAR_SOURCES = 10;
 export const MAX_CALENDAR_URL_LENGTH = 2048;
 const WEBCAL_TIMEOUT_MS = 10000;
@@ -52,8 +53,10 @@ export function normalizeCalendarSources(sources) {
     if (seenIds.has(id)) continue;
 
     const type = item.type === "caldav" ? "caldav" : "webcal";
-    const url = normalizeCalendarSourceUrl(item.url);
-    if (!url) continue;
+    const encryptCache = Boolean(item.encryptCache);
+    const privateUrl = Boolean(item.privateUrl) || encryptCache;
+    const url = privateUrl ? "" : normalizeCalendarSourceUrl(item.url);
+    if (!privateUrl && !url) continue;
 
     seenIds.add(id);
     const wantsNotesSync = type === "caldav" && Boolean(item.syncNotesReminders) && !hasNotesSyncTarget;
@@ -68,15 +71,97 @@ export function normalizeCalendarSources(sources) {
       type,
       name: typeof item.name === "string" && item.name.trim() ? item.name.trim().slice(0, 80) : "Calendar",
       url,
+      privateUrl,
       color: normalizeCalendarColor(item.color),
       enabled: item.enabled !== false,
       refreshMinutes: normalizeCalendarRefreshMinutes(item.refreshMinutes),
       enableReminders,
+      hideName: Boolean(item.hideName),
+      encryptCache,
       syncNotesReminders: wantsNotesSync,
     });
   }
 
   return normalized;
+}
+
+export async function saveWebcalSecretUrl(sourceId, url) {
+  if (typeof chrome === "undefined" || !chrome.storage?.local || !sourceId) return;
+  const [{ setSecret }, { loadConfig }] = await Promise.all([
+    import("./crypto.js"),
+    import("./config.js"),
+  ]);
+  const vaultHeader = (await loadConfig())?.vaultHeader || null;
+  const encryptedUrl = await setSecret(String(url || ""), `calendar:${sourceId}:url`, {
+    vaultHeader,
+    requireVault: true,
+  });
+  const stored = await chrome.storage.local.get(CALENDAR_SECRETS_KEY);
+  const secretsMap = stored?.[CALENDAR_SECRETS_KEY] && typeof stored[CALENDAR_SECRETS_KEY] === "object"
+    ? { ...stored[CALENDAR_SECRETS_KEY] }
+    : {};
+  const existing = secretsMap[sourceId] && typeof secretsMap[sourceId] === "object" ? secretsMap[sourceId] : {};
+  secretsMap[sourceId] = {
+    ...existing,
+    url: encryptedUrl,
+  };
+  await chrome.storage.local.set({ [CALENDAR_SECRETS_KEY]: secretsMap });
+}
+
+export async function loadWebcalSecretUrl(sourceId) {
+  if (typeof chrome === "undefined" || !chrome.storage?.local || !sourceId) {
+    return { ok: true, value: "" };
+  }
+  const stored = await chrome.storage.local.get(CALENDAR_SECRETS_KEY);
+  const entry = stored?.[CALENDAR_SECRETS_KEY]?.[sourceId];
+  if (!entry?.url) return { ok: true, value: "" };
+  const [{ getSecret }, { loadConfig }] = await Promise.all([
+    import("./crypto.js"),
+    import("./config.js"),
+  ]);
+  const vaultHeader = (await loadConfig())?.vaultHeader || null;
+  const secret = await getSecret(entry.url, `calendar:${sourceId}:url`, { vaultHeader });
+  if (!secret.ok) {
+    return { ok: false, locked: true, value: "" };
+  }
+  return { ok: true, value: normalizeCalendarSourceUrl(secret.value || "") };
+}
+
+export async function deleteWebcalSecretUrl(sourceId) {
+  if (typeof chrome === "undefined" || !chrome.storage?.local || !sourceId) return;
+  const stored = await chrome.storage.local.get(CALENDAR_SECRETS_KEY);
+  const secretsMap = stored?.[CALENDAR_SECRETS_KEY];
+  if (!secretsMap || typeof secretsMap !== "object" || !Object.prototype.hasOwnProperty.call(secretsMap, sourceId)) {
+    return;
+  }
+  const next = { ...secretsMap };
+  const entry = next[sourceId];
+  if (entry && typeof entry === "object" && (entry.username || entry.password)) {
+    const updatedEntry = { ...entry };
+    delete updatedEntry.url;
+    next[sourceId] = updatedEntry;
+  } else {
+    delete next[sourceId];
+  }
+  await chrome.storage.local.set({ [CALENDAR_SECRETS_KEY]: next });
+}
+
+export async function resolveCalendarSourceUrl(source) {
+  if (source?.privateUrl) {
+    const secretRes = await loadWebcalSecretUrl(source.id);
+    if (!secretRes.ok) {
+      return { ok: false, error: "Vault locked", url: "" };
+    }
+    if (!secretRes.value) {
+      return { ok: false, error: "Private URL not set", url: "" };
+    }
+    return { ok: true, url: secretRes.value };
+  }
+  const normalizedUrl = normalizeCalendarSourceUrl(source?.url);
+  if (!normalizedUrl) {
+    return { ok: false, error: "Invalid URL", url: "" };
+  }
+  return { ok: true, url: normalizedUrl };
 }
 
 export async function requestCalendarSourcePermission(rawUrl) {
@@ -90,18 +175,108 @@ export async function readCalendarCacheMap() {
   if (typeof chrome === "undefined" || !chrome.storage?.local) return {};
   const stored = await chrome.storage.local.get(CALENDAR_CACHE_KEY);
   const raw = stored?.[CALENDAR_CACHE_KEY];
-  return raw && typeof raw === "object" ? { ...raw } : {};
+  if (!raw || typeof raw !== "object") return {};
+
+  const out = {};
+  let cryptoMod = null;
+  let vaultHeader = null;
+  for (const [id, entry] of Object.entries(raw)) {
+    if (typeof entry === "string") {
+      if (!cryptoMod) {
+        const [{ getSecret, isEncryptedSecret }, { loadConfig }] = await Promise.all([
+          import("./crypto.js"),
+          import("./config.js"),
+        ]);
+        cryptoMod = { getSecret, isEncryptedSecret };
+        vaultHeader = (await loadConfig())?.vaultHeader || null;
+      }
+      if (cryptoMod.isEncryptedSecret(entry)) {
+        const res = await cryptoMod.getSecret(entry, `calendar:cache:${id}`, { vaultHeader });
+        if (res.ok && res.value) {
+          try {
+            const parsed = JSON.parse(res.value);
+            if (parsed && typeof parsed === "object") out[id] = parsed;
+          } catch {
+            // ignore corrupted cache entry
+          }
+        }
+      }
+    } else if (entry && typeof entry === "object") {
+      out[id] = entry;
+    }
+  }
+  return out;
 }
 
 let calendarCacheWriteQueue = Promise.resolve();
 
-export function updateCalendarCacheMap(mutator) {
+export function updateCalendarCacheMap(mutator, { encryptSourceIds = null } = {}) {
   const run = calendarCacheWriteQueue.then(async () => {
+    if (typeof chrome === "undefined" || !chrome.storage?.local) {
+      const cacheMap = {};
+      mutator(cacheMap);
+      return;
+    }
+    const [{ loadConfig }, { isEncryptedSecret, isVaultUnlocked, setSecret, tryAutoUnlockVault }] = await Promise.all([
+      import("./config.js"),
+      import("./crypto.js"),
+    ]);
+    const config = await loadConfig();
+    const encryptIds = new Set(
+      normalizeCalendarSources(config?.appearance?.calendarSources)
+        .filter((s) => s.encryptCache)
+        .map((s) => s.id),
+    );
+    if (Array.isArray(encryptSourceIds)) {
+      for (const id of encryptSourceIds) {
+        if (id) encryptIds.add(id);
+      }
+    }
+    if (encryptIds.size > 0 && !isVaultUnlocked() && config?.vaultHeader?.check) {
+      await tryAutoUnlockVault(config.vaultHeader);
+    }
+
+    const stored = await chrome.storage.local.get(CALENDAR_CACHE_KEY);
+    const raw = stored?.[CALENDAR_CACHE_KEY];
     const cacheMap = await readCalendarCacheMap();
     const changed = mutator(cacheMap);
-    if (changed !== false && typeof chrome !== "undefined" && chrome.storage?.local) {
-      await chrome.storage.local.set({ [CALENDAR_CACHE_KEY]: cacheMap });
+    if (changed === false) return;
+
+    const nextMap = {};
+    for (const [id, entry] of Object.entries(cacheMap)) {
+      if (!entry || typeof entry !== "object") continue;
+      if (encryptIds.has(id)) {
+        if (isVaultUnlocked()) {
+          try {
+            nextMap[id] = await setSecret(JSON.stringify(entry), `calendar:cache:${id}`, {
+              vaultHeader: config?.vaultHeader || null,
+              requireVault: true,
+            });
+            continue;
+          } catch {
+            // Fall through to preserve existing encrypted entry if Vault locked mid-write.
+          }
+        }
+        if (raw && typeof raw[id] === "string" && isEncryptedSecret(raw[id])) {
+          nextMap[id] = raw[id];
+        }
+      } else {
+        nextMap[id] = entry;
+      }
     }
+    if (raw && typeof raw === "object") {
+      for (const [id, rawVal] of Object.entries(raw)) {
+        if (
+          !Object.prototype.hasOwnProperty.call(nextMap, id) &&
+          typeof rawVal === "string" &&
+          isEncryptedSecret(rawVal) &&
+          !isVaultUnlocked()
+        ) {
+          nextMap[id] = rawVal;
+        }
+      }
+    }
+    await chrome.storage.local.set({ [CALENDAR_CACHE_KEY]: nextMap });
   });
   calendarCacheWriteQueue = run.catch(() => {});
   return run;
@@ -112,12 +287,19 @@ export async function getCalendarSourceCacheStatus(sourceId) {
   return cacheMap?.[sourceId] || null;
 }
 
-export async function removeCalendarSourceCache(sourceId) {
-  await updateCalendarCacheMap((cacheMap) => {
-    if (!Object.prototype.hasOwnProperty.call(cacheMap, sourceId)) return false;
-    delete cacheMap[sourceId];
-    return true;
+export function removeCalendarSourceCache(sourceId) {
+  if (!sourceId) return Promise.resolve();
+  const run = calendarCacheWriteQueue.then(async () => {
+    if (typeof chrome === "undefined" || !chrome.storage?.local) return;
+    const stored = await chrome.storage.local.get(CALENDAR_CACHE_KEY);
+    const raw = stored?.[CALENDAR_CACHE_KEY];
+    if (!raw || typeof raw !== "object" || !Object.prototype.hasOwnProperty.call(raw, sourceId)) return;
+    const next = { ...raw };
+    delete next[sourceId];
+    await chrome.storage.local.set({ [CALENDAR_CACHE_KEY]: next });
   });
+  calendarCacheWriteQueue = run.catch(() => {});
+  return run;
 }
 
 export async function readResponseTextWithLimit(response, maxBytes = MAX_ICS_BYTES) {
@@ -165,14 +347,19 @@ export async function fetchWebcalSource(
   source,
   { force = false, rangeStartMs = -Infinity, rangeEndMs = Infinity, nowMs = Date.now() } = {},
 ) {
-  const normalizedUrl = normalizeCalendarSourceUrl(source?.url);
-  if (!normalizedUrl) {
-    return { ok: false, error: "Invalid URL", events: [] };
-  }
-
   const cacheMap = await readCalendarCacheMap();
   const cached = cacheMap[source.id] || null;
   const ttlMs = normalizeCalendarRefreshMinutes(source.refreshMinutes) * 60000;
+
+  const urlRes = await resolveCalendarSourceUrl(source);
+  if (!urlRes.ok) {
+    return {
+      ok: false,
+      error: urlRes.error,
+      events: cached?.icsText ? parseIcsCalendar(cached.icsText, { rangeStartMs, rangeEndMs }) : [],
+    };
+  }
+  const normalizedUrl = urlRes.url;
 
   if (!force && cached?.icsText && Number.isFinite(cached.fetchedAt) && cached.fetchedAt + ttlMs > nowMs) {
     return {
@@ -201,11 +388,12 @@ export async function fetchWebcalSource(
     if (!force && cached?.lastModified) headers["If-Modified-Since"] = cached.lastModified;
 
     const response = await fetch(normalizedUrl, { headers, signal: controller.signal });
+    const cacheOpts = source?.encryptCache ? { encryptSourceIds: [source.id] } : {};
     if (response.status === 304 && cached?.icsText) {
       const nextEntry = { ...cached, fetchedAt: nowMs, lastError: "" };
       await updateCalendarCacheMap((map) => {
         map[source.id] = nextEntry;
-      });
+      }, cacheOpts);
       return {
         ok: true,
         fromCache: true,
@@ -228,7 +416,7 @@ export async function fetchWebcalSource(
     };
     await updateCalendarCacheMap((map) => {
       map[source.id] = nextEntry;
-    });
+    }, cacheOpts);
 
     return {
       ok: true,
@@ -284,7 +472,7 @@ export async function loadExternalCalendarEvents({
           calendarName: source.name,
           color: source.color,
           title: ev.title,
-          subtitle: ev.location || source.name,
+          subtitle: ev.location || (source.hideName ? "" : source.name),
           startMs: ev.startMs,
           endMs: ev.endMs,
           allDay: ev.allDay,

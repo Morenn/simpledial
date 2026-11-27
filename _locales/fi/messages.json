@@ -2347,5 +2347,48 @@
   },
   "copyUrl": {
     "message": "Kopioi URL"
+  },
+  "calendarPrivateUrlLabel": {
+    "message": "🔒 Yksityinen URL (salataan Holvissa, vain paikallinen)"
+  },
+  "calendarHideNameLabel": {
+    "message": "Piilota kalenterin nimi minikalenterissa",
+    "description": "Checkbox label to hide the calendar name in the mini calendar agenda"
+  },
+  "securityVaultItemsTitle": {
+    "message": "Salatut kohteet Holvissa"
+  },
+  "securityVaultItemsEmpty": {
+    "message": "Holvissa ei ole salattuja kohteita."
+  },
+  "securityVaultItemSync": {
+    "message": "Synkronointitiedot"
+  },
+  "securityVaultItemRestToken": {
+    "message": "REST Status -todennustunnus"
+  },
+  "securityVaultItemWeatherKey": {
+    "message": "Sää-API-avain"
+  },
+  "securityVaultItemCaldavPass": {
+    "message": "CalDAV-tunnukset"
+  },
+  "securityVaultItemWebcalUrl": {
+    "message": "Yksityinen kalenteri-URL"
+  },
+  "secretSavedPlaceholder": {
+    "message": "<salaisuus tallennettu>"
+  },
+  "calendarEncryptCacheLabel": {
+    "message": "🔒 Salaa välimuistissa olevat kalenteritapahtumat Holvissa (vain paikallinen)"
+  },
+  "calendarDiscardUnsavedConfirm": {
+    "message": "Sinulla on tallentamattomia kalenterimuutoksia. Hylätäänkö ne ja suljetaanko?"
+  },
+  "calendarSaveOrCancelHint": {
+    "message": "Napsauta Tallenna ottaaksesi muutokset käyttöön tai Peruuta hylätäksesi ne."
+  },
+  "done": {
+    "message": "Valmis"
   }
 }

@@ -2543,6 +2543,48 @@ body.theme-dark .bookmark-title:hover {
   margin: 0.35rem 0;
 }
 
+.security-vault-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.security-vault-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.03));
+}
+
+.security-vault-item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.security-vault-item-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.security-vault-item-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.security-vault-items-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .vault-unlock-modal-content {
   width: min(92vw, 380px);
   max-width: 380px;

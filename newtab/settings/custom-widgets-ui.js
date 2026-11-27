@@ -5,6 +5,8 @@ import { applySideSpaces, applyTileSize } from "../theme.js";
 import { formatBackupTimestamp } from "../backup.js";
 import {
   MAX_CALENDAR_SOURCES,
+  deleteWebcalSecretUrl,
+  loadWebcalSecretUrl,
   normalizeCalendarSourceUrl,
   normalizeCalendarColor,
   normalizeCalendarRefreshMinutes,
@@ -12,6 +14,7 @@ import {
   fetchWebcalSource,
   getCalendarSourceCacheStatus,
   removeCalendarSourceCache,
+  saveWebcalSecretUrl,
 } from "../calendar-sources.js";
 import {
   deleteCaldavCredentials,
@@ -63,7 +66,7 @@ import {
 import { normalizeCustomIconValue, applyCachedIconImageSrc } from "../color-utils.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { loadSyncModule } from "../lazy-modules.js";
-import { getSecret, setSecret, isEncryptedSecret, isVaultUnlocked, isInsecureHttpUrl } from "../crypto.js";
+import { getSecret, setSecret, isEncryptedSecret, isVaultUnlocked, tryAutoUnlockVault, isInsecureHttpUrl } from "../crypto.js";
 import { settingsState, markSettingsDirty } from "./context.js";
 import { ensureAppearanceDraft, updateDateTimeVisibility } from "./appearance-ui.js";
 
@@ -193,10 +196,28 @@ export function initCustomWidgetsSettings() {
   let editingCalendarSourceId = null;
   let editingCalendarSourceType = "webcal";
 
+  const syncCalendarFormDoneButtonState = (isFormOpen) => {
+    const doneBtn = document.getElementById("system-widget-editor-done-btn");
+    if (doneBtn) {
+      doneBtn.classList.toggle("primary", !isFormOpen);
+    }
+  };
+
   const closeSystemWidgetEditorModal = () => {
     const modal = document.getElementById("system-widget-editor-modal");
     const form = document.getElementById("system-calendar-source-form");
-    if (form) form.classList.add("hidden");
+    if (form && !form.classList.contains("hidden")) {
+      const confirmed = window.confirm(
+        t("calendarDiscardUnsavedConfirm") || "You have unsaved calendar changes. Discard them and close?",
+      );
+      if (!confirmed) {
+        setCalendarFormStatus(t("calendarSaveOrCancelHint") || "Click Save to apply changes or Cancel to discard.", true);
+        document.getElementById("system-calendar-save-btn")?.focus();
+        return;
+      }
+      form.classList.add("hidden");
+    }
+    syncCalendarFormDoneButtonState(false);
     editingCalendarSourceId = null;
     editingCalendarSourceType = "webcal";
     if (modal) modal.classList.add("hidden");
@@ -216,10 +237,14 @@ export function initCustomWidgetsSettings() {
     const urlInput = document.getElementById("system-calendar-url-input");
     const refreshInput = document.getElementById("system-calendar-refresh-input");
     const caldavFields = document.getElementById("system-calendar-caldav-fields");
+    const webcalPrivateRow = document.getElementById("system-calendar-webcal-private-row");
+    const privateCheckbox = document.getElementById("system-calendar-private-checkbox");
     const userInput = document.getElementById("system-calendar-username-input");
     const passInput = document.getElementById("system-calendar-password-input");
     const syncNotesCheckbox = document.getElementById("system-calendar-sync-notes-checkbox");
     const remindersCheckbox = document.getElementById("system-calendar-reminders-checkbox");
+    const hideNameCheckbox = document.getElementById("system-calendar-hide-name-checkbox");
+    const encryptCacheCheckbox = document.getElementById("system-calendar-encrypt-cache-checkbox");
     if (!form || !nameInput || !colorInput || !urlInput || !refreshInput) return;
 
     editingCalendarSourceId = source?.id || null;
@@ -228,13 +253,19 @@ export function initCustomWidgetsSettings() {
 
     nameInput.value = source?.name || "";
     colorInput.value = normalizeCalendarColor(source?.color);
-    urlInput.value = source?.url || "";
+    urlInput.value = source?.privateUrl ? "" : (source?.url || "");
     urlInput.placeholder = isCaldav
       ? (t("calendarCaldavUrlPlaceholder") || "https://dav.example.com/calendars/user/personal/")
       : (t("calendarUrlPlaceholder") || "https://... or webcal://...ics");
     refreshInput.value = String(normalizeCalendarRefreshMinutes(source?.refreshMinutes));
 
+    const hasEncryptCache = Boolean(source?.encryptCache);
     if (caldavFields) caldavFields.classList.toggle("hidden", !isCaldav);
+    if (webcalPrivateRow) webcalPrivateRow.classList.remove("hidden");
+    if (privateCheckbox) {
+      privateCheckbox.checked = Boolean(source?.privateUrl) || hasEncryptCache;
+      privateCheckbox.disabled = hasEncryptCache;
+    }
     if (userInput) userInput.value = "";
     if (passInput) passInput.value = "";
     if (syncNotesCheckbox) {
@@ -252,12 +283,39 @@ export function initCustomWidgetsSettings() {
         ? (source.enableReminders !== undefined ? Boolean(source.enableReminders) : source.type === "caldav")
         : isCaldav;
     }
+    if (hideNameCheckbox) {
+      hideNameCheckbox.checked = Boolean(source?.hideName);
+    }
+    if (encryptCacheCheckbox) {
+      encryptCacheCheckbox.checked = hasEncryptCache;
+    }
+    if (source?.privateUrl && source?.id) {
+      urlInput.value = "";
+      urlInput.placeholder = t("secretSavedPlaceholder") || "<secret saved>";
+      void loadWebcalSecretUrl(source.id).then((res) => {
+        if (editingCalendarSourceId !== source.id) return;
+        if (res.locked) {
+          setCalendarFormStatus("🔒 " + (t("securityStatusLocked") || "Vault locked"), true);
+        }
+      });
+    }
     if (isCaldav && source?.id && userInput) {
+      userInput.value = "";
+      userInput.placeholder = t("calendarCaldavUsernamePlaceholder") || "Username";
+      if (passInput) {
+        passInput.value = "";
+        passInput.placeholder = t("calendarCaldavPasswordPlaceholder") || "Password / App password";
+      }
       void loadCaldavCredentials(source.id).then((creds) => {
         if (editingCalendarSourceId === source.id && creds) {
-          userInput.value = creds.username || "";
-          if (passInput && creds.ok && creds.password) {
-            passInput.placeholder = "••••••••";
+          const savedText = t("secretSavedPlaceholder") || "<secret saved>";
+          if (creds.locked) {
+            userInput.placeholder = savedText;
+            if (passInput) passInput.placeholder = savedText;
+            setCalendarFormStatus("🔒 " + (t("securityStatusLocked") || "Vault locked"), true);
+          } else {
+            if (creds.username) userInput.placeholder = savedText;
+            if (passInput && creds.password) passInput.placeholder = savedText;
           }
         }
       });
@@ -267,6 +325,7 @@ export function initCustomWidgetsSettings() {
 
     setCalendarFormStatus("");
     form.classList.remove("hidden");
+    syncCalendarFormDoneButtonState(true);
     nameInput.focus();
   };
 
@@ -396,11 +455,13 @@ export function initCustomWidgetsSettings() {
       const nameEl = document.createElement("span");
       nameEl.className = "system-calendar-row-name";
       nameEl.textContent = source.name || "Calendar";
-      nameEl.title = source.url || "";
+      nameEl.title = source.privateUrl ? "🔒 Private URL (local only)" : (source.url || "");
 
       const typeBadge = document.createElement("span");
       typeBadge.className = "system-calendar-type-badge";
-      typeBadge.textContent = source.type === "caldav" ? "CalDAV" : "WebCAL";
+      typeBadge.textContent = source.type === "caldav"
+        ? (source.privateUrl ? "🔒 CalDAV" : "CalDAV")
+        : (source.privateUrl ? "🔒 WebCAL" : "WebCAL");
 
       const statusBadge = document.createElement("span");
       statusBadge.className = "system-calendar-status-badge";
@@ -470,7 +531,12 @@ export function initCustomWidgetsSettings() {
       refreshBtn.title = t("refresh") || "Refresh";
       refreshBtn.addEventListener("click", async () => {
         refreshBtn.disabled = true;
-        const granted = await requestCalendarSourcePermission(source.url);
+        let targetUrl = source.url;
+        if (source.privateUrl) {
+          const secretRes = await loadWebcalSecretUrl(source.id);
+          targetUrl = secretRes.ok ? secretRes.value : "";
+        }
+        const granted = targetUrl ? await requestCalendarSourcePermission(targetUrl) : false;
         if (granted) {
           if (source.type === "caldav") {
             await fetchCaldavSource(source, { force: true });
@@ -506,9 +572,12 @@ export function initCustomWidgetsSettings() {
         await removeCalendarSourceCache(source.id);
         if (source.type === "caldav") {
           await deleteCaldavCredentials(source.id);
+        } else if (source.privateUrl) {
+          await deleteWebcalSecretUrl(source.id);
         }
         if (editingCalendarSourceId === source.id) {
           document.getElementById("system-calendar-source-form")?.classList.add("hidden");
+          syncCalendarFormDoneButtonState(false);
           editingCalendarSourceId = null;
           editingCalendarSourceType = "webcal";
         }
@@ -543,6 +612,7 @@ export function initCustomWidgetsSettings() {
     if (cancelCalBtn) {
       cancelCalBtn.addEventListener("click", () => {
         document.getElementById("system-calendar-source-form")?.classList.add("hidden");
+        syncCalendarFormDoneButtonState(false);
         editingCalendarSourceId = null;
         editingCalendarSourceType = "webcal";
         setCalendarFormStatus("");
@@ -566,6 +636,18 @@ export function initCustomWidgetsSettings() {
         void renderSystemCalendarSourcesList();
       });
     }
+    const formEncryptCacheCheckbox = document.getElementById("system-calendar-encrypt-cache-checkbox");
+    const formPrivateCheckbox = document.getElementById("system-calendar-private-checkbox");
+    if (formEncryptCacheCheckbox && formPrivateCheckbox) {
+      formEncryptCacheCheckbox.addEventListener("change", () => {
+        if (formEncryptCacheCheckbox.checked) {
+          formPrivateCheckbox.checked = true;
+          formPrivateCheckbox.disabled = true;
+        } else {
+          formPrivateCheckbox.disabled = false;
+        }
+      });
+    }
     if (saveCalBtn) {
       saveCalBtn.addEventListener("click", async () => {
         const nameInput = document.getElementById("system-calendar-name-input");
@@ -576,13 +658,29 @@ export function initCustomWidgetsSettings() {
         const passInput = document.getElementById("system-calendar-password-input");
         const syncNotesCheckbox = document.getElementById("system-calendar-sync-notes-checkbox");
         const remindersCheckbox = document.getElementById("system-calendar-reminders-checkbox");
+        const hideNameCheckbox = document.getElementById("system-calendar-hide-name-checkbox");
+        const encryptCacheCheckbox = document.getElementById("system-calendar-encrypt-cache-checkbox");
+        const privateCheckbox = document.getElementById("system-calendar-private-checkbox");
         const isCaldav = editingCalendarSourceType === "caldav";
-        const normalizedUrl = normalizeCalendarSourceUrl(urlInput?.value || "");
+        const isEncryptCache = Boolean(encryptCacheCheckbox?.checked);
+        const isPrivateUrl = Boolean(privateCheckbox?.checked) || isEncryptCache;
+        let normalizedUrl = normalizeCalendarSourceUrl(urlInput?.value || "");
+        let keepExistingPrivateUrl = false;
+        if (!normalizedUrl && editingCalendarSourceId && !(urlInput?.value || "").trim()) {
+          const existingSecret = await loadWebcalSecretUrl(editingCalendarSourceId);
+          if (existingSecret.ok && existingSecret.value) {
+            normalizedUrl = existingSecret.value;
+            keepExistingPrivateUrl = true;
+          } else if (existingSecret.locked) {
+            setCalendarFormStatus("🔒 " + (t("securityStatusLocked") || "Vault locked"), true);
+            return;
+          }
+        }
         if (!normalizedUrl) {
           setCalendarFormStatus(t("calendarInvalidUrl") || "Please enter a valid http(s):// or webcal:// URL.", true);
           return;
         }
-        if (isInsecureHttpUrl(normalizedUrl)) {
+        if (!keepExistingPrivateUrl && isInsecureHttpUrl(normalizedUrl)) {
           const confirmed = window.confirm(
             t("insecureHttpCalendarConfirm") ||
               "Warning: This URL uses unencrypted HTTP (not HTTPS). Calendar data and credentials will be sent unencrypted over the network.\n\nContinue anyway?",
@@ -590,6 +688,36 @@ export function initCustomWidgetsSettings() {
           if (!confirmed) {
             setCalendarFormStatus(`❌ ${t("insecureHttpAuthWarning") || "HTTP URL sends data unencrypted."}`, true);
             return;
+          }
+        }
+
+        if (isPrivateUrl || isEncryptCache) {
+          const cfg = await loadConfig();
+          if (!cfg?.vaultHeader?.check) {
+            setCalendarFormStatus("🔒 " + (t("securityStatusNotSet") || "Set up the Secrets Vault in the Security tab first."), true);
+            return;
+          }
+          if (!isVaultUnlocked()) {
+            await tryAutoUnlockVault(cfg.vaultHeader);
+          }
+          if (!isVaultUnlocked() && typeof window.promptUnlockVault === "function") {
+            await window.promptUnlockVault();
+          }
+          if (!isVaultUnlocked()) {
+            setCalendarFormStatus("🔒 " + (t("securityStatusLocked") || "Vault locked"), true);
+            return;
+          }
+        } else if (isCaldav) {
+          const cfg = await loadConfig();
+          if (cfg?.vaultHeader?.check && !isVaultUnlocked()) {
+            await tryAutoUnlockVault(cfg.vaultHeader);
+            if (!isVaultUnlocked() && typeof window.promptUnlockVault === "function") {
+              await window.promptUnlockVault();
+            }
+            if (!isVaultUnlocked()) {
+              setCalendarFormStatus("🔒 " + (t("securityStatusLocked") || "Vault locked"), true);
+              return;
+            }
           }
         }
 
@@ -615,31 +743,63 @@ export function initCustomWidgetsSettings() {
           id: sourceId,
           type: isCaldav ? "caldav" : "webcal",
           name: (nameInput?.value || "").trim() || (isCaldav ? "CalDAV" : "WebCAL"),
-          url: normalizedUrl,
+          url: isPrivateUrl ? "" : normalizedUrl,
+          privateUrl: isPrivateUrl,
           color: normalizeCalendarColor(colorInput?.value),
           enabled: true,
           refreshMinutes: normalizeCalendarRefreshMinutes(refreshInput?.value),
           enableReminders: remindersCheckbox ? Boolean(remindersCheckbox.checked) : isCaldav,
+          hideName: Boolean(hideNameCheckbox?.checked),
+          encryptCache: isEncryptCache,
           syncNotesReminders: isCaldav ? Boolean(syncNotesCheckbox?.checked) : false,
         };
 
+        let prevCaldavSecretEntry = undefined;
+        let hadPrevCaldavSecret = false;
         if (isCaldav) {
+          if (editingCalendarSourceId && typeof chrome !== "undefined" && chrome.storage?.local) {
+            const prevStored = await chrome.storage.local.get("myspeeddial-calendar-secrets");
+            const prevMap = prevStored?.["myspeeddial-calendar-secrets"];
+            if (prevMap && typeof prevMap === "object" && Object.prototype.hasOwnProperty.call(prevMap, sourceId)) {
+              hadPrevCaldavSecret = true;
+              prevCaldavSecretEntry = prevMap[sourceId];
+            }
+          }
           await saveCaldavCredentials(sourceId, {
             username: userInput?.value || "",
             password: passInput?.value || "",
           });
         }
 
+        const testEntry = isPrivateUrl ? { ...entry, privateUrl: false, url: normalizedUrl } : entry;
         const testRes = isCaldav
-          ? await fetchCaldavSource(entry, { force: true })
-          : await fetchWebcalSource(entry, { force: true });
+          ? await fetchCaldavSource(testEntry, { force: true })
+          : await fetchWebcalSource(testEntry, { force: true });
         if (!testRes.ok) {
-          if (isCaldav && !editingCalendarSourceId) {
-            await deleteCaldavCredentials(sourceId);
+          if (isCaldav) {
+            if (!editingCalendarSourceId) {
+              await deleteCaldavCredentials(sourceId);
+            } else if (typeof chrome !== "undefined" && chrome.storage?.local) {
+              const curStored = await chrome.storage.local.get("myspeeddial-calendar-secrets");
+              const curMap = curStored?.["myspeeddial-calendar-secrets"] && typeof curStored["myspeeddial-calendar-secrets"] === "object"
+                ? { ...curStored["myspeeddial-calendar-secrets"] }
+                : {};
+              if (hadPrevCaldavSecret) {
+                curMap[sourceId] = prevCaldavSecretEntry;
+              } else {
+                delete curMap[sourceId];
+              }
+              await chrome.storage.local.set({ "myspeeddial-calendar-secrets": curMap });
+            }
           }
           saveCalBtn.disabled = false;
           setCalendarFormStatus(testRes.error || "Failed to fetch calendar.", true);
           return;
+        }
+        if (isPrivateUrl || isEncryptCache) {
+          await saveWebcalSecretUrl(sourceId, normalizedUrl);
+        } else if (editingCalendarSourceId) {
+          await deleteWebcalSecretUrl(sourceId);
         }
 
         if (entry.syncNotesReminders) {
@@ -661,6 +821,7 @@ export function initCustomWidgetsSettings() {
 
         saveCalBtn.disabled = false;
         document.getElementById("system-calendar-source-form")?.classList.add("hidden");
+        syncCalendarFormDoneButtonState(false);
         editingCalendarSourceId = null;
         editingCalendarSourceType = "webcal";
         setCalendarFormStatus("");
@@ -669,6 +830,8 @@ export function initCustomWidgetsSettings() {
     }
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
+        const unlockModal = document.getElementById("vault-unlock-modal");
+        if (unlockModal && !unlockModal.classList.contains("hidden")) return;
         e.stopPropagation();
         closeSystemWidgetEditorModal();
       }
@@ -2491,7 +2654,10 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestValueMap) customWidgetRestValueMap.value = "";
     if (customWidgetRestLink) customWidgetRestLink.value = "";
     if (customWidgetRestHeaderName) customWidgetRestHeaderName.value = "";
-    if (customWidgetRestHeaderValue) customWidgetRestHeaderValue.value = "";
+    if (customWidgetRestHeaderValue) {
+      customWidgetRestHeaderValue.value = "";
+      customWidgetRestHeaderValue.placeholder = t("customRestHeaderValuePlaceholder") || "Header value / token (optional)";
+    }
     if (customWidgetRestHideGroup) customWidgetRestHideGroup.checked = false;
     if (customWidgetRestHideValue) customWidgetRestHideValue.checked = false;
     if (customWidgetRestMetrics) customWidgetRestMetrics.value = "";
@@ -2574,6 +2740,7 @@ export function initCustomWidgetsSettings() {
     if (customWidgetRestHeaderValue) {
       if (isEncryptedSecret(widget.authHeaderValue)) {
         customWidgetRestHeaderValue.value = "";
+        customWidgetRestHeaderValue.placeholder = t("secretSavedPlaceholder") || "<secret saved>";
         lockedEncryptedRestToken = widget.authHeaderValue;
         updateRestAuthWarningBadge(true);
         void (async () => {
@@ -2582,14 +2749,12 @@ export function initCustomWidgetsSettings() {
             vaultHeader: cfg?.vaultHeader || null
           });
           if (res.ok && editingCustomWidgetId === widget.id) {
-            customWidgetRestHeaderValue.value = res.value;
-            lockedEncryptedRestToken = "";
-    lockedEncryptedWeatherApiKey = "";
             updateRestAuthWarningBadge(false);
           }
         })();
       } else {
         customWidgetRestHeaderValue.value = widget.authHeaderValue || "";
+        customWidgetRestHeaderValue.placeholder = t("customRestHeaderValuePlaceholder") || "Header value / token (optional)";
         updateRestAuthWarningBadge(false);
       }
     }
@@ -2611,18 +2776,10 @@ export function initCustomWidgetsSettings() {
     lockedEncryptedWeatherApiKey = "";
     if (customWidgetWeatherApiKey) {
       customWidgetWeatherApiKey.value = "";
+      customWidgetWeatherApiKey.placeholder = "Enter provider API key";
       if (isEncryptedSecret(widget.apiKey)) {
+        customWidgetWeatherApiKey.placeholder = t("secretSavedPlaceholder") || "<secret saved>";
         lockedEncryptedWeatherApiKey = widget.apiKey;
-        void (async () => {
-          const cfg = await loadConfig();
-          const res = await getSecret(widget.apiKey, `widget:${widget.id}:apiKey`, {
-            vaultHeader: cfg?.vaultHeader || null
-          });
-          if (res.ok && editingCustomWidgetId === widget.id) {
-            customWidgetWeatherApiKey.value = res.value;
-            lockedEncryptedWeatherApiKey = "";
-          }
-        })();
       } else if (typeof widget.apiKey === "string") {
         customWidgetWeatherApiKey.value = widget.apiKey;
       }
@@ -2715,6 +2872,24 @@ export function initCustomWidgetsSettings() {
     resetCustomWidgetForm();
   };
   window.closeCustomWidgetEditorModal = closeCustomWidgetEditorModal;
+  window.openCustomWidgetById = (widgetId) => {
+    if (!widgetId) return;
+    void ensureAppearanceDraft().then((draft) => {
+      const target = (draft.customWidgets || []).find((w) => w?.id === widgetId);
+      if (!target) return;
+      loadCustomWidgetIntoForm(target);
+      openCustomWidgetEditorModal();
+    });
+  };
+  window.openCalendarSourceEditor = (sourceId) => {
+    if (!sourceId) return;
+    void ensureAppearanceDraft().then((draft) => {
+      const target = (draft.calendarSources || []).find((s) => s?.id === sourceId);
+      if (!target) return;
+      openSystemWidgetEditorModal("dateTime");
+      openCalendarSourceForm(target, target.type || "webcal");
+    });
+  };
 
   if (openNewCustomWidgetBtn) {
     openNewCustomWidgetBtn.addEventListener("click", () => {

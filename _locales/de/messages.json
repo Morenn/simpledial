@@ -2347,5 +2347,48 @@
   },
   "copyUrl": {
     "message": "URL kopieren"
+  },
+  "calendarPrivateUrlLabel": {
+    "message": "🔒 Private URL (im Tresor verschlüsseln, nur lokal)"
+  },
+  "calendarHideNameLabel": {
+    "message": "Kalendernamen im Minikalender ausblenden",
+    "description": "Checkbox label to hide the calendar name in the mini calendar agenda"
+  },
+  "securityVaultItemsTitle": {
+    "message": "Verschlüsselte Elemente im Tresor"
+  },
+  "securityVaultItemsEmpty": {
+    "message": "Keine verschlüsselten Elemente im Tresor gespeichert."
+  },
+  "securityVaultItemSync": {
+    "message": "Sync-Zugangsdaten"
+  },
+  "securityVaultItemRestToken": {
+    "message": "REST-Status-Auth-Token"
+  },
+  "securityVaultItemWeatherKey": {
+    "message": "Wetter-API-Schlüssel"
+  },
+  "securityVaultItemCaldavPass": {
+    "message": "CalDAV-Zugangsdaten"
+  },
+  "securityVaultItemWebcalUrl": {
+    "message": "Private Kalender-URL"
+  },
+  "secretSavedPlaceholder": {
+    "message": "<Geheimnis gespeichert>"
+  },
+  "calendarEncryptCacheLabel": {
+    "message": "🔒 Zwischengespeicherte Kalenderereignisse im Tresor verschlüsseln (nur lokal)"
+  },
+  "calendarDiscardUnsavedConfirm": {
+    "message": "Sie haben ungespeicherte Kalenderänderungen. Verwerfen und schließen?"
+  },
+  "calendarSaveOrCancelHint": {
+    "message": "Klicken Sie auf Speichern, um Änderungen zu übernehmen, oder auf Abbrechen."
+  },
+  "done": {
+    "message": "Fertig"
   }
 }

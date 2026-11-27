@@ -167,6 +167,7 @@ export function isInsecureHttpUrl(rawUrl) {
 }
 
 let lastActivityTouchMs = 0;
+let sessionPersisted = false;
 
 async function storeSessionKey(rawDek, autoLockMinutes = 0) {
   if (!ext?.storage?.session?.set) return;
@@ -174,6 +175,7 @@ async function storeSessionKey(rawDek, autoLockMinutes = 0) {
     const mins = normalizeVaultAutoLockMinutes(autoLockMinutes);
     const exp = mins > 0 ? Date.now() + mins * 60000 : 0;
     await ext.storage.session.set({ [SESSION_KEY]: { k: toBase64Url(rawDek), exp } });
+    sessionPersisted = true;
   } catch {
     // Session storage unavailable — keep DEK in memory for this tab only
   }
@@ -211,12 +213,12 @@ async function readSessionKey() {
 }
 
 export async function touchVaultActivity(autoLockMinutes = 0, { force = false } = {}) {
-  if (!vaultDek || !ext?.storage?.session?.set) return;
+  if (!vaultDek || !sessionPersisted || !ext?.storage?.session?.set) return;
   const now = Date.now();
   if (!force && now - lastActivityTouchMs < 15000) return;
   lastActivityTouchMs = now;
   const rec = await readSessionRecord();
-  if (!rec || !vaultDek) return;
+  if (!rec || !vaultDek || !sessionPersisted) return;
   if (rec.exp > 0 && now >= rec.exp) {
     await lockVault();
     return;
@@ -224,7 +226,7 @@ export async function touchVaultActivity(autoLockMinutes = 0, { force = false } 
   const mins = normalizeVaultAutoLockMinutes(autoLockMinutes);
   const nextExp = mins > 0 ? now + mins * 60000 : 0;
   try {
-    if (!vaultDek) return;
+    if (!vaultDek || !sessionPersisted) return;
     await ext.storage.session.set({ [SESSION_KEY]: { k: rec.k, exp: nextExp } });
   } catch {
     // ignore
@@ -232,7 +234,7 @@ export async function touchVaultActivity(autoLockMinutes = 0, { force = false } 
 }
 
 export async function checkVaultAutoLock(autoLockMinutes = 0) {
-  if (!vaultDek) return false;
+  if (!vaultDek || !sessionPersisted) return false;
   const mins = normalizeVaultAutoLockMinutes(autoLockMinutes);
   if (mins <= 0) return false;
   const rec = await readSessionRecord();
@@ -378,6 +380,7 @@ export async function unlockVault(password, header, { autoLockMinutes = 0, store
     throw new Error("WRONG_PASSWORD");
   }
   vaultDek = key;
+  sessionPersisted = false;
   if (storeSession) {
     await storeSessionKey(rawDek, autoLockMinutes);
   }
@@ -385,6 +388,7 @@ export async function unlockVault(password, header, { autoLockMinutes = 0, store
 
 export async function tryAutoUnlockVault(header, { autoLockMinutes = 0 } = {}) {
   if (vaultDek) {
+    if (!sessionPersisted) return true;
     const rec = await readSessionRecord();
     if (rec && rec.exp > 0 && Date.now() >= rec.exp) {
       await lockVault();
@@ -403,6 +407,7 @@ export async function tryAutoUnlockVault(header, { autoLockMinutes = 0 } = {}) {
       return false;
     }
     vaultDek = key;
+    sessionPersisted = true;
     return true;
   } catch {
     return false;
@@ -411,7 +416,34 @@ export async function tryAutoUnlockVault(header, { autoLockMinutes = 0 } = {}) {
 
 export async function lockVault() {
   vaultDek = null;
+  sessionPersisted = false;
   await clearSessionKey();
+  try {
+    vaultLockChannel?.postMessage({ type: "lock" });
+  } catch {
+    // ignore
+  }
+}
+
+const vaultLockChannel = typeof BroadcastChannel !== "undefined"
+  ? new BroadcastChannel("myspeeddial-vault-lock")
+  : null;
+
+if (vaultLockChannel) {
+  vaultLockChannel.unref?.();
+  vaultLockChannel.addEventListener("message", (event) => {
+    if (event?.data?.type === "lock") {
+      vaultDek = null;
+    }
+  });
+}
+
+if (ext?.storage?.onChanged?.addListener) {
+  ext.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "session" && changes?.[SESSION_KEY] && !changes[SESSION_KEY].newValue) {
+      vaultDek = null;
+    }
+  });
 }
 
 export async function changeVaultPassword(oldPassword, newPassword, header, { kdf, autoLockMinutes } = {}) {

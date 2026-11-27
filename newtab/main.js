@@ -44,7 +44,7 @@ function startActiveCustomWidgets(config) {
       (s) =>
         s &&
         (s.type === "caldav" || s.type === "webcal") &&
-        Boolean(s.url) &&
+        (Boolean(s.url) || Boolean(s.privateUrl)) &&
         s.enabled !== false &&
         (s.enableReminders !== undefined ? Boolean(s.enableReminders) : s.type === "caldav"),
     )

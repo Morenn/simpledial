@@ -185,6 +185,10 @@ async function persistSettings(closeAfterSave = false) {
   };
 
   await saveConfig(config);
+  if (Array.isArray(settingsState.appearanceDraft?.calendarSources) && settingsState.appearanceDraft.calendarSources.length > 0) {
+    const { updateCalendarCacheMap } = await import("./calendar-sources.js");
+    await updateCalendarCacheMap(() => true);
+  }
   await cleanupOldBackups(config.backups.retentionDays);
 
   updateManualSyncButtonVisibility(config);
@@ -233,6 +237,8 @@ tabButtons.forEach(btn => {
     document.getElementById(`${tabName}-tab`)?.classList.add("active");
     if (tabName === "info") {
       void renderInfoStorageStats();
+    } else if (tabName === "security") {
+      void populateSecuritySettings();
     }
   });
 });

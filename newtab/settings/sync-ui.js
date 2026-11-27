@@ -204,7 +204,11 @@ export function clearSyncCredentialsInConfig(config) {
 
 export function clearSyncCredentialsInUi() {
   if (syncUsername) syncUsername.value = "";
-  if (syncPassword) syncPassword.value = "";
+  if (syncPassword) {
+    syncPassword.value = "";
+    syncPassword.placeholder = "";
+  }
+  settingsState.hasSavedVaultSyncPassword = false;
   const syncEncryptMode = document.getElementById("sync-encrypt-mode");
   if (syncEncryptMode) {
     syncEncryptMode.value = "none";
@@ -464,10 +468,18 @@ export async function populateSyncSettings(config) {
         if (res.ok) {
           const obj = JSON.parse(res.value);
           if (syncUsername) syncUsername.value = obj.username || "";
-          if (syncPassword) syncPassword.value = obj.password || "";
+          if (syncPassword) {
+            syncPassword.value = "";
+            syncPassword.placeholder = obj.password ? (t("secretSavedPlaceholder") || "<secret saved>") : "";
+          }
+          settingsState.hasSavedVaultSyncPassword = Boolean(obj.password);
         } else {
           if (syncUsername) syncUsername.value = "";
-          if (syncPassword) syncPassword.value = "";
+          if (syncPassword) {
+            syncPassword.value = "";
+            syncPassword.placeholder = t("secretSavedPlaceholder") || "<secret saved>";
+          }
+          settingsState.hasSavedVaultSyncPassword = false;
           if (syncStatus) syncStatus.textContent = "🔒 " + (t("securityStatusLocked") || "Vault locked");
         }
       }
@@ -635,8 +647,33 @@ export function initSyncSettings({ persistSettings }) {
 
       config.sync.authMode = "basic";
 
+async function resolveEffectiveSyncPassword(config, rawPassword) {
+  if (rawPassword) return rawPassword;
+  if (!settingsState.hasSavedVaultSyncPassword || typeof config?.sync?.enc !== "string") {
+    return "";
+  }
+  if (!isVaultUnlocked() && config.vaultHeader?.check) {
+    await tryAutoUnlockVault(config.vaultHeader);
+    if (!isVaultUnlocked() && typeof window.promptUnlockVault === "function") {
+      await window.promptUnlockVault();
+    }
+  }
+  const existingRes = await getSecret(config.sync.enc, "sync:credentials", { vaultHeader: config.vaultHeader || null });
+  if (existingRes.ok) {
+    try {
+      return JSON.parse(existingRes.value)?.password || "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+      const encryptModeEl = document.getElementById("sync-encrypt-mode");
+      const encryptMode = encryptModeEl?.value === "vault" ? "vault" : "none";
+
       const formUsername = syncUsername ? syncUsername.value.trim() : "";
-      const formPassword = syncPassword ? syncPassword.value : "";
+      const formPassword = await resolveEffectiveSyncPassword(config, syncPassword ? syncPassword.value : "");
       if (!formUsername || !formPassword) {
         if (syncStatus) syncStatus.textContent = "❌ " + t("syncAuthCredentialsRequired");
         return;
@@ -647,8 +684,6 @@ export function initSyncSettings({ persistSettings }) {
         return;
       }
 
-      const encryptModeEl = document.getElementById("sync-encrypt-mode");
-      const encryptMode = encryptModeEl?.value === "vault" ? "vault" : "none";
       config.sync.encryptionMode = encryptMode;
 
       if (encryptMode === "none") {
@@ -685,6 +720,11 @@ export function initSyncSettings({ persistSettings }) {
       }
 
       await saveConfig(config);
+      settingsState.hasSavedVaultSyncPassword = encryptMode === "vault" && Boolean(formPassword);
+      if (encryptMode === "vault" && syncPassword) {
+        syncPassword.value = "";
+        syncPassword.placeholder = formPassword ? (t("secretSavedPlaceholder") || "<secret saved>") : "";
+      }
       settingsState.credentialsTouched = false;
       updateCredentialsSaveButton();
       if (syncStatus) {
@@ -728,10 +768,13 @@ export function initSyncSettings({ persistSettings }) {
 
       const webdavMode = syncWebdavMode && syncWebdavMode.value === "folder" ? "folder" : "file";
       const webdavFolderPath = syncWebdavFolder ? syncWebdavFolder.value.trim() : "";
+      const effectivePassword = useBasic
+        ? await resolveEffectiveSyncPassword(await loadConfig(), syncPassword ? syncPassword.value : "")
+        : "";
       const result = await testSyncConnection(
         url,
         useBasic ? (syncUsername ? syncUsername.value : "") : "",
-        useBasic ? (syncPassword ? syncPassword.value : "") : "",
+        effectivePassword,
         syncType && syncType.value ? syncType.value : "direct",
         { webdavMode, webdavFolderPath }
       );

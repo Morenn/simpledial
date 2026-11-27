@@ -31,6 +31,24 @@ globalThis.document = {
 const cryptoMod = await import("../newtab/crypto.js");
 const { fetchAndEvaluateRestWidget } = await import("../newtab/widgets/rest-status-widget.js");
 const { fetchWeatherWidget } = await import("../newtab/widgets/weather-widget.js");
+const {
+  CALENDAR_CACHE_KEY,
+  CALENDAR_SECRETS_KEY,
+  saveWebcalSecretUrl,
+  loadWebcalSecretUrl,
+  deleteWebcalSecretUrl,
+  fetchWebcalSource,
+  normalizeCalendarSources,
+  readCalendarCacheMap,
+  removeCalendarSourceCache,
+  updateCalendarCacheMap,
+} = await import("../newtab/calendar-sources.js");
+const {
+  saveCaldavCredentials,
+  loadCaldavCredentials,
+  deleteCaldavCredentials,
+} = await import("../newtab/calendar-caldav.js");
+const { collectVaultEncryptedItems } = await import("../newtab/vault-items.js");
 
 test("crypto vault setup, setSecret/getSecret with AAD, lock, session auto-unlock, wrong password, and password change", async () => {
   await cryptoMod.lockVault();
@@ -256,5 +274,238 @@ test("unlockVault with storeSession: false unlocks in memory without persisting 
   await cryptoMod.unlockVault("Strong-Pw-123", header, { storeSession: true });
   assert.equal(cryptoMod.isVaultUnlocked(), true);
   assert.ok(sessionStore.size > 0);
+  await cryptoMod.lockVault();
+});
+
+test("saveWebcalSecretUrl requires unlocked vault, encrypts URL locally, and fetchWebcalSource respects lock state", async () => {
+  const localStore = new Map();
+  const originalLocal = globalThis.chrome.storage.local;
+  globalThis.chrome.storage.local = {
+    get: async (key) => {
+      if (typeof key === "string") return { [key]: localStore.get(key) };
+      if (Array.isArray(key)) {
+        const out = {};
+        for (const k of key) out[k] = localStore.get(k);
+        return out;
+      }
+      return Object.fromEntries(localStore.entries());
+    },
+    set: async (obj) => {
+      for (const [k, v] of Object.entries(obj)) localStore.set(k, v);
+    },
+    remove: async (key) => {
+      localStore.delete(key);
+    },
+  };
+
+  try {
+    await cryptoMod.lockVault();
+    await assert.rejects(
+      () => saveWebcalSecretUrl("webcal_priv_1", "https://calendar.example.com/secret-token.ics"),
+      /VAULT_LOCKED/,
+    );
+
+    const header = await cryptoMod.setupVault("Strong-Pw-123", { storeSession: false });
+    await saveWebcalSecretUrl("webcal_priv_1", "webcal://calendar.example.com/secret-token.ics");
+    const storedMap = localStore.get(CALENDAR_SECRETS_KEY);
+    assert.ok(storedMap?.webcal_priv_1?.url);
+    assert.equal(cryptoMod.isEncryptedSecret(storedMap.webcal_priv_1.url), true);
+    assert.equal(storedMap.webcal_priv_1.url.includes("secret-token"), false);
+
+    const loadedUnlocked = await loadWebcalSecretUrl("webcal_priv_1");
+    assert.deepEqual(loadedUnlocked, {
+      ok: true,
+      value: "https://calendar.example.com/secret-token.ics",
+    });
+
+    await cryptoMod.lockVault();
+    const loadedLocked = await loadWebcalSecretUrl("webcal_priv_1");
+    assert.deepEqual(loadedLocked, { ok: false, locked: true, value: "" });
+
+    const fetchLocked = await fetchWebcalSource({
+      id: "webcal_priv_1",
+      type: "webcal",
+      url: "",
+      privateUrl: true,
+      refreshMinutes: 60,
+    });
+    assert.equal(fetchLocked.ok, false);
+    assert.equal(fetchLocked.error, "Vault locked");
+
+    await cryptoMod.unlockVault("Strong-Pw-123", header, { storeSession: false });
+    await deleteWebcalSecretUrl("webcal_priv_1");
+    const loadedAfterDelete = await loadWebcalSecretUrl("webcal_priv_1");
+    assert.deepEqual(loadedAfterDelete, { ok: true, value: "" });
+  } finally {
+    globalThis.chrome.storage.local = originalLocal;
+    await cryptoMod.lockVault();
+  }
+});
+
+test("cross-tab lock broadcast clears in-memory vaultDek", async () => {
+  const header = await cryptoMod.setupVault("Strong-Pw-123", { storeSession: false });
+  assert.equal(cryptoMod.isVaultUnlocked(), true);
+
+  const otherTabChannel = new BroadcastChannel("myspeeddial-vault-lock");
+  otherTabChannel.postMessage({ type: "lock" });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(cryptoMod.isVaultUnlocked(), false);
+
+  otherTabChannel.close();
+  await cryptoMod.unlockVault("Strong-Pw-123", header, { storeSession: false });
+  await cryptoMod.lockVault();
+});
+
+test("collectVaultEncryptedItems lists sync, widgets, and calendar secrets with owner jump flags", () => {
+  const items = collectVaultEncryptedItems({
+    cfg: {
+      sync: { type: "webdav", enc: "enc:v1:iv:ct" },
+    },
+    widgets: [
+      { id: "w_rest", type: "rest-status", name: "API Health", authHeaderValue: "enc:v1:iv:ct" },
+      { id: "w_plain", type: "rest-status", name: "Plain", authHeaderValue: "Bearer abc" },
+      { id: "w_wx", type: "weather", name: "Local Weather", apiKey: "enc:v1:iv:ct" },
+    ],
+    calendarSources: [
+      { id: "cal_1", type: "caldav", name: "Work CalDAV" },
+      { id: "cal_2", type: "webcal", name: "Private Feed", privateUrl: true },
+    ],
+    calendarSecretsMap: {
+      cal_1: { username: "enc:v1:iv:ct", password: "enc:v1:iv:ct" },
+      cal_2: { url: "enc:v1:iv:ct" },
+      cal_orphan: { url: "enc:v1:iv:ct" },
+    },
+  });
+
+  assert.equal(items.length, 6);
+  assert.deepEqual(
+    items.map((i) => ({ id: i.id, kind: i.kind, name: i.name, canJump: i.canJump })),
+    [
+      { id: "sync:credentials", kind: "sync", name: "synchronization", canJump: true },
+      { id: "widget:w_rest:authHeaderValue", kind: "widget", name: "API Health", canJump: true },
+      { id: "widget:w_wx:apiKey", kind: "widget", name: "Local Weather", canJump: true },
+      { id: "calendar:cal_1:caldav", kind: "calendar", name: "Work CalDAV", canJump: true },
+      { id: "calendar:cal_2:url", kind: "calendar", name: "Private Feed", canJump: true },
+      { id: "calendar:cal_orphan:url", kind: "calendar", name: "cal_orphan", canJump: false },
+    ],
+  );
+});
+
+test("saveCaldavCredentials encrypts both username and password and respects lock state", async () => {
+  const localStore = new Map();
+  const originalLocal = globalThis.chrome.storage.local;
+  globalThis.chrome.storage.local = {
+    get: async (key) => (typeof key === "string" ? { [key]: localStore.get(key) } : {}),
+    set: async (obj) => {
+      for (const [k, v] of Object.entries(obj)) localStore.set(k, v);
+    },
+    remove: async (key) => {
+      localStore.delete(key);
+    },
+  };
+
+  try {
+    const header = await cryptoMod.setupVault("Strong-Pw-123", { storeSession: false });
+    await saveCaldavCredentials("caldav_1", { username: "alice@example.com", password: "app-password-99" });
+
+    const storedMap = localStore.get(CALENDAR_SECRETS_KEY);
+    assert.equal(cryptoMod.isEncryptedSecret(storedMap.caldav_1.username), true);
+    assert.equal(cryptoMod.isEncryptedSecret(storedMap.caldav_1.password), true);
+    assert.equal(storedMap.caldav_1.username.includes("alice"), false);
+    assert.equal(storedMap.caldav_1.password.includes("app-password"), false);
+
+    const unlocked = await loadCaldavCredentials("caldav_1");
+    assert.deepEqual(unlocked, { ok: true, username: "alice@example.com", password: "app-password-99" });
+
+    await cryptoMod.lockVault();
+    const locked = await loadCaldavCredentials("caldav_1");
+    assert.deepEqual(locked, { ok: false, locked: true, username: "", password: "" });
+
+    await cryptoMod.unlockVault("Strong-Pw-123", header, { storeSession: false });
+    await deleteCaldavCredentials("caldav_1");
+    const afterDelete = await loadCaldavCredentials("caldav_1");
+    assert.deepEqual(afterDelete, { ok: true, username: "", password: "" });
+  } finally {
+    globalThis.chrome.storage.local = originalLocal;
+    await cryptoMod.lockVault();
+  }
+});
+
+test("privateUrl supports CalDAV without clobbering credentials and encryptCalendarCache encrypts cache at rest", async () => {
+  const caldavNorm = normalizeCalendarSources([
+    { id: "cd1", type: "caldav", name: "Private CalDAV", url: "https://dav.example.com/secret/", privateUrl: true },
+  ]);
+  assert.equal(caldavNorm.length, 1);
+  assert.equal(caldavNorm[0].type, "caldav");
+  assert.equal(caldavNorm[0].privateUrl, true);
+  assert.equal(caldavNorm[0].url, "");
+
+  const localStore = new Map();
+  const originalLocal = globalThis.chrome.storage.local;
+  globalThis.chrome.storage.local = {
+    get: async (key) => (typeof key === "string" ? { [key]: localStore.get(key) } : {}),
+    set: async (obj) => {
+      for (const [k, v] of Object.entries(obj)) localStore.set(k, v);
+    },
+    remove: async (key) => {
+      localStore.delete(key);
+    },
+  };
+
+  try {
+    const header = await cryptoMod.setupVault("Strong-Pw-123", { storeSession: false });
+    await saveCaldavCredentials("cd1", { username: "bob", password: "secret" });
+    await saveWebcalSecretUrl("cd1", "https://dav.example.com/secret/");
+    await deleteWebcalSecretUrl("cd1");
+    const credsAfterUrlDelete = await loadCaldavCredentials("cd1");
+    assert.deepEqual(credsAfterUrlDelete, { ok: true, username: "bob", password: "secret" });
+
+    localStore.set("myspeeddial-config", {
+      vaultHeader: header,
+      appearance: {
+        calendarSources: [
+          { id: "cd1", type: "caldav", name: "Private CalDAV", url: "", privateUrl: true, encryptCache: true },
+          { id: "pub1", type: "webcal", name: "Holidays", url: "https://holidays.example.com/cal.ics", encryptCache: false },
+        ],
+      },
+    });
+    await updateCalendarCacheMap((map) => {
+      map.cd1 = { icsText: "BEGIN:VCALENDAR\nSUMMARY:Top Secret Meeting\nEND:VCALENDAR", fetchedAt: 12345 };
+      map.pub1 = { icsText: "BEGIN:VCALENDAR\nSUMMARY:Public Holiday\nEND:VCALENDAR", fetchedAt: 67890 };
+    });
+
+    const rawStoredCache = localStore.get(CALENDAR_CACHE_KEY);
+    assert.equal(cryptoMod.isEncryptedSecret(rawStoredCache.cd1), true);
+    assert.equal(rawStoredCache.cd1.includes("Top Secret Meeting"), false);
+    assert.equal(typeof rawStoredCache.pub1, "object");
+    assert.equal(rawStoredCache.pub1.fetchedAt, 67890);
+
+    const decryptedCache = await readCalendarCacheMap();
+    assert.equal(decryptedCache.cd1.fetchedAt, 12345);
+    assert.ok(decryptedCache.cd1.icsText.includes("Top Secret Meeting"));
+    assert.equal(decryptedCache.pub1.fetchedAt, 67890);
+
+    await cryptoMod.lockVault();
+    const lockedCache = await readCalendarCacheMap();
+    assert.equal(lockedCache.cd1, undefined);
+    assert.equal(lockedCache.pub1.fetchedAt, 67890);
+
+    // Deleting a calendar while Vault is locked must still remove its encrypted cache entry.
+    await removeCalendarSourceCache("cd1");
+    assert.equal(Object.prototype.hasOwnProperty.call(localStore.get(CALENDAR_CACHE_KEY), "cd1"), false);
+    assert.equal(localStore.get(CALENDAR_CACHE_KEY).pub1.fetchedAt, 67890);
+  } finally {
+    globalThis.chrome.storage.local = originalLocal;
+    await cryptoMod.lockVault();
+  }
+});
+
+test("checkVaultAutoLock does not wipe in-memory storeSession: false unlock", async () => {
+  const header = await cryptoMod.setupVault("Strong-Pw-123", { storeSession: false });
+  await cryptoMod.lockVault();
+  await cryptoMod.unlockVault("Strong-Pw-123", header, { storeSession: false });
+  assert.equal(cryptoMod.isVaultUnlocked(), true);
+  assert.equal(await cryptoMod.checkVaultAutoLock(30), false);
+  assert.equal(cryptoMod.isVaultUnlocked(), true);
   await cryptoMod.lockVault();
 });

@@ -2347,5 +2347,48 @@
   },
   "copyUrl": {
     "message": "Копіювати URL"
+  },
+  "calendarPrivateUrlLabel": {
+    "message": "🔒 Приватна URL (шифрувати у Сховищі, лише локально)"
+  },
+  "calendarHideNameLabel": {
+    "message": "Приховати назву календаря в мінікалендарі",
+    "description": "Checkbox label to hide the calendar name in the mini calendar agenda"
+  },
+  "securityVaultItemsTitle": {
+    "message": "Зашифровані елементи у Сховищі"
+  },
+  "securityVaultItemsEmpty": {
+    "message": "У Сховищі немає зашифрованих елементів."
+  },
+  "securityVaultItemSync": {
+    "message": "Облікові дані синхронізації"
+  },
+  "securityVaultItemRestToken": {
+    "message": "Токен автентифікації REST Status"
+  },
+  "securityVaultItemWeatherKey": {
+    "message": "API-ключ погоди"
+  },
+  "securityVaultItemCaldavPass": {
+    "message": "Облікові дані CalDAV"
+  },
+  "securityVaultItemWebcalUrl": {
+    "message": "Приватна URL календаря"
+  },
+  "secretSavedPlaceholder": {
+    "message": "<секрет збережено>"
+  },
+  "calendarEncryptCacheLabel": {
+    "message": "🔒 Шифрувати кешовані події календаря у Сховищі (лише локально)"
+  },
+  "calendarDiscardUnsavedConfirm": {
+    "message": "У вас є незбережені зміни календаря. Відхилити їх і закрити?"
+  },
+  "calendarSaveOrCancelHint": {
+    "message": "Натисніть Зберегти, щоб застосувати зміни, або Скасувати, щоб відхилити."
+  },
+  "done": {
+    "message": "Готово"
   }
 }

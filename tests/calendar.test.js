@@ -249,6 +249,19 @@ test("calendar bounds enforce combined source limit, single notes-sync target, U
   assert.equal(normalized[0].enableReminders, false); // webcal defaults to false
   assert.equal(normalized[7].enableReminders, true);  // caldav defaults to true
 
+  // Private WebCAL keeps entry with empty url in config even if a plaintext url was passed.
+  const priv = normalizeCalendarSources([
+    { id: "pw1", type: "webcal", name: "Private", url: "https://secret.example.com/tok.ics", privateUrl: true, hideName: true },
+    { id: "ec1", type: "webcal", name: "EncCache", url: "https://secret.example.com/c.ics", privateUrl: false, encryptCache: true },
+  ]);
+  assert.equal(priv.length, 2);
+  assert.equal(priv[0].privateUrl, true);
+  assert.equal(priv[0].hideName, true);
+  assert.equal(priv[0].url, "");
+  assert.equal(priv[1].encryptCache, true);
+  assert.equal(priv[1].privateUrl, true);
+  assert.equal(priv[1].url, "");
+
   const longSummary = "X".repeat(MAX_ICS_SUMMARY_LENGTH + 50);
   const ics = [
     "BEGIN:VCALENDAR",

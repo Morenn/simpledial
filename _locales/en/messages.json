@@ -2347,5 +2347,48 @@
   },
   "copyUrl": {
     "message": "Copy URL"
+  },
+  "calendarPrivateUrlLabel": {
+    "message": "🔒 Private URL (encrypt in Vault, local only)"
+  },
+  "calendarHideNameLabel": {
+    "message": "Hide calendar name in mini calendar",
+    "description": "Checkbox label to hide the calendar name in the mini calendar agenda"
+  },
+  "securityVaultItemsTitle": {
+    "message": "Encrypted Items in Vault"
+  },
+  "securityVaultItemsEmpty": {
+    "message": "No encrypted items stored in Vault."
+  },
+  "securityVaultItemSync": {
+    "message": "Sync credentials"
+  },
+  "securityVaultItemRestToken": {
+    "message": "REST Status auth token"
+  },
+  "securityVaultItemWeatherKey": {
+    "message": "Weather API key"
+  },
+  "securityVaultItemCaldavPass": {
+    "message": "CalDAV credentials"
+  },
+  "securityVaultItemWebcalUrl": {
+    "message": "Private calendar URL"
+  },
+  "secretSavedPlaceholder": {
+    "message": "<secret saved>"
+  },
+  "calendarEncryptCacheLabel": {
+    "message": "🔒 Encrypt cached calendar events in Vault (local only)"
+  },
+  "calendarDiscardUnsavedConfirm": {
+    "message": "You have unsaved calendar changes. Discard them and close?"
+  },
+  "calendarSaveOrCancelHint": {
+    "message": "Click Save to apply changes or Cancel to discard."
+  },
+  "done": {
+    "message": "Done"
   }
 }

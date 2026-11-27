@@ -23,12 +23,16 @@ import {
 } from "../crypto.js";
 import { settingsState } from "./context.js";
 import { clearSyncCredentialsInUi, populateSyncSettings } from "./sync-ui.js";
+import { CALENDAR_CACHE_KEY, CALENDAR_SECRETS_KEY } from "../calendar-sources.js";
+import { collectVaultEncryptedItems } from "../vault-items.js";
 
 const statusBadgeEl = document.getElementById("security-vault-status");
 const plaintextCountEl = document.getElementById("security-plaintext-count");
 const setupPanel = document.getElementById("security-setup-panel");
 const lockedPanel = document.getElementById("security-locked-panel");
 const unlockedPanel = document.getElementById("security-unlocked-panel");
+const vaultItemsPanel = document.getElementById("security-vault-items-panel");
+const vaultItemsListEl = document.getElementById("security-vault-items-list");
 const destroyPanel = document.getElementById("security-destroy-panel");
 const destroyBtn = document.getElementById("security-destroy-btn");
 
@@ -96,6 +100,62 @@ async function encryptWidgetsList(widgets = []) {
   return { widgets: next, changed };
 }
 
+function jumpToVaultItemOwner(item) {
+  if (!item?.canJump) return;
+  if (item.kind === "sync") {
+    document.querySelector('.settings-tab-btn[data-tab="sync"]')?.click();
+    document.getElementById("sync-username")?.focus();
+  } else if (item.kind === "widget" && item.widgetId) {
+    document.querySelector('.settings-tab-btn[data-tab="widgets"]')?.click();
+    window.openCustomWidgetById?.(item.widgetId);
+  } else if (item.kind === "calendar" && item.sourceId) {
+    document.querySelector('.settings-tab-btn[data-tab="widgets"]')?.click();
+    window.openCalendarSourceEditor?.(item.sourceId);
+  }
+}
+
+function renderVaultEncryptedItems(items = []) {
+  if (!vaultItemsListEl) return;
+  vaultItemsListEl.replaceChildren();
+  if (!Array.isArray(items) || items.length === 0) {
+    const emptyEl = document.createElement("div");
+    emptyEl.className = "security-vault-items-empty";
+    emptyEl.textContent = t("securityVaultItemsEmpty") || "No encrypted items stored in Vault.";
+    vaultItemsListEl.appendChild(emptyEl);
+    return;
+  }
+
+  for (const item of items) {
+    const row = document.createElement("div");
+    row.className = "security-vault-item-row";
+
+    const info = document.createElement("div");
+    info.className = "security-vault-item-info";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "security-vault-item-name";
+    nameEl.textContent = `🔒 ${item.name}`;
+
+    const typeEl = document.createElement("span");
+    typeEl.className = "security-vault-item-type";
+    typeEl.textContent = item.detail;
+
+    info.append(nameEl, typeEl);
+    row.appendChild(info);
+
+    if (item.canJump) {
+      const openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "icon-btn";
+      openBtn.textContent = t("edit") || "Edit";
+      openBtn.addEventListener("click", () => jumpToVaultItemOwner(item));
+      row.appendChild(openBtn);
+    }
+
+    vaultItemsListEl.appendChild(row);
+  }
+}
+
 function formatPasswordPolicyError(errors = []) {
   const parts = errors.map(e => {
     switch (e.code) {
@@ -156,8 +216,25 @@ export async function populateSecuritySettings(config = null) {
   setupPanel?.classList.toggle("hidden", hasHeader);
   lockedPanel?.classList.toggle("hidden", !hasHeader || unlocked);
   unlockedPanel?.classList.toggle("hidden", !hasHeader || !unlocked);
+  vaultItemsPanel?.classList.toggle("hidden", !hasHeader);
   destroyPanel?.classList.toggle("hidden", !hasHeader);
   encryptExistingBtn?.classList.toggle("hidden", !unlocked || plainCount === 0);
+  if (hasHeader && vaultItemsListEl) {
+    let calendarSecretsMap = {};
+    if (typeof chrome !== "undefined" && chrome.storage?.local?.get) {
+      const stored = await chrome.storage.local.get(CALENDAR_SECRETS_KEY).catch(() => ({}));
+      if (stored?.[CALENDAR_SECRETS_KEY] && typeof stored[CALENDAR_SECRETS_KEY] === "object") {
+        calendarSecretsMap = stored[CALENDAR_SECRETS_KEY];
+      }
+    }
+    const items = collectVaultEncryptedItems({
+      cfg,
+      widgets: activeWidgets,
+      calendarSources: settingsState.appearanceDraft?.calendarSources || cfg?.appearance?.calendarSources || [],
+      calendarSecretsMap,
+    });
+    renderVaultEncryptedItems(items);
+  }
   if (changeKdfSelect && hasHeader) {
     changeKdfSelect.value = cfg.vaultHeader.kdf || "PBKDF2-SHA256";
   } else if (setupKdfSelect && !hasHeader) {
@@ -194,11 +271,21 @@ export async function destroyVaultAndSecrets() {
     cfg.sync.password = "";
     delete cfg.sync.enc;
   }
+  const hadEncryptedCache = Array.isArray(cfg.appearance?.calendarSources)
+    && cfg.appearance.calendarSources.some((s) => s?.encryptCache);
   cfg.appearance = {
     ...(cfg.appearance || {}),
+    calendarSources: Array.isArray(cfg.appearance?.calendarSources)
+      ? cfg.appearance.calendarSources.map((s) => (s && typeof s === "object" ? { ...s, encryptCache: false } : s))
+      : [],
     customWidgets: clearAllWidgetSecrets(cfg.appearance?.customWidgets || [])
   };
   await saveConfig(cfg);
+  if (typeof chrome !== "undefined" && chrome.storage?.local?.remove) {
+    await chrome.storage.local.remove(
+      hadEncryptedCache ? [CALENDAR_SECRETS_KEY, CALENDAR_CACHE_KEY] : CALENDAR_SECRETS_KEY
+    ).catch(() => {});
+  }
   if (hadVaultSync) {
     clearSyncCredentialsInUi();
   }

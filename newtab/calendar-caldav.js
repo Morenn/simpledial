@@ -2,9 +2,9 @@ import { MAX_ICS_BYTES, parseIcsCalendar, serializeIcsEvent } from "./calendar-i
 import { extractNotesCalendarEvents, NOTES_STORAGE_KEY } from "./calendar-events.js";
 import {
   normalizeCalendarRefreshMinutes,
-  normalizeCalendarSourceUrl,
   readCalendarCacheMap,
   readResponseTextWithLimit,
+  resolveCalendarSourceUrl,
   updateCalendarCacheMap,
 } from "./calendar-sources.js";
 
@@ -87,17 +87,26 @@ function encodeBasicAuth(username, password) {
 
 export async function saveCaldavCredentials(sourceId, { username = "", password = "" } = {}) {
   if (typeof chrome === "undefined" || !chrome.storage?.local || !sourceId) return;
-  const { setSecret } = await import("./crypto.js");
+  const [{ setSecret }, { loadConfig }] = await Promise.all([
+    import("./crypto.js"),
+    import("./config.js"),
+  ]);
+  const vaultHeader = (await loadConfig())?.vaultHeader || null;
   const stored = await chrome.storage.local.get(CALDAV_SECRETS_KEY);
   const secretsMap = stored?.[CALDAV_SECRETS_KEY] && typeof stored[CALDAV_SECRETS_KEY] === "object"
     ? { ...stored[CALDAV_SECRETS_KEY] }
     : {};
   const existing = secretsMap[sourceId] || {};
+  const trimmedUser = String(username || "").trim().slice(0, 256);
+  const nextUsername = trimmedUser !== ""
+    ? await setSecret(trimmedUser, `calendar:${sourceId}:username`, { vaultHeader })
+    : (existing.username || "");
   const nextPassword = password !== undefined && password !== ""
-    ? await setSecret(String(password), `calendar:${sourceId}:password`)
+    ? await setSecret(String(password), `calendar:${sourceId}:password`, { vaultHeader })
     : (existing.password || "");
   secretsMap[sourceId] = {
-    username: String(username || "").trim().slice(0, 256),
+    ...existing,
+    username: nextUsername,
     password: nextPassword,
   };
   await chrome.storage.local.set({ [CALDAV_SECRETS_KEY]: secretsMap });
@@ -110,12 +119,19 @@ export async function loadCaldavCredentials(sourceId) {
   const stored = await chrome.storage.local.get(CALDAV_SECRETS_KEY);
   const entry = stored?.[CALDAV_SECRETS_KEY]?.[sourceId];
   if (!entry) return { ok: true, username: "", password: "" };
-  const { getSecret } = await import("./crypto.js");
-  const secret = await getSecret(entry.password || "", `calendar:${sourceId}:password`);
-  if (!secret.ok) {
-    return { ok: false, locked: true, username: entry.username || "", password: "" };
+  const [{ getSecret }, { loadConfig }] = await Promise.all([
+    import("./crypto.js"),
+    import("./config.js"),
+  ]);
+  const vaultHeader = (await loadConfig())?.vaultHeader || null;
+  const [userSecret, passSecret] = await Promise.all([
+    getSecret(entry.username || "", `calendar:${sourceId}:username`, { vaultHeader }),
+    getSecret(entry.password || "", `calendar:${sourceId}:password`, { vaultHeader }),
+  ]);
+  if (!userSecret.ok || !passSecret.ok) {
+    return { ok: false, locked: true, username: "", password: "" };
   }
-  return { ok: true, username: entry.username || "", password: secret.value || "" };
+  return { ok: true, username: userSecret.value || "", password: passSecret.value || "" };
 }
 
 export async function deleteCaldavCredentials(sourceId) {
@@ -157,15 +173,22 @@ export async function fetchCaldavSource(
   source,
   { force = false, rangeStartMs = -Infinity, rangeEndMs = Infinity, nowMs = Date.now() } = {},
 ) {
-  const normalizedUrl = normalizeCalendarSourceUrl(source?.url);
-  if (!normalizedUrl) {
-    return { ok: false, error: "Invalid URL", events: [] };
-  }
-
   const cacheMap = await readCalendarCacheMap();
   const cached = cacheMap[source.id] || null;
   const ttlMs = normalizeCalendarRefreshMinutes(source.refreshMinutes) * 60000;
   const excludeNotes = Boolean(source.syncNotesReminders);
+
+  const urlRes = await resolveCalendarSourceUrl(source);
+  if (!urlRes.ok) {
+    return {
+      ok: false,
+      error: urlRes.error,
+      events: Array.isArray(cached?.icsChunks)
+        ? parseCombinedCaldavCache(cached.icsChunks, rangeStartMs, rangeEndMs, excludeNotes)
+        : [],
+    };
+  }
+  const normalizedUrl = urlRes.url;
 
   if (!force && Array.isArray(cached?.icsChunks) && Number.isFinite(cached.fetchedAt) && cached.fetchedAt + ttlMs > nowMs) {
     return {
@@ -242,7 +265,7 @@ export async function fetchCaldavSource(
         fetchedAt: nowMs,
         lastError: "",
       };
-    });
+    }, source?.encryptCache ? { encryptSourceIds: [source.id] } : {});
 
     return {
       ok: true,
@@ -285,8 +308,11 @@ export function syncNotesRemindersToCaldav() {
     const target = sources.find((s) => s?.type === "caldav" && s.enabled !== false && s.syncNotesReminders);
     if (!target) return { skipped: true };
 
-    const normalizedUrl = normalizeCalendarSourceUrl(target.url);
-    if (!normalizedUrl) return { skipped: true };
+    const urlRes = await resolveCalendarSourceUrl(target);
+    if (!urlRes.ok) {
+      return urlRes.error === "Vault locked" ? { ok: false, error: "Vault locked" } : { skipped: true };
+    }
+    const normalizedUrl = urlRes.url;
 
     const { hasHostPermissionForUrl } = await import("./widgets/rest-status-widget.js");
     if (!(await hasHostPermissionForUrl(normalizedUrl))) return { ok: false, error: "Host permission required" };

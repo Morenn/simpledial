@@ -2347,5 +2347,48 @@
   },
   "copyUrl": {
     "message": "Kopírovat URL"
+  },
+  "calendarPrivateUrlLabel": {
+    "message": "🔒 Soukromá URL (zašifrovat v Trezoru, jen lokálně)"
+  },
+  "calendarHideNameLabel": {
+    "message": "Skrýt název kalendáře v minikalendáři",
+    "description": "Checkbox label to hide the calendar name in the mini calendar agenda"
+  },
+  "securityVaultItemsTitle": {
+    "message": "Zašifrované položky v Trezoru"
+  },
+  "securityVaultItemsEmpty": {
+    "message": "V Trezoru nejsou uloženy žádné zašifrované položky."
+  },
+  "securityVaultItemSync": {
+    "message": "Přihlašovací údaje synchronizace"
+  },
+  "securityVaultItemRestToken": {
+    "message": "Auth token REST Status"
+  },
+  "securityVaultItemWeatherKey": {
+    "message": "API klíč počasí"
+  },
+  "securityVaultItemCaldavPass": {
+    "message": "Přihlašovací údaje CalDAV"
+  },
+  "securityVaultItemWebcalUrl": {
+    "message": "Soukromá URL kalendáře"
+  },
+  "secretSavedPlaceholder": {
+    "message": "<tajný údaj uložen>"
+  },
+  "calendarEncryptCacheLabel": {
+    "message": "🔒 Zašifrovat mezipaměť kalendáře v Trezoru (jen lokálně)"
+  },
+  "calendarDiscardUnsavedConfirm": {
+    "message": "Máte neuložené změny kalendáře. Zahodit je a zavřít?"
+  },
+  "calendarSaveOrCancelHint": {
+    "message": "Klikněte na Uložit pro uložení změn nebo Zrušit pro zahození."
+  },
+  "done": {
+    "message": "Hotovo"
   }
 }

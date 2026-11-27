@@ -160,7 +160,11 @@ function renderPopover() {
 
   nav.append(prevBtn, todayBtn, nextBtn);
   const hasActiveExternalCalendar = activeCalendarSources.some(
-    (s) => s && (s.type === "webcal" || s.type === "caldav") && Boolean(s.url) && s.enabled !== false,
+    (s) =>
+      s &&
+      (s.type === "webcal" || s.type === "caldav") &&
+      (Boolean(s.url) || Boolean(s.privateUrl)) &&
+      s.enabled !== false,
   );
   if (hasActiveExternalCalendar) {
     const refreshBtn = document.createElement("button");

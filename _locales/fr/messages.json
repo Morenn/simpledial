@@ -2347,5 +2347,48 @@
   },
   "copyUrl": {
     "message": "Copier l’URL"
+  },
+  "calendarPrivateUrlLabel": {
+    "message": "🔒 URL privée (chiffrée dans le coffre, local uniquement)"
+  },
+  "calendarHideNameLabel": {
+    "message": "Masquer le nom du calendrier dans le mini-calendrier",
+    "description": "Checkbox label to hide the calendar name in the mini calendar agenda"
+  },
+  "securityVaultItemsTitle": {
+    "message": "Éléments chiffrés dans le coffre"
+  },
+  "securityVaultItemsEmpty": {
+    "message": "Aucun élément chiffré stocké dans le coffre."
+  },
+  "securityVaultItemSync": {
+    "message": "Identifiants de synchronisation"
+  },
+  "securityVaultItemRestToken": {
+    "message": "Jeton d'authentification REST Status"
+  },
+  "securityVaultItemWeatherKey": {
+    "message": "Clé API météo"
+  },
+  "securityVaultItemCaldavPass": {
+    "message": "Identifiants CalDAV"
+  },
+  "securityVaultItemWebcalUrl": {
+    "message": "URL de calendrier privée"
+  },
+  "secretSavedPlaceholder": {
+    "message": "<secret enregistré>"
+  },
+  "calendarEncryptCacheLabel": {
+    "message": "🔒 Chiffrer le cache des événements du calendrier dans le coffre (local uniquement)"
+  },
+  "calendarDiscardUnsavedConfirm": {
+    "message": "Vous avez des modifications de calendrier non enregistrées. Les ignorer et fermer ?"
+  },
+  "calendarSaveOrCancelHint": {
+    "message": "Cliquez sur Enregistrer pour appliquer ou sur Annuler pour ignorer."
+  },
+  "done": {
+    "message": "Terminé"
   }
 }

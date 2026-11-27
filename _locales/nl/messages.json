@@ -2347,5 +2347,48 @@
   },
   "copyUrl": {
     "message": "URL kopiëren"
+  },
+  "calendarPrivateUrlLabel": {
+    "message": "🔒 Privé-URL (versleutelen in Kluis, alleen lokaal)"
+  },
+  "calendarHideNameLabel": {
+    "message": "Agendanaam verbergen in minikalender",
+    "description": "Checkbox label to hide the calendar name in the mini calendar agenda"
+  },
+  "securityVaultItemsTitle": {
+    "message": "Versleutelde items in Kluis"
+  },
+  "securityVaultItemsEmpty": {
+    "message": "Geen versleutelde items opgeslagen in Kluis."
+  },
+  "securityVaultItemSync": {
+    "message": "Sync-inloggegevens"
+  },
+  "securityVaultItemRestToken": {
+    "message": "REST Status-auth-token"
+  },
+  "securityVaultItemWeatherKey": {
+    "message": "Weer-API-sleutel"
+  },
+  "securityVaultItemCaldavPass": {
+    "message": "CalDAV-inloggegevens"
+  },
+  "securityVaultItemWebcalUrl": {
+    "message": "Privé agenda-URL"
+  },
+  "secretSavedPlaceholder": {
+    "message": "<geheim opgeslagen>"
+  },
+  "calendarEncryptCacheLabel": {
+    "message": "🔒 Gecachete agenda-afspraken versleutelen in Kluis (alleen lokaal)"
+  },
+  "calendarDiscardUnsavedConfirm": {
+    "message": "U hebt niet-opgeslagen agendawijzigingen. Verwerpen en sluiten?"
+  },
+  "calendarSaveOrCancelHint": {
+    "message": "Klik op Opslaan om wijzigingen toe te passen of op Annuleren om te negeren."
+  },
+  "done": {
+    "message": "Gereed"
   }
 }
